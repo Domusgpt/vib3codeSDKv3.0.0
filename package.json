@@ -1,6 +1,6 @@
 {
   "name": "@vib3/sdk",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "VIB3+ 4D Visualization SDK - Unified engine with 6D rotation, MCP agentic integration, and cross-platform support",
   "type": "module",
   "main": "src/core/VIB3Engine.js",
@@ -69,6 +69,24 @@
     },
     "./llm": {
       "import": "./src/llm/LLMParameterInterface.js"
+    },
+    "./math": {
+      "import": "./src/math/index.js"
+    },
+    "./math/vec4": {
+      "import": "./src/math/Vec4.js"
+    },
+    "./math/rotor4d": {
+      "import": "./src/math/Rotor4D.js"
+    },
+    "./math/mat4x4": {
+      "import": "./src/math/Mat4x4.js"
+    },
+    "./math/projection": {
+      "import": "./src/math/Projection.js"
+    },
+    "./math/constants": {
+      "import": "./src/math/constants.js"
     },
     "./quaternion": "./src/ui/adaptive/renderers/ShaderQuaternionSynchronizer.js",
     "./sensors": "./src/ui/adaptive/SensoryInputBridge.js",
