@@ -1,19 +1,78 @@
 {
-  "name": "vib34d-xr-quaternion-sdk",
-  "version": "1.0.0",
-  "description": "4D Geometric Processing with XR Quaternion Integration - Advanced quaternion mathematics and spatial computing for OpenXR/WebXR",
+  "name": "@vib3/sdk",
+  "version": "1.1.0",
+  "description": "VIB3+ 4D Visualization SDK - Unified engine with 6D rotation, MCP agentic integration, and cross-platform support",
   "type": "module",
-  "main": "src/core/AdaptiveSDK.js",
+  "main": "src/core/VIB3Engine.js",
   "types": "./types/adaptive-sdk.d.ts",
+  "bin": {
+    "vib3": "./src/cli/index.js"
+  },
+  "sideEffects": [
+    "./src/geometry/builders/*.js"
+  ],
   "exports": {
     ".": {
       "types": "./types/adaptive-sdk.d.ts",
-      "default": "./src/core/AdaptiveSDK.js"
+      "import": "./src/core/VIB3Engine.js"
+    },
+    "./core": {
+      "import": "./src/core/VIB3Engine.js"
+    },
+    "./engine": {
+      "import": "./src/core/VIB3Engine.js"
+    },
+    "./parameters": {
+      "import": "./src/core/Parameters.js"
+    },
+    "./geometry": {
+      "import": "./src/geometry/GeometryLibrary.js"
+    },
+    "./quantum": {
+      "import": "./src/quantum/QuantumEngine.js"
+    },
+    "./faceted": {
+      "import": "./src/faceted/FacetedSystem.js"
+    },
+    "./holographic": {
+      "import": "./src/holograms/RealHolographicSystem.js"
+    },
+    "./agent": {
+      "import": "./src/agent/index.js"
+    },
+    "./agent/telemetry": {
+      "import": "./src/agent/telemetry/index.js"
+    },
+    "./agent/mcp": {
+      "import": "./src/agent/mcp/index.js"
+    },
+    "./schemas": {
+      "import": "./src/schemas/index.js"
+    },
+    "./schemas/parameters": {
+      "import": "./src/schemas/parameters.schema.json",
+      "require": "./src/schemas/parameters.schema.json"
+    },
+    "./schemas/tool-response": {
+      "import": "./src/schemas/tool-response.schema.json",
+      "require": "./src/schemas/tool-response.schema.json"
+    },
+    "./schemas/error": {
+      "import": "./src/schemas/error.schema.json",
+      "require": "./src/schemas/error.schema.json"
+    },
+    "./cli": {
+      "node": "./src/cli/index.js"
+    },
+    "./gallery": {
+      "import": "./src/gallery/GallerySystem.js"
+    },
+    "./llm": {
+      "import": "./src/llm/LLMParameterInterface.js"
     },
     "./quaternion": "./src/ui/adaptive/renderers/ShaderQuaternionSynchronizer.js",
     "./sensors": "./src/ui/adaptive/SensoryInputBridge.js",
     "./polychora": "./src/core/PolychoraSystem.js",
-    "./geometry": "./src/geometry/GeometryLibrary.js",
     "./core/quaternion": {
       "types": "./src/core/quaternion/index.ts",
       "default": "./src/core/quaternion/index.ts"

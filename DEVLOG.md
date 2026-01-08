@@ -1,0 +1,257 @@
+# VIB3+ SDK Development Log
+
+**Project**: VIB3+ Unified Visualization SDK with C++ Core
+**Branch**: `claude/refactor-swarm-agent-2Bx4M`
+**Started**: 2026-01-08
+
+---
+
+## Session Log
+
+### Session 1: 2026-01-08
+
+**Objective**: Initial architecture planning and schema implementation
+
+#### 16:00 - Project Analysis
+
+Analyzed current codebase structure:
+- **Core Engine**: `src/core/VIB3Engine.js` - Unified system coordinator
+- **Parameters**: `src/core/Parameters.js` - 6D rotation + visual params
+- **Geometry**: `src/geometry/GeometryLibrary.js` - 8 base geometries
+- **Visualization Systems**: Quantum, Faceted, Holographic (24 geoms each)
+- **LLM Interface**: Gemini-based natural language to parameters
+
+Identified gaps from strategic blueprint:
+- No telemetry/event system
+- No JSON schemas for API validation
+- No MCP server for agentic integration
+- No CLI with JSON output
+- Package exports need tree-shaking support
+
+#### 16:30 - Schema Implementation
+
+Created JSON schemas following agentic API design patterns:
+
+**Files Created**:
+1. `src/schemas/parameters.schema.json` - Full 6D rotation + visual params
+2. `src/schemas/tool-response.schema.json` - Semantic return values with `suggested_next_actions`
+3. `src/schemas/error.schema.json` - Actionable errors with `suggestion` field
+4. `src/schemas/index.js` - AJV-based validation with normalize/flatten helpers
+
+**Key Design Decisions**:
+- Nested parameter structure for schemas (`rotation.XW` not `rot4dXW`)
+- Bidirectional normalization (flat <-> nested) for engine compatibility
+- Error schema includes `retry_possible` and `retry_after_ms` for agents
+
+#### 17:00 - Architecture Planning
+
+Created two architecture documents:
+1. `REFACTORING_PLAN.md` - JavaScript/TypeScript refactoring roadmap
+2. `CPP_CORE_ARCHITECTURE.md` - C++ core with WASM/FFI strategy
+
+**C++ Core Strategy** (following Rive pattern):
+- C++ core with SIMD optimization
+- Emscripten -> WebAssembly for web
+- FFI bindings for Flutter/native
+- Protobuf schemas for cross-language types
+- Command batching to minimize FFI overhead
+
+---
+
+## Development Phases
+
+### Phase 0: Mathematical Foundation
+**Status**: PLANNED
+**Timeline**: Weeks 1-4
+
+- [ ] Implement `Vec4` class with SIMD optimization
+- [ ] Implement `Rotor4D` class (8 components, not quaternions)
+- [ ] Implement `Mat4x4` with GPU-friendly column-major layout
+- [ ] Stereographic projection: `X = x/(1-w)`
+- [ ] Perspective projection: `X = x/(d-w)`
+- [ ] Unit tests for numerical stability
+
+**Validation Criteria**:
+- Rotor normalization drift < 1e-6 after 1000 operations
+- Projection singularity handling (w approaches 1 or d)
+- Match existing JS implementation output
+
+### Phase 1: Geometry Core
+**Status**: PLANNED
+**Timeline**: Weeks 5-8
+
+- [ ] 8 base geometry generators
+- [ ] `warpHypersphereCore()` function
+- [ ] `warpHypertetraCore()` function
+- [ ] Geometry encoding: `geometry = coreIndex * 8 + baseIndex`
+- [ ] Buffer generation for WebGL
+
+### Phase 2: Scene Graph & Resources
+**Status**: PLANNED
+**Timeline**: Weeks 9-12
+
+- [ ] `Scene4D` container
+- [ ] `Node4D` hierarchy
+- [ ] `ResourceManager` with reference counting
+- [ ] Memory pool allocators
+- [ ] Cascade disposal
+
+### Phase 3: Render Abstraction
+**Status**: PLANNED
+**Timeline**: Weeks 13-16
+
+- [ ] `RenderCommand` hierarchy
+- [ ] `CommandBuffer` batching
+- [ ] `RenderTarget` abstraction
+- [ ] Draw call optimization
+
+### Phase 4: WebAssembly Backend
+**Status**: PLANNED
+**Timeline**: Weeks 17-20
+
+- [ ] Emscripten configuration
+- [ ] WebGL 2.0 backend
+- [ ] JavaScript bindings
+- [ ] TypeScript definitions
+
+### Phase 5: Flutter/Native Backends
+**Status**: PLANNED
+**Timeline**: Weeks 21-24
+
+- [ ] FFI with command batching
+- [ ] Flutter Texture integration
+- [ ] Metal backend (macOS/iOS)
+- [ ] Vulkan backend (Android/Linux/Windows)
+
+### Phase 6: Agentic Integration
+**Status**: IN PROGRESS (JS implementation first)
+**Timeline**: Weeks 25-28
+
+- [x] JSON schemas for parameters/responses/errors
+- [ ] OpenTelemetry service
+- [ ] MCP server with tool definitions
+- [ ] CLI with JSON output mode
+
+---
+
+## Immediate Next Steps (This Session)
+
+1. ~~Create JSON schemas~~ DONE
+2. ~~Create telemetry service with OpenTelemetry~~ DONE
+3. ~~Create MCP server skeleton~~ DONE
+4. ~~Update package.json exports~~ DONE
+5. ~~Add CLI with JSON output mode~~ DONE
+6. Commit and push
+
+---
+
+## Session 1 Completed Work (2026-01-08)
+
+### Files Created
+
+**Architecture & Documentation:**
+- `REFACTORING_PLAN.md` - JavaScript/TypeScript refactoring roadmap
+- `CPP_CORE_ARCHITECTURE.md` - C++ core strategy with 6 phases
+- `DEVLOG.md` - This ongoing development log
+
+**JSON Schemas (`src/schemas/`):**
+- `parameters.schema.json` - Full 6D rotation + visual params with nested structure
+- `tool-response.schema.json` - Semantic responses with `suggested_next_actions`
+- `error.schema.json` - Actionable errors with `suggestion` field
+- `index.js` - AJV-based validator with normalize/flatten helpers
+
+**Telemetry (`src/agent/telemetry/`):**
+- `TelemetryService.js` - OpenTelemetry-compatible tracing
+- `index.js` - Module exports
+
+**MCP Server (`src/agent/mcp/`):**
+- `tools.js` - 12 workflow-oriented tool definitions
+- `MCPServer.js` - Full MCP implementation
+- `index.js` - Module exports
+
+**Agent Module (`src/agent/`):**
+- `index.js` - Unified agent exports
+
+**CLI (`src/cli/`):**
+- `index.js` - Agent-friendly CLI with `--json` output
+
+### Package.json Updates
+
+- Renamed to `@vib3/sdk`
+- Version bumped to `1.1.0`
+- Added `bin.vib3` for CLI
+- Added `sideEffects: false` for tree-shaking
+- Added 15+ new exports:
+  - `./agent` - Telemetry + MCP
+  - `./agent/telemetry` - Telemetry only
+  - `./agent/mcp` - MCP only
+  - `./schemas` - Schema registry
+  - `./cli` - CLI (node only)
+  - `./quantum`, `./faceted`, `./holographic` - Individual systems
+
+### Key Design Decisions
+
+1. **Nested vs Flat Parameters**: Schemas use nested structure (`rotation.XW`) but engine uses flat (`rot4dXW`). Added bidirectional normalization.
+
+2. **Tool Granularity**: Tools match workflows, not methods. Example: `create_4d_visualization` does full scene setup, not just `new Scene()`.
+
+3. **Error Actionability**: Every error includes `suggestion` field and optional `retry_possible` flag for agent recovery.
+
+4. **Progressive Disclosure**: MCP `listTools(false)` returns names+descriptions only. Full schemas on demand.
+
+---
+
+## Technical Notes
+
+### Rotor vs Quaternion
+
+Quaternions work for 3D rotations (4 components, 3 rotation planes).
+4D requires rotors with 8 components:
+- 1 scalar
+- 6 bivectors (XY, XZ, YZ, XW, YW, ZW)
+- 1 pseudoscalar (XYZW)
+
+Never use 6 Euler angles - compose rotations via multiplication.
+
+### GPU Matrix Format
+
+For shaders, use 4x4 matrices per rotation plane:
+
+```glsl
+mat4 rotateXW(float angle) {
+    float c = cos(angle), s = sin(angle);
+    return mat4(
+        c, 0, 0, -s,
+        0, 1, 0,  0,
+        0, 0, 1,  0,
+        s, 0, 0,  c
+    );
+}
+```
+
+Compose all 6 rotations: `R = Rxy * Rxz * Ryz * Rxw * Ryw * Rzw`
+
+### Numerical Stability
+
+Renormalize rotors every frame or after 10-100 operations:
+```cpp
+void Rotor4D::normalize() {
+    float len = sqrt(s*s + xy*xy + xz*xz + yz*yz + xw*xw + yw*yw + zw*zw + xyzw*xyzw);
+    s /= len; xy /= len; xz /= len; yz /= len;
+    xw /= len; yw /= len; zw /= len; xyzw /= len;
+}
+```
+
+---
+
+## References
+
+- **vib34d-vib3plus**: Quaternion SDK source
+- **Manifestaengine-Vib3-1**: Agentic wrapper with telemetry
+- **Rive Architecture**: C++ core + WASM + FFI pattern
+- **Babylon.js**: Scoped package pattern
+- **Three.js**: Tree-shaking exports
+
+---
+
+**Last Updated**: 2026-01-08 17:00 UTC
