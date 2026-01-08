@@ -1,6 +1,6 @@
 {
   "name": "@vib3/sdk",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "VIB3+ 4D Visualization SDK - Unified engine with 6D rotation, MCP agentic integration, and cross-platform support",
   "type": "module",
   "main": "src/core/VIB3Engine.js",
@@ -69,6 +69,24 @@
     },
     "./geometry/buffers": {
       "import": "./src/geometry/buffers/index.js"
+    },
+    "./scene": {
+      "import": "./src/scene/index.js"
+    },
+    "./scene/node4d": {
+      "import": "./src/scene/Node4D.js"
+    },
+    "./scene/scene4d": {
+      "import": "./src/scene/Scene4D.js"
+    },
+    "./scene/resources": {
+      "import": "./src/scene/ResourceManager.js"
+    },
+    "./scene/pools": {
+      "import": "./src/scene/MemoryPool.js"
+    },
+    "./scene/disposable": {
+      "import": "./src/scene/Disposable.js"
     },
     "./quantum": {
       "import": "./src/quantum/QuantumEngine.js"
