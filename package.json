@@ -1,6 +1,6 @@
 {
   "name": "@vib3/sdk",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "VIB3+ 4D Visualization SDK - Unified engine with 6D rotation, MCP agentic integration, and cross-platform support",
   "type": "module",
   "main": "src/core/VIB3Engine.js",
@@ -168,6 +168,27 @@
     },
     "./gallery": {
       "import": "./src/gallery/GallerySystem.js"
+    },
+    "./viewer": {
+      "import": "./src/viewer/index.js"
+    },
+    "./viewer/portal": {
+      "import": "./src/viewer/ViewerPortal.js"
+    },
+    "./viewer/reactivity": {
+      "import": "./src/viewer/ReactivityManager.js"
+    },
+    "./viewer/card-bending": {
+      "import": "./src/viewer/CardBending.js"
+    },
+    "./viewer/card-exporter": {
+      "import": "./src/viewer/TradingCardExporter.js"
+    },
+    "./viewer/audio": {
+      "import": "./src/viewer/AudioReactivity.js"
+    },
+    "./viewer/gallery-ui": {
+      "import": "./src/viewer/GalleryUI.js"
     },
     "./llm": {
       "import": "./src/llm/LLMParameterInterface.js"

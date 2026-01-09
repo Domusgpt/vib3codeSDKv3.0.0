@@ -573,6 +573,32 @@ export class Rotor4D {
     }
 
     /**
+     * Convert to array [s, xy, xz, yz, xw, yw, zw, xyzw]
+     * @returns {number[]}
+     */
+    toArray() {
+        return [this.s, this.xy, this.xz, this.yz, this.xw, this.yw, this.zw, this.xyzw];
+    }
+
+    /**
+     * Create rotor from array
+     * @param {number[]} arr - Array of 8 components [s, xy, xz, yz, xw, yw, zw, xyzw]
+     * @returns {Rotor4D}
+     */
+    static fromArray(arr) {
+        return new Rotor4D(
+            arr[0] ?? 1,
+            arr[1] ?? 0,
+            arr[2] ?? 0,
+            arr[3] ?? 0,
+            arr[4] ?? 0,
+            arr[5] ?? 0,
+            arr[6] ?? 0,
+            arr[7] ?? 0
+        );
+    }
+
+    /**
      * Create rotor from JSON
      * @param {object} json
      * @returns {Rotor4D}

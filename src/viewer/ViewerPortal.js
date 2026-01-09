@@ -1,607 +1,374 @@
 /**
- * VIB3+ Viewer Portal
- * Immersive full-screen visualization with Device Orientation API
- * Supports 3 systems with 6D rotation and card bending effects
+ * ViewerPortal.js - Immersive Fullscreen 4D Visualization Viewer
+ *
+ * Provides an immersive viewing experience with:
+ * - Fullscreen mode with escape handling
+ * - Device orientation (gyroscope) control
+ * - Touch/mouse gesture rotation
+ * - Card bending 3D effect
+ * - Screenshot and trading card export
  */
 
-export class ViewerPortal {
-    constructor(engine) {
-        this.engine = engine;
-        this.portalContainer = null;
-        this.portalWindow = null;
+import { EventEmitter } from 'events';
 
-        // Interactivity state
-        this.interactivity = {
-            mouse: true,
-            tilt: true,
-            enhanced: true
-        };
+/**
+ * Viewer display modes
+ */
+export const ViewerMode = {
+    NORMAL: 'normal',
+    FULLSCREEN: 'fullscreen',
+    IMMERSIVE: 'immersive',
+    CARD: 'card'
+};
 
-        // Mouse tracking
-        this.mouseX = 0.5;
-        this.mouseY = 0.5;
-        this.mouseIntensity = 0.0;
-        this.isExpanded = false;
+/**
+ * Projection modes for 4D viewing
+ */
+export const ProjectionMode = {
+    PERSPECTIVE: 'perspective',
+    STEREOGRAPHIC: 'stereographic',
+    ORTHOGRAPHIC: 'orthographic',
+    CROSS_SECTION: 'cross_section'
+};
 
-        // Device orientation tracking
-        this.deviceOrientation = {
-            alpha: 0,   // Z-axis (compass)
-            beta: 0,    // X-axis (front-back tilt)
-            gamma: 0    // Y-axis (left-right tilt)
-        };
+/**
+ * ViewerPortal - Immersive 4D Visualization Viewer
+ */
+export class ViewerPortal extends EventEmitter {
+    constructor(options = {}) {
+        super();
 
-        // Base 6D rotations (from current engine state)
-        this.baseRotations = {};
+        this.container = null;
+        this.canvas = null;
+        this.engine = null;
+        this.mode = ViewerMode.NORMAL;
+        this.projectionMode = ProjectionMode.PERSPECTIVE;
+        this.isFullscreen = false;
+        this.gyroscopeEnabled = false;
 
-        // Card bending state
-        this.tiltX = 0;
-        this.tiltY = 0;
+        this.rotation = { xy: 0, xz: 0, yz: 0, xw: 0, yw: 0, zw: 0 };
+        this.velocity = { xy: 0, xz: 0, yz: 0, xw: 0, yw: 0, zw: 0 };
+
+        this.damping = options.damping || 0.95;
+        this.sensitivity = options.sensitivity || 0.01;
+        this.autoRotate = options.autoRotate || false;
+        this.autoRotateSpeed = options.autoRotateSpeed || 0.005;
+        this.autoRotatePlanes = options.autoRotatePlanes || ['xw', 'yw'];
+        this.cardBend = { x: 0, y: 0 };
+
+        this._animationFrame = null;
+        this._touch = { active: false, startX: 0, startY: 0, lastX: 0, lastY: 0 };
+        this._deviceOrientation = { alpha: 0, beta: 0, gamma: 0 };
+
+        this._onResize = this._onResize.bind(this);
+        this._onKeyDown = this._onKeyDown.bind(this);
+        this._onMouseDown = this._onMouseDown.bind(this);
+        this._onMouseMove = this._onMouseMove.bind(this);
+        this._onMouseUp = this._onMouseUp.bind(this);
+        this._onTouchStart = this._onTouchStart.bind(this);
+        this._onTouchMove = this._onTouchMove.bind(this);
+        this._onTouchEnd = this._onTouchEnd.bind(this);
+        this._onDeviceOrientation = this._onDeviceOrientation.bind(this);
+        this._onFullscreenChange = this._onFullscreenChange.bind(this);
+        this._animate = this._animate.bind(this);
     }
 
-    /**
-     * Initialize viewer portal
-     */
-    async initialize(containerId = 'viewer-portal-container') {
-        console.log('🎭 Initializing VIB3+ Viewer Portal');
+    initialize(container, engine) {
+        this.container = container;
+        this.engine = engine;
 
-        this.portalContainer = document.getElementById(containerId);
-        if (!this.portalContainer) {
-            console.error('❌ Portal container not found:', containerId);
-            return false;
+        this.canvas = container.querySelector('canvas');
+        if (!this.canvas) {
+            this.canvas = document.createElement('canvas');
+            this.canvas.style.width = '100%';
+            this.canvas.style.height = '100%';
+            container.appendChild(this.canvas);
         }
 
-        this.createPortalStructure();
-        this.setupInteractivity();
-        this.setupDeviceOrientation();
-        this.setupControlPanel();
+        this._applyStyles();
+        this._addEventListeners();
+        this._startAnimation();
+        this.emit('initialized');
+        return this;
+    }
 
-        // Store base rotations from current engine state
-        const params = this.engine.getAllParameters();
-        this.baseRotations = {
-            rot4dXY: params.rot4dXY || 0,
-            rot4dXZ: params.rot4dXZ || 0,
-            rot4dYZ: params.rot4dYZ || 0,
-            rot4dXW: params.rot4dXW || 0,
-            rot4dYW: params.rot4dYW || 0,
-            rot4dZW: params.rot4dZW || 0
-        };
+    dispose() {
+        this._stopAnimation();
+        this._removeEventListeners();
+        this.emit('disposed');
+    }
 
-        console.log('✅ Viewer Portal initialized');
+    async enterFullscreen() {
+        if (!this.container) return;
+        try {
+            await (this.container.requestFullscreen?.() ||
+                   this.container.webkitRequestFullscreen?.() ||
+                   this.container.mozRequestFullScreen?.());
+            this.isFullscreen = true;
+            this.mode = ViewerMode.FULLSCREEN;
+            this.emit('fullscreen', true);
+        } catch (err) {
+            console.warn('Fullscreen not available:', err);
+        }
+    }
+
+    async exitFullscreen() {
+        try {
+            await (document.exitFullscreen?.() ||
+                   document.webkitExitFullscreen?.() ||
+                   document.mozCancelFullScreen?.());
+            this.isFullscreen = false;
+            this.mode = ViewerMode.NORMAL;
+            this.emit('fullscreen', false);
+        } catch (err) {
+            console.warn('Exit fullscreen failed:', err);
+        }
+    }
+
+    toggleFullscreen() {
+        this.isFullscreen ? this.exitFullscreen() : this.enterFullscreen();
+    }
+
+    async enterImmersiveMode() {
+        await this.enterFullscreen();
+        await this.enableGyroscope();
+        this.mode = ViewerMode.IMMERSIVE;
+        this.emit('immersive', true);
+    }
+
+    async enableGyroscope() {
+        if (typeof DeviceOrientationEvent !== 'undefined' &&
+            typeof DeviceOrientationEvent.requestPermission === 'function') {
+            try {
+                const permission = await DeviceOrientationEvent.requestPermission();
+                if (permission !== 'granted') return false;
+            } catch (err) {
+                console.warn('Gyroscope permission denied:', err);
+                return false;
+            }
+        }
+        window.addEventListener('deviceorientation', this._onDeviceOrientation);
+        this.gyroscopeEnabled = true;
+        this.emit('gyroscope', true);
         return true;
     }
 
-    /**
-     * Create portal HTML structure
-     */
-    createPortalStructure() {
-        this.portalContainer.innerHTML = `
-            <div class="portal-viewer">
-                <div class="silicon-background"></div>
-                <div class="visualization-portal" id="portalWindow">
-                    <div class="canvas-container" id="portal-canvas-container">
-                        <!-- Engine canvases will be moved here -->
-                    </div>
-                </div>
+    disableGyroscope() {
+        window.removeEventListener('deviceorientation', this._onDeviceOrientation);
+        this.gyroscopeEnabled = false;
+        this.emit('gyroscope', false);
+    }
 
-                <div class="info-display" id="portalInfo">
-                    <h3>Portal Parameters</h3>
-                    <p id="portalSystemType">System: Loading...</p>
-                    <p id="portalGeometry">Geometry: Loading...</p>
-                    <p id="portalRotation">6D Rotation Active</p>
-                </div>
-            </div>
-        `;
+    setRotation(plane, angle) {
+        if (this.rotation.hasOwnProperty(plane)) {
+            this.rotation[plane] = angle;
+            this._updateEngine();
+        }
+    }
 
-        this.portalWindow = document.getElementById('portalWindow');
+    setAllRotations(rotations) {
+        Object.assign(this.rotation, rotations);
+        this._updateEngine();
+    }
 
-        // Move engine canvas container into portal
-        const engineContainer = document.getElementById('vib3-container');
-        const portalCanvasContainer = document.getElementById('portal-canvas-container');
+    resetRotation() {
+        this.rotation = { xy: 0, xz: 0, yz: 0, xw: 0, yw: 0, zw: 0 };
+        this.velocity = { xy: 0, xz: 0, yz: 0, xw: 0, yw: 0, zw: 0 };
+        this._updateEngine();
+        this.emit('reset');
+    }
 
-        if (engineContainer && portalCanvasContainer) {
-            // Move all canvas layers to portal
-            while (engineContainer.firstChild) {
-                portalCanvasContainer.appendChild(engineContainer.firstChild);
+    setProjectionMode(mode) {
+        this.projectionMode = mode;
+        this.emit('projectionMode', mode);
+    }
+
+    captureFrame(format = 'png', quality = 0.92) {
+        if (!this.canvas) return null;
+        return this.canvas.toDataURL(\`image/\${format}\`, quality);
+    }
+
+    downloadFrame(filename = 'vib3-capture', format = 'png') {
+        const dataUrl = this.captureFrame(format);
+        if (!dataUrl) return;
+        const link = document.createElement('a');
+        link.download = \`\${filename}.\${format}\`;
+        link.href = dataUrl;
+        link.click();
+    }
+
+    _applyStyles() {
+        if (!this.container) return;
+        Object.assign(this.container.style, {
+            position: 'relative', overflow: 'hidden',
+            touchAction: 'none', userSelect: 'none', webkitUserSelect: 'none'
+        });
+        if (this.canvas) {
+            Object.assign(this.canvas.style, { display: 'block', width: '100%', height: '100%' });
+        }
+    }
+
+    _addEventListeners() {
+        window.addEventListener('resize', this._onResize);
+        document.addEventListener('keydown', this._onKeyDown);
+        document.addEventListener('fullscreenchange', this._onFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', this._onFullscreenChange);
+        if (this.container) {
+            this.container.addEventListener('mousedown', this._onMouseDown);
+            this.container.addEventListener('touchstart', this._onTouchStart, { passive: false });
+        }
+    }
+
+    _removeEventListeners() {
+        window.removeEventListener('resize', this._onResize);
+        document.removeEventListener('keydown', this._onKeyDown);
+        document.removeEventListener('fullscreenchange', this._onFullscreenChange);
+        document.removeEventListener('webkitfullscreenchange', this._onFullscreenChange);
+        document.removeEventListener('mousemove', this._onMouseMove);
+        document.removeEventListener('mouseup', this._onMouseUp);
+        document.removeEventListener('touchmove', this._onTouchMove);
+        document.removeEventListener('touchend', this._onTouchEnd);
+        if (this.container) {
+            this.container.removeEventListener('mousedown', this._onMouseDown);
+            this.container.removeEventListener('touchstart', this._onTouchStart);
+        }
+        this.disableGyroscope();
+    }
+
+    _onResize() {
+        if (this.canvas && this.container) {
+            const rect = this.container.getBoundingClientRect();
+            this.canvas.width = rect.width * window.devicePixelRatio;
+            this.canvas.height = rect.height * window.devicePixelRatio;
+        }
+        this.emit('resize');
+    }
+
+    _onKeyDown(event) {
+        switch (event.key) {
+            case 'Escape': if (this.isFullscreen) this.exitFullscreen(); break;
+            case 'f': case 'F': this.toggleFullscreen(); break;
+            case 'r': case 'R': this.resetRotation(); break;
+            case 's': case 'S':
+                if (event.ctrlKey || event.metaKey) { event.preventDefault(); this.downloadFrame(); }
+                break;
+            case ' ': this.autoRotate = !this.autoRotate; this.emit('autoRotate', this.autoRotate); break;
+        }
+    }
+
+    _onMouseDown(event) {
+        this._touch.active = true;
+        this._touch.startX = this._touch.lastX = event.clientX;
+        this._touch.startY = this._touch.lastY = event.clientY;
+        document.addEventListener('mousemove', this._onMouseMove);
+        document.addEventListener('mouseup', this._onMouseUp);
+        this.emit('interactionStart');
+    }
+
+    _onMouseMove(event) {
+        if (!this._touch.active) return;
+        const deltaX = event.clientX - this._touch.lastX;
+        const deltaY = event.clientY - this._touch.lastY;
+        this._touch.lastX = event.clientX;
+        this._touch.lastY = event.clientY;
+        this.velocity.xw += deltaX * this.sensitivity;
+        this.velocity.yw += deltaY * this.sensitivity;
+        this.cardBend.x = (event.clientX - this._touch.startX) * 0.1;
+        this.cardBend.y = (event.clientY - this._touch.startY) * 0.1;
+        this.emit('interaction', { deltaX, deltaY });
+    }
+
+    _onMouseUp() {
+        this._touch.active = false;
+        this.cardBend = { x: 0, y: 0 };
+        document.removeEventListener('mousemove', this._onMouseMove);
+        document.removeEventListener('mouseup', this._onMouseUp);
+        this.emit('interactionEnd');
+    }
+
+    _onTouchStart(event) {
+        event.preventDefault();
+        const touch = event.touches[0];
+        this._touch.active = true;
+        this._touch.startX = this._touch.lastX = touch.clientX;
+        this._touch.startY = this._touch.lastY = touch.clientY;
+        document.addEventListener('touchmove', this._onTouchMove, { passive: false });
+        document.addEventListener('touchend', this._onTouchEnd);
+        this.emit('interactionStart');
+    }
+
+    _onTouchMove(event) {
+        event.preventDefault();
+        if (!this._touch.active) return;
+        const touch = event.touches[0];
+        const deltaX = touch.clientX - this._touch.lastX;
+        const deltaY = touch.clientY - this._touch.lastY;
+        this._touch.lastX = touch.clientX;
+        this._touch.lastY = touch.clientY;
+        this.velocity.xw += deltaX * this.sensitivity;
+        this.velocity.yw += deltaY * this.sensitivity;
+        this.cardBend.x = (touch.clientX - this._touch.startX) * 0.1;
+        this.cardBend.y = (touch.clientY - this._touch.startY) * 0.1;
+        this.emit('interaction', { deltaX, deltaY });
+    }
+
+    _onTouchEnd() {
+        this._touch.active = false;
+        this.cardBend = { x: 0, y: 0 };
+        document.removeEventListener('touchmove', this._onTouchMove);
+        document.removeEventListener('touchend', this._onTouchEnd);
+        this.emit('interactionEnd');
+    }
+
+    _onDeviceOrientation(event) {
+        const { alpha, beta, gamma } = event;
+        const alphaRad = (alpha || 0) * Math.PI / 180;
+        const betaRad = (beta || 0) * Math.PI / 180;
+        const gammaRad = (gamma || 0) * Math.PI / 180;
+        const smooth = 0.1;
+        this.rotation.zw += (alphaRad * 0.5 - this.rotation.zw) * smooth;
+        this.rotation.yw += (betaRad * 0.3 - this.rotation.yw) * smooth;
+        this.rotation.xw += (gammaRad * 0.3 - this.rotation.xw) * smooth;
+        this._deviceOrientation = { alpha, beta, gamma };
+        this.emit('deviceOrientation', this._deviceOrientation);
+    }
+
+    _onFullscreenChange() {
+        this.isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
+        if (!this.isFullscreen) {
+            this.mode = ViewerMode.NORMAL;
+            this.emit('fullscreen', false);
+        }
+    }
+
+    _startAnimation() { this._animate(); }
+
+    _stopAnimation() {
+        if (this._animationFrame) {
+            cancelAnimationFrame(this._animationFrame);
+            this._animationFrame = null;
+        }
+    }
+
+    _animate() {
+        for (const plane of Object.keys(this.velocity)) {
+            this.rotation[plane] += this.velocity[plane];
+            this.velocity[plane] *= this.damping;
+            if (Math.abs(this.velocity[plane]) < 0.0001) this.velocity[plane] = 0;
+        }
+        if (this.autoRotate && !this._touch.active) {
+            for (const plane of this.autoRotatePlanes) {
+                this.rotation[plane] += this.autoRotateSpeed;
             }
         }
-
-        this.updatePortalInfo();
+        this._updateEngine();
+        this._animationFrame = requestAnimationFrame(this._animate);
     }
 
-    /**
-     * Setup mouse/touch interactivity
-     */
-    setupInteractivity() {
-        // Mouse move for parallax and card bending
-        this.portalWindow.addEventListener('mousemove', (e) => {
-            if (!this.interactivity.mouse) return;
-
-            const rect = this.portalWindow.getBoundingClientRect();
-            this.mouseX = (e.clientX - rect.left) / rect.width;
-            this.mouseY = 1 - (e.clientY - rect.top) / rect.height;
-
-            // Calculate card bending
-            const centerX = rect.width / 2;
-            const centerY = rect.height / 2;
-            const maxTilt = this.isExpanded ? 25 : 10;
-
-            this.tiltX = ((e.clientX - rect.left - centerX) / centerX) * maxTilt;
-            this.tiltY = ((e.clientY - rect.top - centerY) / centerY) * -maxTilt;
-
-            this.updateCardBending();
-
-            if (this.interactivity.enhanced) {
-                this.updateMouse6DPerspective();
-            }
-        });
-
-        // Hover expansion
-        this.portalWindow.addEventListener('mouseenter', () => {
-            this.isExpanded = true;
-            this.mouseIntensity = 1.0;
-        });
-
-        this.portalWindow.addEventListener('mouseleave', () => {
-            this.isExpanded = false;
-            this.mouseIntensity = 0.0;
-            this.tiltX = 0;
-            this.tiltY = 0;
-            this.updateCardBending();
-        });
-
-        // Touch support
-        this.portalWindow.addEventListener('touchmove', (e) => {
-            if (!this.interactivity.mouse || e.touches.length === 0) return;
-
-            e.preventDefault();
-            const touch = e.touches[0];
-            const rect = this.portalWindow.getBoundingClientRect();
-
-            this.mouseX = (touch.clientX - rect.left) / rect.width;
-            this.mouseY = 1 - (touch.clientY - rect.top) / rect.height;
-
-            if (this.interactivity.enhanced) {
-                this.updateMouse6DPerspective();
-            }
-        });
-
-        // Keyboard shortcuts
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'f' || e.key === 'F') {
-                this.toggleFullscreen();
-            }
-            if (e.key === 'Escape' && this.portalContainer.classList.contains('active')) {
-                this.close();
-            }
-        });
-    }
-
-    /**
-     * Setup Device Orientation API for mobile tilt
-     */
-    setupDeviceOrientation() {
-        if (window.DeviceOrientationEvent) {
-            // iOS 13+ requires permission
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                // Will request permission when tilt is enabled
-                console.log('📱 Device orientation requires permission (iOS 13+)');
-            } else {
-                // Android and older iOS - direct access
-                window.addEventListener('deviceorientation', (e) => {
-                    if (this.interactivity.tilt) {
-                        this.handleDeviceOrientation(e);
-                    }
-                });
-                console.log('📱 Device orientation enabled');
-            }
-        } else {
-            console.log('📱 Device orientation not supported');
-        }
-    }
-
-    /**
-     * Handle device orientation events
-     */
-    handleDeviceOrientation(event) {
-        this.deviceOrientation.alpha = event.alpha || 0;
-        this.deviceOrientation.beta = event.beta || 0;
-        this.deviceOrientation.gamma = event.gamma || 0;
-
-        this.update6DPerspectiveFromTilt();
-    }
-
-    /**
-     * Update 6D rotation based on device tilt
-     */
-    update6DPerspectiveFromTilt() {
-        if (!this.interactivity.tilt) return;
-
-        // Normalize tilt values
-        const betaNorm = Math.max(-120, Math.min(120, this.deviceOrientation.beta));
-        const gammaNorm = Math.max(-120, Math.min(120, this.deviceOrientation.gamma));
-        const alphaNorm = ((this.deviceOrientation.alpha % 360) + 360) % 360;
-
-        // Calculate tilt intensity for dramatic effects
-        const tiltIntensity = Math.sqrt(betaNorm * betaNorm + gammaNorm * gammaNorm) / 90;
-        const extremeTilt = tiltIntensity > 1.0;
-
-        // Parallax background movement
-        const parallaxMultiplier = extremeTilt ? 12 : 8;
-        const bgOffsetX = -gammaNorm * parallaxMultiplier;
-        const bgOffsetY = -betaNorm * (parallaxMultiplier * 0.75);
-        const bgScale = 1.2 + tiltIntensity * 0.15;
-        const bgRotation = alphaNorm * 0.3;
-        const bgBlur = extremeTilt ? tiltIntensity * 2 : 0;
-
-        // Apply background transforms
-        document.documentElement.style.setProperty('--bg-offset-x', `${bgOffsetX}px`);
-        document.documentElement.style.setProperty('--bg-offset-y', `${bgOffsetY}px`);
-        document.documentElement.style.setProperty('--bg-scale', bgScale);
-        document.documentElement.style.setProperty('--bg-rotation', `${bgRotation}deg`);
-        document.documentElement.style.setProperty('--bg-blur', `${bgBlur}px`);
-
-        // Card bending counter-rotation
-        const counterMultiplier = extremeTilt ? 1.2 : 0.8;
-        const counterRotateX = -betaNorm * counterMultiplier;
-        const counterRotateY = -gammaNorm * counterMultiplier;
-        const counterRotateZ = -alphaNorm * 0.4;
-        const dynamicPerspective = 800 + tiltIntensity * 400;
-        const portalScale = (this.isExpanded ? 1.08 : 1.0) + (extremeTilt ? tiltIntensity * 0.1 : 0);
-        const portalTranslateZ = (this.isExpanded ? 30 : 0) + (extremeTilt ? tiltIntensity * 20 : 0);
-
-        // Apply card bending
-        this.portalWindow.style.transform = `
-            perspective(${dynamicPerspective}px)
-            rotateX(${counterRotateX}deg)
-            rotateY(${counterRotateY}deg)
-            rotateZ(${counterRotateZ}deg)
-            scale(${portalScale})
-            translateZ(${portalTranslateZ}px)
-        `;
-
-        // **DRAMATIC 6D ROTATION TRANSFORMATION**
-        const dramatic6DScale = extremeTilt ? 0.8 : 0.5;
-        const transformativeScale = tiltIntensity * 0.2;
-
-        const perspective6D = {
-            // 6D rotation mapped from device tilt
-            rot4dXY: this.baseRotations.rot4dXY + (gammaNorm * Math.PI / 180 * dramatic6DScale * 0.5),
-            rot4dXZ: this.baseRotations.rot4dXZ + (betaNorm * Math.PI / 180 * dramatic6DScale * 0.5),
-            rot4dYZ: this.baseRotations.rot4dYZ + (alphaNorm * Math.PI / 180 * dramatic6DScale * 0.3),
-            rot4dXW: this.baseRotations.rot4dXW + (betaNorm * Math.PI / 180 * dramatic6DScale),
-            rot4dYW: this.baseRotations.rot4dYW + (gammaNorm * Math.PI / 180 * dramatic6DScale),
-            rot4dZW: this.baseRotations.rot4dZW + (alphaNorm * Math.PI / 180 * dramatic6DScale * 0.5),
-
-            // Transformative effects
-            morphFactor: this.engine.getParameter('morphFactor') + tiltIntensity * 0.4 + transformativeScale,
-            intensity: this.engine.getParameter('intensity') + tiltIntensity * 0.25 + (extremeTilt ? 0.2 : 0),
-            chaos: this.engine.getParameter('chaos') + Math.pow(tiltIntensity, 2) * 0.15,
-            gridDensity: this.engine.getParameter('gridDensity') * (1 + tiltIntensity * 0.3),
-            hue: (this.engine.getParameter('hue') + (alphaNorm - 180) * 0.8 + (extremeTilt ? Math.sin(Date.now() * 0.005) * 20 : 0)) % 360,
-            saturation: this.engine.getParameter('saturation') + tiltIntensity * 0.15 + (extremeTilt ? 0.1 : 0)
-        };
-
-        // Apply to engine
-        this.engine.setParameters(perspective6D);
-
-        // Visual feedback
-        document.documentElement.style.setProperty('--tilt-intensity', tiltIntensity);
-
-        // Extreme tilt glow effects
-        if (extremeTilt) {
-            const glowIntensity = (tiltIntensity - 1) * 3;
-            const pulseSpeed = Math.max(0.5, 2 - tiltIntensity * 0.5);
-            document.documentElement.style.setProperty('--extreme-glow', glowIntensity);
-            document.documentElement.style.setProperty('--pulse-speed', `${pulseSpeed}s`);
-
-            this.portalWindow.style.boxShadow = `
-                0 0 ${glowIntensity * 20}px rgba(0, 255, 204, ${glowIntensity * 0.3}),
-                0 0 ${glowIntensity * 40}px rgba(255, 0, 255, ${glowIntensity * 0.2}),
-                inset 0 0 ${glowIntensity * 10}px rgba(255, 255, 255, ${glowIntensity * 0.1})
-            `;
-
-            // Haptic feedback
-            if ('vibrate' in navigator) {
-                navigator.vibrate(Math.floor(tiltIntensity * 50));
-            }
-        } else {
-            document.documentElement.style.setProperty('--extreme-glow', 0);
-            this.portalWindow.style.boxShadow = '';
-        }
-    }
-
-    /**
-     * Update 6D perspective based on mouse movement
-     */
-    updateMouse6DPerspective() {
-        const mouseOffsetX = (this.mouseX - 0.5) * 2; // -1 to 1
-        const mouseOffsetY = (this.mouseY - 0.5) * 2; // -1 to 1
-
-        // Parallax background (if not using tilt)
-        if (!this.interactivity.tilt) {
-            const bgMouseX = -mouseOffsetX * 30;
-            const bgMouseY = -mouseOffsetY * 20;
-            document.documentElement.style.setProperty('--bg-offset-x', `${bgMouseX}px`);
-            document.documentElement.style.setProperty('--bg-offset-y', `${bgMouseY}px`);
-        }
-
-        // Subtle 6D perspective changes
-        const mouse6DScale = 0.15;
-
-        const mouse6D = {
-            rot4dXY: this.baseRotations.rot4dXY + (mouseOffsetX * mouse6DScale * 0.3),
-            rot4dXZ: this.baseRotations.rot4dXZ + (mouseOffsetY * mouse6DScale * 0.3),
-            rot4dYZ: this.baseRotations.rot4dYZ,
-            rot4dXW: this.baseRotations.rot4dXW + (mouseOffsetY * mouse6DScale),
-            rot4dYW: this.baseRotations.rot4dYW + (mouseOffsetX * mouse6DScale),
-            rot4dZW: this.baseRotations.rot4dZW,
-
-            // Slight morph based on distance from center
-            morphFactor: this.engine.getParameter('morphFactor') +
-                        (Math.sqrt(mouseOffsetX * mouseOffsetX + mouseOffsetY * mouseOffsetY) * 0.05)
-        };
-
-        // Combine with tilt if active
-        if (this.interactivity.tilt) {
-            const betaNorm = Math.max(-90, Math.min(90, this.deviceOrientation.beta));
-            const gammaNorm = Math.max(-90, Math.min(90, this.deviceOrientation.gamma));
-            const alpha = this.deviceOrientation.alpha;
-
-            mouse6D.rot4dXY += (gammaNorm * Math.PI / 180 * 0.05);
-            mouse6D.rot4dXZ += (betaNorm * Math.PI / 180 * 0.05);
-            mouse6D.rot4dXW += (betaNorm * Math.PI / 180 * 0.1);
-            mouse6D.rot4dYW += (gammaNorm * Math.PI / 180 * 0.1);
-            mouse6D.rot4dZW += (alpha * Math.PI / 180 * 0.05);
-        }
-
-        this.engine.setParameters(mouse6D);
-    }
-
-    /**
-     * Update card bending transform
-     */
-    updateCardBending() {
-        if (!this.interactivity.mouse || this.interactivity.tilt) return;
-
-        const existingScale = this.isExpanded ? 1.08 : 1.0;
-        const existingZ = this.isExpanded ? 30 : 0;
-
-        this.portalWindow.style.transform = `
-            perspective(1000px)
-            rotateX(${this.tiltY}deg)
-            rotateY(${this.tiltX}deg)
-            scale(${existingScale})
-            translateZ(${existingZ}px)
-        `;
-    }
-
-    /**
-     * Setup control panel
-     */
-    setupControlPanel() {
-        const controlPanel = document.createElement('div');
-        controlPanel.className = 'portal-control-panel';
-        controlPanel.innerHTML = `
-            <button class="portal-control-btn active" id="portal-mouse-toggle">Mouse Reactive</button>
-            <button class="portal-control-btn active" id="portal-tilt-toggle">Device Tilt</button>
-            <button class="portal-control-btn active" id="portal-enhanced-toggle">Enhanced FX</button>
-            <hr style="border: 1px solid rgba(0, 255, 204, 0.3); margin: 6px 0;">
-            <button class="portal-control-btn" id="portal-share">Share Portal</button>
-            <button class="portal-control-btn" id="portal-export-card">Export Card</button>
-            <button class="portal-control-btn" id="portal-close">Close Portal</button>
-        `;
-
-        this.portalContainer.appendChild(controlPanel);
-
-        // Event handlers
-        document.getElementById('portal-mouse-toggle').addEventListener('click', () => {
-            this.toggleInteractivity('mouse');
-        });
-
-        document.getElementById('portal-tilt-toggle').addEventListener('click', () => {
-            this.toggleInteractivity('tilt');
-        });
-
-        document.getElementById('portal-enhanced-toggle').addEventListener('click', () => {
-            this.toggleInteractivity('enhanced');
-        });
-
-        document.getElementById('portal-share').addEventListener('click', () => {
-            this.sharePortal();
-        });
-
-        document.getElementById('portal-export-card').addEventListener('click', () => {
-            this.exportTradingCard();
-        });
-
-        document.getElementById('portal-close').addEventListener('click', () => {
-            this.close();
-        });
-    }
-
-    /**
-     * Toggle interactivity mode
-     */
-    toggleInteractivity(type) {
-        this.interactivity[type] = !this.interactivity[type];
-        const button = document.getElementById(`portal-${type}-toggle`);
-
-        if (this.interactivity[type]) {
-            button.classList.add('active');
-        } else {
-            button.classList.remove('active');
-        }
-
-        // iOS 13+ device orientation permission
-        if (type === 'tilt' && this.interactivity.tilt) {
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission().then(response => {
-                    if (response === 'granted') {
-                        window.addEventListener('deviceorientation', (e) => {
-                            if (this.interactivity.tilt) {
-                                this.handleDeviceOrientation(e);
-                            }
-                        });
-                        console.log('📱 Device orientation permission granted');
-                    }
-                }).catch(console.error);
-            }
-        }
-
-        // Reset rotations when tilt is disabled
-        if (type === 'tilt' && !this.interactivity.tilt) {
-            const baseParams = {};
-            Object.keys(this.baseRotations).forEach(key => {
-                baseParams[key] = this.baseRotations[key];
-            });
-            this.engine.setParameters(baseParams);
-        }
-
-        console.log(`🎭 Portal ${type}: ${this.interactivity[type] ? 'ON' : 'OFF'}`);
-    }
-
-    /**
-     * Share portal with current state
-     */
-    sharePortal() {
-        const state = this.engine.exportState();
-        const url = new URL(window.location.href);
-        url.searchParams.set('config', JSON.stringify(state));
-
-        const shareData = {
-            title: 'VIB3+ Portal Visualization',
-            text: 'Check out this amazing VIB3+ holographic visualization!',
-            url: url.toString()
-        };
-
-        if (navigator.share) {
-            navigator.share(shareData).catch(console.error);
-        } else {
-            navigator.clipboard.writeText(url.toString()).then(() => {
-                alert('Portal link copied to clipboard!');
-            });
-        }
-    }
-
-    /**
-     * Export as trading card image
-     */
-    async exportTradingCard() {
-        console.log('📸 Exporting trading card...');
-
-        // Create a canvas with the current visualization
-        const canvas = document.createElement('canvas');
-        canvas.width = 600;
-        canvas.height = 800;
-        const ctx = canvas.getContext('2d');
-
-        // Draw background
-        ctx.fillStyle = 'linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Draw border
-        ctx.strokeStyle = '#00ffcc';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
-
-        // Get current state info
-        const state = this.engine.exportState();
-        const system = state.system.toUpperCase();
-        const geometryNames = this.engine.getGeometryNames();
-        const geometry = geometryNames[state.parameters.geometry] || 'Unknown';
-
-        // Draw text info
-        ctx.fillStyle = '#00ffcc';
-        ctx.font = 'bold 24px Arial';
-        ctx.fillText('VIB3+ VISUALIZATION', 30, 50);
-
-        ctx.font = '18px Arial';
-        ctx.fillText(`System: ${system}`, 30, 750);
-        ctx.fillText(`Geometry: ${geometry}`, 30, 775);
-
-        // Download
-        canvas.toBlob(blob => {
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `vib3plus-card-${Date.now()}.png`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-
-            console.log('✅ Trading card exported');
-        });
-    }
-
-    /**
-     * Toggle fullscreen
-     */
-    toggleFullscreen() {
-        if (!document.fullscreenElement) {
-            this.portalContainer.requestFullscreen().catch(console.error);
-        } else {
-            document.exitFullscreen();
-        }
-    }
-
-    /**
-     * Update portal info display
-     */
-    updatePortalInfo() {
-        const state = this.engine.exportState();
-        const systemNames = {
-            quantum: '🌌 Quantum Engine',
-            faceted: '🔷 Faceted System',
-            holographic: '🌈 Holographic System'
-        };
-        const geometryNames = this.engine.getGeometryNames();
-
-        document.getElementById('portalSystemType').textContent =
-            `System: ${systemNames[state.system]}`;
-        document.getElementById('portalGeometry').textContent =
-            `Geometry: ${geometryNames[state.parameters.geometry] || 'Unknown'}`;
-    }
-
-    /**
-     * Open viewer portal
-     */
-    open() {
-        this.portalContainer.classList.add('active');
-        this.updatePortalInfo();
-
-        // Update base rotations
-        const params = this.engine.getAllParameters();
-        Object.keys(this.baseRotations).forEach(key => {
-            this.baseRotations[key] = params[key] || 0;
-        });
-
-        console.log('🎭 Viewer Portal opened');
-    }
-
-    /**
-     * Close viewer portal
-     */
-    close() {
-        this.portalContainer.classList.remove('active');
-
-        // Move canvases back to main container
-        const portalCanvasContainer = document.getElementById('portal-canvas-container');
-        const engineContainer = document.getElementById('vib3-container');
-
-        if (portalCanvasContainer && engineContainer) {
-            while (portalCanvasContainer.firstChild) {
-                engineContainer.appendChild(portalCanvasContainer.firstChild);
-            }
-        }
-
-        // Reset transforms
-        document.documentElement.style.setProperty('--bg-offset-x', '0px');
-        document.documentElement.style.setProperty('--bg-offset-y', '0px');
-        document.documentElement.style.setProperty('--bg-scale', '1.0');
-        document.documentElement.style.setProperty('--bg-rotation', '0deg');
-        document.documentElement.style.setProperty('--bg-blur', '0px');
-
-        console.log('🎭 Viewer Portal closed');
+    _updateEngine() {
+        if (this.engine?.setRotation) this.engine.setRotation(this.rotation);
+        this.emit('update', this.rotation);
     }
 }
+
+export default ViewerPortal;

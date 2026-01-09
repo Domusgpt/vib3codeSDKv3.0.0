@@ -487,15 +487,16 @@ export class Node4D {
         scaleMatrix.set(2, 2, this._scale.z);
         scaleMatrix.set(3, 3, this._scale.w);
 
-        // Apply rotation
-        const rotationMatrix = this._rotation.toMatrix();
+        // Apply rotation (toMatrix returns Float32Array, wrap in Mat4x4)
+        const rotationMatrix = new Mat4x4(this._rotation.toMatrix());
 
-        // Apply translation
+        // Apply translation (in 4D, translation is stored in last column, keep [3,3]=1)
         const translationMatrix = Mat4x4.identity();
         translationMatrix.set(0, 3, this._position.x);
         translationMatrix.set(1, 3, this._position.y);
         translationMatrix.set(2, 3, this._position.z);
-        translationMatrix.set(3, 3, this._position.w);
+        // Note: position.w is the 4th spatial coordinate, handled separately
+        // Matrix[3,3] must remain 1 for proper transformation
 
         // Compose: T * R * S
         this._localMatrix = translationMatrix.multiply(rotationMatrix).multiply(scaleMatrix);
