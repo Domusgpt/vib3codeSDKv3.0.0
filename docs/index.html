@@ -481,15 +481,15 @@
     </main>
 
     <!-- WASM Module -->
-    <script src="../wasm/vib3_core.js"></script>
+    <script src="./wasm/vib3_core.js"></script>
 
     <!-- Application -->
     <script type="module">
         // Import from new src/ modules
-        import { Vec4 } from '../src/math/Vec4.js';
-        import { Rotor4D } from '../src/math/Rotor4D.js';
-        import { Mat4x4 } from '../src/math/Mat4x4.js';
-        import * as Projection from '../src/math/Projection.js';
+        import { Vec4 } from './src/math/Vec4.js';
+        import { Rotor4D } from './src/math/Rotor4D.js';
+        import { Mat4x4 } from './src/math/Mat4x4.js';
+        import * as Projection from './src/math/Projection.js';
 
         // State
         const state = {
@@ -720,47 +720,112 @@
             return `hsla(${c.h}, ${c.s}%, ${c.l * depthFactor}%, ${0.7 + depth * 0.3})`;
         }
 
-        // Render frame
+        // 5-LAYER HOLOGRAPHIC VISUALIZATION SYSTEM
+        // Layer 1: Deep background glow
+        // Layer 2: Edge mesh with gradient
+        // Layer 3: Core geometry with bloom
+        // Layer 4: Particle overlay
+        // Layer 5: Holographic shimmer
+
+        let time = 0;
+        const particles = [];
+        const trails = [];
+
+        // Initialize particles for holographic effect
+        function initParticles(count = 100) {
+            particles.length = 0;
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: Math.random() * 2 - 1,
+                    y: Math.random() * 2 - 1,
+                    z: Math.random() * 2 - 1,
+                    w: Math.random() * 2 - 1,
+                    vx: (Math.random() - 0.5) * 0.02,
+                    vy: (Math.random() - 0.5) * 0.02,
+                    size: Math.random() * 2 + 1,
+                    hue: Math.random() * 60 - 30
+                });
+            }
+        }
+        initParticles();
+
+        // Get holographic color palette based on system
+        function getHoloPalette(system) {
+            const palettes = {
+                quantum: {
+                    primary: [0, 255, 136],      // Bright cyan-green
+                    secondary: [0, 200, 255],    // Electric blue
+                    accent: [180, 255, 180],     // Soft green
+                    glow: [0, 255, 200],         // Teal glow
+                    bg: [5, 15, 20]              // Deep teal-black
+                },
+                faceted: {
+                    primary: [255, 68, 136],     // Hot pink
+                    secondary: [255, 136, 200],  // Soft pink
+                    accent: [255, 200, 255],     // Light magenta
+                    glow: [255, 100, 180],       // Pink glow
+                    bg: [20, 5, 15]              // Deep magenta-black
+                },
+                holographic: {
+                    primary: [68, 170, 255],     // Sky blue
+                    secondary: [136, 200, 255],  // Light blue
+                    accent: [200, 230, 255],     // Ice blue
+                    glow: [100, 180, 255],       // Blue glow
+                    bg: [5, 10, 25]              // Deep blue-black
+                }
+            };
+            return palettes[system] || palettes.quantum;
+        }
+
+        // Render frame with 5-layer holographic effect
         function render() {
             const width = canvas.width;
             const height = canvas.height;
             const cx = width / 2;
             const cy = height / 2;
             const scale = Math.min(width, height) * 0.35;
+            time += 0.016;
 
-            // Clear
-            ctx.fillStyle = '#0a0a0f';
+            const palette = getHoloPalette(state.system);
+
+            // LAYER 1: Deep background with radial gradient
+            const bgGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(width, height) * 0.7);
+            bgGrad.addColorStop(0, `rgba(${palette.bg[0] + 15}, ${palette.bg[1] + 20}, ${palette.bg[2] + 25}, 1)`);
+            bgGrad.addColorStop(0.5, `rgba(${palette.bg[0]}, ${palette.bg[1]}, ${palette.bg[2]}, 1)`);
+            bgGrad.addColorStop(1, 'rgba(2, 2, 5, 1)');
+            ctx.fillStyle = bgGrad;
             ctx.fillRect(0, 0, width, height);
 
             // Generate geometry
             const geometryIndex = state.coreType * 8 + state.geometry;
             const points = generateGeometry(geometryIndex);
 
-            // Auto-rotate
+            // Auto-rotate with smooth motion
             if (state.autoRotate) {
-                state.rotation.xw += 0.008;
-                state.rotation.yw += 0.005;
-                state.rotation.zw += 0.003;
+                state.rotation.xw += 0.012;
+                state.rotation.yw += 0.008;
+                state.rotation.zw += 0.005;
+                state.rotation.xy += Math.sin(time * 0.5) * 0.002;
                 updateSliderDisplays();
             }
 
             // Transform and project points
             const projected = points.map(p => {
                 const rotated = rotatePoint(p, state.rotation);
+                const proj = projectTo2D(rotated, scale);
                 return {
-                    ...projectTo2D(rotated, scale),
-                    original: rotated
+                    ...proj,
+                    original: rotated,
+                    screenX: cx + proj.x,
+                    screenY: cy + proj.y
                 };
             });
 
-            // Sort by depth for proper rendering
+            // Sort by depth
             projected.sort((a, b) => a.depth - b.depth);
 
-            // Draw edges
-            ctx.strokeStyle = getSystemColor(state.system, 0.3);
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-
+            // LAYER 2: Edge mesh with gradient strokes
+            ctx.lineCap = 'round';
             for (let i = 0; i < projected.length; i++) {
                 for (let j = i + 1; j < projected.length; j++) {
                     const pi = projected[i].original;
@@ -770,29 +835,112 @@
                         (pi.z - pj.z) ** 2 + (pi.w - pj.w) ** 2
                     );
 
-                    if (dist < 1.8) {
-                        ctx.moveTo(cx + projected[i].x, cy + projected[i].y);
-                        ctx.lineTo(cx + projected[j].x, cy + projected[j].y);
+                    if (dist < 2.2) {
+                        const alpha = Math.max(0, 1 - dist / 2.2) * 0.4;
+                        const avgDepth = (projected[i].depth + projected[j].depth) / 2;
+                        const depthFactor = (avgDepth + 2) / 4;
+
+                        // Create gradient stroke
+                        const grad = ctx.createLinearGradient(
+                            projected[i].screenX, projected[i].screenY,
+                            projected[j].screenX, projected[j].screenY
+                        );
+                        grad.addColorStop(0, `rgba(${palette.secondary[0]}, ${palette.secondary[1]}, ${palette.secondary[2]}, ${alpha * depthFactor})`);
+                        grad.addColorStop(0.5, `rgba(${palette.primary[0]}, ${palette.primary[1]}, ${palette.primary[2]}, ${alpha * 1.5})`);
+                        grad.addColorStop(1, `rgba(${palette.secondary[0]}, ${palette.secondary[1]}, ${palette.secondary[2]}, ${alpha * depthFactor})`);
+
+                        ctx.strokeStyle = grad;
+                        ctx.lineWidth = 1 + depthFactor * 2;
+                        ctx.beginPath();
+                        ctx.moveTo(projected[i].screenX, projected[i].screenY);
+                        ctx.lineTo(projected[j].screenX, projected[j].screenY);
+                        ctx.stroke();
                     }
                 }
             }
-            ctx.stroke();
 
-            // Draw points
-            projected.forEach(p => {
+            // LAYER 3: Core geometry with bloom effect
+            projected.forEach((p, idx) => {
                 const normalizedDepth = (p.depth + 2) / 4;
-                const size = state.pointSize * (0.5 + normalizedDepth * 0.8);
+                const baseSize = state.pointSize * (0.6 + normalizedDepth * 1.2);
+                const pulse = 1 + Math.sin(time * 3 + idx * 0.5) * 0.15;
+                const size = baseSize * pulse;
 
-                ctx.fillStyle = getSystemColor(state.system, normalizedDepth);
-                ctx.shadowColor = getSystemColor(state.system, 1);
-                ctx.shadowBlur = 10;
-
+                // Outer glow (bloom)
+                const glowSize = size * 4;
+                const glowGrad = ctx.createRadialGradient(p.screenX, p.screenY, 0, p.screenX, p.screenY, glowSize);
+                glowGrad.addColorStop(0, `rgba(${palette.glow[0]}, ${palette.glow[1]}, ${palette.glow[2]}, ${0.4 * normalizedDepth})`);
+                glowGrad.addColorStop(0.3, `rgba(${palette.primary[0]}, ${palette.primary[1]}, ${palette.primary[2]}, ${0.2 * normalizedDepth})`);
+                glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = glowGrad;
                 ctx.beginPath();
-                ctx.arc(cx + p.x, cy + p.y, size, 0, Math.PI * 2);
+                ctx.arc(p.screenX, p.screenY, glowSize, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Core point
+                const coreGrad = ctx.createRadialGradient(p.screenX, p.screenY, 0, p.screenX, p.screenY, size);
+                coreGrad.addColorStop(0, `rgba(255, 255, 255, ${0.9 * normalizedDepth})`);
+                coreGrad.addColorStop(0.3, `rgba(${palette.accent[0]}, ${palette.accent[1]}, ${palette.accent[2]}, ${0.8})`);
+                coreGrad.addColorStop(0.7, `rgba(${palette.primary[0]}, ${palette.primary[1]}, ${palette.primary[2]}, ${0.6})`);
+                coreGrad.addColorStop(1, `rgba(${palette.secondary[0]}, ${palette.secondary[1]}, ${palette.secondary[2]}, 0)`);
+                ctx.fillStyle = coreGrad;
+                ctx.beginPath();
+                ctx.arc(p.screenX, p.screenY, size, 0, Math.PI * 2);
                 ctx.fill();
             });
 
-            ctx.shadowBlur = 0;
+            // LAYER 4: Floating particles
+            ctx.globalCompositeOperation = 'screen';
+            particles.forEach(particle => {
+                // Update particle position
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+                particle.z += Math.sin(time + particle.x) * 0.005;
+                particle.w = Math.sin(time * 0.5 + particle.y * 2) * 0.5;
+
+                // Wrap around
+                if (particle.x > 1.5) particle.x = -1.5;
+                if (particle.x < -1.5) particle.x = 1.5;
+                if (particle.y > 1.5) particle.y = -1.5;
+                if (particle.y < -1.5) particle.y = 1.5;
+
+                // Project particle
+                const pVec = new Vec4(particle.x, particle.y, particle.z, particle.w);
+                const rotated = rotatePoint(pVec, state.rotation);
+                const proj = Projection.perspective(rotated, state.projectionDistance);
+
+                const px = cx + proj.x * scale * 0.8;
+                const py = cy + proj.y * scale * 0.8;
+                const pDepth = (rotated.w + 2) / 4;
+                const pSize = particle.size * (0.5 + pDepth);
+
+                // Draw particle with glow
+                const hueShift = particle.hue + time * 20;
+                ctx.fillStyle = `hsla(${(state.system === 'quantum' ? 150 : state.system === 'faceted' ? 330 : 200) + hueShift}, 100%, ${60 + pDepth * 30}%, ${0.3 + pDepth * 0.4})`;
+                ctx.beginPath();
+                ctx.arc(px, py, pSize, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // LAYER 5: Holographic shimmer overlay
+            const shimmerGrad = ctx.createLinearGradient(0, 0, width, height);
+            const shimmerPhase = time * 0.3;
+            shimmerGrad.addColorStop(0, `rgba(${palette.primary[0]}, ${palette.primary[1]}, ${palette.primary[2]}, ${0.02 + Math.sin(shimmerPhase) * 0.02})`);
+            shimmerGrad.addColorStop(0.3 + Math.sin(shimmerPhase * 1.5) * 0.1, `rgba(255, 255, 255, ${0.03 + Math.sin(shimmerPhase * 2) * 0.02})`);
+            shimmerGrad.addColorStop(0.6 + Math.cos(shimmerPhase) * 0.1, `rgba(${palette.secondary[0]}, ${palette.secondary[1]}, ${palette.secondary[2]}, ${0.02})`);
+            shimmerGrad.addColorStop(1, `rgba(${palette.glow[0]}, ${palette.glow[1]}, ${palette.glow[2]}, ${0.01})`);
+            ctx.fillStyle = shimmerGrad;
+            ctx.fillRect(0, 0, width, height);
+
+            // Reset composite operation
+            ctx.globalCompositeOperation = 'source-over';
+
+            // Vignette effect
+            const vignetteGrad = ctx.createRadialGradient(cx, cy, Math.min(width, height) * 0.3, cx, cy, Math.max(width, height) * 0.7);
+            vignetteGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            vignetteGrad.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
+            ctx.fillStyle = vignetteGrad;
+            ctx.fillRect(0, 0, width, height);
 
             // Update FPS
             frameCount++;
