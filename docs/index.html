@@ -608,12 +608,22 @@
             document.getElementById('loadingText').textContent = 'Loading C++ WASM Core...';
 
             try {
-                // Load the Vib3Core WASM module from the wasm directory
-                const wasmPath = './wasm/vib3_core.js';
-                const wasmModule = await import(wasmPath);
+                // Load WASM module via script tag (UMD format, not ES module)
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = './wasm/vib3_core.js';
+                    script.onload = resolve;
+                    script.onerror = () => reject(new Error('Failed to load vib3_core.js'));
+                    document.head.appendChild(script);
+                });
 
-                // Initialize the module - it returns a Promise
-                wasmCore = await wasmModule.default({
+                // Vib3Core is now a global function - call it with config
+                if (typeof Vib3Core !== 'function') {
+                    throw new Error('Vib3Core not found after script load');
+                }
+
+                // Initialize the module - Vib3Core() returns a Promise
+                wasmCore = await Vib3Core({
                     locateFile: (path) => './wasm/' + path
                 });
 
