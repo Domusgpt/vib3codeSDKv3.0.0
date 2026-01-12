@@ -10,6 +10,7 @@ import UnifiedResourceManager from './UnifiedResourceManager.js';
 import MobileOptimizedRenderer from './MobileOptimizedRenderer.js';
 import MobileTouchController from './MobileTouchController.js';
 import EnhancedPolychoraSystem from './EnhancedPolychoraSystem.js';
+import { Scene4D } from '../scene/Scene4D.js';
 
 export class VIB34DUnifiedEngine {
     constructor(config = {}) {
@@ -67,6 +68,11 @@ export class VIB34DUnifiedEngine {
         this.animationId = null;
         this.isRendering = false;
         this.renderQueue = new Set();
+        this.lastTimestamp = null;
+
+        // Shared scene graph for unified systems
+        this.scene = new Scene4D('UnifiedEngine');
+        this.sceneRoot = this.scene.root;
         
         // Initialize unified system
         this.init();
@@ -182,6 +188,30 @@ export class VIB34DUnifiedEngine {
         `;
         document.body.appendChild(container);
         return container;
+    }
+
+    /**
+     * Add a scene node under the root (or a parent ID).
+     * @param {import('../scene/Node4D.js').Node4D} node
+     * @param {string} [parentId]
+     * @returns {import('../scene/Node4D.js').Node4D}
+     */
+    addSceneNode(node, parentId = this.sceneRoot.id) {
+        const parent = this.scene.getNodeById(parentId);
+        if (!parent) {
+            throw new Error(`Scene parent '${parentId}' not found.`);
+        }
+        parent.addChild(node);
+        return node;
+    }
+
+    /**
+     * Lookup a scene node by ID.
+     * @param {string} nodeId
+     * @returns {import('../scene/Node4D.js').Node4D|undefined}
+     */
+    getSceneNode(nodeId) {
+        return this.scene.getNodeById(nodeId);
     }
     
     /**
@@ -400,6 +430,13 @@ export class VIB34DUnifiedEngine {
             this.isRendering = true;
             
             this.time = timestamp * 0.001;
+
+            const deltaSeconds = this.lastTimestamp ? (timestamp - this.lastTimestamp) / 1000 : 0;
+            this.lastTimestamp = timestamp;
+
+            if (this.scene) {
+                this.scene.update(deltaSeconds);
+            }
             
             // Update performance stats
             this.updatePerformanceStats(timestamp);
