@@ -4,6 +4,7 @@
  * Agent-friendly command-line interface with JSON output mode
  */
 
+import { performance } from 'node:perf_hooks';
 import { mcpServer, toolDefinitions } from '../agent/index.js';
 
 /**
@@ -107,11 +108,12 @@ function output(data, isJson) {
     }
 }
 
-function wrapResponse(operation, data = {}, success = true) {
+function wrapResponse(operation, data = {}, success = true, durationMs = null) {
     return {
         success,
         operation,
         timestamp: new Date().toISOString(),
+        duration_ms: durationMs ?? undefined,
         ...data
     };
 }
@@ -231,7 +233,7 @@ async function handleState(parsed) {
 /**
  * Handle 'set' command
  */
-async function handleSet(parsed) {
+async function handleSet(parsed, startTime) {
     const subcommand = parsed.subcommand;
 
     if (subcommand === 'rotation') {
@@ -266,13 +268,13 @@ async function handleSet(parsed) {
             valid_options: ['rotation', 'visual'],
             suggestion: 'Use "set rotation" or "set visual"'
         }
-    }, false);
+    }, false, performance.now() - startTime);
 }
 
 /**
  * Handle 'geometry' command
  */
-async function handleGeometry(parsed) {
+async function handleGeometry(parsed, startTime) {
     const subcommand = parsed.subcommand || 'list';
 
     if (subcommand === 'list') {
@@ -295,13 +297,13 @@ async function handleGeometry(parsed) {
             valid_options: ['list', 'set', '<index>'],
             suggestion: 'Use "geometry list" or "geometry <index>"'
         }
-    }, false);
+    }, false, performance.now() - startTime);
 }
 
 /**
  * Handle 'system' command
  */
-async function handleSystem(parsed) {
+async function handleSystem(parsed, startTime) {
     const system = parsed.subcommand || parsed.options.system;
 
     if (!system) {
@@ -313,7 +315,7 @@ async function handleSystem(parsed) {
                 valid_options: ['quantum', 'faceted', 'holographic'],
                 suggestion: 'Use "system quantum", "system faceted", or "system holographic"'
             }
-        }, false);
+        }, false, performance.now() - startTime);
     }
 
     return await mcpServer.handleToolCall('switch_system', { system });
@@ -340,14 +342,14 @@ async function handleReset(parsed) {
 /**
  * Handle 'tools' command
  */
-async function handleTools(parsed) {
+async function handleTools(parsed, startTime) {
     const includeSchemas = parsed.options.schemas === 'true' || parsed.options.full === 'true';
     const tools = mcpServer.listTools(includeSchemas);
 
     return wrapResponse('list_tools', {
         count: tools.length,
         tools
-    });
+    }, true, performance.now() - startTime);
 }
 
 /**
@@ -371,6 +373,8 @@ async function main() {
     // Route to command handler
     let result;
 
+    const startTime = performance.now();
+
     try {
         switch (parsed.command) {
             case 'create':
@@ -380,13 +384,13 @@ async function main() {
                 result = await handleState(parsed);
                 break;
             case 'set':
-                result = await handleSet(parsed);
+                result = await handleSet(parsed, startTime);
                 break;
             case 'geometry':
-                result = await handleGeometry(parsed);
+                result = await handleGeometry(parsed, startTime);
                 break;
             case 'system':
-                result = await handleSystem(parsed);
+                result = await handleSystem(parsed, startTime);
                 break;
             case 'randomize':
                 result = await handleRandomize(parsed);
@@ -395,7 +399,7 @@ async function main() {
                 result = await handleReset(parsed);
                 break;
             case 'tools':
-                result = await handleTools(parsed);
+                result = await handleTools(parsed, startTime);
                 break;
             default:
                 result = wrapResponse('get_state', {
@@ -406,7 +410,7 @@ async function main() {
                         valid_options: ['create', 'state', 'set', 'geometry', 'system', 'randomize', 'reset', 'tools'],
                         suggestion: 'Run "vib3 --help" for available commands'
                     }
-                }, false);
+                }, false, performance.now() - startTime);
         }
     } catch (error) {
         result = wrapResponse(parsed.command || 'get_state', {
@@ -416,7 +420,7 @@ async function main() {
                 message: error.message,
                 suggestion: 'Check your command syntax and try again'
             }
-        }, false);
+        }, false, performance.now() - startTime);
     }
 
     // Output result
