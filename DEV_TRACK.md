@@ -190,3 +190,45 @@ Use the following format to stamp each session. Update the status, notes, and bl
     - Added `createVertexBuffer()`, `createIndexBuffer()`, `renderGeometry()`
   - All 608 tests passing
 - **Blockers:** None.
+
+### Session 013 — Cross-platform infrastructure
+**Stamp:** 2026-01-23 23:10 UTC
+- **Focus:** Cross-platform command buffers, Flutter bindings, WASM build config, diagnostics.
+- **Status:** COMPLETE
+- **Notes:**
+  - **RenderCommandBuffer** (Cross-Platform):
+    - Created `src/render/commands/RenderCommandBuffer.js` with serializable command recording
+    - Supports all render commands: clear, viewport, pipeline, draw, indexed, instanced
+    - VIB3+ specific: setRotor (8-component), setProjection (stereographic/perspective)
+    - Binary serialization with VCB1 magic header for FFI efficiency
+    - Builder pattern for fluent API
+  - **CommandBufferExecutor**:
+    - Created `src/render/commands/CommandBufferExecutor.js` for WebGL/WebGPU execution
+    - Validation mode for debugging
+    - Resource registry for buffer/texture/pipeline management
+  - **Flutter Bindings**:
+    - Created `src/platforms/flutter/vib3_bindings.dart` with FFI interface
+    - 24 geometry variants encoded (Vib3Geometry class)
+    - Vib3CommandBuffer Dart class matching JS API
+    - Vib3Params for all 6D rotation parameters
+    - Created `src/platforms/flutter/vib3_channel.dart` for platform channel alternative
+  - **WASM Build Config**:
+    - Expanded `src/platforms/wasm/wasmTarget.js` with full build configuration
+    - Cargo.toml template, Rust Rotor4D template, build script
+    - WASM loader with streaming compilation and memory management
+    - SIMD features enabled for vector math
+  - **RenderResourceRegistry Diagnostics**:
+    - Enhanced with peak usage tracking (high watermark)
+    - Per-frame delta statistics
+    - Allocation/deallocation history
+    - Leak detection with age threshold
+    - JSON export for diagnostics
+  - **DebugPanel**:
+    - Created `src/debug/DebugPanel.js` visual overlay
+    - Real-time FPS, frame time, draw calls, triangles
+    - Resource breakdown by type
+    - FPS graph visualization
+    - Custom section support
+  - 40 new tests for cross-platform command buffer
+  - All 647 tests passing (1 pre-existing flaky timing test)
+- **Blockers:** None.
