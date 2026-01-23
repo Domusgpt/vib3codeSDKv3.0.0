@@ -299,15 +299,21 @@
                 <span class="overlay-value" id="geoNum">1</span>
             </div>
             <div class="overlay-row">
-                <span class="overlay-label">XW:</span>
+                <span class="overlay-label">XY:</span>
+                <span class="overlay-value" id="xyVal">0.00</span>
+                <span class="overlay-label" style="margin-left:8px">XW:</span>
                 <span class="overlay-value" id="xwVal">0.00</span>
             </div>
             <div class="overlay-row">
-                <span class="overlay-label">YW:</span>
+                <span class="overlay-label">XZ:</span>
+                <span class="overlay-value" id="xzVal">0.00</span>
+                <span class="overlay-label" style="margin-left:8px">YW:</span>
                 <span class="overlay-value" id="ywVal">0.00</span>
             </div>
             <div class="overlay-row">
-                <span class="overlay-label">ZW:</span>
+                <span class="overlay-label">YZ:</span>
+                <span class="overlay-value" id="yzVal">0.00</span>
+                <span class="overlay-label" style="margin-left:8px">ZW:</span>
                 <span class="overlay-value" id="zwVal">0.00</span>
             </div>
         </div>
@@ -348,6 +354,23 @@
         <button class="advanced-toggle" id="advToggle">Show Advanced ▼</button>
 
         <div class="advanced" id="advSection">
+            <div class="section-title" style="margin-top:0">3D Space Rotations</div>
+            <div class="slider-row">
+                <span class="slider-label">XY Rotation</span>
+                <input type="range" class="slider" id="xySlider" min="0" max="628" value="0">
+                <span class="slider-value" id="xyDisplay">0.00</span>
+            </div>
+            <div class="slider-row">
+                <span class="slider-label">XZ Rotation</span>
+                <input type="range" class="slider" id="xzSlider" min="0" max="628" value="0">
+                <span class="slider-value" id="xzDisplay">0.00</span>
+            </div>
+            <div class="slider-row">
+                <span class="slider-label">YZ Rotation</span>
+                <input type="range" class="slider" id="yzSlider" min="0" max="628" value="0">
+                <span class="slider-value" id="yzDisplay">0.00</span>
+            </div>
+            <div class="section-title">4D Hyperspace Rotations</div>
             <div class="slider-row">
                 <span class="slider-label">XW Rotation</span>
                 <input type="range" class="slider" id="xwSlider" min="0" max="628" value="0">
@@ -363,6 +386,7 @@
                 <input type="range" class="slider" id="zwSlider" min="0" max="628" value="0">
                 <span class="slider-value" id="zwDisplay">0.00</span>
             </div>
+            <div class="section-title">Visual</div>
             <div class="slider-row">
                 <span class="slider-label">Dimension</span>
                 <input type="range" class="slider" id="dimSlider" min="300" max="450" value="350">
@@ -381,12 +405,15 @@
         const baseNames = ['Tetra', 'Cube', 'Sphere', 'Torus', 'Klein', 'Fractal', 'Wave', 'Crystal'];
         const coreNames = ['Base', 'Hypersphere', 'Hypertetra'];
 
-        // State
+        // State - Full 6D Rotation System
         const state = {
             system: 'quantum',
             geometry: 1,
             baseIndex: 1,
             coreIndex: 0,
+            // 3D space rotations
+            xy: 0, xz: 0, yz: 0,
+            // 4D hyperspace rotations
             xw: 0, yw: 0, zw: 0,
             dimension: 3.5,
             hue: 160,
@@ -449,23 +476,31 @@
             });
         });
 
-        // Presets
+        // Presets - Full 6D rotation values
         document.querySelectorAll('.preset-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 switch(btn.dataset.preset) {
                     case 'calm':
+                        // All 6 planes at zero
+                        state.xy = 0; state.xz = 0; state.yz = 0;
                         state.xw = 0; state.yw = 0; state.zw = 0;
                         state.speed = 0.5;
                         break;
                     case 'spin':
+                        // Gentle 3D + moderate 4D
+                        state.xy = 0.5; state.xz = 0.3; state.yz = 0.2;
                         state.xw = 1.5; state.yw = 0.8; state.zw = 0.5;
                         state.speed = 1.5;
                         break;
                     case 'chaos':
+                        // All planes active
+                        state.xy = 2.0; state.xz = 1.5; state.yz = 1.2;
                         state.xw = 3.14; state.yw = 2.5; state.zw = 1.8;
                         state.speed = 2;
                         break;
                     case 'reset':
+                        // Full reset all 6 planes
+                        state.xy = 0; state.xz = 0; state.yz = 0;
                         state.xw = 0; state.yw = 0; state.zw = 0;
                         state.dimension = 3.5; state.hue = 160;
                         state.speed = 1;
@@ -476,18 +511,30 @@
             });
         });
 
-        // Sliders
+        // Sliders - All 6 rotation planes
         const sliders = {
+            // 3D space rotations
+            xy: document.getElementById('xySlider'),
+            xz: document.getElementById('xzSlider'),
+            yz: document.getElementById('yzSlider'),
+            // 4D hyperspace rotations
             xw: document.getElementById('xwSlider'),
             yw: document.getElementById('ywSlider'),
             zw: document.getElementById('zwSlider'),
+            // Visual
             dim: document.getElementById('dimSlider'),
             hue: document.getElementById('hueSlider')
         };
 
+        // 3D space rotation handlers
+        sliders.xy.addEventListener('input', (e) => { state.xy = e.target.value / 100; updateUI(); });
+        sliders.xz.addEventListener('input', (e) => { state.xz = e.target.value / 100; updateUI(); });
+        sliders.yz.addEventListener('input', (e) => { state.yz = e.target.value / 100; updateUI(); });
+        // 4D hyperspace rotation handlers
         sliders.xw.addEventListener('input', (e) => { state.xw = e.target.value / 100; updateUI(); });
         sliders.yw.addEventListener('input', (e) => { state.yw = e.target.value / 100; updateUI(); });
         sliders.zw.addEventListener('input', (e) => { state.zw = e.target.value / 100; updateUI(); });
+        // Visual handlers
         sliders.dim.addEventListener('input', (e) => { state.dimension = e.target.value / 100; updateUI(); });
         sliders.hue.addEventListener('input', (e) => { state.hue = parseInt(e.target.value); updateUI(); });
 
@@ -500,21 +547,36 @@
         });
 
         function updateSliders() {
+            // 3D space rotations
+            sliders.xy.value = state.xy * 100;
+            sliders.xz.value = state.xz * 100;
+            sliders.yz.value = state.yz * 100;
+            // 4D hyperspace rotations
             sliders.xw.value = state.xw * 100;
             sliders.yw.value = state.yw * 100;
             sliders.zw.value = state.zw * 100;
+            // Visual
             sliders.dim.value = state.dimension * 100;
             sliders.hue.value = state.hue;
         }
 
         function updateUI() {
             document.getElementById('geoNum').textContent = state.geometry;
+            // 3D space rotation displays
+            document.getElementById('xyVal').textContent = state.xy.toFixed(2);
+            document.getElementById('xzVal').textContent = state.xz.toFixed(2);
+            document.getElementById('yzVal').textContent = state.yz.toFixed(2);
+            document.getElementById('xyDisplay').textContent = state.xy.toFixed(2);
+            document.getElementById('xzDisplay').textContent = state.xz.toFixed(2);
+            document.getElementById('yzDisplay').textContent = state.yz.toFixed(2);
+            // 4D hyperspace rotation displays
             document.getElementById('xwVal').textContent = state.xw.toFixed(2);
             document.getElementById('ywVal').textContent = state.yw.toFixed(2);
             document.getElementById('zwVal').textContent = state.zw.toFixed(2);
             document.getElementById('xwDisplay').textContent = state.xw.toFixed(2);
             document.getElementById('ywDisplay').textContent = state.yw.toFixed(2);
             document.getElementById('zwDisplay').textContent = state.zw.toFixed(2);
+            // Visual displays
             document.getElementById('dimDisplay').textContent = state.dimension.toFixed(2);
             document.getElementById('hueDisplay').textContent = state.hue;
 
@@ -561,13 +623,21 @@
             const cy = height / 2;
             const baseSize = Math.min(width, height) * 0.35;
 
-            // 4D projection effect
-            const w4d = 1 + Math.sin(state.xw) * 0.2 + Math.cos(state.yw) * 0.15;
-            const size = baseSize * w4d;
+            // 6D projection effect - combines 3D space (xy, xz, yz) and 4D hyperspace (xw, yw, zw)
+            const space3d = 1 + Math.sin(state.xy) * 0.1 + Math.cos(state.xz) * 0.08 + Math.sin(state.yz) * 0.06;
+            const hyper4d = 1 + Math.sin(state.xw) * 0.2 + Math.cos(state.yw) * 0.15 + Math.sin(state.zw) * 0.1;
+            const size = baseSize * space3d * hyper4d;
 
             ctx.save();
             ctx.translate(cx, cy);
-            ctx.rotate(time + state.zw);
+
+            // Apply 3D space rotations (XY, XZ, YZ)
+            ctx.rotate(time + state.zw + state.xy);
+
+            // Apply XZ and YZ as scale/skew to simulate 3D tilting
+            const xzEffect = 1 - Math.abs(Math.sin(state.xz)) * 0.3;
+            const yzEffect = 1 - Math.abs(Math.sin(state.yz)) * 0.3;
+            ctx.scale(xzEffect, yzEffect);
 
             const hue = state.hue;
             ctx.strokeStyle = `hsl(${hue}, 80%, 50%)`;
