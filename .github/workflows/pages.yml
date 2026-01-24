@@ -50,6 +50,9 @@ jobs:
           mkdir -p _site/renders
           cp -r tests/e2e/renders/* _site/renders/ 2>/dev/null || true
 
+          # Copy outputs directory (interactive demos, proofs)
+          cp -r outputs _site/outputs 2>/dev/null || true
+
           # Create a hub page listing all demos
           cat > _site/demos.html << 'EOF'
           <!DOCTYPE html>
@@ -150,6 +153,20 @@ jobs:
                 <h2>SDK Render Gallery</h2>
                 <p>10 SVG visualizations rendered with real Rotor4D 6D rotations. Tetrahedron, Hypercube, Sphere, Torus, Klein Bottle, Wave, Crystal.</p>
                 <a href="renders/gallery.html">View Gallery →</a>
+              </div>
+
+              <div class="card">
+                <span class="tag full">INTERACTIVE</span>
+                <h2>Interactive 4D Demo</h2>
+                <p>Real-time 4D geometry with mouse drag rotation. Uses actual SDK: Rotor4D, Vec4, GeometryFactory. 7 geometry types.</p>
+                <a href="outputs/interactive-demo.html">Launch Demo →</a>
+              </div>
+
+              <div class="card">
+                <span class="tag sdk">PROOF</span>
+                <h2>SDK Proof Document</h2>
+                <p>Documented proof that the SDK works. Shows each step: rotor creation, vector rotation, geometry generation, SVG export.</p>
+                <a href="outputs/SDK-PROOF.html">View Proof →</a>
               </div>
             </div>
           </body>
