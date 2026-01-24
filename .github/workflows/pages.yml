@@ -33,6 +33,9 @@ jobs:
           cp -r styles _site/styles 2>/dev/null || true
           cp -r scripts _site/scripts 2>/dev/null || true
 
+          # Copy js directory (main app code)
+          cp -r js _site/js
+
           # Copy src for SDK imports
           cp -r src _site/src
 
