@@ -26,8 +26,8 @@ jobs:
 
       - name: Create pages directory
         run: |
-          # Deploy the actual VIB3+ SDK from docs/ folder
-          cp -r docs/* _site/
+          # Deploy the VIB3+ SDK
+          cp -r sdk/* _site/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
