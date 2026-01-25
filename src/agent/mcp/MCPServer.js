@@ -510,7 +510,8 @@ export class MCPServer {
             purpose: 'General-purpose 4D rotation visualization SDK for plugins, extensions, wearables, and agentic use',
 
             quick_reference: {
-                visualization_systems: 4,
+                active_visualization_systems: 3,
+                placeholder_systems: 1,
                 rotation_planes: 6,
                 base_geometries: 8,
                 core_warp_types: 3,
@@ -518,38 +519,53 @@ export class MCPServer {
                 canvas_layers_per_system: 5
             },
 
-            systems: [
-                { name: 'quantum', description: 'Complex quantum lattice visualizations' },
-                { name: 'faceted', description: 'Clean 2D geometric patterns' },
-                { name: 'holographic', description: '5-layer audio-reactive holographic effects' },
-                { name: 'polychora', description: '4D polytopes with glassmorphic effects and physics' }
-            ],
+            systems: {
+                ACTIVE: [
+                    { name: 'quantum', description: 'Complex quantum lattice visualizations with 24 geometries' },
+                    { name: 'faceted', description: 'Clean 2D geometric patterns with 4D rotation' },
+                    { name: 'holographic', description: '5-layer audio-reactive holographic effects' }
+                ],
+                PLACEHOLDER_TBD: [
+                    { name: 'polychora', status: 'TBD', description: '4D polytopes - placeholder, not production ready' }
+                ]
+            },
 
             geometry_encoding: {
                 formula: 'geometry_index = core_index * 8 + base_index',
                 base_geometries: ['tetrahedron', 'hypercube', 'sphere', 'torus', 'klein_bottle', 'fractal', 'wave', 'crystal'],
                 core_types: ['base (0)', 'hypersphere (1)', 'hypertetrahedron (2)'],
-                example: 'geometry 10 = hypersphere(2) because 1*8+2=10 → hypersphere core + sphere base'
+                example: 'geometry 10 = hypersphere(sphere) because 1*8+2=10'
             },
 
             rotation_planes: {
+                total: 6,
                 '3D_space': ['XY', 'XZ', 'YZ'],
                 '4D_hyperspace': ['XW', 'YW', 'ZW'],
-                range: '-6.28 to 6.28 radians (±2π)'
+                range: '-6.28 to 6.28 radians'
             },
 
-            canvas_layers: ['background', 'shadow', 'content', 'highlight', 'accent'],
+            canvas_layers: {
+                count: 5,
+                names: ['background', 'shadow', 'content', 'highlight', 'accent']
+            },
 
             knowledge_quiz: {
-                description: 'Verify understanding by calling verify_knowledge with answers',
+                IMPORTANT: 'Call verify_knowledge with multiple choice answers (a/b/c/d) to confirm understanding',
                 questions: [
-                    'Q1: How many rotation planes? (integer)',
-                    'Q2: What is the geometry encoding formula? (string)',
-                    'Q3: How many canvas layers per system? (integer)',
-                    'Q4: List the 4 visualization systems (array)',
-                    'Q5: List the 3 core warp types (array)',
-                    'Q6: List the 8 base geometry types (array)'
+                    'Q1: How many rotation planes? a)3 b)4 c)6 d)8',
+                    'Q2: Geometry encoding formula? a)base*3+core b)core*8+base c)base+core d)core*base',
+                    'Q3: Canvas layers per system? a)3 b)4 c)5 d)6',
+                    'Q4: Which are the 3 ACTIVE systems? a)quantum,faceted,holographic b)quantum,faceted,polychora c)all four d)none',
+                    'Q5: How many base geometry types? a)6 b)8 c)10 d)24',
+                    'Q6: Core warp types? a)base,sphere,cube b)base,hypersphere,hypertetrahedron c)2D,3D,4D d)none'
                 ]
+            },
+
+            documentation: {
+                primary: 'DOCS/SYSTEM_INVENTORY.md',
+                geometry: '24-GEOMETRY-6D-ROTATION-SUMMARY.md',
+                controls: 'DOCS/CONTROL_REFERENCE.md',
+                cli: 'DOCS/CLI_ONBOARDING.md'
             },
 
             suggested_next_actions: ['verify_knowledge', 'create_4d_visualization', 'search_geometries']
@@ -557,108 +573,90 @@ export class MCPServer {
     }
 
     /**
-     * Verify agent knowledge of SDK
+     * Verify agent knowledge of SDK (multiple choice)
      */
     verifyKnowledge(answers) {
-        const expected = {
-            rotation_planes: 6,
-            canvas_layers: 5,
-            systems: ['quantum', 'faceted', 'holographic', 'polychora'],
-            core_types: ['base', 'hypersphere', 'hypertetrahedron'],
-            base_geometries: ['tetrahedron', 'hypercube', 'sphere', 'torus', 'klein_bottle', 'fractal', 'wave', 'crystal']
+        const correctAnswers = {
+            q1_rotation_planes: 'c',      // 6 rotation planes
+            q2_geometry_formula: 'b',     // core*8+base
+            q3_canvas_layers: 'c',        // 5 layers
+            q4_active_systems: 'a',       // quantum, faceted, holographic (polychora is TBD)
+            q5_base_geometries: 'b',      // 8 base geometries
+            q6_core_types: 'b'            // base, hypersphere, hypertetrahedron
+        };
+
+        const docReferences = {
+            q1_rotation_planes: {
+                topic: '6D ROTATION SYSTEM',
+                doc: 'DOCS/SYSTEM_INVENTORY.md#the-6d-rotation-system',
+                reason: '6 planes: XY, XZ, YZ (3D) + XW, YW, ZW (4D hyperspace)'
+            },
+            q2_geometry_formula: {
+                topic: 'GEOMETRY ENCODING',
+                doc: '24-GEOMETRY-6D-ROTATION-SUMMARY.md',
+                reason: 'geometry = coreIndex * 8 + baseIndex. Example: 10 = 1*8+2 = hypersphere+sphere'
+            },
+            q3_canvas_layers: {
+                topic: 'CANVAS LAYER SYSTEM',
+                doc: 'DOCS/SYSTEM_INVENTORY.md#the-4-visualization-systems',
+                reason: '5 layers: background, shadow, content, highlight, accent'
+            },
+            q4_active_systems: {
+                topic: 'ACTIVE VS PLACEHOLDER SYSTEMS',
+                doc: 'DOCS/SYSTEM_INVENTORY.md',
+                reason: 'Only 3 ACTIVE: quantum, faceted, holographic. Polychora is TBD/placeholder!'
+            },
+            q5_base_geometries: {
+                topic: 'BASE GEOMETRY TYPES',
+                doc: '24-GEOMETRY-6D-ROTATION-SUMMARY.md',
+                reason: '8 base: tetrahedron, hypercube, sphere, torus, klein, fractal, wave, crystal'
+            },
+            q6_core_types: {
+                topic: 'CORE WARP TYPES',
+                doc: '24-GEOMETRY-6D-ROTATION-SUMMARY.md',
+                reason: '3 cores: base (no warp), hypersphere, hypertetrahedron'
+            }
         };
 
         const results = {
-            passed: true,
             score: 0,
             max_score: 6,
-            details: []
+            details: [],
+            REVIEW_REQUIRED: []
         };
 
-        // Check rotation planes
-        if (answers.rotation_planes === expected.rotation_planes) {
-            results.score++;
-            results.details.push({ question: 'rotation_planes', correct: true });
-        } else {
-            results.passed = false;
-            results.details.push({
-                question: 'rotation_planes',
-                correct: false,
-                expected: expected.rotation_planes,
-                received: answers.rotation_planes
-            });
-        }
-
-        // Check canvas layers
-        if (answers.canvas_layers === expected.canvas_layers) {
-            results.score++;
-            results.details.push({ question: 'canvas_layers', correct: true });
-        } else {
-            results.passed = false;
-            results.details.push({
-                question: 'canvas_layers',
-                correct: false,
-                expected: expected.canvas_layers,
-                received: answers.canvas_layers
-            });
-        }
-
-        // Check systems (array comparison)
-        const systemsCorrect = answers.systems &&
-            answers.systems.length === 4 &&
-            expected.systems.every(s => answers.systems.includes(s));
-        if (systemsCorrect) {
-            results.score++;
-            results.details.push({ question: 'systems', correct: true });
-        } else {
-            results.passed = false;
-            results.details.push({
-                question: 'systems',
-                correct: false,
-                expected: expected.systems,
-                received: answers.systems
-            });
-        }
-
-        // Check geometry formula (partial match)
-        if (answers.geometry_formula) {
-            const formulaLower = answers.geometry_formula.toLowerCase();
-            if (formulaLower.includes('core') && formulaLower.includes('8') && formulaLower.includes('base')) {
+        // Check each answer
+        for (const [question, correct] of Object.entries(correctAnswers)) {
+            const given = answers[question]?.toLowerCase?.() || answers[question];
+            if (given === correct) {
                 results.score++;
-                results.details.push({ question: 'geometry_formula', correct: true });
-            } else {
-                results.passed = false;
+                results.details.push({ question, status: '✓ CORRECT' });
+            } else if (given !== undefined) {
                 results.details.push({
-                    question: 'geometry_formula',
-                    correct: false,
-                    expected: 'geometry = coreIndex * 8 + baseIndex',
-                    received: answers.geometry_formula
+                    question,
+                    status: '✗ WRONG',
+                    your_answer: given,
+                    correct_answer: correct
                 });
+                results.REVIEW_REQUIRED.push(docReferences[question]);
             }
         }
 
-        // Check core types (optional but scored)
-        if (answers.core_types && answers.core_types.length === 3) {
-            results.score++;
-            results.details.push({ question: 'core_types', correct: true });
-        }
-
-        // Check base geometries (optional but scored)
-        if (answers.base_geometries && answers.base_geometries.length === 8) {
-            results.score++;
-            results.details.push({ question: 'base_geometries', correct: true });
-        }
-
         results.percentage = Math.round((results.score / results.max_score) * 100);
-        results.status = results.percentage >= 50 ? 'ready_to_proceed' : 'needs_review';
 
-        if (results.status === 'needs_review') {
-            results.suggestion = 'Review DOCS/SYSTEM_INVENTORY.md for complete SDK context';
+        // Build response
+        if (results.REVIEW_REQUIRED.length > 0) {
+            results.MESSAGE = `Score: ${results.score}/${results.max_score}. YOU MAY PROCEED but PLEASE review the topics below to avoid errors.`;
+            results.URGENT = results.REVIEW_REQUIRED.map(ref => ({
+                TOPIC: ref.topic,
+                READ: ref.doc,
+                WHY: ref.reason
+            }));
+        } else {
+            results.MESSAGE = `PERFECT SCORE! You understand the VIB3+ SDK architecture.`;
         }
 
-        results.suggested_next_actions = results.status === 'ready_to_proceed'
-            ? ['create_4d_visualization', 'get_state']
-            : ['get_sdk_context'];
+        results.suggested_next_actions = ['create_4d_visualization', 'get_state', 'search_geometries'];
 
         return results;
     }

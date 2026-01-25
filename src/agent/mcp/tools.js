@@ -231,39 +231,42 @@ export const toolDefinitions = {
 
     verify_knowledge: {
         name: 'verify_knowledge',
-        description: 'Verifies agent has absorbed SDK context. Submit answers to the knowledge quiz.',
+        description: 'Verifies agent has absorbed SDK context. Multiple choice quiz - submit letter answers (a/b/c/d).',
         inputSchema: {
             type: 'object',
             properties: {
-                rotation_planes: {
-                    type: 'integer',
-                    description: 'How many rotation planes does the system support?'
-                },
-                geometry_formula: {
+                q1_rotation_planes: {
                     type: 'string',
-                    description: 'What is the geometry encoding formula?'
+                    enum: ['a', 'b', 'c', 'd'],
+                    description: 'Q1: How many rotation planes? a)3 b)4 c)6 d)8'
                 },
-                canvas_layers: {
-                    type: 'integer',
-                    description: 'How many canvas layers does each visualization system use?'
+                q2_geometry_formula: {
+                    type: 'string',
+                    enum: ['a', 'b', 'c', 'd'],
+                    description: 'Q2: Geometry encoding formula? a)base*3+core b)core*8+base c)base+core d)core*base'
                 },
-                systems: {
-                    type: 'array',
-                    items: { type: 'string' },
-                    description: 'List the 4 visualization systems'
+                q3_canvas_layers: {
+                    type: 'string',
+                    enum: ['a', 'b', 'c', 'd'],
+                    description: 'Q3: Canvas layers per system? a)3 b)4 c)5 d)6'
                 },
-                core_types: {
-                    type: 'array',
-                    items: { type: 'string' },
-                    description: 'List the 3 core warp types'
+                q4_active_systems: {
+                    type: 'string',
+                    enum: ['a', 'b', 'c', 'd'],
+                    description: 'Q4: Which are the 3 ACTIVE systems? a)quantum,faceted,holographic b)quantum,faceted,polychora c)faceted,holographic,polychora d)all four'
                 },
-                base_geometries: {
-                    type: 'array',
-                    items: { type: 'string' },
-                    description: 'List the 8 base geometry types'
+                q5_base_geometries: {
+                    type: 'string',
+                    enum: ['a', 'b', 'c', 'd'],
+                    description: 'Q5: How many base geometry types? a)6 b)8 c)10 d)24'
+                },
+                q6_core_types: {
+                    type: 'string',
+                    enum: ['a', 'b', 'c', 'd'],
+                    description: 'Q6: Core warp types? a)base,sphere,cube b)base,hypersphere,hypertetrahedron c)none,partial,full d)2D,3D,4D'
                 }
             },
-            required: ['rotation_planes', 'canvas_layers', 'systems']
+            required: ['q1_rotation_planes', 'q2_geometry_formula', 'q3_canvas_layers']
         }
     }
 };
