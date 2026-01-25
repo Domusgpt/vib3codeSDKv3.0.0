@@ -9,7 +9,7 @@ export class ParallelTestFramework {
         this.testSuites = new Map();
         this.testResults = new Map();
         this.isRunning = false;
-        this.systems = ['faceted', 'quantum', 'holographic', 'polychora'];
+        this.systems = ['faceted', 'quantum', 'holographic']; // 3 active (polychora TBD)
         this.parameters = ['geometry', 'gridDensity', 'morphFactor', 'speed', 'hue', 'intensity', 'saturation'];
         this.interactions = ['mouse', 'click', 'scroll', 'touch', 'audio'];
         
@@ -162,10 +162,11 @@ export class ParallelTestFramework {
                 const { RealHolographicSystem } = await import('../holograms/RealHolographicSystem.js');
                 testSystem = new RealHolographicSystem();
                 break;
-            case 'polychora':
-                const { PolychoraSystem } = await import('../core/PolychoraSystem.js');
-                testSystem = new PolychoraSystem();
-                break;
+            // POLYCHORA: TBD placeholder - disabled
+            // case 'polychora':
+            //     const { PolychoraSystem } = await import('../core/PolychoraSystem.js');
+            //     testSystem = new PolychoraSystem();
+            //     break;
             default:
                 throw new Error(`Unknown system type: ${testSpec.system}`);
         }

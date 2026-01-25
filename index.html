@@ -44,10 +44,7 @@
                 <span class="system-icon">✨</span>
                 <span>HOLOGRAPHIC</span>
             </button>
-            <button class="system-btn" data-system="polychora" onclick="switchSystem('polychora')">
-                <span class="system-icon">🔮</span>
-                <span>POLYCHORA</span>
-            </button>
+            <!-- POLYCHORA: TBD placeholder - not production ready -->
         </div>
 
         <!-- Action Section -->
@@ -74,7 +71,7 @@
         <div class="holographic-layers" id="vib34dLayers" style="display: block;"></div>
         <div class="holographic-layers" id="quantumLayers" style="display: none;"></div>
         <div class="holographic-layers" id="holographicLayers" style="display: none;"></div>
-        <div class="holographic-layers" id="polychoraLayers" style="display: none;"></div>
+        <!-- polychoraLayers: TBD placeholder - not production ready -->
     </div>
 
     <!-- Bottom Bezel Control Panel (Tab-Based) -->
@@ -472,8 +469,8 @@
                 '🔺 Tetrahedron Core', '🔺 Hypercube Core', '🔺 Sphere Core', '🔺 Torus Core',
                 '🔺 Klein Core', '🔺 Fractal Core', '🔺 Wave Core', '🔺 Crystal Core'
             ],
-            holographic: ['HOLOGRAPHIC'], // Single holographic mode
-            polychora: ['5-CELL', 'TESSERACT', '16-CELL', '24-CELL', '600-CELL', '120-CELL']
+            holographic: ['HOLOGRAPHIC'] // Single holographic mode
+            // polychora: TBD placeholder - not production ready
         };
         
         console.log('🔧 Global state initialized for clean architecture');
@@ -517,21 +514,8 @@
                     console.warn('⚠️ RealHolographicSystem not available:', e.message);
                 }
                 
-                try {
-                    const newPolySystem = await import('./src/core/PolychoraSystemNew.js');
-                    NewPolychoraEngine = newPolySystem.NewPolychoraEngine;
-                    console.log('✅ NEW 4D Polychora Engine imported with VIB34D DNA');
-                } catch (e) {
-                    console.warn('⚠️ New Polychora Engine not available:', e.message);
-                    // Fallback to old system if new one fails
-                    try {
-                        const polySystem = await import('./src/core/PolychoraSystem.js');
-                        NewPolychoraEngine = polySystem.PolychoraSystem;
-                        console.log('✅ Fallback to old PolychoraSystem');
-                    } catch (e2) {
-                        console.warn('⚠️ No Polychora system available:', e2.message);
-                    }
-                }
+                // POLYCHORA: TBD placeholder - not production ready
+                // Polychora imports disabled until system is ready for production
                 
                 // Import other components with fallbacks
                 try {
@@ -575,9 +559,9 @@
                     window.getCurrentReactivityState = function() {
                         return {
                             system: window.currentSystem || 'faceted',
-                            mouse: { faceted: true, quantum: false, holographic: false, polychora: false, mixed: false },
-                            click: { faceted: true, quantum: false, holographic: false, polychora: false, mixed: false },
-                            scroll: { faceted: true, quantum: false, holographic: false, polychora: false, mixed: false },
+                            mouse: { faceted: true, quantum: false, holographic: false, mixed: false },
+                            click: { faceted: true, quantum: false, holographic: false, mixed: false },
+                            scroll: { faceted: true, quantum: false, holographic: false, mixed: false },
                             audio: window.audioEnabled || false,
                             interactivity: window.interactivityEnabled !== false,
                             deviceTilt: window.deviceTiltHandler?.isEnabled || false
@@ -683,8 +667,8 @@
                         logTest(`${param} slider exists`, !!slider);
                     });
                     
-                    // Test system buttons
-                    const systems = ['faceted', 'quantum', 'holographic', 'polychora'];
+                    // Test system buttons (3 active systems - polychora is TBD placeholder)
+                    const systems = ['faceted', 'quantum', 'holographic'];
                     systems.forEach(system => {
                         const btn = document.querySelector(`[data-system="${system}"]`);
                         logTest(`${system} button exists`, !!btn);
