@@ -1,13 +1,28 @@
 /**
  * ArsenalTopology - Topological Data Analysis for Pitcher Arsenals
  *
- * Models a pitcher's arsenal as a point cloud in high-dimensional space
- * and applies TDA techniques to extract "shape of skill" features.
+ * PRODUCTION UPGRADE: Rolling Window Topology
+ * ===========================================
+ * The original implementation suffered from LOOK-AHEAD BIAS. Using global
+ * manifold learners (like UMAP) on an entire season's data means that
+ * cluster shapes for a May game are influenced by September data.
+ *
+ * Example of the "Dumbbell Illusion": A slider cluster that appears unstable
+ * (dumbbell-shaped) in a backtest might only exist because the pitcher
+ * changed their grip mid-season. The instability signal is real, but
+ * detecting it in May using September data is cheating.
+ *
+ * The fix: ROLLING WINDOW TOPOLOGY
+ * - Re-compute the manifold model every morning using ONLY trailing data
+ * - Default window: last 500 pitches (or N days)
+ * - This ensures the "topological instability" signal has already occurred
+ * - Makes the signal "real" and production-ready
  *
  * Key Concepts:
  * - Arsenal Polytope: Convex hull of pitch types in kinematic space
  * - Persistence Homology: Topological features that persist across scales
  * - Cluster Stability: Consistency of pitch type separation
+ * - Rolling Window: Only use trailing data to prevent temporal leakage
  *
  * @class ArsenalTopology
  */
@@ -45,11 +60,22 @@ export class ArsenalTopology {
             // Persistence threshold for significant features
             persistenceThreshold: 0.1,
 
+            // UPGRADED: Rolling window settings
+            useRollingWindow: true,
+            rollingWindowSize: 500,      // Last N pitches
+            rollingWindowDays: null,     // Or last N days (takes precedence if set)
+            minRollingPitches: 100,      // Minimum pitches for valid analysis
+
+            // Evolution tracking
+            trackEvolution: true,
+            evolutionCheckpoints: 5,     // Number of time points to track
+
             ...config
         };
 
-        // Cache computed arsenals
+        // Cache computed arsenals with timestamps
         this.arsenalCache = new Map();
+        this.evolutionCache = new Map();
     }
 
     /**
@@ -478,6 +504,370 @@ export class ArsenalTopology {
             stabilityComparison: arsenalA.stability.overall - arsenalB.stability.overall,
             similarity: 1 / (1 + centroidDist) * typeOverlap
         };
+    }
+
+    // =========================================================================
+    // PRODUCTION UPGRADE: Rolling Window Topology
+    // =========================================================================
+
+    /**
+     * PRODUCTION METHOD: Compute arsenal topology using rolling window
+     *
+     * This prevents look-ahead bias by only using pitches that occurred
+     * BEFORE the analysis date. Critical for valid backtesting.
+     *
+     * @param {Array} pitches - All available pitch data (sorted by date)
+     * @param {string} pitcherId - Pitcher ID
+     * @param {Date} asOfDate - Analysis date (only use pitches before this)
+     */
+    computeRollingArsenalTopology(pitches, pitcherId, asOfDate) {
+        // Filter to pitches before the analysis date
+        const cutoffTime = asOfDate ? new Date(asOfDate).getTime() : Date.now();
+
+        const trailingPitches = pitches.filter(p => {
+            const pitchDate = new Date(p.game_date || p.gameDate || p.date);
+            return pitchDate.getTime() < cutoffTime;
+        });
+
+        // Apply rolling window limit
+        let windowedPitches;
+        if (this.config.rollingWindowDays) {
+            // Use time-based window
+            const windowStart = cutoffTime - (this.config.rollingWindowDays * 24 * 60 * 60 * 1000);
+            windowedPitches = trailingPitches.filter(p => {
+                const pitchDate = new Date(p.game_date || p.gameDate || p.date);
+                return pitchDate.getTime() >= windowStart;
+            });
+        } else {
+            // Use count-based window (last N pitches)
+            windowedPitches = trailingPitches.slice(-this.config.rollingWindowSize);
+        }
+
+        // Check minimum sample size
+        if (windowedPitches.length < this.config.minRollingPitches) {
+            return {
+                pitcherId,
+                asOfDate,
+                status: 'insufficient_data',
+                pitchCount: windowedPitches.length,
+                required: this.config.minRollingPitches
+            };
+        }
+
+        // Compute topology on the windowed data
+        const topology = this.computeArsenalTopology(windowedPitches, pitcherId);
+
+        if (!topology) {
+            return {
+                pitcherId,
+                asOfDate,
+                status: 'computation_failed',
+                pitchCount: windowedPitches.length
+            };
+        }
+
+        // Add rolling window metadata
+        return {
+            ...topology,
+            asOfDate,
+            windowSize: windowedPitches.length,
+            windowType: this.config.rollingWindowDays ? 'time' : 'count',
+            windowSpan: this.config.rollingWindowDays || this.config.rollingWindowSize,
+            oldestPitch: windowedPitches[0]?.game_date,
+            newestPitch: windowedPitches[windowedPitches.length - 1]?.game_date,
+            method: 'rolling_window',
+
+            // Detect instability (real signal, not look-ahead)
+            instabilityAlert: this.detectTopologicalInstability(topology)
+        };
+    }
+
+    /**
+     * Compute arsenal evolution over time using rolling windows
+     * This tracks how the arsenal "shape" changes through the season
+     *
+     * @param {Array} pitches - All pitch data (sorted by date)
+     * @param {string} pitcherId - Pitcher ID
+     * @param {Array} checkpoints - Dates to analyze (default: evenly spaced)
+     */
+    computeArsenalEvolution(pitches, pitcherId, checkpoints = null) {
+        if (pitches.length < this.config.minRollingPitches * 2) {
+            return { status: 'insufficient_data', pitchCount: pitches.length };
+        }
+
+        // Sort pitches by date
+        const sorted = [...pitches].sort((a, b) => {
+            const dateA = new Date(a.game_date || a.gameDate || a.date);
+            const dateB = new Date(b.game_date || b.gameDate || b.date);
+            return dateA - dateB;
+        });
+
+        // Determine checkpoints (dates to analyze)
+        if (!checkpoints) {
+            const firstDate = new Date(sorted[0].game_date || sorted[0].gameDate);
+            const lastDate = new Date(sorted[sorted.length - 1].game_date || sorted[sorted.length - 1].gameDate);
+            const span = lastDate - firstDate;
+            const numPoints = this.config.evolutionCheckpoints;
+
+            checkpoints = [];
+            for (let i = 1; i <= numPoints; i++) {
+                const date = new Date(firstDate.getTime() + (span * i) / numPoints);
+                checkpoints.push(date);
+            }
+        }
+
+        // Compute topology at each checkpoint
+        const evolution = [];
+        let previousTopology = null;
+
+        for (const checkpoint of checkpoints) {
+            const topology = this.computeRollingArsenalTopology(sorted, pitcherId, checkpoint);
+
+            if (topology.status) {
+                // Skip failed computations
+                continue;
+            }
+
+            // Compute change from previous
+            const change = previousTopology ?
+                this.computeTopologyChange(previousTopology, topology) : null;
+
+            evolution.push({
+                date: checkpoint,
+                topology,
+                change,
+                stabilityScore: topology.stability?.overall || 0,
+                clusterSeparation: topology.clusters?.avgSeparation || 0
+            });
+
+            previousTopology = topology;
+        }
+
+        // Analyze overall evolution
+        const analysis = this.analyzeEvolution(evolution);
+
+        // Cache for future reference
+        this.evolutionCache.set(pitcherId, {
+            evolution,
+            analysis,
+            computedAt: new Date()
+        });
+
+        return {
+            pitcherId,
+            evolution,
+            analysis,
+            checkpoints: checkpoints.length,
+            status: 'success'
+        };
+    }
+
+    /**
+     * Detect topological instability (the "Dumbbell" warning)
+     *
+     * An unstable cluster shape (e.g., dumbbell) indicates:
+     * - Pitcher developing a new pitch variant
+     * - Mechanical inconsistency
+     * - Grip changes
+     *
+     * This is predictive of future performance issues.
+     */
+    detectTopologicalInstability(topology) {
+        const alerts = [];
+
+        // Check cluster compactness
+        for (const [type, cluster] of Object.entries(topology.clusters?.byType || {})) {
+            // Low compactness = spread out cluster = instability
+            if (cluster.compactness < 0.4) {
+                alerts.push({
+                    type: 'low_compactness',
+                    pitchType: type,
+                    value: cluster.compactness,
+                    message: `${type} cluster is dispersed (compactness: ${cluster.compactness.toFixed(2)})`
+                });
+            }
+
+            // High intra-variance = bimodal distribution = dumbbell shape
+            if (cluster.intraVariance > 2.0) {
+                alerts.push({
+                    type: 'high_variance',
+                    pitchType: type,
+                    value: cluster.intraVariance,
+                    message: `${type} may have bimodal distribution (variance: ${cluster.intraVariance.toFixed(2)})`
+                });
+            }
+        }
+
+        // Check overall stability
+        if (topology.stability?.overall < 0.5) {
+            alerts.push({
+                type: 'overall_instability',
+                value: topology.stability.overall,
+                message: `Overall arsenal stability is low (${topology.stability.overall.toFixed(2)})`
+            });
+        }
+
+        // Check persistence homology for structural instability
+        if (topology.persistence?.topologicalComplexity > 8) {
+            alerts.push({
+                type: 'high_complexity',
+                value: topology.persistence.topologicalComplexity,
+                message: `Unusual topological complexity (${topology.persistence.topologicalComplexity} components)`
+            });
+        }
+
+        return {
+            hasAlert: alerts.length > 0,
+            alertCount: alerts.length,
+            alerts,
+            severity: this.computeAlertSeverity(alerts),
+            recommendation: this.generateRecommendation(alerts)
+        };
+    }
+
+    /**
+     * Compute change between two topology snapshots
+     */
+    computeTopologyChange(prev, curr) {
+        const volumeChange = (curr.polytope?.volume || 0) - (prev.polytope?.volume || 0);
+        const stabilityChange = (curr.stability?.overall || 0) - (prev.stability?.overall || 0);
+        const separationChange = (curr.clusters?.avgSeparation || 0) - (prev.clusters?.avgSeparation || 0);
+
+        // Centroid drift
+        let centroidDrift = 0;
+        if (prev.cloudStats?.centroid && curr.cloudStats?.centroid) {
+            for (let i = 0; i < prev.cloudStats.centroid.length; i++) {
+                const diff = curr.cloudStats.centroid[i] - prev.cloudStats.centroid[i];
+                centroidDrift += diff * diff;
+            }
+            centroidDrift = Math.sqrt(centroidDrift);
+        }
+
+        return {
+            volumeChange,
+            volumeChangePercent: prev.polytope?.volume ?
+                (volumeChange / prev.polytope.volume) * 100 : 0,
+            stabilityChange,
+            separationChange,
+            centroidDrift,
+            isSignificant: Math.abs(stabilityChange) > 0.1 || centroidDrift > 0.5
+        };
+    }
+
+    /**
+     * Analyze evolution trajectory
+     */
+    analyzeEvolution(evolution) {
+        if (evolution.length < 2) {
+            return { trend: 'insufficient_data' };
+        }
+
+        // Compute stability trend
+        const stabilityValues = evolution.map(e => e.stabilityScore);
+        const stabilityTrend = this.computeTrend(stabilityValues);
+
+        // Compute separation trend
+        const separationValues = evolution.map(e => e.clusterSeparation);
+        const separationTrend = this.computeTrend(separationValues);
+
+        // Detect sudden changes
+        const suddenChanges = evolution
+            .filter(e => e.change?.isSignificant)
+            .map(e => ({ date: e.date, change: e.change }));
+
+        // Overall assessment
+        let assessment = 'stable';
+        if (stabilityTrend.slope < -0.05) {
+            assessment = 'declining';
+        } else if (stabilityTrend.slope > 0.05) {
+            assessment = 'improving';
+        } else if (suddenChanges.length > 1) {
+            assessment = 'volatile';
+        }
+
+        return {
+            stabilityTrend,
+            separationTrend,
+            suddenChanges,
+            assessment,
+            recommendation: assessment === 'declining' ?
+                'Consider fading this pitcher - arsenal showing degradation' :
+                assessment === 'volatile' ?
+                    'High variance expected - use caution with props' :
+                    'Arsenal appears stable'
+        };
+    }
+
+    /**
+     * Compute linear trend from values
+     */
+    computeTrend(values) {
+        const n = values.length;
+        if (n < 2) return { slope: 0, intercept: values[0] || 0, r2: 0 };
+
+        // Simple linear regression
+        let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+        for (let i = 0; i < n; i++) {
+            sumX += i;
+            sumY += values[i];
+            sumXY += i * values[i];
+            sumX2 += i * i;
+        }
+
+        const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        const intercept = (sumY - slope * sumX) / n;
+
+        // R-squared
+        const mean = sumY / n;
+        let ssRes = 0, ssTot = 0;
+        for (let i = 0; i < n; i++) {
+            const predicted = slope * i + intercept;
+            ssRes += (values[i] - predicted) ** 2;
+            ssTot += (values[i] - mean) ** 2;
+        }
+        const r2 = ssTot > 0 ? 1 - ssRes / ssTot : 0;
+
+        return {
+            slope,
+            intercept,
+            r2,
+            direction: slope > 0.02 ? 'up' : slope < -0.02 ? 'down' : 'flat'
+        };
+    }
+
+    /**
+     * Compute alert severity
+     */
+    computeAlertSeverity(alerts) {
+        if (alerts.length === 0) return 'none';
+        if (alerts.length >= 3) return 'high';
+        if (alerts.some(a => a.type === 'overall_instability')) return 'medium';
+        return 'low';
+    }
+
+    /**
+     * Generate trading recommendation from alerts
+     */
+    generateRecommendation(alerts) {
+        if (alerts.length === 0) {
+            return 'No instability detected - proceed normally';
+        }
+
+        const types = alerts.map(a => a.type);
+
+        if (types.includes('overall_instability')) {
+            return 'FADE: Overall arsenal instability suggests performance decline';
+        }
+
+        if (types.includes('high_variance')) {
+            return 'CAUTION: Bimodal pitch distribution may indicate grip change - high variance expected';
+        }
+
+        if (types.includes('low_compactness')) {
+            return 'MONITOR: Pitch cluster spreading - possible mechanical inconsistency';
+        }
+
+        return 'Minor alerts detected - exercise caution';
     }
 
     // === Helper Methods ===

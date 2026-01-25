@@ -1,14 +1,23 @@
 /**
  * TunnelAnalyzer - Pitch Tunneling Manifold Intersection Analysis
  *
- * Analyzes pitch tunneling by computing trajectory divergence at the
- * decision point vs. the plate. This is core "Geometric Alpha" - identifying
- * value in pitchers whose physics diverge from perceptual heuristics.
+ * PRODUCTION UPGRADE: Angular Divergence at Fixed Distance
+ * =========================================================
+ * The original implementation measured Euclidean distance at a fixed TIME
+ * (t = 0.175s), which is flawed because it ignores velocity differentials.
+ * A 100 mph fastball travels much farther than a 75 mph curveball in the
+ * same time, so the metric didn't model what the batter actually perceives.
+ *
+ * This upgrade shifts to ANGULAR DIVERGENCE at a FIXED DISTANCE from the
+ * batter's eye. This directly models the biological reality of vision:
+ * - Human fovea resolution limit: ~0.2 degrees
+ * - If two pitches subtend < 0.2° when crossing a fixed plane (e.g., 20ft
+ *   from pitcher), they are physically indistinguishable to the batter
  *
  * The Math:
- * - P(t) = P0 + V0*t + 0.5*A*t² (parametric trajectory)
- * - Decision Point: ~23.8 feet from plate (175ms before impact)
- * - Tunnel Score = D_plate / D_tunnel (deception ratio)
+ * - θ = arctan(d / D) where d = separation, D = distance from batter
+ * - True Tunnel: θ < 0.2° at decision plane
+ * - Tunnel Score = θ_plate / θ_tunnel (angular deception ratio)
  *
  * @class TunnelAnalyzer
  */
@@ -19,11 +28,29 @@ export class TunnelAnalyzer {
             // Distance from pitcher's mound to plate: 60.5 feet
             moundToPlate: 60.5,
 
-            // Decision point - where batter must commit (feet from plate)
+            // UPGRADED: Use fixed distance planes instead of fixed time
+            // Decision plane distance from plate (where batter commits)
             decisionPointDistance: 23.8,
 
-            // Time parameters (calculated from typical pitch velocities)
-            // These will be computed dynamically per pitch
+            // Tunnel measurement plane (distance from pitcher's release)
+            tunnelPlaneDistance: 20.0,  // feet from release
+
+            // Batter's eye position (for angular calculations)
+            batterEyePosition: {
+                x: 0,      // Center of plate
+                y: 1.33,   // 16 inches behind plate
+                z: 4.5     // Eye height (feet)
+            },
+
+            // Human fovea resolution limit (degrees)
+            foveaResolution: 0.2,
+
+            // Angular thresholds for tunnel quality
+            trueTunnelThreshold: 0.2,     // < 0.2° = optically identical
+            goodTunnelThreshold: 0.5,     // < 0.5° = difficult to distinguish
+            decentTunnelThreshold: 1.0,   // < 1.0° = some deception
+
+            // Time parameters (kept for compatibility)
             defaultDecisionTime: 0.175, // seconds
             defaultPlateTime: 0.400,     // seconds
 
@@ -32,6 +59,9 @@ export class TunnelAnalyzer {
 
             // Minimum pitches required for reliable tunnel analysis
             minPitchesPerType: 20,
+
+            // Use angular divergence method (production) vs euclidean (legacy)
+            useAngularDivergence: true,
 
             ...config
         };
@@ -83,6 +113,8 @@ export class TunnelAnalyzer {
 
     /**
      * Compute tunnel score between two pitch types
+     * UPGRADED: Uses Angular Divergence at Fixed Distance for biological accuracy
+     *
      * @param {Array} pitchesA - First pitch type samples
      * @param {Array} pitchesB - Second pitch type samples
      * @returns {Object} Tunnel analysis results
@@ -93,6 +125,190 @@ export class TunnelAnalyzer {
             return null;
         }
 
+        // Use Angular Divergence method (production) or legacy Euclidean
+        if (this.config.useAngularDivergence) {
+            return this.computePairTunnelScoreAngular(pitchesA, pitchesB);
+        } else {
+            return this.computePairTunnelScoreLegacy(pitchesA, pitchesB);
+        }
+    }
+
+    /**
+     * PRODUCTION METHOD: Angular Divergence at Fixed Distance
+     *
+     * Models what the batter actually sees by computing the angular
+     * separation between pitches as seen from the batter's eye position.
+     *
+     * Key insight: The human fovea has a resolution of ~0.2 degrees.
+     * If two pitches subtend less than this angle at the tunnel plane,
+     * they are PHYSICALLY INDISTINGUISHABLE to the batter.
+     */
+    computePairTunnelScoreAngular(pitchesA, pitchesB) {
+        const { batterEyePosition, tunnelPlaneDistance, moundToPlate } = this.config;
+
+        // Compute centroid trajectories for each type
+        const centroidA = this.computeCentroidTrajectory(pitchesA);
+        const centroidB = this.computeCentroidTrajectory(pitchesB);
+
+        // Project to tunnel plane (fixed distance from release, NOT fixed time)
+        const tunnelA = this.projectToFixedDistance(centroidA, tunnelPlaneDistance);
+        const tunnelB = this.projectToFixedDistance(centroidB, tunnelPlaneDistance);
+
+        // Get plate positions
+        const plateA = this.getPlatePosition(centroidA);
+        const plateB = this.getPlatePosition(centroidB);
+
+        // Calculate angular divergence from batter's eye at tunnel plane
+        const tunnelAngle = this.computeAngularDivergence(
+            tunnelA, tunnelB, batterEyePosition, moundToPlate - tunnelPlaneDistance
+        );
+
+        // Calculate angular divergence at plate
+        const plateAngle = this.computeAngularDivergence2D(
+            plateA, plateB, batterEyePosition
+        );
+
+        // Angular Tunnel Score: ratio of plate angle to tunnel angle
+        // High ratio = pitches appear identical early but separate late
+        const angularTunnelScore = plateAngle / (tunnelAngle + 0.001);
+
+        // Also compute physical distances for reference
+        const tunnelDistance = this.euclideanDistance3D(tunnelA, tunnelB);
+        const plateDistance = this.euclideanDistance2D(plateA, plateB);
+
+        // Classify tunnel quality based on foveal resolution
+        const tunnelQuality = this.classifyTunnelQuality(tunnelAngle);
+
+        // Release point similarity
+        const releaseA = this.computeMeanReleasePoint(pitchesA);
+        const releaseB = this.computeMeanReleasePoint(pitchesB);
+        const releasePointSimilarity = 1 / (1 + this.euclideanDistance3D(releaseA, releaseB));
+
+        // Pair frequency
+        const pairFrequency = this.computePairFrequency(pitchesA, pitchesB);
+
+        return {
+            // Primary metric (angular)
+            tunnelScore: angularTunnelScore,
+            tunnelAngle,         // Degrees at tunnel plane
+            plateAngle,          // Degrees at plate
+            tunnelQuality,       // 'true_tunnel', 'good', 'decent', 'poor'
+            isTrueTunnel: tunnelAngle < this.config.trueTunnelThreshold,
+
+            // Physical distances (for reference)
+            avgTunnelDistance: tunnelDistance,
+            avgPlateDistance: plateDistance,
+
+            // Legacy score for compatibility
+            legacyScore: plateDistance / (tunnelDistance + 0.001),
+
+            releasePointSimilarity,
+            pairFrequency,
+
+            // Method used
+            method: 'angular_divergence'
+        };
+    }
+
+    /**
+     * Project trajectory to a fixed distance from release
+     * (Unlike projectToDecisionPoint which uses fixed time)
+     */
+    projectToFixedDistance(trajectory, distanceFromRelease) {
+        const velocity = trajectory.velocity || 90;
+        const velocityFtS = velocity * 1.467;
+
+        // Key fix: Different velocities reach the same distance at different times
+        // This is the core insight - we want positions at the SAME DISTANCE
+        const timeToDistance = distanceFromRelease / velocityFtS;
+
+        return {
+            x: trajectory.release_pos_x +
+                trajectory.vx0 * timeToDistance +
+                0.5 * trajectory.ax * timeToDistance * timeToDistance,
+            y: (trajectory.release_pos_y || 50) +
+                trajectory.vy0 * timeToDistance +
+                0.5 * trajectory.ay * timeToDistance * timeToDistance,
+            z: trajectory.release_pos_z +
+                trajectory.vz0 * timeToDistance +
+                0.5 * trajectory.az * timeToDistance * timeToDistance
+        };
+    }
+
+    /**
+     * Compute angular divergence between two points as seen from observer
+     * @param {Object} pointA - First 3D point
+     * @param {Object} pointB - Second 3D point
+     * @param {Object} observer - Observer position
+     * @param {number} distanceFromPlate - Distance of points from plate
+     * @returns {number} Angular separation in degrees
+     */
+    computeAngularDivergence(pointA, pointB, observer, distanceFromPlate) {
+        // Vector from observer to point A
+        const vecA = {
+            x: pointA.x - observer.x,
+            y: distanceFromPlate - observer.y,  // Y is distance along pitch trajectory
+            z: pointA.z - observer.z
+        };
+
+        // Vector from observer to point B
+        const vecB = {
+            x: pointB.x - observer.x,
+            y: distanceFromPlate - observer.y,
+            z: pointB.z - observer.z
+        };
+
+        // Magnitudes
+        const magA = Math.sqrt(vecA.x ** 2 + vecA.y ** 2 + vecA.z ** 2);
+        const magB = Math.sqrt(vecB.x ** 2 + vecB.y ** 2 + vecB.z ** 2);
+
+        // Dot product
+        const dot = vecA.x * vecB.x + vecA.y * vecB.y + vecA.z * vecB.z;
+
+        // Angle in radians (clamp to avoid NaN from floating point errors)
+        const cosAngle = Math.max(-1, Math.min(1, dot / (magA * magB)));
+        const angleRad = Math.acos(cosAngle);
+
+        // Convert to degrees
+        return angleRad * 180 / Math.PI;
+    }
+
+    /**
+     * Compute 2D angular divergence at the plate
+     */
+    computeAngularDivergence2D(plateA, plateB, observer) {
+        // Separation at plate
+        const dx = (plateA.x - plateB.x);
+        const dz = (plateA.z - plateB.z);
+        const separation = Math.sqrt(dx * dx + dz * dz);
+
+        // Distance from batter's eye to plate (plate is at y=0)
+        const distToPlate = Math.abs(observer.y);
+
+        // Angular separation: θ = arctan(separation / distance)
+        const angleRad = Math.atan(separation / distToPlate);
+        return angleRad * 180 / Math.PI;
+    }
+
+    /**
+     * Classify tunnel quality based on foveal resolution
+     */
+    classifyTunnelQuality(tunnelAngle) {
+        if (tunnelAngle < this.config.trueTunnelThreshold) {
+            return 'true_tunnel';  // < 0.2° - physically indistinguishable
+        } else if (tunnelAngle < this.config.goodTunnelThreshold) {
+            return 'good';         // < 0.5° - very difficult to distinguish
+        } else if (tunnelAngle < this.config.decentTunnelThreshold) {
+            return 'decent';       // < 1.0° - some deception
+        } else {
+            return 'poor';         // > 1.0° - easily distinguishable
+        }
+    }
+
+    /**
+     * Legacy Euclidean-based tunnel score (for comparison)
+     */
+    computePairTunnelScoreLegacy(pitchesA, pitchesB) {
         // Compute centroid trajectories for each type
         const centroidA = this.computeCentroidTrajectory(pitchesA);
         const centroidB = this.computeCentroidTrajectory(pitchesB);
@@ -109,15 +325,14 @@ export class TunnelAnalyzer {
         const plateDistance = this.euclideanDistance2D(plateA, plateB);
 
         // Tunnel score: how much the pitches diverge after the decision point
-        // High ratio = pitches look similar early but end up far apart
         const tunnelScore = plateDistance / (tunnelDistance + 0.001);
 
-        // Release point similarity (important for elite tunneling)
+        // Release point similarity
         const releaseA = this.computeMeanReleasePoint(pitchesA);
         const releaseB = this.computeMeanReleasePoint(pitchesB);
         const releasePointSimilarity = 1 / (1 + this.euclideanDistance3D(releaseA, releaseB));
 
-        // Pair frequency (how often these are thrown in sequence)
+        // Pair frequency
         const pairFrequency = this.computePairFrequency(pitchesA, pitchesB);
 
         return {
@@ -125,7 +340,8 @@ export class TunnelAnalyzer {
             avgTunnelDistance: tunnelDistance,
             avgPlateDistance: plateDistance,
             releasePointSimilarity,
-            pairFrequency
+            pairFrequency,
+            method: 'euclidean_legacy'
         };
     }
 

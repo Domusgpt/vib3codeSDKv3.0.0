@@ -1,16 +1,27 @@
 /**
  * PortfolioOptimizer - Simultaneous Kelly Criterion Solver
  *
- * When betting on multiple simultaneous events, the single-bet Kelly formula
- * leads to over-exposure. This optimizer solves for the optimal portfolio
- * of bets that maximizes expected log growth while respecting constraints.
+ * PRODUCTION UPGRADE: Covariance-Aware Risk Management
+ * =====================================================
+ * The original implementation used a "diagonal approximation" that treated
+ * all bets as independent. This is dangerous because:
+ * - Yankees ML and Yankees Team Total Over are CORRELATED
+ * - Both are positive when Yankees score many runs
+ * - Treating them as independent leads to 10%+ overexposure on one game script
  *
- * The optimization problem:
- *   maximize: E[log(bankroll)] = sum_s P(s) * log(1 + sum_i f_i * r_i(s))
- *   subject to: sum(f_i) <= maxExposure
- *               0 <= f_i <= maxSingleBet for all i
+ * This upgrade explicitly models inter-bet relationships using a Covariance
+ * Matrix (Sigma) in the objective function:
  *
- * We use a coordinate descent algorithm for efficiency.
+ * maximize: E[growth] - λ * f' * Σ * f
+ *
+ * Where:
+ * - E[growth] = expected log wealth growth
+ * - λ = risk aversion parameter
+ * - Σ = covariance matrix of bet returns
+ * - f = vector of bet fractions
+ *
+ * The covariance term penalizes concentrated exposure on correlated outcomes,
+ * forcing the solver to recognize linked risks and prevent bankruptcy.
  *
  * @class PortfolioOptimizer
  */
@@ -34,8 +45,23 @@ export class PortfolioOptimizer {
             convergenceThreshold: config.convergenceThreshold || 1e-6,
             stepSize: config.stepSize || 0.001,
 
-            // Correlation handling
+            // UPGRADED: Risk aversion parameter for covariance penalty
+            riskAversion: config.riskAversion || 0.5,  // λ in the objective
+
+            // Legacy correlation penalty (kept for compatibility)
             correlationPenalty: config.correlationPenalty || 0.1,
+
+            // Use covariance matrix (production) vs simple penalty (legacy)
+            useCovarianceMatrix: config.useCovarianceMatrix !== false,
+
+            // Same-game correlation estimate
+            sameGameCorrelation: config.sameGameCorrelation || 0.7,
+
+            // Same-team different-game correlation
+            sameTeamCorrelation: config.sameTeamCorrelation || 0.2,
+
+            // Max per-game exposure (prevents single game blowup)
+            maxGameExposure: config.maxGameExposure || 0.08,
 
             ...config
         };
@@ -48,11 +74,27 @@ export class PortfolioOptimizer {
 
     /**
      * Solve for optimal bet allocations
+     * UPGRADED: Uses covariance-aware optimization by default
+     *
      * @param {Array} opportunities - Array of bet opportunities
      * @param {number} bankroll - Current bankroll
      * @returns {Object} Optimal allocations and metrics
      */
     solve(opportunities, bankroll) {
+        // Use covariance-aware method by default (production)
+        if (this.config.useCovarianceMatrix) {
+            return this.solveWithCovariance(opportunities, bankroll);
+        }
+
+        // Legacy diagonal approximation
+        return this.solveLegacy(opportunities, bankroll);
+    }
+
+    /**
+     * Legacy solver (diagonal approximation - treats bets as independent)
+     * WARNING: This underestimates risk for correlated bets!
+     */
+    solveLegacy(opportunities, bankroll) {
         if (opportunities.length === 0) {
             return {
                 allocations: [],
@@ -100,7 +142,8 @@ export class PortfolioOptimizer {
             totalExposure,
             expectedGrowth,
             totalEV: allocations.reduce((s, a) => s + a.expectedValue, 0),
-            numBets: allocations.filter(a => a.amount > 0).length
+            numBets: allocations.filter(a => a.amount > 0).length,
+            method: 'legacy_diagonal'
         };
     }
 
@@ -213,22 +256,319 @@ export class PortfolioOptimizer {
     }
 
     /**
-     * Solve with explicit correlation matrix
+     * PRODUCTION METHOD: Solve with full Covariance Matrix
+     *
+     * This properly models correlated bets by:
+     * 1. Building a covariance matrix from bet relationships
+     * 2. Including f' * Σ * f in the objective (penalizes correlated exposure)
+     * 3. Adding per-game exposure constraints
+     *
+     * @param {Array} opportunities - Bet opportunities
+     * @param {number} bankroll - Current bankroll
+     * @param {Array} covarianceMatrix - Optional explicit covariance matrix
      */
-    solveWithCorrelation(opportunities, bankroll, correlationMatrix) {
-        // This is a more sophisticated solver that handles correlation explicitly
-        // For now, we use the penalty-based approach above
+    solveWithCovariance(opportunities, bankroll, covarianceMatrix = null) {
+        if (opportunities.length === 0) {
+            return { allocations: [], totalExposure: 0, expectedGrowth: 0 };
+        }
 
-        return this.solve(opportunities, bankroll);
+        const n = opportunities.length;
+
+        // Build covariance matrix if not provided
+        const sigma = covarianceMatrix || this.buildCovarianceMatrix(opportunities);
+
+        // Initialize with single-bet Kelly stakes
+        let fractions = new Array(n).fill(0);
+        for (let i = 0; i < n; i++) {
+            const opp = opportunities[i];
+            fractions[i] = this.kelly.calculateSingleKelly(opp.modelProb, opp.odds);
+        }
+
+        // Scale down if total exceeds max exposure
+        const totalKelly = fractions.reduce((s, f) => s + f, 0);
+        if (totalKelly > this.config.maxExposure) {
+            const scale = this.config.maxExposure / totalKelly;
+            fractions = fractions.map(f => f * scale);
+        }
+
+        // Refine with covariance-aware coordinate descent
+        const refined = this.coordinateDescentWithCovariance(opportunities, fractions, sigma);
+
+        // Apply per-game exposure limits
+        const gameConstrained = this.applyGameConstraints(opportunities, refined);
+
+        // Convert to dollar amounts
+        const allocations = opportunities.map((opp, i) => ({
+            ...opp,
+            fraction: gameConstrained[i],
+            amount: gameConstrained[i] * bankroll,
+            expectedValue: this.kelly.calculateEdge(opp.modelProb, opp.odds) *
+                gameConstrained[i] * bankroll
+        }));
+
+        // Calculate portfolio metrics
+        const totalExposure = gameConstrained.reduce((s, f) => s + f, 0);
+        const expectedGrowth = this.calculateRiskAdjustedGrowth(
+            opportunities, gameConstrained, sigma
+        );
+        const portfolioRisk = this.calculatePortfolioRiskWithCovariance(
+            opportunities, gameConstrained, sigma
+        );
+
+        return {
+            allocations,
+            totalExposure,
+            expectedGrowth,
+            portfolioRisk,
+            riskAdjustedReturn: expectedGrowth / (Math.sqrt(portfolioRisk) + 0.001),
+            totalEV: allocations.reduce((s, a) => s + a.expectedValue, 0),
+            numBets: allocations.filter(a => a.amount > 0).length,
+            method: 'covariance_aware'
+        };
     }
 
     /**
-     * Calculate portfolio variance
+     * Build covariance matrix from bet relationships
+     * Sigma[i][j] = Cov(return_i, return_j)
+     */
+    buildCovarianceMatrix(opportunities) {
+        const n = opportunities.length;
+        const sigma = Array.from({ length: n }, () => new Array(n).fill(0));
+
+        for (let i = 0; i < n; i++) {
+            const oppI = opportunities[i];
+            const varI = this.calculateSingleBetVariance(oppI);
+
+            for (let j = 0; j < n; j++) {
+                const oppJ = opportunities[j];
+
+                if (i === j) {
+                    // Diagonal: variance of bet i
+                    sigma[i][j] = varI;
+                } else {
+                    // Off-diagonal: covariance between bets i and j
+                    const varJ = this.calculateSingleBetVariance(oppJ);
+                    const correlation = this.estimateCorrelation(oppI, oppJ);
+
+                    // Cov(i,j) = ρ * σ_i * σ_j
+                    sigma[i][j] = correlation * Math.sqrt(varI) * Math.sqrt(varJ);
+                }
+            }
+        }
+
+        return sigma;
+    }
+
+    /**
+     * Estimate correlation between two bets based on their characteristics
+     */
+    estimateCorrelation(oppA, oppB) {
+        // Same game = highly correlated
+        if (oppA.gameId === oppB.gameId) {
+            // Same side of same game = very high correlation
+            if (oppA.side === oppB.side || oppA.team === oppB.team) {
+                return this.config.sameGameCorrelation;
+            }
+
+            // Opposite sides of same game (e.g., ML vs spread on same team)
+            if (oppA.team === oppB.team) {
+                return this.config.sameGameCorrelation * 0.8;
+            }
+
+            // Different bets on same game (e.g., home ML and total over)
+            // These have moderate correlation - both benefit from high scoring
+            return this.config.sameGameCorrelation * 0.5;
+        }
+
+        // Same team, different game = slight correlation
+        if (oppA.team === oppB.team) {
+            return this.config.sameTeamCorrelation;
+        }
+
+        // Different teams, different games = essentially independent
+        return 0;
+    }
+
+    /**
+     * Calculate single bet variance
+     */
+    calculateSingleBetVariance(opp) {
+        const decimal = this.kelly.americanToDecimal(opp.odds);
+        const p = opp.modelProb;
+        const q = 1 - p;
+
+        // Win amount and loss amount
+        const winReturn = decimal - 1;
+        const lossReturn = -1;
+
+        // Expected return
+        const expectedReturn = p * winReturn + q * lossReturn;
+
+        // Variance = E[X²] - E[X]²
+        const EX2 = p * winReturn * winReturn + q * lossReturn * lossReturn;
+        const variance = EX2 - expectedReturn * expectedReturn;
+
+        return variance;
+    }
+
+    /**
+     * Coordinate descent with covariance matrix
+     */
+    coordinateDescentWithCovariance(opportunities, initialFractions, sigma) {
+        const n = opportunities.length;
+        let fractions = [...initialFractions];
+        let prevObjective = this.calculateRiskAdjustedGrowth(opportunities, fractions, sigma);
+
+        for (let iter = 0; iter < this.config.maxIterations; iter++) {
+            // Optimize each coordinate
+            for (let i = 0; i < n; i++) {
+                fractions[i] = this.optimizeCoordinateWithCovariance(
+                    opportunities, fractions, i, sigma
+                );
+            }
+
+            // Check convergence
+            const objective = this.calculateRiskAdjustedGrowth(opportunities, fractions, sigma);
+            if (Math.abs(objective - prevObjective) < this.config.convergenceThreshold) {
+                break;
+            }
+            prevObjective = objective;
+        }
+
+        return fractions;
+    }
+
+    /**
+     * Optimize single coordinate with covariance awareness
+     */
+    optimizeCoordinateWithCovariance(opportunities, fractions, idx, sigma) {
+        const others = fractions.filter((_, i) => i !== idx);
+        const othersSum = others.reduce((s, f) => s + f, 0);
+
+        // Maximum we can bet on this opportunity
+        const maxFraction = Math.min(
+            this.config.maxSingleBet,
+            this.config.maxExposure - othersSum
+        );
+
+        if (maxFraction <= 0) return 0;
+
+        // Golden section search for optimal fraction (faster than grid)
+        const phi = (1 + Math.sqrt(5)) / 2;
+        let a = 0;
+        let b = maxFraction;
+        let c = b - (b - a) / phi;
+        let d = a + (b - a) / phi;
+
+        const evaluate = (f) => {
+            const testFractions = [...fractions];
+            testFractions[idx] = f;
+            return this.calculateRiskAdjustedGrowth(opportunities, testFractions, sigma);
+        };
+
+        while (Math.abs(b - a) > this.config.stepSize) {
+            if (evaluate(c) > evaluate(d)) {
+                b = d;
+            } else {
+                a = c;
+            }
+            c = b - (b - a) / phi;
+            d = a + (b - a) / phi;
+        }
+
+        return (a + b) / 2;
+    }
+
+    /**
+     * Calculate risk-adjusted growth (with covariance penalty)
+     * Objective: E[growth] - λ * f' * Σ * f
+     */
+    calculateRiskAdjustedGrowth(opportunities, fractions, sigma) {
+        // Expected growth term
+        let growth = 0;
+        for (let i = 0; i < opportunities.length; i++) {
+            const opp = opportunities[i];
+            const f = fractions[i];
+
+            if (f <= 0) continue;
+
+            const decimal = this.kelly.americanToDecimal(opp.odds);
+            const p = opp.modelProb;
+            const q = 1 - p;
+
+            growth += p * Math.log(1 + f * (decimal - 1));
+            growth += q * Math.log(1 - f);
+        }
+
+        // Risk penalty: λ * f' * Σ * f (quadratic form)
+        let riskPenalty = 0;
+        for (let i = 0; i < fractions.length; i++) {
+            for (let j = 0; j < fractions.length; j++) {
+                riskPenalty += fractions[i] * sigma[i][j] * fractions[j];
+            }
+        }
+
+        return growth - this.config.riskAversion * riskPenalty;
+    }
+
+    /**
+     * Calculate portfolio risk (variance) with covariance matrix
+     */
+    calculatePortfolioRiskWithCovariance(opportunities, fractions, sigma) {
+        let variance = 0;
+        for (let i = 0; i < fractions.length; i++) {
+            for (let j = 0; j < fractions.length; j++) {
+                variance += fractions[i] * sigma[i][j] * fractions[j];
+            }
+        }
+        return variance;
+    }
+
+    /**
+     * Apply per-game exposure constraints
+     */
+    applyGameConstraints(opportunities, fractions) {
+        const constrained = [...fractions];
+        const gameExposure = {};
+
+        // Calculate current exposure per game
+        for (let i = 0; i < opportunities.length; i++) {
+            const gameId = opportunities[i].gameId;
+            if (!gameExposure[gameId]) {
+                gameExposure[gameId] = { total: 0, indices: [] };
+            }
+            gameExposure[gameId].total += fractions[i];
+            gameExposure[gameId].indices.push(i);
+        }
+
+        // Scale down if any game exceeds max
+        for (const game of Object.values(gameExposure)) {
+            if (game.total > this.config.maxGameExposure) {
+                const scale = this.config.maxGameExposure / game.total;
+                for (const idx of game.indices) {
+                    constrained[idx] *= scale;
+                }
+            }
+        }
+
+        return constrained;
+    }
+
+    /**
+     * Legacy: Solve with simple correlation penalty (deprecated)
+     */
+    solveWithCorrelation(opportunities, bankroll, correlationMatrix) {
+        // Redirect to new covariance-aware method
+        return this.solveWithCovariance(opportunities, bankroll, correlationMatrix);
+    }
+
+    /**
+     * Calculate portfolio variance (legacy method, kept for compatibility)
      */
     calculatePortfolioVariance(opportunities, fractions) {
         let variance = 0;
 
-        // Individual variances
+        // Individual variances (diagonal only - ignores correlations)
         for (let i = 0; i < opportunities.length; i++) {
             const opp = opportunities[i];
             const f = fractions[i];
