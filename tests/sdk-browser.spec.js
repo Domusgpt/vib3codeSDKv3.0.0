@@ -116,7 +116,12 @@ test.describe('VIB3+ SDK Tests', () => {
         console.log('========================================');
 
         await page.goto(`http://localhost:${PORT}/`);
-        await page.waitForTimeout(5000);
+
+        // Wait for canvases to be created
+        await page.waitForFunction(
+            () => document.querySelectorAll('canvas').length > 0,
+            { timeout: 10000 }
+        ).catch(() => {});
 
         const canvasInfo = await page.evaluate(() => {
             const canvases = document.querySelectorAll('canvas');
@@ -140,6 +145,9 @@ test.describe('VIB3+ SDK Tests', () => {
             console.log(`  - #${c.id}: ${c.width}x${c.height}, ${c.webglVersion}`);
         });
 
+        // Canvas elements should exist (WebGL may not work in headless)
+        expect(canvasInfo.length).toBeGreaterThan(0);
+
         try {
             await page.screenshot({ path: `${RESULTS_DIR}/03-canvas-webgl.png` });
             console.log('Screenshot saved: test-results/03-canvas-webgl.png');
@@ -154,7 +162,12 @@ test.describe('VIB3+ SDK Tests', () => {
         console.log('========================================');
 
         await page.goto(`http://localhost:${PORT}/`);
-        await page.waitForTimeout(3000);
+
+        // Wait for UI to initialize
+        await page.waitForFunction(
+            () => document.querySelectorAll('input[type="range"]').length > 0,
+            { timeout: 10000 }
+        ).catch(() => {});
 
         const controls = await page.evaluate(() => {
             const sliders = document.querySelectorAll('input[type="range"]');
