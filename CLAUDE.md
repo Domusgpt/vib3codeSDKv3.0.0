@@ -386,7 +386,7 @@ Combined = Rxy × Rxz × Ryz × Rxw × Ryw × Rzw
 
 ---
 
-## MCP Agentic Control (`sdk/src/agent/mcp/`)
+## MCP Agentic Control (`src/agent/mcp/`)
 
 ### Available Tools
 
@@ -430,10 +430,11 @@ Vib3-CORE-Documented01-/
 │
 ├── src/
 │   ├── core/                    # Engine core
-│   │   ├── Engine.js            # Main VIB34D engine
+│   │   ├── VIB3Engine.js        # Main VIB3+ engine
 │   │   ├── CanvasManager.js     # Canvas lifecycle
-│   │   ├── UnifiedReactivityManager.js
-│   │   └── ParameterMapper.js
+│   │   ├── ParameterMapper.js   # Parameter mapping
+│   │   ├── Parameters.js        # Parameter definitions
+│   │   └── UnifiedResourceManager.js  # Resource management
 │   │
 │   ├── quantum/                 # Quantum system
 │   │   ├── QuantumEngine.js
@@ -465,8 +466,9 @@ Vib3-CORE-Documented01-/
 │       ├── VIB3PackageExporter.js
 │       └── TradingCardGenerator.js
 │
-├── sdk/src/agent/mcp/           # MCP agentic interface
-│   └── MCPServer.js
+├── src/agent/mcp/               # MCP agentic interface
+│   ├── MCPServer.js
+│   └── tools.js
 │
 ├── js/                          # UI layer
 │   ├── core/app.js

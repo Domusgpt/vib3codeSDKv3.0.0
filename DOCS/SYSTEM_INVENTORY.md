@@ -22,7 +22,7 @@ The SDK provides 4 visualization systems with shared 6D rotation mathematics, un
 
 | Metric | Value |
 |--------|-------|
-| **Visualization Systems** | 4 (Quantum, Faceted, Holographic, Polychora) |
+| **Visualization Systems** | 3 active (Quantum, Faceted, Holographic) + 1 archived (Polychora - TBD) |
 | **Rotation Planes** | 6 (XY, XZ, YZ for 3D; XW, YW, ZW for 4D) |
 | **Base Geometries** | 8 per system |
 | **Core Warp Types** | 3 (Base, Hypersphere, Hypertetrahedron) |
@@ -142,22 +142,26 @@ The SDK provides 4 visualization systems with shared 6D rotation mathematics, un
 - Beat detection (bass), melody detection (mid/high)
 - Per-layer reactivity multipliers
 
-### 4. Polychora System
-**File:** `src/core/PolychoraSystem.js` (1065 LOC)
-**Purpose:** 4D polytope visualization with glassmorphic effects
+### 4. Polychora System (ARCHIVED - TBD)
+
+> **Status:** This system is archived and not production-ready. Files are located in `archive/polychora/`.
+
+**File:** `archive/polychora/PolychoraSystem.js` (1065 LOC)
+**Purpose:** 4D polytope visualization with glassmorphic effects (planned)
 
 | Property | Value |
 |----------|-------|
-| Canvas IDs | `polychora-background-canvas`, `polychora-shadow-canvas`, `polychora-content-canvas`, `polychora-highlight-canvas`, `polychora-accent-canvas` |
-| Polytopes | 6 (5-Cell, Tesseract, 16-Cell, 24-Cell, 600-Cell, 120-Cell) |
-| Audio Reactive | Yes |
-| Physics | Yes (4D physics engine) |
+| Status | **ARCHIVED / TBD** |
+| Canvas IDs | `polychora-*-canvas` (5 layers) |
+| Polytopes | 6 planned (5-Cell, Tesseract, 16-Cell, 24-Cell, 600-Cell, 120-Cell) |
+| Audio Reactive | Planned |
+| Physics | Planned (`Polychora4DPhysics.js` in archive) |
 
-**Core Features:**
+**Planned Features (not yet production-ready):**
 - 4D polytope distance functions in shader
 - Complete 6D rotation matrices
 - Advanced glass effects (refraction, chromatic aberration)
-- 4D physics simulation with `Polychora4DPhysics.js`
+- 4D physics simulation
 
 ---
 
@@ -351,8 +355,8 @@ Expected: `geometry = coreIndex * 8 + baseIndex`
 **Q3: How many canvas layers does each visualization system use?**
 Expected: 5 (background, shadow, content, highlight, accent)
 
-**Q4: What are the 4 visualization systems?**
-Expected: Quantum, Faceted, Holographic, Polychora
+**Q4: What are the active visualization systems?**
+Expected: 3 active (Quantum, Faceted, Holographic) + 1 archived (Polychora - TBD)
 
 **Q5: What are the 3 core warp types?**
 Expected: Base (0), Hypersphere (1), Hypertetrahedron (2)
@@ -361,7 +365,7 @@ Expected: Base (0), Hypersphere (1), Hypertetrahedron (2)
 Expected: Tetrahedron, Hypercube, Sphere, Torus, Klein Bottle, Fractal, Wave, Crystal
 
 **Q7: Which system has 4D physics support?**
-Expected: Polychora
+Expected: Polychora (archived/TBD - not production-ready)
 
 **Q8: What MCP tool changes the geometry?**
 Expected: `change_geometry`
