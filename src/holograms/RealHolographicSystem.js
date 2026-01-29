@@ -717,6 +717,16 @@ export class RealHolographicSystem {
     }
 
     /**
+     * Get the current rendering backend type.
+     * Holographic uses direct WebGL with 5-layer canvas architecture.
+     * WebGPU multi-layer support is planned for a future release.
+     * @returns {'direct-webgl'}
+     */
+    getBackendType() {
+        return 'direct-webgl';
+    }
+
+    /**
      * Clean up all resources (RendererContract.dispose)
      * Alias for destroy() for contract compliance
      */

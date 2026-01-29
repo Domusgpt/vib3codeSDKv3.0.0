@@ -4,10 +4,12 @@
  * Features:
  * - Device/context initialization with feature detection
  * - Canvas configuration + resize handling
- * - Shader pipeline management
- * - Uniform buffer handling
+ * - Shader pipeline management (custom WGSL compilation)
+ * - Uniform buffer handling (custom layouts)
+ * - Fullscreen quad procedural rendering (core VIB3+ pattern)
+ * - Multi-pipeline support with named pipelines
+ * - Texture creation and binding
  * - Render state management
- * - Clear pass and geometry rendering
  */
 
 import { RenderResourceRegistry } from '../RenderResourceRegistry.js';
@@ -83,6 +85,163 @@ fn main(input: FragmentInput) -> @location(0) vec4<f32> {
 `;
 
 /**
+ * Fullscreen quad vertex shader for procedural rendering.
+ * Generates a fullscreen triangle (3 vertices, no vertex buffer needed).
+ */
+const FULLSCREEN_VERTEX_SHADER = /* wgsl */`
+struct VertexOutput {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+};
+
+@vertex
+fn main(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
+    var output: VertexOutput;
+
+    // Generate fullscreen triangle (covers entire screen with 3 vertices)
+    // Uses the oversized triangle technique - no vertex buffer needed
+    let x = f32(i32(vertexIndex & 1u) * 4 - 1);
+    let y = f32(i32(vertexIndex >> 1u) * 4 - 1);
+    output.position = vec4<f32>(x, y, 0.0, 1.0);
+    output.uv = vec2<f32>((x + 1.0) * 0.5, (1.0 - y) * 0.5);
+
+    return output;
+}
+`;
+
+/**
+ * VIB3+ standard uniform struct for procedural shaders (WGSL).
+ * Matches the GLSL uniforms used in Quantum/Faceted/Holographic systems.
+ */
+const VIB3_UNIFORM_STRUCT = /* wgsl */`
+struct VIB3Uniforms {
+    // Time and resolution
+    time: f32,
+    _pad0: f32,
+    resolution: vec2<f32>,
+
+    // Geometry selection (0-23)
+    geometry: f32,
+
+    // 6D Rotation (radians)
+    rot4dXY: f32,
+    rot4dXZ: f32,
+    rot4dYZ: f32,
+    rot4dXW: f32,
+    rot4dYW: f32,
+    rot4dZW: f32,
+
+    // Visual parameters
+    dimension: f32,
+    gridDensity: f32,
+    morphFactor: f32,
+    chaos: f32,
+    speed: f32,
+    hue: f32,
+    intensity: f32,
+    saturation: f32,
+
+    // Reactivity
+    mouseIntensity: f32,
+    clickIntensity: f32,
+    bass: f32,
+    mid: f32,
+    high: f32,
+
+    // Layer parameters (for holographic multi-layer)
+    layerScale: f32,
+    layerOpacity: f32,
+    _pad1: f32,
+    layerColor: vec3<f32>,
+    densityMult: f32,
+    speedMult: f32,
+    _pad2: vec3<f32>,
+};
+`;
+
+/**
+ * VIB3+ 4D rotation functions in WGSL
+ */
+const VIB3_ROTATION_WGSL = /* wgsl */`
+fn rotateXY(angle: f32) -> mat4x4<f32> {
+    let c = cos(angle);
+    let s = sin(angle);
+    return mat4x4<f32>(
+        vec4<f32>(c, -s, 0.0, 0.0),
+        vec4<f32>(s, c, 0.0, 0.0),
+        vec4<f32>(0.0, 0.0, 1.0, 0.0),
+        vec4<f32>(0.0, 0.0, 0.0, 1.0)
+    );
+}
+
+fn rotateXZ(angle: f32) -> mat4x4<f32> {
+    let c = cos(angle);
+    let s = sin(angle);
+    return mat4x4<f32>(
+        vec4<f32>(c, 0.0, -s, 0.0),
+        vec4<f32>(0.0, 1.0, 0.0, 0.0),
+        vec4<f32>(s, 0.0, c, 0.0),
+        vec4<f32>(0.0, 0.0, 0.0, 1.0)
+    );
+}
+
+fn rotateYZ(angle: f32) -> mat4x4<f32> {
+    let c = cos(angle);
+    let s = sin(angle);
+    return mat4x4<f32>(
+        vec4<f32>(1.0, 0.0, 0.0, 0.0),
+        vec4<f32>(0.0, c, -s, 0.0),
+        vec4<f32>(0.0, s, c, 0.0),
+        vec4<f32>(0.0, 0.0, 0.0, 1.0)
+    );
+}
+
+fn rotateXW(angle: f32) -> mat4x4<f32> {
+    let c = cos(angle);
+    let s = sin(angle);
+    return mat4x4<f32>(
+        vec4<f32>(c, 0.0, 0.0, -s),
+        vec4<f32>(0.0, 1.0, 0.0, 0.0),
+        vec4<f32>(0.0, 0.0, 1.0, 0.0),
+        vec4<f32>(s, 0.0, 0.0, c)
+    );
+}
+
+fn rotateYW(angle: f32) -> mat4x4<f32> {
+    let c = cos(angle);
+    let s = sin(angle);
+    return mat4x4<f32>(
+        vec4<f32>(1.0, 0.0, 0.0, 0.0),
+        vec4<f32>(0.0, c, 0.0, -s),
+        vec4<f32>(0.0, 0.0, 1.0, 0.0),
+        vec4<f32>(0.0, s, 0.0, c)
+    );
+}
+
+fn rotateZW(angle: f32) -> mat4x4<f32> {
+    let c = cos(angle);
+    let s = sin(angle);
+    return mat4x4<f32>(
+        vec4<f32>(1.0, 0.0, 0.0, 0.0),
+        vec4<f32>(0.0, 1.0, 0.0, 0.0),
+        vec4<f32>(0.0, 0.0, c, -s),
+        vec4<f32>(0.0, 0.0, s, c)
+    );
+}
+
+fn apply6DRotation(pos: vec4<f32>, u: VIB3Uniforms) -> vec4<f32> {
+    var p = pos;
+    p = rotateXY(u.rot4dXY) * p;
+    p = rotateXZ(u.rot4dXZ) * p;
+    p = rotateYZ(u.rot4dYZ) * p;
+    p = rotateXW(u.rot4dXW) * p;
+    p = rotateYW(u.rot4dYW) * p;
+    p = rotateZW(u.rot4dZW) * p;
+    return p;
+}
+`;
+
+/**
  * WebGPU feature flags
  */
 export const WebGPUFeatures = {
@@ -94,6 +253,15 @@ export const WebGPUFeatures = {
     TEXTURE_COMPRESSION_BC: 'texture-compression-bc',
     RG11B10_UFLOAT_RENDERABLE: 'rg11b10ufloat-renderable',
     BGRA8_UNORM_STORAGE: 'bgra8unorm-storage'
+};
+
+/**
+ * WGSL shader library for VIB3+ systems
+ */
+export const WGSLShaderLib = {
+    uniformStruct: VIB3_UNIFORM_STRUCT,
+    rotation4D: VIB3_ROTATION_WGSL,
+    fullscreenVertex: FULLSCREEN_VERTEX_SHADER
 };
 
 export class WebGPUBackend {
@@ -126,7 +294,7 @@ export class WebGPUBackend {
         /** @type {Map<string, GPUShaderModule>} */
         this._shaderModules = new Map();
 
-        /** @type {GPUBuffer|null} */
+        /** @type {GPUBuffer|null} - Default geometry uniform buffer */
         this._uniformBuffer = null;
 
         /** @type {GPUBindGroup|null} */
@@ -134,6 +302,15 @@ export class WebGPUBackend {
 
         /** @type {GPUBindGroupLayout|null} */
         this._uniformBindGroupLayout = null;
+
+        /** @type {Map<string, {buffer: GPUBuffer, bindGroup: GPUBindGroup, layout: GPUBindGroupLayout}>} */
+        this._customUniformBuffers = new Map();
+
+        /** @type {Map<string, GPUTexture>} */
+        this._textures = new Map();
+
+        /** @type {Map<string, GPUSampler>} */
+        this._samplers = new Map();
 
         /** @type {Set<string>} */
         this._enabledFeatures = new Set(options.features || []);
@@ -154,6 +331,10 @@ export class WebGPUBackend {
 
         this.resize(canvas.clientWidth || canvas.width, canvas.clientHeight || canvas.height);
     }
+
+    // ========================================================================
+    // Feature Detection
+    // ========================================================================
 
     /**
      * Check if a feature is supported
@@ -180,19 +361,15 @@ export class WebGPUBackend {
         };
     }
 
+    // ========================================================================
+    // Uniform Buffer Management
+    // ========================================================================
+
     /**
-     * Initialize uniform buffer
+     * Initialize default uniform buffer (geometry rendering)
      * @private
      */
     _initUniformBuffer() {
-        // Uniform buffer layout:
-        // - mat4x4 modelMatrix (64 bytes)
-        // - mat4x4 viewMatrix (64 bytes)
-        // - mat4x4 projectionMatrix (64 bytes)
-        // - f32 time (4 bytes)
-        // - f32 dimension (4 bytes)
-        // - vec2 padding (8 bytes)
-        // Total: 208 bytes, aligned to 256 for WebGPU
         const uniformBufferSize = 256;
 
         this._uniformBuffer = this.device.createBuffer({
@@ -201,7 +378,6 @@ export class WebGPUBackend {
         });
         this._resources.register('buffer', this._uniformBuffer);
 
-        // Create bind group layout
         this._uniformBindGroupLayout = this.device.createBindGroupLayout({
             entries: [{
                 binding: 0,
@@ -210,7 +386,6 @@ export class WebGPUBackend {
             }]
         });
 
-        // Create bind group
         this._uniformBindGroup = this.device.createBindGroup({
             layout: this._uniformBindGroupLayout,
             entries: [{
@@ -218,6 +393,309 @@ export class WebGPUBackend {
                 resource: { buffer: this._uniformBuffer }
             }]
         });
+    }
+
+    /**
+     * Create a custom uniform buffer with its own bind group.
+     * Used for VIB3+ procedural shader uniforms.
+     * @param {string} name - Unique name for the buffer
+     * @param {number} size - Buffer size in bytes (will be aligned to 256)
+     * @param {number} [visibility] - Shader stage visibility
+     * @returns {{buffer: GPUBuffer, bindGroup: GPUBindGroup, layout: GPUBindGroupLayout}}
+     */
+    createCustomUniformBuffer(name, size, visibility) {
+        const vis = visibility ??
+            (GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT);
+
+        // Align to 256 bytes for WebGPU requirements
+        const alignedSize = Math.ceil(size / 256) * 256;
+
+        const buffer = this.device.createBuffer({
+            size: alignedSize,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        });
+        this._resources.register('buffer', buffer);
+
+        const layout = this.device.createBindGroupLayout({
+            entries: [{
+                binding: 0,
+                visibility: vis,
+                buffer: { type: 'uniform' }
+            }]
+        });
+
+        const bindGroup = this.device.createBindGroup({
+            layout,
+            entries: [{
+                binding: 0,
+                resource: { buffer }
+            }]
+        });
+
+        const entry = { buffer, bindGroup, layout };
+        this._customUniformBuffers.set(name, entry);
+        return entry;
+    }
+
+    /**
+     * Update a custom uniform buffer with Float32Array data
+     * @param {string} name - Buffer name
+     * @param {Float32Array} data - Data to write
+     */
+    updateCustomUniforms(name, data) {
+        const entry = this._customUniformBuffers.get(name);
+        if (!entry) {
+            if (this.debug) {
+                console.warn(`Custom uniform buffer "${name}" not found`);
+            }
+            return;
+        }
+        this.device.queue.writeBuffer(entry.buffer, 0, data);
+    }
+
+    /**
+     * Get a custom uniform buffer entry
+     * @param {string} name
+     * @returns {{buffer: GPUBuffer, bindGroup: GPUBindGroup, layout: GPUBindGroupLayout}|undefined}
+     */
+    getCustomUniformBuffer(name) {
+        return this._customUniformBuffers.get(name);
+    }
+
+    /**
+     * Update default uniform buffer with current state
+     * @param {object} uniforms
+     */
+    updateUniforms(uniforms) {
+        const data = new Float32Array(64); // 256 bytes / 4
+
+        const model = uniforms.modelMatrix || [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
+        data.set(model, 0);
+
+        const view = uniforms.viewMatrix || [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,-3,1];
+        data.set(view, 16);
+
+        const proj = uniforms.projectionMatrix || this._createProjectionMatrix();
+        data.set(proj, 32);
+
+        data[48] = uniforms.time || 0;
+        data[49] = uniforms.dimension || 3.5;
+
+        this.device.queue.writeBuffer(this._uniformBuffer, 0, data);
+    }
+
+    /**
+     * Create perspective projection matrix
+     * @private
+     */
+    _createProjectionMatrix() {
+        const fov = Math.PI / 4;
+        const aspect = this.canvas.width / this.canvas.height;
+        const near = 0.1;
+        const far = 100;
+
+        const f = 1.0 / Math.tan(fov / 2);
+        const rangeInv = 1 / (near - far);
+
+        return [
+            f / aspect, 0, 0, 0,
+            0, f, 0, 0,
+            0, 0, (near + far) * rangeInv, -1,
+            0, 0, near * far * rangeInv * 2, 0
+        ];
+    }
+
+    // ========================================================================
+    // Shader & Pipeline Management
+    // ========================================================================
+
+    /**
+     * Compile a WGSL shader module from source code
+     * @param {string} name - Unique shader name
+     * @param {string} code - WGSL source code
+     * @returns {GPUShaderModule}
+     */
+    compileShader(name, code) {
+        const module = this.device.createShaderModule({
+            code,
+            label: name
+        });
+        this._shaderModules.set(name, module);
+        return module;
+    }
+
+    /**
+     * Get or create shader module
+     * @param {string} name
+     * @param {string} code
+     * @returns {GPUShaderModule}
+     */
+    _getOrCreateShaderModule(name, code) {
+        if (this._shaderModules.has(name)) {
+            return this._shaderModules.get(name);
+        }
+        return this.compileShader(name, code);
+    }
+
+    /**
+     * Create a fullscreen quad pipeline for procedural fragment rendering.
+     * This is the core rendering pattern for all VIB3+ visualization systems.
+     *
+     * @param {string} name - Pipeline name
+     * @param {string} fragmentCode - WGSL fragment shader code
+     * @param {object} [options]
+     * @param {string} [options.vertexCode] - Custom vertex shader (defaults to fullscreen quad)
+     * @param {GPUBindGroupLayout[]} [options.bindGroupLayouts] - Custom bind group layouts
+     * @param {object} [options.blend] - Custom blend state
+     * @param {boolean} [options.depth] - Enable depth testing
+     * @returns {GPURenderPipeline}
+     */
+    createFullscreenPipeline(name, fragmentCode, options = {}) {
+        const vertexCode = options.vertexCode || FULLSCREEN_VERTEX_SHADER;
+        const vertexModule = this._getOrCreateShaderModule(
+            `${name}-vertex`, vertexCode
+        );
+        const fragmentModule = this._getOrCreateShaderModule(
+            `${name}-fragment`, fragmentCode
+        );
+
+        // Use provided layouts or default to the standard uniform layout
+        const bindGroupLayouts = options.bindGroupLayouts ||
+            [this._uniformBindGroupLayout];
+
+        const pipelineLayout = this.device.createPipelineLayout({
+            bindGroupLayouts
+        });
+
+        const blend = options.blend || {
+            color: {
+                srcFactor: 'src-alpha',
+                dstFactor: 'one-minus-src-alpha',
+                operation: 'add'
+            },
+            alpha: {
+                srcFactor: 'one',
+                dstFactor: 'one-minus-src-alpha',
+                operation: 'add'
+            }
+        };
+
+        const useDepth = options.depth !== undefined ? options.depth : false;
+
+        const pipeline = this.device.createRenderPipeline({
+            layout: pipelineLayout,
+            vertex: {
+                module: vertexModule,
+                entryPoint: 'main',
+                // No vertex buffers - fullscreen triangle uses vertex_index
+            },
+            fragment: {
+                module: fragmentModule,
+                entryPoint: 'main',
+                targets: [{
+                    format: this.format,
+                    blend
+                }]
+            },
+            primitive: {
+                topology: 'triangle-list'
+            },
+            depthStencil: useDepth ? {
+                depthWriteEnabled: true,
+                depthCompare: 'less',
+                format: 'depth24plus'
+            } : undefined
+        });
+
+        this._pipelines.set(name, pipeline);
+        return pipeline;
+    }
+
+    /**
+     * Create a custom render pipeline with vertex buffers (for geometry rendering)
+     * @param {string} name - Pipeline name
+     * @param {object} desc - Pipeline descriptor
+     * @param {string} desc.vertexCode - WGSL vertex shader
+     * @param {string} desc.fragmentCode - WGSL fragment shader
+     * @param {GPUVertexBufferLayout[]} [desc.vertexBuffers] - Vertex buffer layouts
+     * @param {GPUBindGroupLayout[]} [desc.bindGroupLayouts]
+     * @param {object} [desc.blend]
+     * @param {string} [desc.topology]
+     * @param {boolean} [desc.depth]
+     * @returns {GPURenderPipeline}
+     */
+    createPipeline(name, desc) {
+        const vertexModule = this._getOrCreateShaderModule(
+            `${name}-vertex`, desc.vertexCode
+        );
+        const fragmentModule = this._getOrCreateShaderModule(
+            `${name}-fragment`, desc.fragmentCode
+        );
+
+        const bindGroupLayouts = desc.bindGroupLayouts ||
+            [this._uniformBindGroupLayout];
+
+        const pipelineLayout = this.device.createPipelineLayout({
+            bindGroupLayouts
+        });
+
+        const blend = desc.blend || {
+            color: {
+                srcFactor: 'src-alpha',
+                dstFactor: 'one-minus-src-alpha',
+                operation: 'add'
+            },
+            alpha: {
+                srcFactor: 'one',
+                dstFactor: 'one-minus-src-alpha',
+                operation: 'add'
+            }
+        };
+
+        const pipeline = this.device.createRenderPipeline({
+            layout: pipelineLayout,
+            vertex: {
+                module: vertexModule,
+                entryPoint: 'main',
+                buffers: desc.vertexBuffers || [{
+                    arrayStride: 32,
+                    attributes: [
+                        { shaderLocation: 0, offset: 0, format: 'float32x4' },
+                        { shaderLocation: 1, offset: 16, format: 'float32x4' }
+                    ]
+                }]
+            },
+            fragment: {
+                module: fragmentModule,
+                entryPoint: 'main',
+                targets: [{
+                    format: this.format,
+                    blend
+                }]
+            },
+            primitive: {
+                topology: desc.topology || 'triangle-list',
+                cullMode: desc.cullMode || 'none',
+                frontFace: 'ccw'
+            },
+            depthStencil: (desc.depth !== false && this.depthEnabled) ? {
+                depthWriteEnabled: true,
+                depthCompare: 'less',
+                format: 'depth24plus'
+            } : undefined
+        });
+
+        this._pipelines.set(name, pipeline);
+        return pipeline;
+    }
+
+    /**
+     * Get a named pipeline
+     * @param {string} name
+     * @returns {GPURenderPipeline|undefined}
+     */
+    getPipeline(name) {
+        return this._pipelines.get(name);
     }
 
     /**
@@ -238,10 +716,10 @@ export class WebGPUBackend {
                 module: vertexModule,
                 entryPoint: 'main',
                 buffers: [{
-                    arrayStride: 32, // 4 floats position + 4 floats color
+                    arrayStride: 32,
                     attributes: [
-                        { shaderLocation: 0, offset: 0, format: 'float32x4' },  // position
-                        { shaderLocation: 1, offset: 16, format: 'float32x4' }  // color
+                        { shaderLocation: 0, offset: 0, format: 'float32x4' },
+                        { shaderLocation: 1, offset: 16, format: 'float32x4' }
                     ]
                 }]
             },
@@ -279,68 +757,76 @@ export class WebGPUBackend {
         this._pipelines.set('default', pipeline);
     }
 
-    /**
-     * Get or create shader module
-     * @private
-     */
-    _getOrCreateShaderModule(name, code) {
-        if (this._shaderModules.has(name)) {
-            return this._shaderModules.get(name);
-        }
+    // ========================================================================
+    // Texture Management
+    // ========================================================================
 
-        const module = this.device.createShaderModule({ code });
-        this._shaderModules.set(name, module);
-        return module;
+    /**
+     * Create a 2D texture
+     * @param {string} name
+     * @param {object} desc
+     * @param {number} desc.width
+     * @param {number} desc.height
+     * @param {string} [desc.format]
+     * @param {number} [desc.usage]
+     * @returns {GPUTexture}
+     */
+    createTexture(name, desc) {
+        const texture = this.device.createTexture({
+            size: { width: desc.width, height: desc.height },
+            format: desc.format || 'rgba8unorm',
+            usage: desc.usage || (
+                GPUTextureUsage.TEXTURE_BINDING |
+                GPUTextureUsage.COPY_DST |
+                GPUTextureUsage.RENDER_ATTACHMENT
+            )
+        });
+
+        this._resources.register('texture', texture);
+        this._textures.set(name, texture);
+        return texture;
     }
 
     /**
-     * Update uniform buffer with current state
-     * @param {object} uniforms
+     * Create a sampler
+     * @param {string} name
+     * @param {object} [desc]
+     * @returns {GPUSampler}
      */
-    updateUniforms(uniforms) {
-        const data = new Float32Array(64); // 256 bytes / 4
+    createSampler(name, desc = {}) {
+        const sampler = this.device.createSampler({
+            magFilter: desc.magFilter || 'linear',
+            minFilter: desc.minFilter || 'linear',
+            mipmapFilter: desc.mipmapFilter || 'linear',
+            addressModeU: desc.addressModeU || 'clamp-to-edge',
+            addressModeV: desc.addressModeV || 'clamp-to-edge'
+        });
 
-        // Model matrix (identity if not provided)
-        const model = uniforms.modelMatrix || [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
-        data.set(model, 0);
-
-        // View matrix
-        const view = uniforms.viewMatrix || [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,-3,1];
-        data.set(view, 16);
-
-        // Projection matrix
-        const proj = uniforms.projectionMatrix || this._createProjectionMatrix();
-        data.set(proj, 32);
-
-        // Time
-        data[48] = uniforms.time || 0;
-
-        // Dimension
-        data[49] = uniforms.dimension || 3.5;
-
-        this.device.queue.writeBuffer(this._uniformBuffer, 0, data);
+        this._samplers.set(name, sampler);
+        return sampler;
     }
 
     /**
-     * Create perspective projection matrix
-     * @private
+     * Get a texture by name
+     * @param {string} name
+     * @returns {GPUTexture|undefined}
      */
-    _createProjectionMatrix() {
-        const fov = Math.PI / 4;
-        const aspect = this.canvas.width / this.canvas.height;
-        const near = 0.1;
-        const far = 100;
-
-        const f = 1.0 / Math.tan(fov / 2);
-        const rangeInv = 1 / (near - far);
-
-        return [
-            f / aspect, 0, 0, 0,
-            0, f, 0, 0,
-            0, 0, (near + far) * rangeInv, -1,
-            0, 0, near * far * rangeInv * 2, 0
-        ];
+    getTexture(name) {
+        return this._textures.get(name);
     }
+
+    /**
+     * Get a sampler by name
+     * @param {string} name
+     * @returns {GPUSampler|undefined}
+     */
+    getSampler(name) {
+        return this._samplers.get(name);
+    }
+
+    // ========================================================================
+    // Canvas / Resize
+    // ========================================================================
 
     /**
      * Resize the canvas and recreate depth resources if enabled.
@@ -370,6 +856,10 @@ export class WebGPUBackend {
             this._resources.register('texture', this._depthTexture);
         }
     }
+
+    // ========================================================================
+    // Buffer Creation
+    // ========================================================================
 
     /**
      * Create a vertex buffer from geometry data
@@ -412,6 +902,76 @@ export class WebGPUBackend {
         this._resources.register('buffer', buffer);
         return buffer;
     }
+
+    // ========================================================================
+    // Rendering - Fullscreen Quad (VIB3+ Procedural)
+    // ========================================================================
+
+    /**
+     * Render a fullscreen quad using a named pipeline.
+     * This is the primary rendering method for VIB3+ procedural visualization.
+     *
+     * @param {object} options
+     * @param {string} options.pipeline - Pipeline name (created via createFullscreenPipeline)
+     * @param {GPUBindGroup[]} [options.bindGroups] - Bind groups to set
+     * @param {number[]} [options.clearColor] - RGBA clear color (0-1)
+     * @param {boolean} [options.clear] - Whether to clear (default true)
+     */
+    renderFullscreenQuad(options) {
+        const {
+            pipeline: pipelineName,
+            bindGroups = [],
+            clearColor = [0, 0, 0, 1],
+            clear = true
+        } = options;
+
+        const pipeline = this._pipelines.get(pipelineName);
+        if (!pipeline) {
+            if (this.debug) {
+                console.warn(`Pipeline "${pipelineName}" not found`);
+            }
+            return;
+        }
+
+        const encoder = this.device.createCommandEncoder();
+        this._stats.commandEncoders += 1;
+
+        const colorView = this.context.getCurrentTexture().createView();
+
+        const pass = encoder.beginRenderPass({
+            colorAttachments: [{
+                view: colorView,
+                clearValue: {
+                    r: clearColor[0],
+                    g: clearColor[1],
+                    b: clearColor[2],
+                    a: clearColor[3]
+                },
+                loadOp: clear ? 'clear' : 'load',
+                storeOp: 'store'
+            }]
+        });
+
+        pass.setPipeline(pipeline);
+        this._stats.pipelineChanges += 1;
+
+        // Set bind groups
+        for (let i = 0; i < bindGroups.length; i++) {
+            pass.setBindGroup(i, bindGroups[i]);
+        }
+
+        // Draw fullscreen triangle (3 vertices, no vertex buffer)
+        pass.draw(3);
+        this._stats.drawCalls += 1;
+
+        pass.end();
+        this.device.queue.submit([encoder.finish()]);
+        this._stats.frames += 1;
+    }
+
+    // ========================================================================
+    // Rendering - Geometry
+    // ========================================================================
 
     /**
      * Render a single frame (clear-only pass by default).
@@ -468,7 +1028,6 @@ export class WebGPUBackend {
             clearColor = [0, 0, 0, 1]
         } = options;
 
-        // Update uniforms
         this.updateUniforms(uniforms);
 
         const encoder = this.device.createCommandEncoder();
@@ -494,18 +1053,13 @@ export class WebGPUBackend {
             depthStencilAttachment: depthAttachment
         });
 
-        // Set pipeline
         const pipeline = this._pipelines.get('default');
         pass.setPipeline(pipeline);
         this._stats.pipelineChanges += 1;
 
-        // Set bind group
         pass.setBindGroup(0, this._uniformBindGroup);
-
-        // Set vertex buffer
         pass.setVertexBuffer(0, vertexBuffer);
 
-        // Draw
         if (indexBuffer && indexCount) {
             pass.setIndexBuffer(indexBuffer, 'uint16');
             pass.drawIndexed(indexCount);
@@ -521,6 +1075,90 @@ export class WebGPUBackend {
         this.device.queue.submit([encoder.finish()]);
         this._stats.frames += 1;
     }
+
+    /**
+     * Render using a named pipeline with arbitrary vertex/index buffers
+     * @param {object} options
+     * @param {string} options.pipeline - Pipeline name
+     * @param {GPUBuffer} options.vertexBuffer
+     * @param {GPUBuffer} [options.indexBuffer]
+     * @param {number} options.vertexCount
+     * @param {number} [options.indexCount]
+     * @param {GPUBindGroup[]} [options.bindGroups]
+     * @param {number[]} [options.clearColor]
+     * @param {boolean} [options.clear]
+     */
+    renderWithPipeline(options) {
+        const {
+            pipeline: pipelineName,
+            vertexBuffer,
+            indexBuffer,
+            vertexCount,
+            indexCount,
+            bindGroups = [],
+            clearColor = [0, 0, 0, 1],
+            clear = true
+        } = options;
+
+        const pipeline = this._pipelines.get(pipelineName);
+        if (!pipeline) {
+            if (this.debug) {
+                console.warn(`Pipeline "${pipelineName}" not found`);
+            }
+            return;
+        }
+
+        const encoder = this.device.createCommandEncoder();
+        this._stats.commandEncoders += 1;
+
+        const colorView = this.context.getCurrentTexture().createView();
+        const depthAttachment = this.depthEnabled && this._depthTexture
+            ? {
+                view: this._depthTexture.createView(),
+                depthClearValue: 1.0,
+                depthLoadOp: clear ? 'clear' : 'load',
+                depthStoreOp: 'store'
+            }
+            : undefined;
+
+        const pass = encoder.beginRenderPass({
+            colorAttachments: [{
+                view: colorView,
+                clearValue: { r: clearColor[0], g: clearColor[1], b: clearColor[2], a: clearColor[3] },
+                loadOp: clear ? 'clear' : 'load',
+                storeOp: 'store'
+            }],
+            depthStencilAttachment: depthAttachment
+        });
+
+        pass.setPipeline(pipeline);
+        this._stats.pipelineChanges += 1;
+
+        for (let i = 0; i < bindGroups.length; i++) {
+            pass.setBindGroup(i, bindGroups[i]);
+        }
+
+        pass.setVertexBuffer(0, vertexBuffer);
+
+        if (indexBuffer && indexCount) {
+            pass.setIndexBuffer(indexBuffer, 'uint16');
+            pass.drawIndexed(indexCount);
+            this._stats.triangles += indexCount / 3;
+        } else {
+            pass.draw(vertexCount);
+            this._stats.triangles += vertexCount / 3;
+        }
+
+        this._stats.drawCalls += 1;
+
+        pass.end();
+        this.device.queue.submit([encoder.finish()]);
+        this._stats.frames += 1;
+    }
+
+    // ========================================================================
+    // Manual Render Pass Control
+    // ========================================================================
 
     /**
      * Begin a new render pass (for manual control)
@@ -565,6 +1203,10 @@ export class WebGPUBackend {
         this._stats.frames += 1;
     }
 
+    // ========================================================================
+    // Statistics & Cleanup
+    // ========================================================================
+
     /**
      * Return backend statistics.
      */
@@ -590,11 +1232,24 @@ export class WebGPUBackend {
     dispose() {
         this._destroyDepthTexture();
 
-        // Destroy buffers
+        // Destroy uniform buffers
         if (this._uniformBuffer) {
             this._uniformBuffer.destroy();
             this._uniformBuffer = null;
         }
+
+        // Destroy custom uniform buffers
+        for (const [, entry] of this._customUniformBuffers) {
+            entry.buffer.destroy();
+        }
+        this._customUniformBuffers.clear();
+
+        // Destroy textures
+        for (const [, texture] of this._textures) {
+            texture.destroy();
+        }
+        this._textures.clear();
+        this._samplers.clear();
 
         // Clear pipelines and shaders
         this._pipelines.clear();
@@ -679,7 +1334,6 @@ export async function createWebGPUBackend(canvas, options = {}) {
         const availableFeatures = new Set(adapter.features);
         const requestedFeatures = [];
 
-        // Check required features
         const requiredFeatures = options.requiredFeatures || [];
         for (const feature of requiredFeatures) {
             if (availableFeatures.has(feature)) {
@@ -689,7 +1343,6 @@ export async function createWebGPUBackend(canvas, options = {}) {
             }
         }
 
-        // Optionally request useful features if available
         const optionalFeatures = [
             WebGPUFeatures.TIMESTAMP_QUERY,
             WebGPUFeatures.INDIRECT_FIRST_INSTANCE
@@ -701,12 +1354,10 @@ export async function createWebGPUBackend(canvas, options = {}) {
             }
         }
 
-        // Request device with features
         const device = await adapter.requestDevice({
             requiredFeatures: requestedFeatures.length > 0 ? requestedFeatures : undefined
         });
 
-        // Set up error handler
         device.lost.then((info) => {
             console.error('WebGPU device lost:', info.reason, info.message);
         });
@@ -747,13 +1398,11 @@ export async function createWebGPUBackend(canvas, options = {}) {
  * @returns {Promise<{backend: WebGPUBackend|null, type: 'webgpu'|'webgl'|null}>}
  */
 export async function createWebGPUWithFallback(canvas, options = {}) {
-    // Try WebGPU first
     const webgpuBackend = await createWebGPUBackend(canvas, options);
     if (webgpuBackend) {
         return { backend: webgpuBackend, type: 'webgpu' };
     }
 
-    // WebGPU not available, caller should fall back to WebGL
     return { backend: null, type: null };
 }
 

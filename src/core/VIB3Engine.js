@@ -2,6 +2,9 @@
  * VIB3+ Engine - Unified Visualization System
  * Coordinates Quantum, Faceted, and Holographic systems
  * Supports 24 geometries per system with full 6D rotation
+ *
+ * Backend selection: Faceted supports WebGL/WebGPU via UnifiedRenderBridge.
+ * Quantum and Holographic use direct WebGL (5-layer canvas architecture).
  */
 
 import { ParameterManager } from './Parameters.js';
@@ -11,25 +14,36 @@ import { FacetedSystem } from '../faceted/FacetedSystem.js';
 import { RealHolographicSystem } from '../holograms/RealHolographicSystem.js';
 
 export class VIB3Engine {
-    constructor() {
+    /**
+     * @param {object} [options]
+     * @param {boolean} [options.preferWebGPU=false] - Try WebGPU for supported systems
+     * @param {boolean} [options.debug=false] - Enable debug logging
+     */
+    constructor(options = {}) {
         this.activeSystem = null; // Only one system active at a time
         this.currentSystemName = 'quantum';
         this.parameters = new ParameterManager();
         this.initialized = false;
         this.canvasManager = null;
+
+        /** @type {boolean} Whether to prefer WebGPU for systems that support it */
+        this.preferWebGPU = options.preferWebGPU || false;
+
+        /** @type {boolean} Debug mode */
+        this.debug = options.debug || false;
     }
 
     /**
      * Initialize the VIB3+ engine
      */
     async initialize(containerId = 'vib3-container') {
-        console.log('🌟 Initializing VIB3+ Engine');
+        console.log('Initializing VIB3+ Engine');
 
         // Create CanvasManager
         try {
             this.canvasManager = new CanvasManager(containerId);
         } catch (error) {
-            console.error('❌ CanvasManager initialization failed:', error);
+            console.error('CanvasManager initialization failed:', error);
             return false;
         }
 
@@ -37,7 +51,7 @@ export class VIB3Engine {
         await this.switchSystem(this.currentSystemName);
 
         this.initialized = true;
-        console.log('✅ VIB3+ Engine initialized');
+        console.log('VIB3+ Engine initialized');
         return true;
     }
 
@@ -46,24 +60,38 @@ export class VIB3Engine {
      * CRITICAL: Engines find canvases by ID in DOM, not passed as parameters!
      */
     async createSystem(systemName) {
-        console.log(`🔧 Creating ${systemName} system...`);
+        console.log(`Creating ${systemName} system...`);
 
         // Create canvases with correct IDs in DOM
-        // CanvasManager returns array of canvas IDs created
         const canvasIds = this.canvasManager.createSystemCanvases(systemName);
 
-        // Create system instance - engines find canvases by ID in DOM
         let system = null;
         try {
             switch (systemName) {
                 case 'quantum':
-                    // QuantumEngine finds canvases by ID and initializes in constructor
                     system = new QuantumEngine();
                     break;
 
                 case 'faceted':
-                    // FacetedSystem needs explicit initialization after construction
                     system = new FacetedSystem();
+
+                    // Use bridge mode if WebGPU is preferred
+                    if (this.preferWebGPU) {
+                        const canvas = document.getElementById('content-canvas');
+                        if (canvas) {
+                            const bridgeSuccess = await system.initWithBridge(canvas, {
+                                preferWebGPU: true,
+                                debug: this.debug
+                            });
+                            if (bridgeSuccess) {
+                                break;
+                            }
+                            // Fall through to direct WebGL if bridge fails
+                            console.warn('Faceted bridge init failed, using direct WebGL');
+                            system = new FacetedSystem();
+                        }
+                    }
+
                     const facetedSuccess = system.initialize();
                     if (!facetedSuccess) {
                         throw new Error('Faceted system initialization failed');
@@ -71,7 +99,6 @@ export class VIB3Engine {
                     break;
 
                 case 'holographic':
-                    // RealHolographicSystem finds canvases and initializes in constructor
                     system = new RealHolographicSystem();
                     break;
 
@@ -94,11 +121,11 @@ export class VIB3Engine {
             system.updateParameters(this.parameters.getAllParameters());
             system.setActive(true);
 
-            console.log(`✅ ${systemName} system created and activated`);
+            console.log(`${systemName} system created and activated`);
             return system;
 
         } catch (error) {
-            console.error(`❌ ${systemName} system creation failed:`, error);
+            console.error(`${systemName} system creation failed:`, error);
             throw error;
         }
     }
@@ -109,27 +136,20 @@ export class VIB3Engine {
      */
     async switchSystem(systemName) {
         if (!['quantum', 'faceted', 'holographic'].includes(systemName)) {
-            console.error('❌ Unknown system:', systemName);
+            console.error('Unknown system:', systemName);
             return false;
         }
 
-        console.log(`🔄 Switching from ${this.currentSystemName} to ${systemName}`);
+        console.log(`Switching from ${this.currentSystemName} to ${systemName}`);
 
         // Destroy active system if exists
         if (this.activeSystem) {
-            console.log(`  🗑️ Destroying ${this.currentSystemName} system...`);
-
-            // Deactivate system
             if (this.activeSystem.setActive) {
                 this.activeSystem.setActive(false);
             }
-
-            // Destroy system
             if (this.activeSystem.destroy) {
                 this.activeSystem.destroy();
             }
-
-            // CanvasManager will destroy canvases when creating new ones
             this.activeSystem = null;
         }
 
@@ -137,12 +157,23 @@ export class VIB3Engine {
         try {
             this.activeSystem = await this.createSystem(systemName);
             this.currentSystemName = systemName;
-            console.log(`✅ Switched to ${systemName} system`);
+            console.log(`Switched to ${systemName} system`);
             return true;
         } catch (error) {
-            console.error(`❌ Failed to switch to ${systemName}:`, error);
+            console.error(`Failed to switch to ${systemName}:`, error);
             return false;
         }
+    }
+
+    /**
+     * Get the active backend type for the current system
+     * @returns {'webgl'|'webgpu'|'direct-webgl'|null}
+     */
+    getActiveBackendType() {
+        if (this.activeSystem && this.activeSystem.getBackendType) {
+            return this.activeSystem.getBackendType();
+        }
+        return null;
     }
 
     /**
@@ -220,7 +251,6 @@ export class VIB3Engine {
      * Get geometry names for current system
      */
     getGeometryNames() {
-        // All systems support 24 geometries
         return [
             // Base geometries (0-7)
             'Tetrahedron',
@@ -232,23 +262,23 @@ export class VIB3Engine {
             'Wave',
             'Crystal',
             // Hypersphere Core (8-15)
-            '🌀 Hypersphere Core (Tetrahedron)',
-            '🌀 Hypersphere Core (Hypercube)',
-            '🌀 Hypersphere Core (Sphere)',
-            '🌀 Hypersphere Core (Torus)',
-            '🌀 Hypersphere Core (Klein)',
-            '🌀 Hypersphere Core (Fractal)',
-            '🌀 Hypersphere Core (Wave)',
-            '🌀 Hypersphere Core (Crystal)',
+            'Hypersphere Core (Tetrahedron)',
+            'Hypersphere Core (Hypercube)',
+            'Hypersphere Core (Sphere)',
+            'Hypersphere Core (Torus)',
+            'Hypersphere Core (Klein)',
+            'Hypersphere Core (Fractal)',
+            'Hypersphere Core (Wave)',
+            'Hypersphere Core (Crystal)',
             // Hypertetrahedron Core (16-23)
-            '🔺 Hypertetrahedron Core (Tetrahedron)',
-            '🔺 Hypertetrahedron Core (Hypercube)',
-            '🔺 Hypertetrahedron Core (Sphere)',
-            '🔺 Hypertetrahedron Core (Torus)',
-            '🔺 Hypertetrahedron Core (Klein)',
-            '🔺 Hypertetrahedron Core (Fractal)',
-            '🔺 Hypertetrahedron Core (Wave)',
-            '🔺 Hypertetrahedron Core (Crystal)'
+            'Hypertetrahedron Core (Tetrahedron)',
+            'Hypertetrahedron Core (Hypercube)',
+            'Hypertetrahedron Core (Sphere)',
+            'Hypertetrahedron Core (Torus)',
+            'Hypertetrahedron Core (Klein)',
+            'Hypertetrahedron Core (Fractal)',
+            'Hypertetrahedron Core (Wave)',
+            'Hypertetrahedron Core (Crystal)'
         ];
     }
 
@@ -259,6 +289,7 @@ export class VIB3Engine {
         return {
             system: this.currentSystemName,
             parameters: this.parameters.getAllParameters(),
+            backend: this.getActiveBackendType(),
             timestamp: new Date().toISOString(),
             version: '1.0.0'
         };
@@ -294,6 +325,6 @@ export class VIB3Engine {
         this.canvasManager = null;
 
         this.initialized = false;
-        console.log('🗑️ VIB3+ Engine destroyed');
+        console.log('VIB3+ Engine destroyed');
     }
 }
