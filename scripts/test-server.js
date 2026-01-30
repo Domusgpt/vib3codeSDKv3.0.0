@@ -1,5 +1,5 @@
 import { createServer } from 'http';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, statSync } from 'fs';
 import { join, extname } from 'path';
 
 const MIME = {
@@ -10,21 +10,34 @@ const MIME = {
     '.wasm': 'application/wasm',
     '.json': 'application/json',
     '.png': 'image/png',
-    '.svg': 'image/svg+xml'
+    '.jpg': 'image/jpeg',
+    '.svg': 'image/svg+xml',
+    '.wgsl': 'text/plain',
+    '.glsl': 'text/plain',
 };
 
+const ROOT = process.cwd();
+
 createServer((req, res) => {
-    let p = join('./sdk', req.url === '/' ? 'index.html' : req.url).split('?')[0];
+    const url = req.url.split('?')[0];
+    let p = join(ROOT, url === '/' ? 'index.html' : url);
+
+    // If path is a directory, try index.html inside it
+    if (existsSync(p) && statSync(p).isDirectory()) {
+        p = join(p, 'index.html');
+    }
+
     if (!existsSync(p)) {
-        res.writeHead(404);
-        res.end();
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end(`404 Not Found: ${url}`);
         return;
     }
-    // Headers required for WASM with SharedArrayBuffer
+
     res.writeHead(200, {
         'Content-Type': MIME[extname(p)] || 'application/octet-stream',
         'Cross-Origin-Opener-Policy': 'same-origin',
-        'Cross-Origin-Embedder-Policy': 'require-corp'
+        'Cross-Origin-Embedder-Policy': 'require-corp',
+        'Access-Control-Allow-Origin': '*',
     });
     res.end(readFileSync(p));
-}).listen(3457, () => console.log('Server ready on http://localhost:3457'));
+}).listen(3457, () => console.log('Test server ready on http://localhost:3457'));

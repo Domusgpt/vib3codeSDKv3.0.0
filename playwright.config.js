@@ -17,6 +17,9 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
 
+  /* Timeout per test */
+  timeout: 60000,
+
   /* Reporter to use */
   reporter: [
     ['html', { outputFolder: 'playwright-report' }],
@@ -47,11 +50,21 @@ export default defineConfig({
         launchOptions: {
           executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
             '/root/.cache/ms-playwright/chromium-1194/chrome-linux/chrome',
+          env: {
+            ...process.env,
+            TMPDIR: '/home/user/tmp',
+          },
           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
             '--disable-gpu',
+            '--enable-unsafe-swiftshader',
+            '--use-gl=swiftshader',
+            '--disable-software-rasterizer',
+            '--disable-extensions',
+            '--disable-background-networking',
+            `--crash-dumps-dir=/home/user/tmp`,
           ],
         },
       },
