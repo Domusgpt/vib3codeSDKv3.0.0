@@ -108,6 +108,17 @@ export {
     canUseWebGPU
 } from './UnifiedRenderBridge.js';
 
+// Shader loader (external shader file fetch + cache)
+export {
+    ShaderLoader,
+    shaderLoader
+} from './ShaderLoader.js';
+
+// Multi-canvas bridge (5-layer orchestration for Quantum/Holographic)
+export {
+    MultiCanvasBridge
+} from './MultiCanvasBridge.js';
+
 /**
  * Create a complete rendering context
  * @param {HTMLCanvasElement} canvas

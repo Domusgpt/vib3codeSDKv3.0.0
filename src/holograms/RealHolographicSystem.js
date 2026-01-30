@@ -4,6 +4,8 @@
  * Audio reactive only - no mouse/touch/scroll interference
  */
 import { HolographicVisualizer } from './HolographicVisualizer.js';
+import { MultiCanvasBridge } from '../render/MultiCanvasBridge.js';
+import { shaderLoader } from '../render/ShaderLoader.js';
 
 export class RealHolographicSystem {
     constructor() {
@@ -90,12 +92,50 @@ export class RealHolographicSystem {
         });
         
         console.log(`✅ Created ${successfulLayers}/5 REAL holographic layers`);
-        
+
         if (successfulLayers === 0) {
             console.error('🚨 NO HOLOGRAPHIC VISUALIZERS CREATED! Check canvas elements and WebGL support.');
         }
     }
-    
+
+    /**
+     * Create a MultiCanvasBridge for WebGPU rendering.
+     * Returns a configured bridge with holographic shaders compiled on all layers.
+     * Use this when migrating from direct WebGL to the unified bridge system.
+     *
+     * @param {object} [options]
+     * @param {boolean} [options.preferWebGPU=true]
+     * @returns {Promise<MultiCanvasBridge|null>}
+     */
+    async createMultiCanvasBridge(options = {}) {
+        const canvasMap = {};
+        const layerIds = {
+            background: 'holo-background-canvas',
+            shadow: 'holo-shadow-canvas',
+            content: 'holo-content-canvas',
+            highlight: 'holo-highlight-canvas',
+            accent: 'holo-accent-canvas'
+        };
+
+        for (const [role, id] of Object.entries(layerIds)) {
+            const el = document.getElementById(id);
+            if (el) canvasMap[role] = el;
+        }
+
+        if (Object.keys(canvasMap).length === 0) return null;
+
+        const bridge = new MultiCanvasBridge();
+        await bridge.initialize({ canvases: canvasMap, preferWebGPU: options.preferWebGPU !== false });
+
+        const sources = await shaderLoader.loadShaderPair('holographic', 'holographic/holographic.frag');
+        if (sources.glslFragment || sources.wgslFragment) {
+            bridge.compileShaderAll('holographic', sources);
+        }
+
+        this._multiCanvasBridge = bridge;
+        return bridge;
+    }
+
     setActive(active) {
         this.isActive = active;
         

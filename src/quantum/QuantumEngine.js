@@ -6,6 +6,8 @@
 import { QuantumHolographicVisualizer } from './QuantumVisualizer.js';
 import { ParameterManager } from '../core/Parameters.js';
 import { GeometryLibrary } from '../geometry/GeometryLibrary.js';
+import { MultiCanvasBridge } from '../render/MultiCanvasBridge.js';
+import { shaderLoader } from '../render/ShaderLoader.js';
 
 export class QuantumEngine {
     constructor(options = {}) {
@@ -87,7 +89,45 @@ export class QuantumEngine {
         
         console.log(`✅ Created ${this.visualizers.length} quantum visualizers with enhanced effects`);
     }
-    
+
+    /**
+     * Create a MultiCanvasBridge for WebGPU rendering.
+     * Returns a configured bridge with quantum shaders compiled on all layers.
+     * Use this when migrating from direct WebGL to the unified bridge system.
+     *
+     * @param {object} [options]
+     * @param {boolean} [options.preferWebGPU=true]
+     * @returns {Promise<MultiCanvasBridge|null>}
+     */
+    async createMultiCanvasBridge(options = {}) {
+        const canvasMap = {};
+        const layerIds = {
+            background: 'quantum-background-canvas',
+            shadow: 'quantum-shadow-canvas',
+            content: 'quantum-content-canvas',
+            highlight: 'quantum-highlight-canvas',
+            accent: 'quantum-accent-canvas'
+        };
+
+        for (const [role, id] of Object.entries(layerIds)) {
+            const el = document.getElementById(id);
+            if (el) canvasMap[role] = el;
+        }
+
+        if (Object.keys(canvasMap).length === 0) return null;
+
+        const bridge = new MultiCanvasBridge();
+        await bridge.initialize({ canvases: canvasMap, preferWebGPU: options.preferWebGPU !== false });
+
+        const sources = await shaderLoader.loadShaderPair('quantum', 'quantum/quantum.frag');
+        if (sources.glslFragment || sources.wgslFragment) {
+            bridge.compileShaderAll('quantum', sources);
+        }
+
+        this._multiCanvasBridge = bridge;
+        return bridge;
+    }
+
     /**
      * Set system active/inactive
      */

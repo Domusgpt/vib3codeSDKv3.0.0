@@ -7,6 +7,7 @@
  */
 
 import { UnifiedRenderBridge } from '../render/UnifiedRenderBridge.js';
+import { shaderLoader } from '../render/ShaderLoader.js';
 
 // ============================================================================
 // Shader Sources
@@ -422,11 +423,30 @@ export class FacetedSystem {
         this.canvas = canvas;
         try {
             this._bridge = await UnifiedRenderBridge.create(canvas, options);
-            const compiled = this._bridge.compileShader('faceted', {
+
+            // Try loading external shader files first, fall back to inline
+            let sources = {
                 glslVertex: VERTEX_SHADER_GLSL,
                 glslFragment: FRAGMENT_SHADER_GLSL,
                 wgslFragment: FRAGMENT_SHADER_WGSL
-            });
+            };
+
+            try {
+                const external = await shaderLoader.loadShaderPair('faceted', 'faceted/faceted.frag');
+                if (external.glslFragment) {
+                    sources.glslFragment = external.glslFragment;
+                }
+                if (external.wgslFragment) {
+                    sources.wgslFragment = external.wgslFragment;
+                }
+                if (external.glslVertex) {
+                    sources.glslVertex = external.glslVertex;
+                }
+            } catch (loadErr) {
+                // External load failed — use inline shaders (already set above)
+            }
+
+            const compiled = this._bridge.compileShader('faceted', sources);
 
             if (!compiled) {
                 console.error('Failed to compile faceted shaders via bridge');
