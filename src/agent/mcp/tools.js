@@ -466,7 +466,33 @@ export function validateToolInput(toolName, input) {
         }
     }
 
+    // Reject excessively large input payloads (> 64 KB serialized)
+    try {
+        if (JSON.stringify(input).length > 64 * 1024) {
+            return {
+                valid: false,
+                error: {
+                    type: 'ValidationError',
+                    code: 'INPUT_TOO_LARGE',
+                    message: 'Input payload exceeds 64 KB size limit',
+                    suggestion: 'Reduce the size of the input data'
+                }
+            };
+        }
+    } catch {
+        return {
+            valid: false,
+            error: {
+                type: 'ValidationError',
+                code: 'INVALID_INPUT',
+                message: 'Input is not serializable',
+                suggestion: 'Provide a valid JSON object as input'
+            }
+        };
+    }
+
     // Validate property types and ranges against schema
+    const MAX_STRING_LENGTH = 1024;
     const properties = tool.inputSchema.properties || {};
     const errors = [];
     for (const [key, value] of Object.entries(input)) {
@@ -486,10 +512,21 @@ export function validateToolInput(toolName, input) {
                 errors.push(`${key}: ${num} exceeds maximum ${propSchema.maximum}`);
             }
         }
-        if (propSchema.type === 'string' && propSchema.enum) {
-            if (!propSchema.enum.includes(value)) {
+        if (propSchema.type === 'string') {
+            if (typeof value !== 'string') {
+                errors.push(`${key}: must be a string`);
+                continue;
+            }
+            if (value.length > MAX_STRING_LENGTH) {
+                errors.push(`${key}: string exceeds maximum length of ${MAX_STRING_LENGTH}`);
+                continue;
+            }
+            if (propSchema.enum && !propSchema.enum.includes(value)) {
                 errors.push(`${key}: '${value}' is not one of [${propSchema.enum.join(', ')}]`);
             }
+        }
+        if (propSchema.type === 'boolean' && typeof value !== 'boolean') {
+            errors.push(`${key}: must be a boolean`);
         }
     }
 

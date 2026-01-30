@@ -958,8 +958,13 @@ void main() {
      * Update visualization parameters with immediate GPU sync
      */
     updateParameters(params) {
-        this.params = { ...this.params, ...params };
-        
+        if (!params || typeof params !== 'object') return;
+        // Filter to only finite numbers to prevent NaN/Infinity reaching GPU uniforms
+        for (const [key, value] of Object.entries(params)) {
+            if (typeof value === 'number' && Number.isFinite(value)) {
+                this.params[key] = value;
+            }
+        }
         // Don't call render() here - engine will call it to prevent infinite loop
     }
     

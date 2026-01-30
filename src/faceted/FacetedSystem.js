@@ -719,10 +719,16 @@ export class FacetedSystem {
     }
 
     /**
-     * Update parameters
+     * Update parameters with validation
      */
     updateParameters(params) {
-        Object.assign(this.parameters, params);
+        if (!params || typeof params !== 'object') return;
+        for (const [key, value] of Object.entries(params)) {
+            // Only accept finite numbers to prevent NaN/Infinity reaching shaders
+            if (typeof value === 'number' && Number.isFinite(value)) {
+                this.parameters[key] = value;
+            }
+        }
     }
 
     // ============================================

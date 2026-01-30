@@ -987,12 +987,15 @@ export class HolographicVisualizer {
      * This method was missing and causing parameter sliders to not work in holographic system
      */
     updateParameters(params) {
+        if (!params || typeof params !== 'object') return;
         // Update variant parameters with proper mapping and scaling
         if (this.variantParams) {
             Object.keys(params).forEach(param => {
                 const mappedParam = this.mapParameterName(param);
                 if (mappedParam !== null) {
                     let scaledValue = params[param];
+                    // Guard against NaN/Infinity reaching GPU uniforms
+                    if (typeof scaledValue !== 'number' || !Number.isFinite(scaledValue)) return;
                     
                     // FIX: Scale gridDensity to reasonable holographic density range (back to normal levels)
                     if (param === 'gridDensity') {

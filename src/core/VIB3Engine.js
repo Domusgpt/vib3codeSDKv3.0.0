@@ -438,15 +438,51 @@ export class VIB3Engine {
             console.warn('VIB3Engine: importState received invalid state');
             return;
         }
+
+        // Size guard: reject excessively large state objects (> 256 KB serialized)
+        try {
+            const serialized = JSON.stringify(state);
+            if (serialized.length > 256 * 1024) {
+                console.warn('VIB3Engine: importState rejected — state exceeds 256 KB');
+                return;
+            }
+        } catch {
+            console.warn('VIB3Engine: importState received non-serializable state');
+            return;
+        }
+
+        // Depth guard: reject deeply nested objects (max depth 6)
+        const maxDepth = (obj, depth = 0) => {
+            if (depth > 6) return depth;
+            if (!obj || typeof obj !== 'object') return depth;
+            let max = depth;
+            for (const v of Object.values(obj)) {
+                max = Math.max(max, maxDepth(v, depth + 1));
+                if (max > 6) return max;
+            }
+            return max;
+        };
+        if (maxDepth(state) > 6) {
+            console.warn('VIB3Engine: importState rejected — state nesting exceeds depth 6');
+            return;
+        }
+
         if (state.system && typeof state.system === 'string') {
             await this.switchSystem(state.system);
         }
-        if (state.parameters && typeof state.parameters === 'object') {
-            this.parameters.setParameters(state.parameters);
-            this.reactivity.setBaseParameters(state.parameters);
+        if (state.parameters && typeof state.parameters === 'object' && !Array.isArray(state.parameters)) {
+            // Only allow known parameter keys through
+            const safeParams = {};
+            for (const [key, value] of Object.entries(state.parameters)) {
+                if (typeof value === 'number' && Number.isFinite(value)) {
+                    safeParams[key] = value;
+                }
+            }
+            this.parameters.setParameters(safeParams);
+            this.reactivity.setBaseParameters(safeParams);
             this.updateCurrentSystemParameters();
         }
-        if (state.reactivity && typeof state.reactivity === 'object') {
+        if (state.reactivity && typeof state.reactivity === 'object' && !Array.isArray(state.reactivity)) {
             this.reactivity.loadConfig(state.reactivity);
         }
         if (state.reactivityActive) {
