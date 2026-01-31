@@ -524,7 +524,8 @@
          VISUALIZER ENGINE + SCROLL CHOREOGRAPHY
          ════════════════════════════════════════════════════════ -->
     <script type="module">
-        // ── Import VIB3 Systems Directly (bypass CanvasManager for multi-instance) ──
+        // ── Import real FacetedSystem for GPU-rendered canvases ──
+        import { FacetedSystem } from './src/faceted/FacetedSystem.js';
 
         gsap.registerPlugin(ScrollTrigger);
 
@@ -720,25 +721,86 @@
             }
         }
 
+        // ── Real GPU-Rendered Adapter ──
+        // Wraps FacetedSystem with the same setParam/setParams/render/params
+        // interface as Vib3Procedural so scroll choreography works identically.
+        // FacetedSystem self-animates; render() syncs params for GSAP tweens.
+        class Vib3FacetedReal {
+            constructor(canvasId, opts = {}) {
+                this.faceted = new FacetedSystem();
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) { this.active = false; return; }
+                this.active = true;
+                this.params = {
+                    geometry: opts.geometry ?? 3,
+                    hue: opts.hue ?? 180,
+                    gridDensity: opts.gridDensity ?? 24,
+                    speed: opts.speed ?? 1.0,
+                    morphFactor: opts.morphFactor ?? 0.5,
+                    chaos: opts.chaos ?? 0.2,
+                    intensity: opts.intensity ?? 0.7,
+                    saturation: opts.saturation ?? 0.8,
+                    rot4dXW: opts.rot4dXW ?? 0,
+                    rot4dYW: opts.rot4dYW ?? 0,
+                    rot4dZW: opts.rot4dZW ?? 0,
+                    rot4dXY: opts.rot4dXY ?? 0,
+                    dimension: opts.dimension ?? 3.5,
+                };
+                const ok = this.faceted.initialize(canvas);
+                if (!ok) { this.active = false; return; }
+                this.faceted.updateParameters(this.params);
+                this.faceted.start();
+                // Responsive resize via ResizeObserver
+                this._resizeObs = new ResizeObserver(() => {
+                    const parent = canvas.parentElement;
+                    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                    this.faceted.resize(parent.clientWidth, parent.clientHeight, dpr);
+                });
+                this._resizeObs.observe(canvas.parentElement);
+            }
+            setParam(name, value) {
+                this.params[name] = value;
+                this.faceted.updateParameters({ [name]: value });
+            }
+            setParams(obj) {
+                Object.assign(this.params, obj);
+                this.faceted.updateParameters(obj);
+            }
+            render(timestamp) {
+                // Sync params every frame (handles GSAP direct-mutation of this.params)
+                if (!this.active) return;
+                this.faceted.updateParameters(this.params);
+            }
+            dispose() {
+                this.active = false;
+                if (this._resizeObs) this._resizeObs.disconnect();
+                if (this.faceted) {
+                    this.faceted.stop();
+                    this.faceted.dispose();
+                }
+            }
+        }
+
         // ── Create All Instances ──
         function createInstances() {
             const instances = state.instances;
 
-            instances.set('hero', new Vib3Procedural('hero-canvas', {
+            // ── Real GPU-rendered FacetedSystem instances (5 WebGL contexts) ──
+            instances.set('hero', new Vib3FacetedReal('hero-canvas', {
                 geometry: 3, hue: 200, gridDensity: 30, speed: 0.6, intensity: 0.5, chaos: 0.15,
                 rot4dXW: 0.3, morphFactor: 0.8, dimension: 3.8
             }));
 
-            instances.set('coordLeft', new Vib3Procedural('coord-canvas-left', {
+            instances.set('coordLeft', new Vib3FacetedReal('coord-canvas-left', {
                 geometry: 2, hue: 240, gridDensity: 28, speed: 0.8, intensity: 0.7, chaos: 0.1,
                 dimension: 3.5
             }));
-            instances.set('coordRight', new Vib3Procedural('coord-canvas-right', {
+            instances.set('coordRight', new Vib3FacetedReal('coord-canvas-right', {
                 geometry: 1, hue: 60, gridDensity: 28, speed: 0.8, intensity: 0.7, chaos: 0.1,
                 dimension: 3.5
             }));
 
-            instances.set('densityBg', new Vib3Procedural('density-bg-canvas', {
+            instances.set('densityBg', new Vib3FacetedReal('density-bg-canvas', {
                 geometry: 6, hue: 280, gridDensity: 40, speed: 0.5, intensity: 0.35, chaos: 0.05,
                 dimension: 4.0
             }));
@@ -758,7 +820,7 @@
                 geometry: 7, hue: 160, gridDensity: 16, speed: 0.3, intensity: 0.2, chaos: 0.05,
                 dimension: 4.2
             }));
-            instances.set('wearable', new Vib3Procedural('wearable-canvas', {
+            instances.set('wearable', new Vib3FacetedReal('wearable-canvas', {
                 geometry: 3, hue: 180, gridDensity: 24, speed: 0.8, intensity: 0.85, chaos: 0.1,
                 dimension: 3.5
             }));
