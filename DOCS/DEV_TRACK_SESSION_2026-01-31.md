@@ -153,4 +153,68 @@ These items from the master plan cannot be completed in code and need your actio
 
 ---
 
+## Session 2 (continued) — Commits 4-6
+
+### Commit 4: WebGPU Primary Render Path (`c28886c`)
+
+| Item | File(s) | Notes |
+|------|---------|-------|
+| WebGPU as primary render path | `src/core/VIB3Engine.js` | Flipped `preferWebGPU` default from `false` to `true`. Added WebGPU bridge init for all 3 systems (Quantum, Faceted, Holographic) with try/catch and WebGL fallback. |
+
+### Commit 5: TypeScript Types for v2.0.0 Modules (`74a8f43`)
+
+23 files changed, 1620 insertions:
+
+| Module | File(s) | Notes |
+|--------|---------|-------|
+| SpatialInputSystem | `types/reactivity/SpatialInputSystem.d.ts` | 8 source types, 8 axes, full method signatures |
+| Creative (4 files) | `types/creative/*.d.ts` + `index.d.ts` | ColorPresets, TransitionAnimator, PostProcessing, Timeline |
+| Integrations (8 files) | `types/integrations/*.d.ts` + `index.d.ts` | React, Vue, Svelte, Figma, Three.js, TouchDesigner, OBS |
+| Advanced (6 files) | `types/advanced/*.d.ts` + `index.d.ts` | WebXR, WebGPU Compute, MIDI, AI Presets, OffscreenWorker |
+| ErrorReporter | `types/core/ErrorReporter.d.ts` | Error report payload, options |
+| Barrel update | `types/adaptive-sdk.d.ts` | Re-exports all 18 new modules |
+| Engine types fix | `types/core/VIB3Engine.d.ts` | preferWebGPU default → true |
+
+### Commit 6: Examples, Canary CI, and Unit Tests (`61fa5e7`)
+
+18 files changed, 1528 insertions:
+
+| Item | File(s) | Notes |
+|------|---------|-------|
+| Vue 3 example | `examples/vue/index.js` + `README.md` | Composition API pattern with watchers |
+| Svelte example | `examples/svelte/index.js` + `README.md` | onMount/onDestroy lifecycle pattern |
+| Canary builds CI | `.github/workflows/canary.yml` | Publishes `@vib3/sdk@canary` on every main push |
+| 11 unit test files | `tests/creative/*.test.js`, `tests/advanced/*.test.js`, `tests/integrations/*.test.js`, `tests/reactivity/SpatialInputSystem.test.js`, `tests/core/ErrorReporter.test.js` | 148 tests, all passing |
+| happy-dom | `package.json` | Added as devDependency for vitest environment |
+
+---
+
+## Updated Phase Status
+
+| Phase | Items | Done | Remaining |
+|-------|-------|------|-----------|
+| E-1: Pre-Launch Blockers | 7 | 7 | 0 |
+| E-2: Launch | 5 | 3 | 2 (videos, full demo polish) |
+| E-3: Adoption | 5 | 5 | 0 — Vue + Svelte examples added |
+| E-4: Quality | 9 | 5 | 4 (mobile, memory leak, benchmarks, flaky timing) |
+| E-5: Scale | 6 | 4 | 2 (Figma publish, GitHub Releases) |
+| E-6: Ecosystem | 11 | 4 | 7 (gallery app, tutorial, API docs, community) |
+| **Total** | **43** | **28** | **15** |
+
+---
+
+## Items Still Requiring Manual Action
+
+| Item | Action Required |
+|------|-----------------|
+| npm publish | Configure `NPM_TOKEN` in GitHub repo secrets, push `v2.0.0` tag |
+| Demo videos/GIFs | Screen record 30s of each system, add to `assets/` and README |
+| Figma Community publish | Generate plugin bundle from `FigmaPlugin.js`, publish via Figma Dev Mode |
+| GitHub Discussions | Enable in repo Settings → Features → Discussions |
+| GitHub Projects board | Create in repo → Projects tab |
+| Discord community | Create server externally |
+| Blog posts | Content creation |
+
+---
+
 *Session end — January 31, 2026*
