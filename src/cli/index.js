@@ -4,7 +4,9 @@
  * Agent-friendly command-line interface with JSON output mode
  */
 
+import { performance } from 'node:perf_hooks';
 import { mcpServer, toolDefinitions } from '../agent/index.js';
+import { schemaRegistry } from '../schemas/index.js';
 
 /**
  * CLI Configuration
@@ -107,6 +109,24 @@ function output(data, isJson) {
     }
 }
 
+function wrapResponse(operation, data = {}, success = true, durationMs = null) {
+    return {
+        success,
+        operation,
+        timestamp: new Date().toISOString(),
+        duration_ms: durationMs ?? undefined,
+        ...data
+    };
+}
+
+function validateResponseEnvelope(response) {
+    const validation = schemaRegistry.validate('toolResponse', response);
+    if (!validation.valid) {
+        return { ...response, validation_errors: validation.errors };
+    }
+    return response;
+}
+
 /**
  * Format data for human-readable output
  */
@@ -159,7 +179,8 @@ function showHelp(isJson) {
             system: 'Switch visualization system',
             randomize: 'Randomize all parameters',
             reset: 'Reset to default parameters',
-            tools: 'List available MCP tools'
+            tools: 'List available MCP tools',
+            validate: 'Validate manifests, packs, and configs'
         },
         options: {
             '--json, -j': 'Output in JSON format (agent-friendly)',
@@ -174,7 +195,9 @@ function showHelp(isJson) {
             `${CLI_NAME} set visual --hue 200 --chaos 0.3`,
             `${CLI_NAME} geometry list --core-type hypersphere`,
             `${CLI_NAME} state --json`,
-            `${CLI_NAME} tools --json`
+            `${CLI_NAME} tools --json`,
+            `${CLI_NAME} validate pack scene.vib3 --json`,
+            `${CLI_NAME} validate manifest extension.json`
         ]
     };
 
@@ -222,7 +245,7 @@ async function handleState(parsed) {
 /**
  * Handle 'set' command
  */
-async function handleSet(parsed) {
+async function handleSet(parsed, startTime) {
     const subcommand = parsed.subcommand;
 
     if (subcommand === 'rotation') {
@@ -249,7 +272,7 @@ async function handleSet(parsed) {
         return await mcpServer.handleToolCall('set_visual_parameters', args);
     }
 
-    return {
+    return wrapResponse('set_parameters', {
         error: {
             type: 'ValidationError',
             code: 'INVALID_SUBCOMMAND',
@@ -257,13 +280,13 @@ async function handleSet(parsed) {
             valid_options: ['rotation', 'visual'],
             suggestion: 'Use "set rotation" or "set visual"'
         }
-    };
+    }, false, performance.now() - startTime);
 }
 
 /**
  * Handle 'geometry' command
  */
-async function handleGeometry(parsed) {
+async function handleGeometry(parsed, startTime) {
     const subcommand = parsed.subcommand || 'list';
 
     if (subcommand === 'list') {
@@ -278,7 +301,7 @@ async function handleGeometry(parsed) {
         return await mcpServer.handleToolCall('change_geometry', { geometry_index: index });
     }
 
-    return {
+    return wrapResponse('change_geometry', {
         error: {
             type: 'ValidationError',
             code: 'INVALID_SUBCOMMAND',
@@ -286,17 +309,17 @@ async function handleGeometry(parsed) {
             valid_options: ['list', 'set', '<index>'],
             suggestion: 'Use "geometry list" or "geometry <index>"'
         }
-    };
+    }, false, performance.now() - startTime);
 }
 
 /**
  * Handle 'system' command
  */
-async function handleSystem(parsed) {
+async function handleSystem(parsed, startTime) {
     const system = parsed.subcommand || parsed.options.system;
 
     if (!system) {
-        return {
+        return wrapResponse('switch_system', {
             error: {
                 type: 'ValidationError',
                 code: 'MISSING_SYSTEM',
@@ -304,7 +327,7 @@ async function handleSystem(parsed) {
                 valid_options: ['quantum', 'faceted', 'holographic'],
                 suggestion: 'Use "system quantum", "system faceted", or "system holographic"'
             }
-        };
+        }, false, performance.now() - startTime);
     }
 
     return await mcpServer.handleToolCall('switch_system', { system });
@@ -331,16 +354,132 @@ async function handleReset(parsed) {
 /**
  * Handle 'tools' command
  */
-async function handleTools(parsed) {
+async function handleTools(parsed, startTime) {
     const includeSchemas = parsed.options.schemas === 'true' || parsed.options.full === 'true';
     const tools = mcpServer.listTools(includeSchemas);
 
-    return {
-        success: true,
-        operation: 'list_tools',
+    return wrapResponse('list_tools', {
         count: tools.length,
         tools
-    };
+    }, true, performance.now() - startTime);
+}
+
+/**
+ * Handle 'validate' command - validates manifests, packs, and configs
+ */
+async function handleValidate(parsed, startTime) {
+    const subcommand = parsed.subcommand || 'pack';
+    const filePath = parsed.options.file || parsed.options.f || parsed.positional[0];
+
+    if (!filePath && subcommand !== 'schema') {
+        return wrapResponse('validate', {
+            error: {
+                type: 'ValidationError',
+                code: 'MISSING_FILE',
+                message: 'File path required for validation',
+                suggestion: 'Use --file <path> or provide file as positional argument'
+            }
+        }, false, performance.now() - startTime);
+    }
+
+    try {
+        switch (subcommand) {
+            case 'pack': {
+                // Validate a .vib3 scene pack file
+                const fs = await import('fs/promises');
+                const content = await fs.readFile(filePath, 'utf-8');
+                const pack = JSON.parse(content);
+
+                const validation = schemaRegistry.validate('parameters', pack.parameters || pack);
+                return wrapResponse('validate_pack', {
+                    file: filePath,
+                    valid: validation.valid,
+                    errors: validation.errors || [],
+                    schema: 'parameters'
+                }, validation.valid, performance.now() - startTime);
+            }
+
+            case 'manifest': {
+                // Validate extension/tool manifest
+                const fs = await import('fs/promises');
+                const content = await fs.readFile(filePath, 'utf-8');
+                const manifest = JSON.parse(content);
+
+                // Basic manifest structure validation
+                const required = ['name', 'version', 'type'];
+                const missing = required.filter(f => !manifest[f]);
+                const valid = missing.length === 0;
+
+                return wrapResponse('validate_manifest', {
+                    file: filePath,
+                    valid,
+                    errors: missing.length > 0 ? [{ message: `Missing required fields: ${missing.join(', ')}` }] : [],
+                    manifest_type: manifest.type || 'unknown',
+                    name: manifest.name,
+                    version: manifest.version
+                }, valid, performance.now() - startTime);
+            }
+
+            case 'response': {
+                // Validate a tool response envelope
+                const fs = await import('fs/promises');
+                const content = await fs.readFile(filePath, 'utf-8');
+                const response = JSON.parse(content);
+
+                const validation = schemaRegistry.validate('toolResponse', response);
+                return wrapResponse('validate_response', {
+                    file: filePath,
+                    valid: validation.valid,
+                    errors: validation.errors || [],
+                    schema: 'toolResponse'
+                }, validation.valid, performance.now() - startTime);
+            }
+
+            case 'schema': {
+                // List available schemas
+                const schemas = ['parameters', 'toolResponse', 'error'];
+                return wrapResponse('list_schemas', {
+                    schemas,
+                    count: schemas.length
+                }, true, performance.now() - startTime);
+            }
+
+            default:
+                return wrapResponse('validate', {
+                    error: {
+                        type: 'ValidationError',
+                        code: 'INVALID_SUBCOMMAND',
+                        message: `Unknown validate subcommand: ${subcommand}`,
+                        valid_options: ['pack', 'manifest', 'response', 'schema'],
+                        suggestion: 'Use "validate pack <file>", "validate manifest <file>", or "validate schema"'
+                    }
+                }, false, performance.now() - startTime);
+        }
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            return wrapResponse('validate', {
+                error: {
+                    type: 'NotFoundError',
+                    code: 'FILE_NOT_FOUND',
+                    message: `File not found: ${filePath}`,
+                    suggestion: 'Check the file path and try again'
+                }
+            }, false, performance.now() - startTime);
+        }
+
+        if (error instanceof SyntaxError) {
+            return wrapResponse('validate', {
+                error: {
+                    type: 'ValidationError',
+                    code: 'INVALID_JSON',
+                    message: `Invalid JSON in file: ${error.message}`,
+                    suggestion: 'Ensure the file contains valid JSON'
+                }
+            }, false, performance.now() - startTime);
+        }
+
+        throw error;
+    }
 }
 
 /**
@@ -364,6 +503,8 @@ async function main() {
     // Route to command handler
     let result;
 
+    const startTime = performance.now();
+
     try {
         switch (parsed.command) {
             case 'create':
@@ -373,13 +514,13 @@ async function main() {
                 result = await handleState(parsed);
                 break;
             case 'set':
-                result = await handleSet(parsed);
+                result = await handleSet(parsed, startTime);
                 break;
             case 'geometry':
-                result = await handleGeometry(parsed);
+                result = await handleGeometry(parsed, startTime);
                 break;
             case 'system':
-                result = await handleSystem(parsed);
+                result = await handleSystem(parsed, startTime);
                 break;
             case 'randomize':
                 result = await handleRandomize(parsed);
@@ -388,10 +529,13 @@ async function main() {
                 result = await handleReset(parsed);
                 break;
             case 'tools':
-                result = await handleTools(parsed);
+                result = await handleTools(parsed, startTime);
+                break;
+            case 'validate':
+                result = await handleValidate(parsed, startTime);
                 break;
             default:
-                result = {
+                result = wrapResponse('get_state', {
                     error: {
                         type: 'NotFoundError',
                         code: 'UNKNOWN_COMMAND',
@@ -399,29 +543,29 @@ async function main() {
                         valid_options: ['create', 'state', 'set', 'geometry', 'system', 'randomize', 'reset', 'tools'],
                         suggestion: 'Run "vib3 --help" for available commands'
                     }
-                };
+                }, false, performance.now() - startTime);
         }
     } catch (error) {
-        result = {
+        result = wrapResponse(parsed.command || 'get_state', {
             error: {
                 type: 'SystemError',
                 code: 'EXECUTION_ERROR',
                 message: error.message,
                 suggestion: 'Check your command syntax and try again'
             }
-        };
+        }, false, performance.now() - startTime);
     }
 
-    // Output result
-    output(result, parsed.flags.json);
+    const finalResult = parsed.flags.verbose ? validateResponseEnvelope(result) : result;
+    output(finalResult, parsed.flags.json);
 
     // Exit with appropriate code
-    if (result.error) {
+    if (finalResult.error || finalResult.success === false) {
         const code = {
             'ValidationError': ExitCode.VALIDATION_ERROR,
             'NotFoundError': ExitCode.NOT_FOUND,
             'SystemError': ExitCode.ERROR
-        }[result.error.type] || ExitCode.ERROR;
+        }[finalResult.error?.type] || ExitCode.ERROR;
 
         process.exit(code);
     }

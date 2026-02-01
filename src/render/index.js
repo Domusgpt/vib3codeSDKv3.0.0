@@ -8,6 +8,8 @@
  * - Framebuffer/render target abstraction
  * - Shader program management
  * - WebGL 2.0 backend
+ * - WebGPU backend (fullscreen quad / procedural shaders)
+ * - Unified render bridge (WebGL/WebGPU transparent switching)
  */
 
 // State management
@@ -65,6 +67,11 @@ export {
     renderTargetPool
 } from './RenderTarget.js';
 
+// Resource registry
+export {
+    RenderResourceRegistry
+} from './RenderResourceRegistry.js';
+
 // Shader programs
 export {
     ShaderStage,
@@ -84,6 +91,34 @@ export {
     createWebGLBackend
 } from './backends/WebGLBackend.js';
 
+// WebGPU backend
+export {
+    WebGPUBackend,
+    WebGPUFeatures,
+    WGSLShaderLib,
+    isWebGPUSupported,
+    getWebGPUFeatures,
+    createWebGPUBackend,
+    createWebGPUWithFallback
+} from './backends/WebGPUBackend.js';
+
+// Unified render bridge (WebGL/WebGPU transparent switching)
+export {
+    UnifiedRenderBridge,
+    canUseWebGPU
+} from './UnifiedRenderBridge.js';
+
+// Shader loader (external shader file fetch + cache)
+export {
+    ShaderLoader,
+    shaderLoader
+} from './ShaderLoader.js';
+
+// Multi-canvas bridge (5-layer orchestration for Quantum/Holographic)
+export {
+    MultiCanvasBridge
+} from './MultiCanvasBridge.js';
+
 /**
  * Create a complete rendering context
  * @param {HTMLCanvasElement} canvas
@@ -91,6 +126,9 @@ export {
  * @returns {object} Rendering context with backend and helpers
  */
 export function createRenderContext(canvas, options = {}) {
+    if (options.backend === 'webgpu') {
+        return null;
+    }
     const { createWebGLBackend } = require('./backends/WebGLBackend.js');
     const backend = createWebGLBackend(canvas, options);
 
@@ -113,6 +151,53 @@ export function createRenderContext(canvas, options = {}) {
             backend.dispose();
         }
     };
+}
+
+/**
+ * Create a rendering context (async, supports WebGPU).
+ * @param {HTMLCanvasElement} canvas
+ * @param {object} [options]
+ * @param {string} [options.backend] - 'webgl' or 'webgpu'
+ * @param {boolean} [options.preferWebGPU] - Try WebGPU first, fallback to WebGL
+ * @returns {Promise<object|null>}
+ */
+export async function createRenderContextAsync(canvas, options = {}) {
+    // Use UnifiedRenderBridge for auto backend selection
+    if (options.preferWebGPU || options.backend === 'bridge') {
+        const bridge = await UnifiedRenderBridge.create(canvas, options);
+        if (bridge) {
+            return {
+                backend: bridge,
+                canvas,
+                backendType: bridge.backendType,
+                dispose() {
+                    bridge.dispose();
+                }
+            };
+        }
+        // Fall through to direct WebGL
+    }
+
+    if (options.backend === 'webgpu') {
+        const backend = await createWebGPUBackend(canvas, options);
+
+        if (!backend) {
+            return null;
+        }
+
+        return {
+            backend,
+            canvas,
+            device: backend.device,
+            context: backend.context,
+            format: backend.format,
+            dispose() {
+                backend.dispose();
+            }
+        };
+    }
+
+    return createRenderContext(canvas, options);
 }
 
 /**
@@ -278,3 +363,5 @@ import { CommandBuffer } from './CommandBuffer.js';
 import { RenderTarget } from './RenderTarget.js';
 import { RenderState } from './RenderState.js';
 import { ShaderProgram, ShaderLib } from './ShaderProgram.js';
+import { UnifiedRenderBridge } from './UnifiedRenderBridge.js';
+import { createWebGPUBackend } from './backends/WebGPUBackend.js';
