@@ -5,7 +5,7 @@
  * OFF by default. Must be explicitly enabled by the host application.
  *
  * Usage:
- *   import { ErrorReporter } from '@vib3/sdk/core/error-reporter';
+ *   import { ErrorReporter } from '@vib3code/sdk/core/error-reporter';
  *   const reporter = new ErrorReporter({ endpoint: '/api/errors' });
  *   reporter.enable();
  *

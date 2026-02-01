@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to VIB3+ CORE (`@vib3/sdk`) will be documented in this file.
+All notable changes to VIB3+ CORE (`@vib3code/sdk`) will be documented in this file.
 
 ## [2.0.0] — 2026-01-30
 

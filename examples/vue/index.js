@@ -4,7 +4,7 @@
  * Run:
  *   npm create vue@latest my-vib3-app
  *   cd my-vib3-app
- *   npm install @vib3/sdk
+ *   npm install @vib3code/sdk
  *   # Copy this file to src/App.vue (rename to .vue and use the template below)
  *   npm run dev
  *
@@ -15,7 +15,7 @@
 // --- Composition API logic (goes in <script setup>) ---
 
 import { ref, onMounted, onUnmounted, watch } from 'vue';
-// In a real project: import { VIB3Engine } from '@vib3/sdk/core';
+// In a real project: import { VIB3Engine } from '@vib3code/sdk/core';
 import { VIB3Engine } from '../../src/core/VIB3Engine.js';
 
 const SYSTEMS = ['quantum', 'faceted', 'holographic'];

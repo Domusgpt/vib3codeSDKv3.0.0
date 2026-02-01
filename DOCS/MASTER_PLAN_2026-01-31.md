@@ -1,7 +1,7 @@
 # VIB3+ CORE — Master Plan & Full Audit
 
 **Date**: January 31, 2026
-**Version**: 2.0.0 (`@vib3/sdk`)
+**Version**: 2.0.0 (`@vib3code/sdk`)
 **Owner**: Clear Seas Solutions LLC
 **Status**: Engine complete. Product launch pending.
 
@@ -33,7 +33,7 @@ The codebase is complete. The product isn't. You have 95,000+ lines of working e
 
 ### 1.1 Expand
 
-#### CLI Scaffolding (`npx @vib3/sdk init`)
+#### CLI Scaffolding (`npx @vib3code/sdk init`)
 - **Status**: NOT DONE
 - **Current state**: `bin.vib3` exists in package.json pointing to `src/cli/index.js` (580 lines). CLI supports `create`, `state`, `set`, `geometry`, `system`, `randomize`, `reset`, `tools`, `validate`. But there is NO `init` command that scaffolds a new project.
 - **Why it matters**: This is how Three.js, Vite, and every modern tool gets adopted. If someone can't go from zero to a running visualization in under 60 seconds, you lose them.
@@ -56,7 +56,7 @@ The codebase is complete. The product isn't. You have 95,000+ lines of working e
   - `integrations/*` (React, Vue, Svelte, Figma, Three.js, TouchDesigner, OBS) — no types
   - `advanced/*` (WebXR, WebGPU Compute, MIDI, AI Presets, OffscreenWorker) — no types
   - `agent/mcp/*` — no types
-- **Why it matters**: TypeScript users won't adopt without autocomplete. The main entry point's types field points to a file that doesn't exist — `import` from `@vib3/sdk` gives no type info at all.
+- **Why it matters**: TypeScript users won't adopt without autocomplete. The main entry point's types field points to a file that doesn't exist — `import` from `@vib3code/sdk` gives no type info at all.
 - **Action**: Create `types/adaptive-sdk.d.ts` as a barrel that re-exports all module types. Add `.d.ts` files for all v2.0.0 modules.
 - **Priority**: HIGH
 
@@ -64,8 +64,8 @@ The codebase is complete. The product isn't. You have 95,000+ lines of working e
 
 #### npm Publish
 - **Status**: NOT DONE
-- **Current state**: `package.json` declares `@vib3/sdk` v2.0.0 with 80+ export paths. No publish scripts. No CI automation. No `prepublishOnly` hook. Package has never been published.
-- **Why it matters**: `@vib3/sdk` needs to be on npm. That's the launch. Everything else is secondary.
+- **Current state**: `package.json` declares `@vib3code/sdk` v2.0.0 with 80+ export paths. No publish scripts. No CI automation. No `prepublishOnly` hook. Package has never been published.
+- **Why it matters**: `@vib3code/sdk` needs to be on npm. That's the launch. Everything else is secondary.
 - **Action**: Add `prepublishOnly` script (runs tests + build), create `.github/workflows/publish.yml` for automated publish on Git tags.
 - **Priority**: CRITICAL
 
@@ -87,8 +87,8 @@ The codebase is complete. The product isn't. You have 95,000+ lines of working e
 
 #### CDN Distribution
 - **Status**: NOT DONE
-- **Current state**: Vite config outputs ESM bundles only. No UMD/IIFE build for `<script src="https://unpkg.com/@vib3/sdk">`. Creative coders who don't use npm can't use VIB3+.
-- **Why it matters**: `<script src="https://unpkg.com/@vib3/sdk">` for people who don't use npm. This is how many creative coders work.
+- **Current state**: Vite config outputs ESM bundles only. No UMD/IIFE build for `<script src="https://unpkg.com/@vib3code/sdk">`. Creative coders who don't use npm can't use VIB3+.
+- **Why it matters**: `<script src="https://unpkg.com/@vib3code/sdk">` for people who don't use npm. This is how many creative coders work.
 - **Action**: Add UMD/IIFE build target to vite.config.js. Expose `window.VIB3` global. Test with plain HTML `<script>` tag.
 - **Priority**: MEDIUM
 
@@ -168,7 +168,7 @@ These are high-impact, low-effort improvements. Audit status for each:
   | `./product/telemetry/facade` | `src/product/telemetry/createTelemetryFacade.js` |
   | `./product/telemetry/reference-providers` | `src/product/telemetry/providers/referenceTelemetryProviders.js` |
   | Types references | `types/product/telemetry/*.d.ts` (entire directory) |
-- **Why it matters**: One broken import kills trust. `import { X } from '@vib3/sdk/quaternion'` will crash at runtime.
+- **Why it matters**: One broken import kills trust. `import { X } from '@vib3code/sdk/quaternion'` will crash at runtime.
 - **Action**: Remove dead exports (quaternion, pose, product/telemetry, sensors, localization) or implement the missing modules. Verify every remaining path resolves.
 - **Priority**: CRITICAL — Must fix before npm publish
 
@@ -317,13 +317,13 @@ These are high-impact, low-effort improvements. Audit status for each:
 #### Canary/Nightly Builds
 - **Status**: NOT DONE
 - **Audit**: No scheduled workflows. All workflows triggered by push or manual dispatch.
-- **Action**: Add workflow publishing `@vib3/sdk@canary` on every main branch commit. Power users test bleeding edge.
+- **Action**: Add workflow publishing `@vib3code/sdk@canary` on every main branch commit. Power users test bleeding edge.
 - **Priority**: LOW-MEDIUM
 
 #### CDN with Versioning
 - **Status**: NOT DONE — Depends on npm publish
 - **Why it matters**: unpkg and jsDelivr automatically work with npm packages. Once published, CDN URLs work for free.
-- **Action**: After npm publish, verify `https://unpkg.com/@vib3/sdk` and `https://cdn.jsdelivr.net/npm/@vib3/sdk` work. Document CDN usage.
+- **Action**: After npm publish, verify `https://unpkg.com/@vib3code/sdk` and `https://cdn.jsdelivr.net/npm/@vib3code/sdk` work. Document CDN usage.
 - **Priority**: MEDIUM (after npm publish)
 
 #### Hosted Demo with URL State
@@ -341,7 +341,7 @@ These are high-impact, low-effort improvements. Audit status for each:
 
 | Channel | Priority | Status | Notes |
 |---------|----------|--------|-------|
-| **npm** | Critical | NOT DONE | `@vib3/sdk` — primary distribution channel |
+| **npm** | Critical | NOT DONE | `@vib3code/sdk` — primary distribution channel |
 | **CDN** | High | NOT DONE | unpkg/jsDelivr (automatic after npm publish) |
 | **GitHub Releases** | High | NOT DONE | Pre-built WASM + bundles as release assets |
 | **Figma Community** | Medium | NOT DONE | Plugin listing from `FigmaPlugin.js` |
@@ -460,7 +460,7 @@ These items were discovered during the full codebase audit and are NOT covered i
 
 | # | Item | Status | Effort |
 |---|------|--------|--------|
-| 8 | npm publish `@vib3/sdk` v2.0.0 | NOT DONE | Small (after E-1) |
+| 8 | npm publish `@vib3code/sdk` v2.0.0 | NOT DONE | Small (after E-1) |
 | 9 | Replace `index.html` with proper landing page | NOT DONE | Medium |
 | 10 | Add URL state to demo page | NOT DONE | Medium |
 | 11 | Record 3 demo videos/GIFs | NOT DONE | Medium |
@@ -525,7 +525,7 @@ These items were discovered during the full codebase audit and are NOT covered i
 2. **Fix broken exports** — Trust killer if shipped broken
 3. **npm publish pipeline** — Makes the product real
 4. **Landing page with live demo** — First impression
-5. **CLI scaffolding (`npx @vib3/sdk init`)** — Adoption friction
+5. **CLI scaffolding (`npx @vib3code/sdk init`)** — Adoption friction
 6. **3 demo videos** — Marketing fuel
 7. **Cross-browser test matrix** — Confidence for beta
 8. **vib3-examples repo** — One per integration

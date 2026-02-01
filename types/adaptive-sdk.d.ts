@@ -1,5 +1,5 @@
 /**
- * @vib3/sdk — Adaptive SDK TypeScript Definitions
+ * @vib3code/sdk — Adaptive SDK TypeScript Definitions
  * VIB3+ 4D Visualization Engine v2.0.0
  *
  * Barrel re-export for all typed modules.

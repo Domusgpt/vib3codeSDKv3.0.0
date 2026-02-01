@@ -7,7 +7,7 @@ Minimal Svelte integration with `VIB3Engine`.
 ```bash
 npx sv create my-vib3-app
 cd my-vib3-app
-npm install @vib3/sdk
+npm install @vib3code/sdk
 ```
 
 Copy `index.js` to `src/routes/+page.svelte` (adapt into a proper Svelte component with markup), then:

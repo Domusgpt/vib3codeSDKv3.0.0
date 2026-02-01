@@ -4,13 +4,13 @@
  * Run:
  *   npx create-vite my-vib3-app --template react
  *   cd my-vib3-app
- *   npm install @vib3/sdk
+ *   npm install @vib3code/sdk
  *   # Copy this file to src/App.jsx
  *   npm run dev
  */
 import React, { useEffect, useRef, useState } from 'react';
 
-// In a real project: import { VIB3Engine } from '@vib3/sdk/core';
+// In a real project: import { VIB3Engine } from '@vib3code/sdk/core';
 // For this example, we import from the local source:
 import { VIB3Engine } from '../../src/core/VIB3Engine.js';
 

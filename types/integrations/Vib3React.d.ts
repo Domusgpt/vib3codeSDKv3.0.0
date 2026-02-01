@@ -57,7 +57,7 @@ export interface GeneratedPackage {
 
 /**
  * Static wrapper that generates React component and hook source code.
- * Use the generated code in a React project with @vib3/sdk as a dependency.
+ * Use the generated code in a React project with @vib3code/sdk as a dependency.
  */
 export declare class Vib3ReactWrapper {
     /** Get the React component JSX source code */

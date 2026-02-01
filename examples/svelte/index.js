@@ -4,7 +4,7 @@
  * Run:
  *   npx sv create my-vib3-app
  *   cd my-vib3-app
- *   npm install @vib3/sdk
+ *   npm install @vib3code/sdk
  *   # Copy this file to src/routes/+page.svelte (adapt into Svelte syntax)
  *   npm run dev
  *
@@ -15,7 +15,7 @@
 // --- Svelte script logic (goes in <script>) ---
 
 import { onMount, onDestroy } from 'svelte';
-// In a real project: import { VIB3Engine } from '@vib3/sdk/core';
+// In a real project: import { VIB3Engine } from '@vib3code/sdk/core';
 import { VIB3Engine } from '../../src/core/VIB3Engine.js';
 
 const SYSTEMS = ['quantum', 'faceted', 'holographic'];

@@ -1,5 +1,5 @@
 {
-  "name": "@vib3/sdk",
+  "name": "@vib3code/sdk",
   "version": "2.0.0",
   "description": "VIB3+ 4D Visualization SDK - Unified engine with 6D rotation, MCP agentic integration, and cross-platform support",
   "type": "module",

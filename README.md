@@ -43,7 +43,7 @@
 
 ```bash
 # Scaffold a new project
-npx @vib3/sdk init my-app
+npx @vib3code/sdk init my-app
 cd my-app
 npm install
 npm run dev
@@ -52,11 +52,11 @@ npm run dev
 Or add to an existing project:
 
 ```bash
-npm install @vib3/sdk
+npm install @vib3code/sdk
 ```
 
 ```javascript
-import { VIB3Engine } from '@vib3/sdk/core';
+import { VIB3Engine } from '@vib3code/sdk/core';
 
 const engine = new VIB3Engine();
 await engine.initialize();
@@ -145,7 +145,7 @@ geometry_index = core_index * 8 + base_index
 ### JavaScript API
 
 ```javascript
-import { VIB3Engine } from '@vib3/sdk/core';
+import { VIB3Engine } from '@vib3code/sdk/core';
 
 // Initialize engine
 const engine = new VIB3Engine();
@@ -198,16 +198,16 @@ engine.setSpatialDramaticMode(true); // 8x amplification
 
 ```javascript
 // React
-import { Vib3Canvas, useVib3 } from '@vib3/sdk/integrations/react';
+import { Vib3Canvas, useVib3 } from '@vib3code/sdk/integrations/react';
 
 // Vue
-import { Vib3Canvas } from '@vib3/sdk/integrations/vue';
+import { Vib3Canvas } from '@vib3code/sdk/integrations/vue';
 
 // Svelte
-import { Vib3Canvas } from '@vib3/sdk/integrations/svelte';
+import { Vib3Canvas } from '@vib3code/sdk/integrations/svelte';
 
 // Three.js
-import { Vib3ShaderMaterial } from '@vib3/sdk/integrations/threejs';
+import { Vib3ShaderMaterial } from '@vib3code/sdk/integrations/threejs';
 ```
 
 ### Parameter Reference

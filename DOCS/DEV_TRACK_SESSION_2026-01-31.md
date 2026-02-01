@@ -41,7 +41,7 @@
 |------|---------|-------|
 | Landing page | `index.html` | Replaced 3-second meta-refresh with proper landing page: hero, code snippet, feature cards, nav links. Includes `prefers-reduced-motion`. |
 | URL state support | `docs/url-state.js` | Reads/writes params to URL query string. Auto-applies on load. Shareable links. |
-| README update | `README.md` | License badge → MIT. Added Quick Start with `npx @vib3/sdk init`. Added `build:lib`, `storybook`, `verify:shaders` to dev commands. Updated license section. |
+| README update | `README.md` | License badge → MIT. Added Quick Start with `npx @vib3code/sdk init`. Added `build:lib`, `storybook`, `verify:shaders` to dev commands. Updated license section. |
 
 ### E-3: Adoption Friction
 
@@ -183,7 +183,7 @@ These items from the master plan cannot be completed in code and need your actio
 |------|---------|-------|
 | Vue 3 example | `examples/vue/index.js` + `README.md` | Composition API pattern with watchers |
 | Svelte example | `examples/svelte/index.js` + `README.md` | onMount/onDestroy lifecycle pattern |
-| Canary builds CI | `.github/workflows/canary.yml` | Publishes `@vib3/sdk@canary` on every main push |
+| Canary builds CI | `.github/workflows/canary.yml` | Publishes `@vib3code/sdk@canary` on every main push |
 | 11 unit test files | `tests/creative/*.test.js`, `tests/advanced/*.test.js`, `tests/integrations/*.test.js`, `tests/reactivity/SpatialInputSystem.test.js`, `tests/core/ErrorReporter.test.js` | 148 tests, all passing |
 | happy-dom | `package.json` | Added as devDependency for vitest environment |
 

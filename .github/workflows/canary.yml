@@ -29,7 +29,7 @@ jobs:
           SHORT_SHA=$(git rev-parse --short HEAD)
           CANARY_VERSION="${CURRENT_VERSION}-canary.${SHORT_SHA}"
           npm version "$CANARY_VERSION" --no-git-tag-version
-          echo "Publishing @vib3/sdk@${CANARY_VERSION}"
+          echo "Publishing @vib3code/sdk@${CANARY_VERSION}"
 
       - name: Publish canary
         run: npm publish --tag canary --access public

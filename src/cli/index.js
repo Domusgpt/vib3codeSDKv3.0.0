@@ -609,7 +609,7 @@ async function handleInit(parsed, startTime) {
             build: 'npx vite build'
         },
         dependencies: {
-            '@vib3/sdk': '^2.0.0'
+            '@vib3code/sdk': '^2.0.0'
         },
         devDependencies: {
             vite: '^5.3.0'
@@ -641,7 +641,7 @@ async function handleInit(parsed, startTime) {
 `);
 
     // main.js
-    writeFileSync(join(projectDir, 'main.js'), `import { VIB3Engine } from '@vib3/sdk/core';
+    writeFileSync(join(projectDir, 'main.js'), `import { VIB3Engine } from '@vib3code/sdk/core';
 
 const engine = new VIB3Engine();
 await engine.initialize();

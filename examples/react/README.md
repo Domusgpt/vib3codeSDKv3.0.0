@@ -7,7 +7,7 @@ Minimal React integration using `VIB3Engine` with system switching, geometry sel
 ```bash
 npx create-vite my-vib3-app --template react
 cd my-vib3-app
-npm install @vib3/sdk
+npm install @vib3code/sdk
 ```
 
 Copy `index.jsx` to `src/App.jsx`, then:

@@ -19,7 +19,7 @@ VIB3+ OBS Mode renders visualizations with a transparent background, perfect for
 ### Step 1: Start VIB3+ in OBS Mode
 
 ```javascript
-import { OBSMode } from '@vib3/sdk/integrations/obs';
+import { OBSMode } from '@vib3code/sdk/integrations/obs';
 
 const obs = new OBSMode({
     system: 'quantum',      // or 'faceted' or 'holographic'

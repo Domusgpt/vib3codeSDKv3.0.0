@@ -7,7 +7,7 @@ Minimal Vue 3 Composition API integration with `VIB3Engine`.
 ```bash
 npm create vue@latest my-vib3-app
 cd my-vib3-app
-npm install @vib3/sdk
+npm install @vib3code/sdk
 ```
 
 Copy `index.js` to `src/App.vue` (adapt into a proper SFC with `<template>`, `<script setup>`, and `<style>` sections), then:
