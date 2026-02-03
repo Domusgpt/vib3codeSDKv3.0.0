@@ -29,7 +29,7 @@ export class HolographicVisualizer {
                              this.canvas.getContext('experimental-webgl');
         
         if (existingContext && !existingContext.isContextLost()) {
-            console.log(`🔄 Reusing existing WebGL context for ${canvasId}`);
+            console.log(`🔄 Reusing existing WebGL context for ${canvasIdOrElement instanceof HTMLCanvasElement ? canvasIdOrElement.id : canvasIdOrElement}`);
             this.gl = existingContext;
         } else {
             // Try WebGL2 first (better mobile support), then WebGL1
@@ -39,9 +39,9 @@ export class HolographicVisualizer {
         }
         
         if (!this.gl) {
-            console.error(`WebGL not supported for ${canvasId}`);
+            console.error(`WebGL not supported for ${canvasIdOrElement}`);
             this.showWebGLError();
-            throw new Error(`WebGL not supported for ${canvasId}`);
+            throw new Error(`WebGL not supported for ${canvasIdOrElement}`);
         }
         
         this.variantParams = this.generateVariantParams(variant);
@@ -86,17 +86,17 @@ export class HolographicVisualizer {
         this._onContextLost = (e) => {
             e.preventDefault();
             this._contextLost = true;
-            console.warn(`WebGL context lost for ${canvasId}`);
+            console.warn(`WebGL context lost for ${canvasIdOrElement}`);
         };
         this._onContextRestored = () => {
-            console.log(`WebGL context restored for ${canvasId}`);
+            console.log(`WebGL context restored for ${canvasIdOrElement}`);
             this._contextLost = false;
             try {
                 this.initShaders();
                 this.initBuffers();
                 this.resize();
             } catch (err) {
-                console.error(`Failed to reinit after context restore for ${canvasId}:`, err);
+                console.error(`Failed to reinit after context restore for ${canvasIdOrElement}:`, err);
             }
         };
         this.canvas.addEventListener('webglcontextlost', this._onContextLost);
@@ -238,6 +238,9 @@ export class HolographicVisualizer {
             uniform float u_rot4dYW;
             uniform float u_rot4dZW;
 
+            // EXHALE FEATURE: Breathing uniform
+            uniform float u_breath;
+
             // 6D rotation matrices - 3D space rotations (XY, XZ, YZ)
             mat4 rotateXY(float theta) {
                 float c = cos(theta);
@@ -276,9 +279,12 @@ export class HolographicVisualizer {
                 return mat4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, c, -s, 0, 0, s, c);
             }
             
-            // 4D to 3D projection
+            // 4D to 3D projection - BREATHING EFFECT
             vec3 project4Dto3D(vec4 p) {
-                float w = 2.5 / (2.5 + p.w);
+                // Modulate projection distance with breath for "exhale" effect (expansion/contraction)
+                float baseDim = 2.5;
+                float dim = baseDim + u_breath * 0.5; // Expands on exhale
+                float w = dim / (dim + p.w);
                 return vec3(p.x * w, p.y * w, p.z * w);
             }
 
@@ -543,8 +549,10 @@ export class HolographicVisualizer {
                 
                 float scrollDensityMod = 1.0 + u_gridDensityShift * 0.3;
                 float audioDensityMod = 1.0 + u_audioDensityBoost * 0.5;
-                // FIX: Prevent density doubling by using base density with controlled variations
-                float baseDensity = u_density * u_roleDensity;
+                // Controlled density calculation - breathing modulation added
+                float breathDensityMod = 1.0 + u_breath * 0.1;
+                float baseDensity = u_density * u_roleDensity * breathDensityMod;
+
                 float densityVariations = (u_densityVariation * 0.3 + (scrollDensityMod - 1.0) * 0.4 + (audioDensityMod - 1.0) * 0.2);
                 float roleDensity = baseDensity + densityVariations;
                 
@@ -555,6 +563,9 @@ export class HolographicVisualizer {
                 vec3 baseColor = u_color;
                 float latticeIntensity = lattice * u_intensity;
                 
+                // Breathing glow effect
+                latticeIntensity *= (1.0 + u_breath * 0.2);
+
                 // Multi-layer color composition for higher fidelity
                 vec3 color = baseColor * (0.2 + latticeIntensity * 0.8);
                 
@@ -639,7 +650,8 @@ export class HolographicVisualizer {
             rot4dYZ: this.gl.getUniformLocation(this.program, 'u_rot4dYZ'),
             rot4dXW: this.gl.getUniformLocation(this.program, 'u_rot4dXW'),
             rot4dYW: this.gl.getUniformLocation(this.program, 'u_rot4dYW'),
-            rot4dZW: this.gl.getUniformLocation(this.program, 'u_rot4dZW')
+            rot4dZW: this.gl.getUniformLocation(this.program, 'u_rot4dZW'),
+            breath: this.gl.getUniformLocation(this.program, 'u_breath')
         };
     }
     
@@ -938,6 +950,10 @@ export class HolographicVisualizer {
         this.gl.uniform1f(this.uniforms.rot4dXW, this.variantParams.rot4dXW || 0.0);
         this.gl.uniform1f(this.uniforms.rot4dYW, this.variantParams.rot4dYW || 0.0);
         this.gl.uniform1f(this.uniforms.rot4dZW, this.variantParams.rot4dZW || 0.0);
+
+        // Exhale feature: 6-second breathing cycle
+        const breathCycle = (Math.sin(time * 0.001) * 0.5 + 0.5);
+        this.gl.uniform1f(this.uniforms.breath, breathCycle);
 
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
     }
