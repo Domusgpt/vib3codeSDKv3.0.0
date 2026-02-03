@@ -15,6 +15,7 @@ import { RealHolographicSystem } from '../holograms/RealHolographicSystem.js';
 import { ReactivityManager } from '../reactivity/ReactivityManager.js';
 import { ReactivityConfig } from '../reactivity/ReactivityConfig.js';
 import { SpatialInputSystem } from '../reactivity/SpatialInputSystem.js';
+import { VitalitySystem } from './VitalitySystem.js';
 
 export class VIB3Engine {
     /**
@@ -35,6 +36,9 @@ export class VIB3Engine {
 
         /** @type {boolean} Debug mode */
         this.debug = options.debug || false;
+
+        /** @type {VitalitySystem} Global breathing rhythm */
+        this.vitality = new VitalitySystem();
 
         /** @type {ReactivityManager} Reactivity system for audio/tilt/interaction */
         this.reactivity = new ReactivityManager((name, value) => {
@@ -83,9 +87,31 @@ export class VIB3Engine {
         // Sync base parameters to reactivity manager
         this.reactivity.setBaseParameters(this.parameters.getAllParameters());
 
+        // Start vitality system
+        this.vitality.start();
+
+        // Start global loop to drive vitality updates
+        this._startGlobalLoop();
+
         this.initialized = true;
         console.log('VIB3+ Engine initialized');
         return true;
+    }
+
+    _startGlobalLoop() {
+        const loop = () => {
+            if (this.initialized) {
+                // Update breath cycle
+                const breath = this.vitality.update();
+
+                // Push breath to current system
+                if (this.activeSystem && this.activeSystem.updateParameters) {
+                    this.activeSystem.updateParameters({ breath });
+                }
+            }
+            requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
     }
 
     /**
@@ -608,6 +634,8 @@ export class VIB3Engine {
      * Destroy engine and clean up
      */
     destroy() {
+        this.vitality.stop();
+
         // Stop and destroy spatial input
         if (this.spatialInput) {
             this.spatialInput.destroy();
