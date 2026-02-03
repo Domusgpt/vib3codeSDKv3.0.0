@@ -56,6 +56,9 @@ function packVIB3Uniforms(uniforms) {
     data[22] = uniforms.u_mid || 0;
     data[23] = uniforms.u_high || 0;
 
+    // Breath/Vitality parameter
+    data[32] = uniforms.u_breath || 0;
+
     data[24] = uniforms.u_layerScale || 1.0;
     data[25] = uniforms.u_layerOpacity || 1.0;
     data[26] = 0; // _pad1

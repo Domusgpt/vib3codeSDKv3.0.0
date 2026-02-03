@@ -50,6 +50,7 @@ const FRAGMENT_SHADER_GLSL = `
     uniform float u_bass;
     uniform float u_mid;
     uniform float u_high;
+    uniform float u_breath; // Vitality System Breath (0.0 - 1.0)
 
     // ── 6D Rotation Matrices ──
 
@@ -267,7 +268,11 @@ const FRAGMENT_SHADER_GLSL = `
         // Intensity from lattice
         float geometryIntensity = 1.0 - clamp(abs(value), 0.0, 1.0);
         geometryIntensity += u_clickIntensity * 0.3;
-        float finalIntensity = geometryIntensity * u_intensity;
+
+        // Exhale: Vitality Breath Modulation
+        float breathMod = 1.0 + (u_breath * 0.3); // +30% intensity at full breath
+
+        float finalIntensity = geometryIntensity * u_intensity * breathMod;
 
         // Audio-reactive hue shift
         float hue = u_hue / 360.0 + value * 0.1 + u_high * 0.08;
@@ -291,7 +296,7 @@ const FRAGMENT_SHADER_GLSL = `
 const FRAGMENT_SHADER_WGSL = `
 struct VIB3Uniforms {
     time: f32,
-    speed: f32,
+    _pad0: f32,
     resolution: vec2<f32>,
     geometry: f32,
     rot4dXY: f32,
@@ -304,18 +309,24 @@ struct VIB3Uniforms {
     gridDensity: f32,
     morphFactor: f32,
     chaos: f32,
+    speed: f32,
     hue: f32,
     intensity: f32,
     saturation: f32,
     mouseIntensity: f32,
     clickIntensity: f32,
-    roleIntensity: f32,
     bass: f32,
     mid: f32,
     high: f32,
-    _pad0: f32,
-    mouse: vec2<f32>,
-    _pad1: vec2<f32>,
+    layerScale: f32,
+    layerOpacity: f32,
+    _pad1: f32,
+    layerColorR: f32,
+    layerColorG: f32,
+    layerColorB: f32,
+    densityMult: f32,
+    speedMult: f32,
+    breath: f32, // Index 32
 };
 
 @group(0) @binding(0) var<uniform> u: VIB3Uniforms;
@@ -478,7 +489,10 @@ fn main(input: VertexOutput) -> @location(0) vec4<f32> {
 
     var geomIntensity = 1.0 - clamp(abs(value), 0.0, 1.0);
     geomIntensity += u.clickIntensity * 0.3;
-    let finalIntensity = geomIntensity * u.intensity;
+
+    // Vitality (Breath) modulation
+    let breathMod = 1.0 + (u.breath * 0.3);
+    let finalIntensity = geomIntensity * u.intensity * breathMod;
 
     let hueVal = u.hue / 360.0 + value * 0.1 + u.high * 0.08;
     let baseColor = vec3<f32>(
@@ -489,4 +503,93 @@ fn main(input: VertexOutput) -> @location(0) vec4<f32> {
     let color = mix(vec3<f32>(gray), baseColor, u.saturation) * finalIntensity;
 
     return vec4<f32>(color, finalIntensity * u.roleIntensity);
+}
+`;
+
+// ============================================================================
+// FacetedSystem Class
+// ============================================================================
+
+export class FacetedSystem {
+    constructor() {
+        this.bridge = null;
+        this.canvas = null;
+        this.params = {};
+        this.initialized = false;
+        this.contextLost = false;
+    }
+
+    async initWithBridge(canvas, options) {
+        this.canvas = canvas;
+        try {
+            this.bridge = await UnifiedRenderBridge.create(canvas, options);
+            if (this.bridge) {
+                const success = this.bridge.compileShader('faceted', {
+                    glslVertex: VERTEX_SHADER_GLSL,
+                    glslFragment: FRAGMENT_SHADER_GLSL,
+                    wgslFragment: FRAGMENT_SHADER_WGSL
+                });
+                if (!success) {
+                    console.error("Faceted shader compilation failed");
+                    return false;
+                }
+                this.initialized = true;
+                return true;
+            }
+        } catch (e) {
+            console.error("Faceted initWithBridge failed:", e);
+        }
+        return false;
+    }
+
+    async initialize() {
+        if (this.initialized) return true;
+
+        // Find default canvas if not already set
+        const canvas = document.getElementById('faceted-content-canvas') ||
+                      document.getElementById('content-canvas');
+        if (!canvas) {
+            console.warn("FacetedSystem: No canvas found for initialize()");
+            return false;
+        }
+
+        return this.initWithBridge(canvas, { preferWebGPU: false });
+    }
+
+    updateParameters(params) {
+        if (!params) return;
+        this.params = { ...this.params, ...params };
+
+        // Handle breath mapping if key is 'breath' -> 'u_breath'
+        if ('breath' in params) {
+            this.params.u_breath = params.breath;
+        }
+
+        if (this.bridge) {
+            this.bridge.setUniforms(this.params);
+        }
+    }
+
+    render() {
+        if (this.bridge) {
+            this.bridge.render('faceted', { clear: true, clearColor: [0,0,0,0] });
+        }
+    }
+
+    getBackendType() {
+        return this.bridge ? this.bridge.getBackendType() : 'none';
+    }
+
+    setActive(active) {
+        const layer = document.getElementById('faceted-layer');
+        if (layer) layer.style.display = active ? 'block' : 'none';
+    }
+
+    destroy() {
+        if (this.bridge) {
+            this.bridge.dispose();
+            this.bridge = null;
+        }
+        this.initialized = false;
+    }
 }

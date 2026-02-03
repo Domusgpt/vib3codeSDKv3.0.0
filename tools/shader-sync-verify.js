@@ -34,7 +34,8 @@ export class ShaderSyncVerifier {
                 'u_rot4dXY', 'u_rot4dXZ', 'u_rot4dYZ',
                 'u_rot4dXW', 'u_rot4dYW', 'u_rot4dZW',
                 'u_gridDensity', 'u_morphFactor', 'u_chaos',
-                'u_speed', 'u_hue', 'u_intensity', 'u_dimension'
+                'u_speed', 'u_hue', 'u_intensity', 'u_dimension',
+                'u_breath' // Exhale feature
             ],
             recommended: [
                 'u_saturation', 'u_mouseIntensity', 'u_clickIntensity',
@@ -590,6 +591,7 @@ uniform float u_rot4dZW;
 uniform float u_mouseIntensity;
 uniform float u_clickIntensity;
 uniform float u_roleIntensity;
+uniform float u_breath;
 void main() { gl_FragColor = vec4(0.0); }
 `;
 
@@ -620,6 +622,7 @@ uniform float u_clickIntensity;
 uniform float u_bass;
 uniform float u_mid;
 uniform float u_high;
+uniform float u_breath;
 void main() { gl_FragColor = vec4(0.0); }
 `;
 
@@ -657,7 +660,7 @@ struct VIB3Uniforms {
     layerColor: vec3<f32>,
     densityMult: f32,
     speedMult: f32,
-    _pad2: vec3<f32>,
+    breath: f32,
 };
 @group(0) @binding(0) var<uniform> u: VIB3Uniforms;
 `;
@@ -702,6 +705,7 @@ uniform float u_rot4dYZ;
 uniform float u_rot4dXW;
 uniform float u_rot4dYW;
 uniform float u_rot4dZW;
+uniform float u_breath;
 void main() { gl_FragColor = vec4(0.0); }
 `;
 
@@ -739,7 +743,7 @@ struct VIB3Uniforms {
     layerColor: vec3<f32>,
     densityMult: f32,
     speedMult: f32,
-    _pad2: vec3<f32>,
+    breath: f32,
 };
 @group(0) @binding(0) var<uniform> u: VIB3Uniforms;
 `;
@@ -778,7 +782,7 @@ struct VIB3Uniforms {
     layerColor: vec3<f32>,
     densityMult: f32,
     speedMult: f32,
-    _pad2: vec3<f32>,
+    breath: f32,
 };
 @group(0) @binding(0) var<uniform> u: VIB3Uniforms;
 `;
