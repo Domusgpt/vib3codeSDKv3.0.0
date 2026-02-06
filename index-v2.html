@@ -1,0 +1,2181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIB3+ CORE — 4D Visualization Engine v2</title>
+    <meta name="description" content="VIB3+ is a 4D visualization SDK with 24 geometry variants, 6D rotation, and three rendering systems.">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <style>
+        /* ============================================
+           CSS CUSTOM PROPERTIES
+           ============================================ */
+        :root {
+            --bg: #030712;
+            --accent: #00f0ff;
+            --text: #e2e8f0;
+            --text-muted: rgba(226,232,240,0.45);
+            --glass: rgba(255,255,255,0.05);
+            --glass-border: rgba(255,255,255,0.08);
+            --glass-blur: 12px;
+            --quantum: #00f0ff;
+            --faceted: #a855f7;
+            --holographic: #f43f5e;
+            --font-sans: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif;
+            --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+        }
+
+        /* ============================================
+           RESET & BASE
+           ============================================ */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: auto; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-sans);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
+        canvas { display: block; }
+
+        /* ============================================
+           SCROLL PROGRESS BAR
+           ============================================ */
+        .scroll-progress {
+            position: fixed; top: 0; left: 0; width: 100%; height: 2px; z-index: 9999;
+            background: linear-gradient(90deg, var(--quantum), var(--faceted), var(--holographic), var(--quantum));
+            background-size: 300% 100%;
+            transform-origin: left; transform: scaleX(0);
+            will-change: transform;
+            animation: progressHue 6s linear infinite;
+        }
+        @keyframes progressHue {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 300% 50%; }
+        }
+
+        /* ============================================
+           SECTION 1: HERO
+           ============================================ */
+        .hero {
+            position: relative; height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        .hero-canvas-wrap {
+            position: absolute; inset: 0; z-index: 0;
+        }
+        .hero-canvas-wrap canvas {
+            width: 100%; height: 100%;
+        }
+        .hero-content {
+            position: relative; z-index: 2; text-align: center;
+            padding: 0 24px;
+        }
+        .hero-glass {
+            display: inline-block;
+            background: rgba(3,7,18,0.3);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 32px;
+            padding: 48px 64px;
+        }
+        .hero-badge {
+            display: inline-block; padding: 5px 16px;
+            border: 1px solid rgba(0,240,255,0.3); border-radius: 100px;
+            font-size: 11px; color: var(--accent); letter-spacing: 2px;
+            text-transform: uppercase; margin-bottom: 20px;
+            background: rgba(0,240,255,0.04);
+            opacity: 0; transform: translateY(-20px);
+        }
+        .hero-title {
+            font-size: clamp(56px, 12vw, 140px); font-weight: 900;
+            letter-spacing: 12px; line-height: 1;
+            color: #fff;
+            text-shadow: 0 0 80px rgba(0,240,255,0.15);
+        }
+        .hero-title .char {
+            display: inline-block;
+            opacity: 0; transform: translateY(100%);
+        }
+        .hero-sub {
+            font-size: clamp(14px, 2vw, 18px); color: var(--text-muted);
+            max-width: 500px; margin: 20px auto 0; line-height: 1.8;
+            opacity: 0; transform: translateY(20px);
+        }
+        .hero-scroll {
+            position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
+            z-index: 2; display: flex; flex-direction: column; align-items: center;
+            gap: 8px; opacity: 0;
+        }
+        .hero-scroll span {
+            font-size: 10px; letter-spacing: 4px; text-transform: uppercase;
+            color: rgba(255,255,255,0.2);
+        }
+        .scroll-line {
+            width: 1px; height: 40px;
+            background: linear-gradient(180deg, rgba(0,240,255,0.4), transparent);
+        }
+        .scroll-line-anim {
+            animation: breathPulse 3s ease-in-out infinite;
+        }
+        @keyframes breathPulse {
+            0%, 100% { opacity: 0.3; transform: scaleY(0.8); }
+            50% { opacity: 0.8; transform: scaleY(1.3); }
+        }
+
+        /* ============================================
+           SECTION 2: TRINITY — 3 Glassmorphic Cards
+           ============================================ */
+        .trinity {
+            position: relative;
+            padding: 120px 24px;
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        .trinity-bg-wrap {
+            position: absolute; inset: 0; z-index: 0;
+        }
+        .trinity-bg-wrap canvas { width: 100%; height: 100%; }
+        .trinity-heading {
+            position: relative; z-index: 2;
+            text-align: center; margin-bottom: 60px;
+        }
+        .trinity-heading h2 {
+            font-size: clamp(28px, 5vw, 48px); font-weight: 800;
+            color: #fff; letter-spacing: 4px;
+            opacity: 0; transform: translateY(30px);
+        }
+        .trinity-heading p {
+            color: var(--text-muted); font-size: 14px;
+            margin-top: 8px; letter-spacing: 1px;
+            opacity: 0; transform: translateY(20px);
+        }
+        .trinity-cards {
+            position: relative; z-index: 2;
+            display: flex; gap: 24px;
+            max-width: 1100px; width: 100%;
+            justify-content: center;
+        }
+        .trinity-card {
+            flex: 1; max-width: 340px; min-height: 420px;
+            border-radius: 24px; overflow: hidden;
+            position: relative;
+            background: var(--glass);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            cursor: pointer;
+            transition: transform 0.4s cubic-bezier(0.23,1,0.32,1),
+                        box-shadow 0.4s cubic-bezier(0.23,1,0.32,1),
+                        filter 0.4s ease;
+            opacity: 0; transform: translateY(40px);
+        }
+        .trinity-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+        }
+        .trinity-card.muted {
+            filter: saturate(0.2) brightness(0.7);
+        }
+        .trinity-card-canvas {
+            width: 100%; height: 280px;
+            position: relative; overflow: hidden;
+        }
+        .trinity-card-canvas canvas {
+            width: 100%; height: 100%;
+        }
+        .trinity-card-info {
+            padding: 20px 24px;
+        }
+        .trinity-card-info h3 {
+            font-size: 18px; font-weight: 700; color: #fff;
+            margin-bottom: 4px;
+        }
+        .trinity-card-info .sys-tag {
+            font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+            padding: 3px 10px; border-radius: 100px; display: inline-block;
+            margin-bottom: 8px;
+        }
+        .tag-quantum { color: var(--quantum); border: 1px solid rgba(0,240,255,0.25); background: rgba(0,240,255,0.06); }
+        .tag-faceted { color: var(--faceted); border: 1px solid rgba(168,85,247,0.25); background: rgba(168,85,247,0.06); }
+        .tag-holographic { color: var(--holographic); border: 1px solid rgba(244,63,94,0.25); background: rgba(244,63,94,0.06); }
+        .trinity-card-info p {
+            font-size: 13px; color: var(--text-muted); line-height: 1.6;
+        }
+
+        /* ============================================
+           SECTION 3: MORPH — Scroll-Locked Transform
+           ============================================ */
+        .morph-section {
+            position: relative; min-height: 300vh;
+        }
+        .morph-pinned {
+            height: 100vh; width: 100%;
+            position: relative; overflow: hidden;
+        }
+        .morph-canvas-layer {
+            position: absolute; inset: 0;
+            transition: opacity 0.6s ease;
+        }
+        .morph-canvas-layer canvas {
+            width: 100%; height: 100%;
+        }
+        .morph-overlay {
+            position: absolute; inset: 0; z-index: 10;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            pointer-events: none; text-align: center;
+            padding: 0 24px;
+        }
+        .morph-label {
+            font-size: clamp(20px, 3vw, 36px); font-weight: 800;
+            letter-spacing: 4px; text-transform: uppercase;
+            color: #fff; opacity: 0.8;
+            text-shadow: 0 0 40px rgba(0,0,0,0.5);
+        }
+        .morph-sub {
+            font-size: 13px; color: var(--text-muted);
+            letter-spacing: 2px; margin-top: 8px;
+        }
+        .morph-progress-bar {
+            position: absolute; bottom: 40px; left: 50%;
+            transform: translateX(-50%); z-index: 15;
+            width: min(400px, 80vw); height: 3px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 2px; overflow: hidden;
+        }
+        .morph-progress-fill {
+            height: 100%; width: 0%; border-radius: 2px;
+            background: linear-gradient(90deg, var(--faceted), var(--quantum), var(--holographic));
+            transition: width 0.1s ease;
+        }
+
+        /* ============================================
+           SECTION 4: AGENT INTEGRATION
+           ============================================ */
+        .agent-section {
+            position: relative; padding: 120px 24px;
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        .agent-section h2 {
+            font-size: clamp(24px, 4vw, 42px); font-weight: 800;
+            color: #fff; letter-spacing: 3px;
+            margin-bottom: 12px; text-align: center;
+            opacity: 0; transform: translateY(30px);
+        }
+        .agent-section > p {
+            color: var(--text-muted); font-size: 15px;
+            max-width: 520px; text-align: center; line-height: 1.7;
+            margin-bottom: 40px;
+            opacity: 0; transform: translateY(20px);
+        }
+        .agent-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px; max-width: 900px; width: 100%;
+        }
+        .agent-code-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px; padding: 32px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            opacity: 0; transform: translateY(30px);
+        }
+        .agent-code-card h3 {
+            font-size: 14px; font-weight: 700; color: var(--accent);
+            letter-spacing: 2px; text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+        .agent-code {
+            font-family: var(--font-mono); font-size: 12px;
+            line-height: 1.8; color: #b8b8c8;
+            white-space: pre-wrap; word-break: break-all;
+        }
+        .agent-code .kw { color: #c792ea; }
+        .agent-code .str { color: #c3e88d; }
+        .agent-code .cmt { color: #546e7a; }
+        .agent-code .fn { color: #82aaff; }
+        .agent-code .num { color: #f78c6c; }
+
+        .agent-tools-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px; padding: 32px;
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            opacity: 0; transform: translateY(30px);
+        }
+        .agent-tools-card h3 {
+            font-size: 14px; font-weight: 700; color: #fff;
+            letter-spacing: 2px; text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+        .tool-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 14px; border-radius: 10px;
+            margin-bottom: 6px;
+            transition: background 0.2s ease, transform 0.2s ease;
+            cursor: default;
+        }
+        .tool-item:hover {
+            background: rgba(255,255,255,0.04);
+            transform: translateX(4px);
+        }
+        .tool-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .tool-name {
+            font-family: var(--font-mono); font-size: 12px; color: var(--text);
+        }
+        .tool-desc {
+            font-size: 11px; color: var(--text-muted); margin-left: auto;
+        }
+        .agent-download-row {
+            margin-top: 32px; text-align: center;
+            opacity: 0; transform: translateY(20px);
+        }
+        .download-btn {
+            display: inline-flex; align-items: center; gap: 10px;
+            padding: 16px 36px; border: none; border-radius: 14px;
+            font-size: 14px; font-weight: 700; cursor: pointer;
+            background: linear-gradient(135deg, rgba(0,240,255,0.15), rgba(168,85,247,0.15));
+            color: var(--accent);
+            border: 1px solid rgba(0,240,255,0.3);
+            transition: all 0.25s cubic-bezier(0.23,1,0.32,1);
+            letter-spacing: 1px; font-family: var(--font-sans);
+        }
+        .download-btn:hover {
+            background: linear-gradient(135deg, rgba(0,240,255,0.25), rgba(168,85,247,0.25));
+            border-color: rgba(0,240,255,0.5);
+            transform: scale(1.03);
+            box-shadow: 0 0 30px rgba(0,240,255,0.15);
+        }
+        .download-btn:active { transform: scale(0.97); }
+
+        /* ============================================
+           SECTION 5: PARAMETERS PLAYGROUND
+           ============================================ */
+        .playground {
+            position: relative; padding: 120px 24px;
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        .playground h2 {
+            font-size: clamp(24px, 4vw, 42px); font-weight: 800;
+            color: #fff; letter-spacing: 3px;
+            margin-bottom: 12px; text-align: center;
+            opacity: 0; transform: translateY(30px);
+        }
+        .playground > p {
+            color: var(--text-muted); font-size: 14px;
+            margin-bottom: 48px; text-align: center;
+            opacity: 0; transform: translateY(20px);
+        }
+        .playground-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px; max-width: 1000px; width: 100%;
+        }
+        .playground-viz {
+            border-radius: 24px; overflow: hidden;
+            min-height: 400px; position: relative;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            background: #050510;
+            opacity: 0; transform: translateY(30px);
+        }
+        .playground-viz canvas {
+            width: 100%; height: 100%;
+            position: absolute; inset: 0;
+        }
+        .playground-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            align-content: start;
+            opacity: 0; transform: translateY(30px);
+        }
+        .slider-group {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .slider-group label {
+            display: flex; justify-content: space-between;
+            font-size: 11px; letter-spacing: 1px;
+            text-transform: uppercase; color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+        .slider-group label span { color: var(--accent); font-weight: 600; }
+        .slider-group input[type="range"] {
+            -webkit-appearance: none; appearance: none;
+            width: 100%; height: 3px; border-radius: 2px;
+            background: rgba(255,255,255,0.08);
+            outline: none; cursor: pointer;
+        }
+        .slider-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 14px; height: 14px; border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 8px rgba(0,240,255,0.4);
+            cursor: pointer;
+        }
+        .slider-group input[type="range"]::-moz-range-thumb {
+            width: 14px; height: 14px; border-radius: 50%;
+            background: var(--accent); border: none;
+            box-shadow: 0 0 8px rgba(0,240,255,0.4);
+            cursor: pointer;
+        }
+
+        /* ============================================
+           SECTION 6: GET STARTED
+           ============================================ */
+        .getstarted {
+            position: relative; padding: 120px 24px;
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        .getstarted h2 {
+            font-size: clamp(28px, 5vw, 52px); font-weight: 900;
+            color: #fff; letter-spacing: 4px;
+            margin-bottom: 16px; text-align: center;
+        }
+        .getstarted > p {
+            color: var(--text-muted); font-size: 15px;
+            max-width: 500px; text-align: center; line-height: 1.7;
+            margin-bottom: 40px;
+        }
+        .install-block {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px; padding: 20px 28px;
+            font-family: var(--font-mono); font-size: 14px;
+            color: var(--accent);
+            display: flex; align-items: center; gap: 16px;
+            margin-bottom: 40px; position: relative;
+            max-width: 480px; width: 100%;
+        }
+        .install-block code { flex: 1; }
+        .copy-btn {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px; padding: 6px 14px;
+            font-size: 11px; color: var(--text-muted);
+            cursor: pointer; transition: all 0.2s;
+            font-family: var(--font-sans); letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .copy-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+        .copy-btn.copied { color: var(--accent); border-color: var(--accent); }
+
+        .cta-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 48px; }
+        .cta-btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 14px 32px; border-radius: 10px; text-decoration: none;
+            font-size: 14px; font-weight: 600; transition: all 0.2s;
+            border: none; cursor: pointer; font-family: var(--font-sans);
+        }
+        .cta-primary {
+            background: linear-gradient(135deg, rgba(0,240,255,0.18), rgba(168,85,247,0.18));
+            border: 1px solid rgba(0,240,255,0.4); color: var(--accent);
+        }
+        .cta-primary:hover { background: rgba(0,240,255,0.25); border-color: rgba(0,240,255,0.6); }
+        .cta-ghost {
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); color: #888;
+        }
+        .cta-ghost:hover { background: rgba(255,255,255,0.07); color: #ccc; }
+
+        .download-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 12px; max-width: 700px; width: 100%;
+        }
+        .download-grid-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 14px 18px; border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 10px; text-decoration: none; color: #777; font-size: 13px;
+            transition: all 0.2s; background: rgba(255,255,255,0.015);
+            cursor: pointer; border: none; font-family: var(--font-sans);
+        }
+        .download-grid-item:hover { background: rgba(255,255,255,0.04); color: #bbb; }
+
+        /* ============================================
+           FOOTER
+           ============================================ */
+        footer {
+            text-align: center; padding: 40px 24px;
+            border-top: 1px solid rgba(255,255,255,0.03);
+            font-size: 12px; color: #2a2a2a;
+        }
+        footer a { color: #444; text-decoration: none; }
+        footer a:hover { color: #888; }
+
+        /* ============================================
+           SUCK-UP EXPANSION OVERLAY
+           ============================================ */
+        .suckup-overlay {
+            position: fixed; inset: 0; z-index: 8000;
+            pointer-events: none; opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        .suckup-overlay.active { pointer-events: all; opacity: 1; }
+        .suckup-bg {
+            position: absolute; inset: 0;
+            background: rgba(3,7,18,0.6);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+        .suckup-canvas-wrap {
+            position: absolute; border-radius: 24px;
+            overflow: hidden; box-shadow: 0 32px 80px rgba(0,0,0,0.7);
+            border: 1px solid rgba(255,255,255,0.08);
+            transition: all 0.7s cubic-bezier(0.16,1,0.3,1);
+        }
+        .suckup-canvas-wrap.expanded {
+            top: 5vh !important; left: 5vw !important;
+            width: 90vw !important; height: 90vh !important;
+            border-radius: 32px;
+        }
+        .suckup-canvas-wrap canvas {
+            width: 100%; height: 100%;
+        }
+        .suckup-label {
+            position: absolute; bottom: 32px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(3,7,18,0.5);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
+            padding: 12px 28px; color: #fff; font-size: 14px;
+            letter-spacing: 2px; text-transform: uppercase; font-weight: 600;
+            opacity: 0; transform: translateX(-50%) translateY(20px);
+            transition: opacity 0.4s ease 0.5s, transform 0.4s ease 0.5s;
+        }
+        .suckup-overlay.active .suckup-label {
+            opacity: 1; transform: translateX(-50%) translateY(0);
+        }
+        .suckup-close {
+            position: absolute; top: 24px; right: 24px;
+            width: 40px; height: 40px; border-radius: 50%;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+            color: #888; font-size: 18px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s; opacity: 0;
+            transition: opacity 0.3s ease 0.6s, background 0.2s ease;
+        }
+        .suckup-overlay.active .suckup-close { opacity: 1; }
+        .suckup-close:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+        /* ============================================
+           REDUCED MOTION
+           ============================================ */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+            .scroll-line-anim { animation: none; opacity: 0.5; }
+        }
+
+        /* ============================================
+           MOBILE RESPONSIVE
+           ============================================ */
+        @media (max-width: 768px) {
+            .hero-glass { padding: 32px 28px; border-radius: 20px; }
+            .trinity-cards { flex-direction: column; align-items: center; }
+            .trinity-card { max-width: 90vw; min-height: 340px; }
+            .trinity-card-canvas { height: 200px; }
+            .agent-grid { grid-template-columns: 1fr; }
+            .playground-layout { grid-template-columns: 1fr; }
+            .playground-viz { min-height: 300px; }
+            .playground-controls { grid-template-columns: 1fr; }
+            .morph-section { min-height: 200vh; }
+        }
+    </style>
+</head>
+<body>
+    <a href="#main" class="sr-only">Skip to content</a>
+    <div class="scroll-progress" id="scrollProgress"></div>
+
+    <!-- =========================================================
+         SECTION 1: HERO
+         Full viewport Quantum visualizer (geometry 11 — hypersphere torus)
+         ========================================================= -->
+    <section class="hero" id="main">
+        <div class="hero-canvas-wrap">
+            <canvas id="hero-canvas"></canvas>
+        </div>
+        <div class="hero-content" id="heroContent">
+            <div class="hero-glass">
+                <div class="hero-badge" id="heroBadge">v2.0.1 &mdash; Three Systems &middot; 24 Geometries &middot; 6D Rotation</div>
+                <h1 class="hero-title" id="heroTitle">VIB3+</h1>
+                <p class="hero-sub" id="heroSub">
+                    The fourth dimension, rendered. Three rendering systems.
+                    24 geometry variants. Six degrees of rotation freedom.
+                </p>
+            </div>
+        </div>
+        <div class="hero-scroll" id="heroScroll">
+            <span>explore</span>
+            <div class="scroll-line scroll-line-anim"></div>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SECTION 2: TRINITY — Multi-Instance Showcase
+         3 glassmorphic cards, each with a live visualizer
+         ========================================================= -->
+    <section class="trinity" id="trinitySection">
+        <div class="trinity-bg-wrap">
+            <canvas id="trinity-bg-canvas"></canvas>
+        </div>
+        <div class="trinity-heading">
+            <h2 id="trinityH2">The Trinity</h2>
+            <p id="trinityP">Three systems. One unified engine. Hover to explore.</p>
+        </div>
+        <div class="trinity-cards" id="trinityCards">
+            <div class="trinity-card" id="triCard0" data-system="quantum">
+                <div class="trinity-card-canvas"><canvas id="tri-canvas-0"></canvas></div>
+                <div class="trinity-card-info">
+                    <span class="sys-tag tag-quantum">Quantum</span>
+                    <h3>Lattice Resonance</h3>
+                    <p>Complex lattice interference patterns with volumetric shimmer and audio reactivity.</p>
+                </div>
+            </div>
+            <div class="trinity-card" id="triCard1" data-system="faceted">
+                <div class="trinity-card-canvas"><canvas id="tri-canvas-1"></canvas></div>
+                <div class="trinity-card-info">
+                    <span class="sys-tag tag-faceted">Faceted</span>
+                    <h3>Crystalline Precision</h3>
+                    <p>Clean 2D projections of 4D geometry with precise lattice structures and HSL control.</p>
+                </div>
+            </div>
+            <div class="trinity-card" id="triCard2" data-system="holographic">
+                <div class="trinity-card-canvas"><canvas id="tri-canvas-2"></canvas></div>
+                <div class="trinity-card-info">
+                    <span class="sys-tag tag-holographic">Holographic</span>
+                    <h3>Spectral Layers</h3>
+                    <p>Five-layer glassmorphism with moire interference and role-based rendering.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SECTION 3: MORPH — Scroll-Locked Transformation
+         Single large viz that morphs through 3 systems on scroll
+         ========================================================= -->
+    <section class="morph-section" id="morphSection">
+        <div class="morph-pinned" id="morphPinned">
+            <div class="morph-canvas-layer" id="morphLayer0" style="opacity:1;">
+                <canvas id="morph-canvas-0"></canvas>
+            </div>
+            <div class="morph-canvas-layer" id="morphLayer1" style="opacity:0;">
+                <canvas id="morph-canvas-1"></canvas>
+            </div>
+            <div class="morph-canvas-layer" id="morphLayer2" style="opacity:0;">
+                <canvas id="morph-canvas-2"></canvas>
+            </div>
+            <div class="morph-overlay" id="morphOverlay">
+                <div class="morph-label" id="morphLabel">Faceted</div>
+                <div class="morph-sub" id="morphSub">Scroll to morph through all three systems</div>
+            </div>
+            <div class="morph-progress-bar">
+                <div class="morph-progress-fill" id="morphFill"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SECTION 4: AGENT INTEGRATION CTA
+         ========================================================= -->
+    <section class="agent-section" id="agentSection">
+        <h2 id="agentH2">Agent Integration</h2>
+        <p id="agentP">Control VIB3+ programmatically via MCP protocol. One config file, infinite possibilities.</p>
+        <div class="agent-grid">
+            <div class="agent-code-card" id="agentCodeCard">
+                <h3>MCP Config</h3>
+                <div class="agent-code"><span class="cmt">// claude_desktop_config.json</span>
+{
+  <span class="str">"mcpServers"</span>: {
+    <span class="str">"vib3"</span>: {
+      <span class="str">"command"</span>: <span class="str">"npx"</span>,
+      <span class="str">"args"</span>: [<span class="str">"@vib3code/sdk"</span>, <span class="str">"--mcp"</span>]
+    }
+  }
+}</div>
+            </div>
+            <div class="agent-tools-card" id="agentToolsCard">
+                <h3>Available Tools</h3>
+                <div class="tool-item"><div class="tool-dot" style="background:var(--quantum)"></div><span class="tool-name">create_4d_visualization</span><span class="tool-desc">Scene setup</span></div>
+                <div class="tool-item"><div class="tool-dot" style="background:var(--faceted)"></div><span class="tool-name">set_rotation</span><span class="tool-desc">6D rotation</span></div>
+                <div class="tool-item"><div class="tool-dot" style="background:var(--holographic)"></div><span class="tool-name">set_visual_parameters</span><span class="tool-desc">Styling</span></div>
+                <div class="tool-item"><div class="tool-dot" style="background:var(--quantum)"></div><span class="tool-name">save_to_gallery</span><span class="tool-desc">Persistence</span></div>
+                <div class="tool-item"><div class="tool-dot" style="background:var(--faceted)"></div><span class="tool-name">export_trading_card</span><span class="tool-desc">Export</span></div>
+                <div class="tool-item"><div class="tool-dot" style="background:var(--holographic)"></div><span class="tool-name">export_package</span><span class="tool-desc">Full bundle</span></div>
+                <div class="tool-item"><div class="tool-dot" style="background:var(--accent)"></div><span class="tool-name">randomize_all</span><span class="tool-desc">Randomize</span></div>
+            </div>
+        </div>
+        <div class="agent-download-row" id="agentDownloadRow">
+            <button class="download-btn" id="downloadAgentBtn">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2v10M5 8l4 4 4-4M3 14h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Download Agent Pack
+            </button>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SECTION 5: PARAMETERS PLAYGROUND
+         ========================================================= -->
+    <section class="playground" id="playgroundSection">
+        <h2 id="playH2">Parameters Playground</h2>
+        <p id="playP">Twist every dial. See every change in real time.</p>
+        <div class="playground-layout">
+            <div class="playground-viz" id="playgroundViz">
+                <canvas id="playground-canvas"></canvas>
+            </div>
+            <div class="playground-controls" id="playgroundControls">
+                <div class="slider-group">
+                    <label>Geometry <span id="val-geometry">3</span></label>
+                    <input type="range" min="0" max="23" step="1" value="3" data-param="geometry">
+                </div>
+                <div class="slider-group">
+                    <label>Hue <span id="val-hue">200</span></label>
+                    <input type="range" min="0" max="360" step="1" value="200" data-param="hue">
+                </div>
+                <div class="slider-group">
+                    <label>Grid Density <span id="val-gridDensity">24</span></label>
+                    <input type="range" min="4" max="100" step="1" value="24" data-param="gridDensity">
+                </div>
+                <div class="slider-group">
+                    <label>Speed <span id="val-speed">1.0</span></label>
+                    <input type="range" min="0.1" max="3" step="0.1" value="1.0" data-param="speed">
+                </div>
+                <div class="slider-group">
+                    <label>Morph Factor <span id="val-morphFactor">0.5</span></label>
+                    <input type="range" min="0" max="2" step="0.05" value="0.5" data-param="morphFactor">
+                </div>
+                <div class="slider-group">
+                    <label>Chaos <span id="val-chaos">0.2</span></label>
+                    <input type="range" min="0" max="1" step="0.01" value="0.2" data-param="chaos">
+                </div>
+                <div class="slider-group">
+                    <label>Intensity <span id="val-intensity">0.7</span></label>
+                    <input type="range" min="0" max="1" step="0.01" value="0.7" data-param="intensity">
+                </div>
+                <div class="slider-group">
+                    <label>Dimension <span id="val-dimension">3.5</span></label>
+                    <input type="range" min="3.0" max="4.5" step="0.05" value="3.5" data-param="dimension">
+                </div>
+                <div class="slider-group">
+                    <label>Rot XW <span id="val-rot4dXW">0.00</span></label>
+                    <input type="range" min="0" max="6.28" step="0.01" value="0" data-param="rot4dXW">
+                </div>
+                <div class="slider-group">
+                    <label>Rot YW <span id="val-rot4dYW">0.00</span></label>
+                    <input type="range" min="0" max="6.28" step="0.01" value="0" data-param="rot4dYW">
+                </div>
+                <div class="slider-group">
+                    <label>Rot ZW <span id="val-rot4dZW">0.00</span></label>
+                    <input type="range" min="0" max="6.28" step="0.01" value="0" data-param="rot4dZW">
+                </div>
+                <div class="slider-group">
+                    <label>Rot XY <span id="val-rot4dXY">0.00</span></label>
+                    <input type="range" min="0" max="6.28" step="0.01" value="0" data-param="rot4dXY">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================================================
+         SECTION 6: GET STARTED
+         ========================================================= -->
+    <section class="getstarted" id="getstartedSection">
+        <h2>Get Started</h2>
+        <p>Three lines to a 4D visualizer. WebGPU primary, WebGL fallback, C++ WASM math core.</p>
+        <div class="install-block">
+            <code>npm install @vib3code/sdk</code>
+            <button class="copy-btn" id="copyBtn">Copy</button>
+        </div>
+        <div class="cta-row">
+            <a class="cta-btn cta-primary" href="https://github.com/Domusgpt/vib34d-xr-quaternion-sdk" target="_blank" rel="noopener">GitHub Repository</a>
+            <a class="cta-btn cta-ghost" href="https://www.npmjs.com/package/@vib3code/sdk" target="_blank" rel="noopener">npm Package</a>
+        </div>
+        <div class="download-grid">
+            <button class="download-grid-item" id="dlClaude">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v10M4.5 7.5L8 11l3.5-3.5M2 13h12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                CLAUDE.md &mdash; Project Instructions
+            </button>
+            <button class="download-grid-item" id="dlAgentCtx">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v10M4.5 7.5L8 11l3.5-3.5M2 13h12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Agent Context &mdash; claude-agent-context.md
+            </button>
+            <button class="download-grid-item" id="dlMcpConfig">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v10M4.5 7.5L8 11l3.5-3.5M2 13h12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                MCP Config &mdash; mcp-config.json
+            </button>
+        </div>
+    </section>
+
+    <!-- Suck-up expansion overlay (click a card → expands to full screen) -->
+    <div class="suckup-overlay" id="suckupOverlay">
+        <div class="suckup-bg"></div>
+        <div class="suckup-canvas-wrap" id="suckupWrap">
+            <canvas id="suckup-canvas"></canvas>
+        </div>
+        <div class="suckup-label" id="suckupLabel">Click anywhere to close</div>
+        <button class="suckup-close" id="suckupClose">&times;</button>
+    </div>
+
+    <footer>
+        <p>&copy; 2025-2026 <a href="https://parserator.com">Clear Seas Solutions LLC</a> / Paul Phillips &middot; MIT License</p>
+    </footer>
+
+    <!-- =========================================================
+         ENGINE: All Canvas2D procedural rendering + GSAP choreography
+         ========================================================= -->
+    <script>
+    (function() {
+        'use strict';
+
+        gsap.registerPlugin(ScrollTrigger);
+
+        // ============================================================
+        // CHECK REDUCED MOTION
+        // ============================================================
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        // ============================================================
+        // 4D MATH UTILITIES
+        // ============================================================
+
+        // 4x4 matrix multiply
+        function mat4Mul(a, b) {
+            const r = new Float32Array(16);
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    let sum = 0;
+                    for (let k = 0; k < 4; k++) sum += a[i * 4 + k] * b[k * 4 + j];
+                    r[i * 4 + j] = sum;
+                }
+            }
+            return r;
+        }
+
+        // 4x4 identity
+        function mat4Identity() {
+            const m = new Float32Array(16);
+            m[0] = m[5] = m[10] = m[15] = 1;
+            return m;
+        }
+
+        // 6D rotation matrices (XY, XZ, YZ, XW, YW, ZW)
+        function rotXY(a) {
+            const m = mat4Identity(), c = Math.cos(a), s = Math.sin(a);
+            m[0] = c; m[1] = -s; m[4] = s; m[5] = c;
+            return m;
+        }
+        function rotXZ(a) {
+            const m = mat4Identity(), c = Math.cos(a), s = Math.sin(a);
+            m[0] = c; m[2] = -s; m[8] = s; m[10] = c;
+            return m;
+        }
+        function rotYZ(a) {
+            const m = mat4Identity(), c = Math.cos(a), s = Math.sin(a);
+            m[5] = c; m[6] = -s; m[9] = s; m[10] = c;
+            return m;
+        }
+        function rotXW(a) {
+            const m = mat4Identity(), c = Math.cos(a), s = Math.sin(a);
+            m[0] = c; m[3] = -s; m[12] = s; m[15] = c;
+            return m;
+        }
+        function rotYW(a) {
+            const m = mat4Identity(), c = Math.cos(a), s = Math.sin(a);
+            m[5] = c; m[7] = -s; m[13] = s; m[15] = c;
+            return m;
+        }
+        function rotZW(a) {
+            const m = mat4Identity(), c = Math.cos(a), s = Math.sin(a);
+            m[10] = c; m[11] = -s; m[14] = s; m[15] = c;
+            return m;
+        }
+
+        // Combined 6D rotation: XY * XZ * YZ * XW * YW * ZW
+        function rotate6D(xy, xz, yz, xw, yw, zw) {
+            let m = rotXY(xy);
+            m = mat4Mul(m, rotXZ(xz));
+            m = mat4Mul(m, rotYZ(yz));
+            m = mat4Mul(m, rotXW(xw));
+            m = mat4Mul(m, rotYW(yw));
+            m = mat4Mul(m, rotZW(zw));
+            return m;
+        }
+
+        // Multiply 4-vector by 4x4 matrix
+        function transformVec4(m, v) {
+            return [
+                m[0]*v[0] + m[1]*v[1] + m[2]*v[2] + m[3]*v[3],
+                m[4]*v[0] + m[5]*v[1] + m[6]*v[2] + m[7]*v[3],
+                m[8]*v[0] + m[9]*v[1] + m[10]*v[2] + m[11]*v[3],
+                m[12]*v[0] + m[13]*v[1] + m[14]*v[2] + m[15]*v[3]
+            ];
+        }
+
+        // Perspective project 4D -> 2D (via 4D->3D perspective, then 3D->2D orthographic)
+        function project4D(v4, dim) {
+            const f = 1.0 / (dim - v4[3]);
+            return [v4[0] * f, v4[1] * f, v4[2] * f];
+        }
+
+        // HSL to RGB (for canvas fillStyle)
+        function hsl(h, s, l, a) {
+            return `hsla(${h % 360}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%, ${a})`;
+        }
+
+        // ============================================================
+        // 4D GEOMETRY GENERATORS
+        // ============================================================
+
+        // Base geometry 0: Tetrahedron vertices (in 4D)
+        function genTetrahedron() {
+            return [
+                [1, 1, 1, 0], [-1, -1, 1, 0], [-1, 1, -1, 0], [1, -1, -1, 0]
+            ];
+        }
+        // Base geometry 1: Hypercube (tesseract) vertices
+        function genHypercube() {
+            const verts = [];
+            for (let i = 0; i < 16; i++) {
+                verts.push([
+                    (i & 1) ? 1 : -1,
+                    (i & 2) ? 1 : -1,
+                    (i & 4) ? 1 : -1,
+                    (i & 8) ? 1 : -1
+                ]);
+            }
+            return verts;
+        }
+        // Hypercube edges: connect vertices differing by exactly one bit
+        function genHypercubeEdges() {
+            const edges = [];
+            for (let i = 0; i < 16; i++) {
+                for (let j = i + 1; j < 16; j++) {
+                    const diff = i ^ j;
+                    if (diff && (diff & (diff - 1)) === 0) edges.push([i, j]);
+                }
+            }
+            return edges;
+        }
+        // Base geometry 2: Sphere points (parameterized on 3-sphere)
+        function genSpherePoints(n) {
+            const pts = [];
+            for (let i = 0; i < n; i++) {
+                const phi1 = (i / n) * Math.PI * 2;
+                const phi2 = (i * 1.618033988749895) * Math.PI;
+                const phi3 = (i * 2.414213562373095) * Math.PI;
+                pts.push([
+                    Math.sin(phi1) * Math.cos(phi2),
+                    Math.sin(phi1) * Math.sin(phi2) * Math.cos(phi3),
+                    Math.sin(phi1) * Math.sin(phi2) * Math.sin(phi3),
+                    Math.cos(phi1)
+                ]);
+            }
+            return pts;
+        }
+        // Base geometry 3: Torus in 4D (Clifford torus)
+        function genTorusPoints(n) {
+            const pts = [];
+            const sq = Math.ceil(Math.sqrt(n));
+            for (let i = 0; i < sq; i++) {
+                for (let j = 0; j < sq; j++) {
+                    const u = (i / sq) * Math.PI * 2;
+                    const v = (j / sq) * Math.PI * 2;
+                    pts.push([
+                        Math.cos(u), Math.sin(u),
+                        Math.cos(v), Math.sin(v)
+                    ]);
+                }
+            }
+            return pts;
+        }
+        // Base geometry 4: Klein bottle (approximation in 4D)
+        function genKleinPoints(n) {
+            const pts = [];
+            const sq = Math.ceil(Math.sqrt(n));
+            for (let i = 0; i < sq; i++) {
+                for (let j = 0; j < sq; j++) {
+                    const u = (i / sq) * Math.PI * 2;
+                    const v = (j / sq) * Math.PI * 2;
+                    const r = 2 + Math.cos(v);
+                    pts.push([
+                        r * Math.cos(u),
+                        r * Math.sin(u),
+                        Math.sin(v) * Math.cos(u / 2),
+                        Math.sin(v) * Math.sin(u / 2)
+                    ]);
+                }
+            }
+            return pts;
+        }
+        // Base geometry 5: Fractal (Sierpinski-like in 4D)
+        function genFractalPoints(n) {
+            const pts = [];
+            let p = [0, 0, 0, 0];
+            const anchors = [
+                [1,1,1,1],[-1,-1,1,1],[-1,1,-1,1],[1,-1,-1,1],
+                [1,1,-1,-1],[-1,-1,-1,-1],[-1,1,1,-1],[1,-1,1,-1]
+            ];
+            for (let i = 0; i < n + 20; i++) {
+                const a = anchors[Math.floor(Math.random() * anchors.length)];
+                p = [
+                    (p[0] + a[0]) * 0.5,
+                    (p[1] + a[1]) * 0.5,
+                    (p[2] + a[2]) * 0.5,
+                    (p[3] + a[3]) * 0.5
+                ];
+                if (i >= 20) pts.push([...p]);
+            }
+            return pts;
+        }
+        // Base geometry 6: Wave (sinusoidal surface in 4D)
+        function genWavePoints(n, t) {
+            const pts = [];
+            const sq = Math.ceil(Math.sqrt(n));
+            for (let i = 0; i < sq; i++) {
+                for (let j = 0; j < sq; j++) {
+                    const x = (i / sq - 0.5) * 2;
+                    const z = (j / sq - 0.5) * 2;
+                    const y = Math.sin(x * 3 + t) * Math.cos(z * 3 + t * 0.7) * 0.5;
+                    const w = Math.cos(x * 2 - t * 0.5) * Math.sin(z * 2 + t * 0.3) * 0.4;
+                    pts.push([x, y, z, w]);
+                }
+            }
+            return pts;
+        }
+        // Base geometry 7: Crystal (octahedral)
+        function genCrystalPoints(n) {
+            const pts = [];
+            // Octahedron vertices in 4D
+            const verts = [
+                [1,0,0,0],[-1,0,0,0],[0,1,0,0],[0,-1,0,0],
+                [0,0,1,0],[0,0,-1,0],[0,0,0,1],[0,0,0,-1]
+            ];
+            for (let i = 0; i < n; i++) {
+                const f = i / n;
+                const a = verts[i % verts.length];
+                const b = verts[(i + 1) % verts.length];
+                pts.push([
+                    a[0] + (b[0] - a[0]) * f,
+                    a[1] + (b[1] - a[1]) * f,
+                    a[2] + (b[2] - a[2]) * f,
+                    a[3] + (b[3] - a[3]) * f
+                ]);
+            }
+            return pts;
+        }
+
+        // Warp functions for core types
+        function warpHypersphere(pts) {
+            return pts.map(p => {
+                const len = Math.sqrt(p[0]*p[0] + p[1]*p[1] + p[2]*p[2] + p[3]*p[3]) || 1;
+                return [p[0]/len, p[1]/len, p[2]/len, p[3]/len];
+            });
+        }
+        function warpHypertetra(pts) {
+            // 5-cell (pentatope) vertices
+            const pv = [
+                [1,1,1,-1/Math.sqrt(5)], [1,-1,-1,-1/Math.sqrt(5)],
+                [-1,1,-1,-1/Math.sqrt(5)], [-1,-1,1,-1/Math.sqrt(5)],
+                [0,0,0,Math.sqrt(5)-1/Math.sqrt(5)]
+            ];
+            return pts.map(p => {
+                let minD = Infinity, nearest = 0;
+                for (let i = 0; i < 5; i++) {
+                    const d = (p[0]-pv[i][0])**2 + (p[1]-pv[i][1])**2 +
+                              (p[2]-pv[i][2])**2 + (p[3]-pv[i][3])**2;
+                    if (d < minD) { minD = d; nearest = i; }
+                }
+                const n = pv[nearest];
+                return [
+                    p[0] * 0.6 + n[0] * 0.4,
+                    p[1] * 0.6 + n[1] * 0.4,
+                    p[2] * 0.6 + n[2] * 0.4,
+                    p[3] * 0.6 + n[3] * 0.4
+                ];
+            });
+        }
+
+        // Get base geometry points
+        function getBaseGeometry(baseIdx, count, time) {
+            switch (baseIdx) {
+                case 0: return genTetrahedron();
+                case 1: return genHypercube();
+                case 2: return genSpherePoints(count);
+                case 3: return genTorusPoints(count);
+                case 4: return genKleinPoints(count);
+                case 5: return genFractalPoints(count);
+                case 6: return genWavePoints(count, time);
+                case 7: return genCrystalPoints(count);
+                default: return genSpherePoints(count);
+            }
+        }
+
+        // ============================================================
+        // VIB3 CANVAS 2D VISUALIZER
+        // ============================================================
+        class Vib3Viz {
+            constructor(canvasId, opts = {}) {
+                this.canvas = document.getElementById(canvasId);
+                if (!this.canvas) { this.active = false; return; }
+                this.ctx = this.canvas.getContext('2d');
+                this.active = true;
+                this.canvasId = canvasId;
+                this.params = {
+                    geometry: 3, hue: 200, gridDensity: 24, speed: 1.0,
+                    morphFactor: 0.5, chaos: 0.2, intensity: 0.7,
+                    rot4dXW: 0, rot4dYW: 0, rot4dZW: 0,
+                    rot4dXY: 0, rot4dXZ: 0, rot4dYZ: 0,
+                    dimension: 3.5, saturation: 0.7,
+                    ...opts
+                };
+                // Pre-generate fractal points with a fixed seed
+                this._fractalSeed = Math.random() * 10000;
+                this.resize();
+                this._ro = new ResizeObserver(() => this.resize());
+                if (this.canvas.parentElement) {
+                    this._ro.observe(this.canvas.parentElement);
+                }
+            }
+
+            resize() {
+                if (!this.canvas) return;
+                const parent = this.canvas.parentElement;
+                if (!parent) return;
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                const rect = parent.getBoundingClientRect();
+                this.canvas.width = rect.width * dpr;
+                this.canvas.height = rect.height * dpr;
+                this.w = this.canvas.width;
+                this.h = this.canvas.height;
+            }
+
+            setParam(k, v) { this.params[k] = v; }
+            setParams(o) { Object.assign(this.params, o); }
+
+            render(time) {
+                if (!this.active || !this.ctx) return;
+                const { ctx, w, h, params: p } = this;
+                if (w === 0 || h === 0) return;
+                const t = time * p.speed * 0.001;
+                const geoIdx = Math.floor(Math.abs(p.geometry)) % 24;
+                const baseIdx = geoIdx % 8;
+                const coreType = Math.floor(geoIdx / 8);
+
+                ctx.clearRect(0, 0, w, h);
+
+                // Background gradient
+                const bg = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, Math.max(w,h) * 0.7);
+                bg.addColorStop(0, hsl(p.hue, 0.3, 0.04, 1));
+                bg.addColorStop(1, hsl((p.hue + 40) % 360, 0.2, 0.015, 1));
+                ctx.fillStyle = bg;
+                ctx.fillRect(0, 0, w, h);
+
+                const cx = w / 2, cy = h / 2;
+                const scale = Math.min(w, h) * 0.32;
+                const density = Math.max(4, Math.floor(p.gridDensity));
+                const dim = p.dimension || 3.5;
+
+                // Build 6D rotation matrix
+                const rotMat = rotate6D(
+                    p.rot4dXY || 0, p.rot4dXZ || 0, p.rot4dYZ || 0,
+                    (p.rot4dXW || 0) + t * 0.2,
+                    (p.rot4dYW || 0) + t * 0.15,
+                    (p.rot4dZW || 0) + t * 0.1
+                );
+
+                // Get geometry points
+                let points;
+                if (baseIdx === 1) {
+                    // Hypercube: draw edges
+                    this._drawHypercube(ctx, cx, cy, scale, dim, rotMat, p, t);
+                    return;
+                } else {
+                    points = getBaseGeometry(baseIdx, density * 3, t);
+                }
+
+                // Apply core type warp
+                if (coreType === 1) points = warpHypersphere(points);
+                else if (coreType === 2) points = warpHypertetra(points);
+
+                // Morph factor: add noise displacement
+                if (p.morphFactor > 0) {
+                    points = points.map((pt, i) => {
+                        const noise = Math.sin(i * 1.3 + t * 2) * p.morphFactor * 0.2;
+                        return [pt[0] + noise, pt[1] + noise * 0.7, pt[2] - noise * 0.5, pt[3] + noise * 0.3];
+                    });
+                }
+
+                // Chaos: add random jitter
+                if (p.chaos > 0.01) {
+                    points = points.map(pt => pt.map(v => v + (Math.random() - 0.5) * p.chaos * 0.3));
+                }
+
+                // Transform and project all points
+                const projected = points.map(pt => {
+                    const r = transformVec4(rotMat, pt);
+                    const p3d = project4D(r, dim);
+                    return { x: cx + p3d[0] * scale, y: cy + p3d[1] * scale, z: p3d[2], w: r[3] };
+                });
+
+                // Sort by depth for better rendering
+                projected.sort((a, b) => a.z - b.z);
+
+                // Draw connections (lattice lines)
+                ctx.globalAlpha = p.intensity * 0.4;
+                const maxDist = scale * 0.5;
+                for (let i = 0; i < projected.length; i++) {
+                    const a = projected[i];
+                    for (let j = i + 1; j < Math.min(i + 6, projected.length); j++) {
+                        const b = projected[j];
+                        const dx = a.x - b.x, dy = a.y - b.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < maxDist) {
+                            const alpha = (1 - dist / maxDist) * 0.3;
+                            const hShift = (p.hue + i * 3 + coreType * 40) % 360;
+                            ctx.strokeStyle = hsl(hShift, p.saturation || 0.6, 0.45, alpha);
+                            ctx.lineWidth = 0.5 + p.morphFactor * 0.3;
+                            ctx.beginPath();
+                            ctx.moveTo(a.x, a.y);
+                            ctx.lineTo(b.x, b.y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+
+                // Draw points
+                ctx.globalAlpha = p.intensity;
+                for (let i = 0; i < projected.length; i++) {
+                    const pt = projected[i];
+                    const depthFactor = 0.5 + (pt.z + 1) * 0.5;
+                    const size = (1.5 + depthFactor * 2.5 + p.morphFactor) * (w / 800);
+                    const hShift = (p.hue + i * 5 + Math.sin(t + i) * 20 + coreType * 60) % 360;
+                    const lightness = 0.4 + depthFactor * 0.25;
+
+                    ctx.fillStyle = hsl(hShift, p.saturation || 0.7, lightness, 0.8);
+                    ctx.beginPath();
+                    ctx.arc(pt.x, pt.y, size, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Glow for brighter points
+                    if (depthFactor > 0.7 && p.intensity > 0.5) {
+                        ctx.fillStyle = hsl(hShift, p.saturation || 0.7, 0.6, 0.15);
+                        ctx.beginPath();
+                        ctx.arc(pt.x, pt.y, size * 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                // Core type decorations
+                if (coreType > 0) {
+                    ctx.globalAlpha = p.intensity * 0.15;
+                    ctx.strokeStyle = hsl((p.hue + 180) % 360, 0.4, 0.4, 0.2);
+                    ctx.lineWidth = 0.8;
+                    if (coreType === 1) {
+                        // Hypersphere: draw great circles
+                        for (let k = 0; k < 3; k++) {
+                            const r = scale * (0.4 + k * 0.2);
+                            const offset = t * 0.3 + k * 0.5;
+                            ctx.beginPath();
+                            ctx.ellipse(cx, cy, r, r * 0.5, offset, 0, Math.PI * 2);
+                            ctx.stroke();
+                        }
+                    } else {
+                        // Hypertetra: draw pentatope edges
+                        const pverts = [
+                            [1,1,1,-0.45], [1,-1,-1,-0.45], [-1,1,-1,-0.45],
+                            [-1,-1,1,-0.45], [0,0,0,1.79]
+                        ];
+                        for (let a = 0; a < 5; a++) {
+                            for (let b = a+1; b < 5; b++) {
+                                const pa = transformVec4(rotMat, pverts[a]);
+                                const pb = transformVec4(rotMat, pverts[b]);
+                                const pa2 = project4D(pa, dim);
+                                const pb2 = project4D(pb, dim);
+                                ctx.beginPath();
+                                ctx.moveTo(cx + pa2[0]*scale, cy + pa2[1]*scale);
+                                ctx.lineTo(cx + pb2[0]*scale, cy + pb2[1]*scale);
+                                ctx.stroke();
+                            }
+                        }
+                    }
+                }
+
+                ctx.globalAlpha = 1;
+            }
+
+            _drawHypercube(ctx, cx, cy, scale, dim, rotMat, p, t) {
+                const verts = genHypercube();
+                const edges = genHypercubeEdges();
+                const coreType = Math.floor((Math.abs(p.geometry) % 24) / 8);
+
+                let pts = verts;
+                if (coreType === 1) pts = warpHypersphere(pts);
+                else if (coreType === 2) pts = warpHypertetra(pts);
+
+                const projected = pts.map(v => {
+                    const r = transformVec4(rotMat, v);
+                    const p3d = project4D(r, dim);
+                    return { x: cx + p3d[0] * scale * 0.5, y: cy + p3d[1] * scale * 0.5, z: p3d[2] };
+                });
+
+                // Draw edges
+                ctx.globalAlpha = p.intensity * 0.7;
+                edges.forEach((e, i) => {
+                    const a = projected[e[0]], b = projected[e[1]];
+                    const hShift = (p.hue + i * 10 + coreType * 40) % 360;
+                    ctx.strokeStyle = hsl(hShift, p.saturation || 0.65, 0.5, 0.5);
+                    ctx.lineWidth = 1 + p.morphFactor * 0.5;
+                    ctx.beginPath();
+                    ctx.moveTo(a.x, a.y);
+                    ctx.lineTo(b.x, b.y);
+                    ctx.stroke();
+                });
+
+                // Draw vertices
+                ctx.globalAlpha = p.intensity;
+                projected.forEach((pt, i) => {
+                    const hShift = (p.hue + i * 20 + coreType * 60) % 360;
+                    const size = (2 + p.morphFactor) * (scale / 200);
+                    ctx.fillStyle = hsl(hShift, p.saturation || 0.7, 0.55, 0.9);
+                    ctx.beginPath();
+                    ctx.arc(pt.x, pt.y, size, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Glow
+                    ctx.fillStyle = hsl(hShift, p.saturation || 0.7, 0.55, 0.12);
+                    ctx.beginPath();
+                    ctx.arc(pt.x, pt.y, size * 4, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                ctx.globalAlpha = 1;
+            }
+
+            dispose() {
+                this.active = false;
+                this._ro?.disconnect();
+            }
+        }
+
+        // ============================================================
+        // SYSTEM-SPECIFIC RENDERERS (Quantum / Faceted / Holographic)
+        // These wrap Vib3Viz with distinct visual signatures
+        // ============================================================
+
+        // Quantum: extra lattice lines, field distortion
+        class QuantumViz extends Vib3Viz {
+            render(time) {
+                super.render(time);
+                if (!this.active || !this.ctx) return;
+                const { ctx, w, h, params: p } = this;
+                const t = time * p.speed * 0.001;
+                // Add quantum field shimmer overlay
+                ctx.globalAlpha = p.intensity * 0.08;
+                const n = 8;
+                for (let i = 0; i < n; i++) {
+                    const f = i / n;
+                    const x = w * 0.5 + Math.sin(t * 0.7 + f * Math.PI * 2) * w * 0.3;
+                    const y = h * 0.5 + Math.cos(t * 0.5 + f * Math.PI * 2) * h * 0.3;
+                    const r = Math.min(w, h) * (0.1 + f * 0.15);
+                    const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+                    grad.addColorStop(0, hsl((p.hue + f * 60) % 360, 0.6, 0.5, 0.15));
+                    grad.addColorStop(1, 'transparent');
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(0, 0, w, h);
+                }
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // Faceted: crisp lines, geometric precision
+        class FacetedViz extends Vib3Viz {
+            render(time) {
+                super.render(time);
+                if (!this.active || !this.ctx) return;
+                const { ctx, w, h, params: p } = this;
+                const t = time * p.speed * 0.001;
+                // Add faceted grid overlay
+                ctx.globalAlpha = p.intensity * 0.06;
+                const gridSize = Math.max(20, Math.floor(w / (p.gridDensity * 0.8)));
+                ctx.strokeStyle = hsl(p.hue, 0.3, 0.4, 0.08);
+                ctx.lineWidth = 0.5;
+                for (let x = 0; x < w; x += gridSize) {
+                    const offset = Math.sin(t * 0.3 + x * 0.01) * 3;
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x + offset, h);
+                    ctx.stroke();
+                }
+                for (let y = 0; y < h; y += gridSize) {
+                    const offset = Math.cos(t * 0.2 + y * 0.01) * 3;
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(w, y + offset);
+                    ctx.stroke();
+                }
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // Holographic: layered glow, moire patterns
+        class HolographicViz extends Vib3Viz {
+            render(time) {
+                super.render(time);
+                if (!this.active || !this.ctx) return;
+                const { ctx, w, h, params: p } = this;
+                const t = time * p.speed * 0.001;
+                // Add holographic layer interference
+                ctx.globalAlpha = p.intensity * 0.12;
+                for (let layer = 0; layer < 3; layer++) {
+                    const phase = t * 0.3 + layer * 2.09;
+                    const r = Math.min(w, h) * (0.25 + layer * 0.1);
+                    const x = w * 0.5 + Math.sin(phase) * w * 0.1;
+                    const y = h * 0.5 + Math.cos(phase * 0.7) * h * 0.1;
+                    ctx.strokeStyle = hsl((p.hue + layer * 40) % 360, 0.7, 0.5, 0.15);
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.ellipse(x, y, r, r * (0.6 + layer * 0.15), phase * 0.5, 0, Math.PI * 2);
+                    ctx.stroke();
+                    // Moire line set
+                    const lines = 6 + layer * 2;
+                    for (let i = 0; i < lines; i++) {
+                        const a = (i / lines) * Math.PI * 2 + phase;
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r * 0.6);
+                        ctx.stroke();
+                    }
+                }
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // ============================================================
+        // INTERSECTION OBSERVER — limit active renders to 2
+        // ============================================================
+        const allViz = new Map(); // canvasId -> { viz, active }
+        const activeSet = new Set();
+        const MAX_ACTIVE = 6; // Canvas2D can handle more concurrency than WebGL
+
+        function registerViz(id, viz) {
+            allViz.set(id, viz);
+        }
+
+        const vizObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                const canvas = entry.target;
+                const id = canvas.id;
+                const viz = allViz.get(id);
+                if (!viz) return;
+                if (entry.isIntersecting) {
+                    activeSet.add(id);
+                    viz.active = true;
+                } else {
+                    activeSet.delete(id);
+                    viz.active = false;
+                }
+            });
+        }, { rootMargin: '100px' });
+
+        // ============================================================
+        // INSTANCES
+        // ============================================================
+
+        // --- HERO ---
+        const heroViz = new QuantumViz('hero-canvas', {
+            geometry: 11, hue: 200, gridDensity: 28, speed: 0.35,
+            intensity: 0.65, chaos: 0.05, morphFactor: 0.6,
+            rot4dXW: 0.15, rot4dYW: 0.08, dimension: 3.6, saturation: 0.8
+        });
+        registerViz('hero-canvas', heroViz);
+
+        // --- TRINITY background ---
+        const trinityBgViz = new Vib3Viz('trinity-bg-canvas', {
+            geometry: 3, hue: 200, gridDensity: 12, speed: 0.2,
+            intensity: 0.15, chaos: 0.02, morphFactor: 0.3,
+            dimension: 4.0, saturation: 0.4
+        });
+        registerViz('trinity-bg-canvas', trinityBgViz);
+
+        // --- TRINITY cards ---
+        const triCardViz0 = new QuantumViz('tri-canvas-0', {
+            geometry: 11, hue: 195, gridDensity: 20, speed: 0.5,
+            intensity: 0.7, chaos: 0.08, morphFactor: 0.5, dimension: 3.5, saturation: 0.8
+        });
+        const triCardViz1 = new FacetedViz('tri-canvas-1', {
+            geometry: 17, hue: 270, gridDensity: 26, speed: 0.45,
+            intensity: 0.7, chaos: 0.04, morphFactor: 0.7, dimension: 3.4, saturation: 0.75
+        });
+        const triCardViz2 = new HolographicViz('tri-canvas-2', {
+            geometry: 4, hue: 340, gridDensity: 18, speed: 0.4,
+            intensity: 0.7, chaos: 0.1, morphFactor: 0.4, dimension: 3.7, saturation: 0.85
+        });
+        registerViz('tri-canvas-0', triCardViz0);
+        registerViz('tri-canvas-1', triCardViz1);
+        registerViz('tri-canvas-2', triCardViz2);
+
+        // --- MORPH canvases ---
+        const morphViz0 = new FacetedViz('morph-canvas-0', {
+            geometry: 1, hue: 270, gridDensity: 20, speed: 0.4,
+            intensity: 0.7, chaos: 0.03, morphFactor: 0.5, dimension: 3.4, saturation: 0.7
+        });
+        const morphViz1 = new QuantumViz('morph-canvas-1', {
+            geometry: 3, hue: 195, gridDensity: 24, speed: 0.5,
+            intensity: 0.7, chaos: 0.08, morphFactor: 0.5, dimension: 3.5, saturation: 0.8
+        });
+        const morphViz2 = new HolographicViz('morph-canvas-2', {
+            geometry: 12, hue: 340, gridDensity: 18, speed: 0.4,
+            intensity: 0.7, chaos: 0.1, morphFactor: 0.4, dimension: 3.5, saturation: 0.85
+        });
+        registerViz('morph-canvas-0', morphViz0);
+        registerViz('morph-canvas-1', morphViz1);
+        registerViz('morph-canvas-2', morphViz2);
+
+        // --- PLAYGROUND ---
+        const playViz = new FacetedViz('playground-canvas', {
+            geometry: 3, hue: 200, gridDensity: 24, speed: 1.0,
+            intensity: 0.7, chaos: 0.2, morphFactor: 0.5, dimension: 3.5, saturation: 0.7
+        });
+        registerViz('playground-canvas', playViz);
+
+        // Observe all canvases
+        allViz.forEach((viz, id) => {
+            const el = document.getElementById(id);
+            if (el) vizObserver.observe(el);
+        });
+
+        // ============================================================
+        // RENDER LOOP
+        // ============================================================
+        let lastFrame = 0;
+        function renderLoop(ts) {
+            // Throttle to ~30fps for performance
+            if (ts - lastFrame < 28) {
+                requestAnimationFrame(renderLoop);
+                return;
+            }
+            lastFrame = ts;
+            allViz.forEach((viz, id) => {
+                if (viz.active) viz.render(ts);
+            });
+            requestAnimationFrame(renderLoop);
+        }
+        requestAnimationFrame(renderLoop);
+
+        // ============================================================
+        // GSAP SCROLL PROGRESS BAR
+        // ============================================================
+        gsap.to('#scrollProgress', {
+            scaleX: 1, ease: 'none',
+            scrollTrigger: { trigger: document.body, start: 'top top', end: 'bottom bottom', scrub: 0.1 }
+        });
+
+        // ============================================================
+        // SECTION 1: HERO ANIMATIONS
+        // ============================================================
+        function heroEntrance() {
+            if (prefersReducedMotion) {
+                document.querySelectorAll('#heroBadge, #heroSub').forEach(el => {
+                    el.style.opacity = 1; el.style.transform = 'none';
+                });
+                const title = document.getElementById('heroTitle');
+                title.style.opacity = 1;
+                document.getElementById('heroScroll').style.opacity = 1;
+                return;
+            }
+
+            const tl = gsap.timeline({ delay: 0.3 });
+            tl.to('#heroBadge', { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' });
+
+            const title = document.getElementById('heroTitle');
+            const text = title.textContent;
+            title.innerHTML = text.split('').map(c =>
+                c === ' ' ? ' ' : '<span class="char">' + c + '</span>'
+            ).join('');
+            tl.to('#heroTitle .char', {
+                opacity: 1, y: 0, duration: 0.6, stagger: 0.08, ease: 'power4.out'
+            }, '-=0.4');
+            tl.to('#heroSub', { opacity: 1, y: 0, duration: 0.7, ease: 'power2.out' }, '-=0.3');
+            tl.to('#heroScroll', { opacity: 1, duration: 0.6 }, '-=0.2');
+        }
+        heroEntrance();
+
+        // Hero scroll: parallax inversion + density increase
+        if (!prefersReducedMotion) {
+            ScrollTrigger.create({
+                trigger: '.hero',
+                start: 'top top', end: 'bottom top',
+                scrub: 0.3,
+                onUpdate: (self) => {
+                    const p = self.progress;
+                    const ease = p * p * (3 - 2 * p);
+
+                    // Parallax inversion: move canvas opposite to scroll
+                    const heroCanvasWrap = document.querySelector('.hero-canvas-wrap');
+                    if (heroCanvasWrap) {
+                        heroCanvasWrap.style.transform = 'translateY(' + (p * 30) + '%)';
+                    }
+
+                    heroViz.setParams({
+                        gridDensity: 28 + ease * 40,
+                        rot4dXW: 0.15 + ease * Math.PI * 0.8,
+                        rot4dYW: 0.08 + ease * Math.PI * 0.4,
+                        hue: 200 + ease * 50,
+                        chaos: 0.05 + ease * 0.2,
+                        intensity: 0.65 + ease * 0.25,
+                        dimension: 3.6 - ease * 0.3,
+                    });
+                }
+            });
+
+            // Hero content fade
+            gsap.to('#heroContent', {
+                opacity: 0, y: -80, ease: 'none',
+                scrollTrigger: { trigger: '.hero', start: '30% top', end: 'bottom top', scrub: 0.3 }
+            });
+            gsap.to('#heroScroll', {
+                opacity: 0, ease: 'none',
+                scrollTrigger: { trigger: '.hero', start: '10% top', end: '30% top', scrub: 0.3 }
+            });
+        }
+
+        // ============================================================
+        // SECTION 2: TRINITY — Hover Coordination
+        // ============================================================
+        const triCards = [
+            document.getElementById('triCard0'),
+            document.getElementById('triCard1'),
+            document.getElementById('triCard2')
+        ];
+        const triVizzes = [triCardViz0, triCardViz1, triCardViz2];
+        const triSystems = ['quantum', 'faceted', 'holographic'];
+        const triColors = [195, 270, 340]; // hue for each system
+        const triBaseParams = [
+            { gridDensity: 20, speed: 0.5 },
+            { gridDensity: 26, speed: 0.45 },
+            { gridDensity: 18, speed: 0.4 }
+        ];
+
+        let hoveredCard = -1;
+        let hoverRestoreTimeout = null;
+
+        function onTriCardEnter(idx) {
+            hoveredCard = idx;
+            if (hoverRestoreTimeout) { clearTimeout(hoverRestoreTimeout); hoverRestoreTimeout = null; }
+
+            // Hovered card: decrease density, freeze speed
+            triVizzes[idx].setParams({
+                gridDensity: Math.max(6, triBaseParams[idx].gridDensity - 10),
+                speed: 0.02 // near-frozen
+            });
+
+            // Background: increase density, match hovered color
+            trinityBgViz.setParams({
+                gridDensity: 30,
+                hue: triColors[idx],
+                intensity: 0.3,
+                saturation: 0.6
+            });
+
+            // Other cards: mute
+            triCards.forEach((card, i) => {
+                if (i !== idx) {
+                    card.classList.add('muted');
+                    triVizzes[i].setParams({ saturation: 0.15, intensity: 0.35 });
+                }
+            });
+        }
+
+        function onTriCardLeave() {
+            const prevHovered = hoveredCard;
+            hoveredCard = -1;
+
+            // Background restores first
+            trinityBgViz.setParams({
+                gridDensity: 12, hue: 200, intensity: 0.15, saturation: 0.4
+            });
+
+            // Cards restore with 150ms offset
+            hoverRestoreTimeout = setTimeout(() => {
+                triCards.forEach((card, i) => {
+                    card.classList.remove('muted');
+                    triVizzes[i].setParams({
+                        gridDensity: triBaseParams[i].gridDensity,
+                        speed: triBaseParams[i].speed,
+                        saturation: [0.8, 0.75, 0.85][i],
+                        intensity: 0.7
+                    });
+                });
+                hoverRestoreTimeout = null;
+            }, 150);
+        }
+
+        triCards.forEach((card, idx) => {
+            if (!card) return;
+            card.addEventListener('mouseenter', () => onTriCardEnter(idx));
+            card.addEventListener('mouseleave', onTriCardLeave);
+        });
+
+        // Trinity entrance animation
+        if (!prefersReducedMotion) {
+            ScrollTrigger.create({
+                trigger: '#trinitySection',
+                start: 'top 70%',
+                once: true,
+                onEnter: () => {
+                    gsap.to('#trinityH2', { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' });
+                    gsap.to('#trinityP', { opacity: 1, y: 0, duration: 0.7, delay: 0.1, ease: 'power2.out' });
+                    gsap.to('.trinity-card', {
+                        opacity: 1, y: 0, duration: 0.8, stagger: 0.15, delay: 0.2, ease: 'power3.out'
+                    });
+                }
+            });
+        } else {
+            document.querySelectorAll('#trinityH2, #trinityP, .trinity-card').forEach(el => {
+                el.style.opacity = 1; el.style.transform = 'none';
+            });
+        }
+
+        // ============================================================
+        // SECTION 3: MORPH — Scroll-Locked Transformation
+        // ============================================================
+        const morphLabel = document.getElementById('morphLabel');
+        const morphSub = document.getElementById('morphSub');
+        const morphFill = document.getElementById('morphFill');
+        const morphLayers = [
+            document.getElementById('morphLayer0'),
+            document.getElementById('morphLayer1'),
+            document.getElementById('morphLayer2')
+        ];
+        const morphNames = ['Faceted', 'Quantum', 'Holographic'];
+        const morphSubs = [
+            'Crystalline lattice with increasing density',
+            '4D rotation through the XW hyperplane',
+            'Dimensional expansion into holographic space'
+        ];
+
+        if (!prefersReducedMotion) {
+            ScrollTrigger.create({
+                trigger: '#morphSection',
+                start: 'top top', end: 'bottom bottom',
+                pin: '#morphPinned',
+                scrub: 0.4,
+                onUpdate: (self) => {
+                    const p = self.progress;
+
+                    // Update progress bar
+                    if (morphFill) morphFill.style.width = (p * 100) + '%';
+
+                    // Determine active phase
+                    let phaseIdx, localP;
+                    if (p < 0.333) {
+                        phaseIdx = 0;
+                        localP = p / 0.333;
+                    } else if (p < 0.666) {
+                        phaseIdx = 1;
+                        localP = (p - 0.333) / 0.333;
+                    } else {
+                        phaseIdx = 2;
+                        localP = (p - 0.666) / 0.334;
+                    }
+
+                    // Update label
+                    if (morphLabel) morphLabel.textContent = morphNames[phaseIdx];
+                    if (morphSub) morphSub.textContent = morphSubs[phaseIdx];
+
+                    // Crossfade layers
+                    morphLayers.forEach((layer, i) => {
+                        if (!layer) return;
+                        if (i === phaseIdx) {
+                            layer.style.opacity = 1;
+                        } else if (i === phaseIdx - 1 && localP < 0.2) {
+                            layer.style.opacity = 1 - localP / 0.2;
+                        } else if (i === phaseIdx + 1 && localP > 0.8) {
+                            layer.style.opacity = (localP - 0.8) / 0.2;
+                        } else {
+                            layer.style.opacity = 0;
+                        }
+                    });
+
+                    // Phase 0: Faceted — gridDensity increases
+                    morphViz0.setParams({
+                        gridDensity: 12 + localP * 60,
+                        rot4dXY: localP * 1.5,
+                        hue: 270 + localP * 30,
+                        intensity: 0.6 + localP * 0.3,
+                        morphFactor: 0.3 + localP * 0.7
+                    });
+
+                    // Phase 1: Quantum — XW rotation increases
+                    morphViz1.setParams({
+                        rot4dXW: localP * Math.PI * 2,
+                        rot4dYW: localP * Math.PI * 0.5,
+                        gridDensity: 20 + Math.sin(localP * Math.PI) * 20,
+                        hue: 195 + localP * 40,
+                        chaos: 0.08 + localP * 0.15,
+                        intensity: 0.7 + Math.sin(localP * Math.PI) * 0.2
+                    });
+
+                    // Phase 2: Holographic — dimension expands
+                    morphViz2.setParams({
+                        dimension: 3.2 + localP * 1.0,
+                        rot4dZW: localP * Math.PI,
+                        gridDensity: 18 + localP * 15,
+                        hue: 340 + localP * 30,
+                        intensity: 0.7 + localP * 0.2,
+                        chaos: 0.1 + localP * 0.15
+                    });
+                }
+            });
+        }
+
+        // ============================================================
+        // SECTION 4: AGENT — Entrance animations
+        // ============================================================
+        if (!prefersReducedMotion) {
+            ScrollTrigger.create({
+                trigger: '#agentSection',
+                start: 'top 70%',
+                once: true,
+                onEnter: () => {
+                    gsap.to('#agentH2', { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' });
+                    gsap.to('#agentP', { opacity: 1, y: 0, duration: 0.7, delay: 0.1, ease: 'power2.out' });
+                    gsap.to('#agentCodeCard', { opacity: 1, y: 0, duration: 0.8, delay: 0.2, ease: 'power3.out' });
+                    gsap.to('#agentToolsCard', { opacity: 1, y: 0, duration: 0.8, delay: 0.3, ease: 'power3.out' });
+                    gsap.to('#agentDownloadRow', { opacity: 1, y: 0, duration: 0.7, delay: 0.4, ease: 'power2.out' });
+                }
+            });
+        } else {
+            document.querySelectorAll('#agentH2, #agentP, #agentCodeCard, #agentToolsCard, #agentDownloadRow').forEach(el => {
+                el.style.opacity = 1; el.style.transform = 'none';
+            });
+        }
+
+        // Download Agent Pack button
+        document.getElementById('downloadAgentBtn')?.addEventListener('click', () => {
+            const content = `# VIB3+ Agent Context
+
+## Overview
+VIB3+ is a 4D visualization engine with three rendering systems (Quantum, Faceted, Holographic),
+each supporting 24 geometry variants through a unified 6D rotation system.
+
+## MCP Setup
+Add to your claude_desktop_config.json:
+
+\`\`\`json
+{
+  "mcpServers": {
+    "vib3": {
+      "command": "npx",
+      "args": ["@vib3code/sdk", "--mcp"]
+    }
+  }
+}
+\`\`\`
+
+## Available Tools
+
+### create_4d_visualization
+Creates a complete 4D visualization scene.
+- system: "quantum" | "faceted" | "holographic"
+- geometry_index: 0-23
+- projection: "perspective" | "stereographic" | "orthographic"
+
+### set_rotation
+Sets 6D rotation angles (XY, XZ, YZ, XW, YW, ZW) in radians.
+
+### set_visual_parameters
+Adjusts hue (0-360), speed (0.1-3), chaos (0-1), gridDensity (4-100),
+morphFactor (0-2), intensity (0-1), dimension (3.0-4.5).
+
+### save_to_gallery
+Saves the current visualization state.
+
+### export_trading_card
+Generates a shareable trading card image.
+
+### export_package
+Creates a complete VIB3Package export.
+
+### randomize_all
+Randomizes all visualization parameters.
+
+## Geometry System
+geometry_index = core_type * 8 + base_geometry
+- Core 0 (Base): indices 0-7
+- Core 1 (Hypersphere): indices 8-15
+- Core 2 (Hypertetrahedron): indices 16-23
+
+Base geometries: Tetrahedron(0), Hypercube(1), Sphere(2), Torus(3),
+Klein Bottle(4), Fractal(5), Wave(6), Crystal(7)
+
+## 6D Rotation
+Order: XY * XZ * YZ * XW * YW * ZW
+- XY/XZ/YZ: 3D rotations
+- XW/YW/ZW: 4D hyperspace rotations (create inside-out effects)
+
+---
+Package: @vib3code/sdk@2.0.1
+License: MIT | Clear Seas Solutions LLC
+`;
+            const blob = new Blob([content], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'claude-agent-context.md';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // ============================================================
+        // SECTION 5: PLAYGROUND — Wire sliders to viz
+        // ============================================================
+        const playgroundControls = document.getElementById('playgroundControls');
+        if (playgroundControls) {
+            playgroundControls.querySelectorAll('input[type="range"]').forEach(input => {
+                const param = input.dataset.param;
+                input.addEventListener('input', () => {
+                    let val = parseFloat(input.value);
+                    if (param === 'geometry') val = Math.floor(val);
+                    playViz.setParam(param, val);
+                    const display = document.getElementById('val-' + param);
+                    if (display) {
+                        display.textContent = param === 'geometry' ? val :
+                            (Number.isInteger(val) ? val : val.toFixed(2));
+                    }
+                });
+            });
+        }
+
+        // Playground entrance
+        if (!prefersReducedMotion) {
+            ScrollTrigger.create({
+                trigger: '#playgroundSection',
+                start: 'top 70%',
+                once: true,
+                onEnter: () => {
+                    gsap.to('#playH2', { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' });
+                    gsap.to('#playP', { opacity: 1, y: 0, duration: 0.7, delay: 0.1, ease: 'power2.out' });
+                    gsap.to('#playgroundViz', { opacity: 1, y: 0, duration: 0.8, delay: 0.2, ease: 'power3.out' });
+                    gsap.to('#playgroundControls', { opacity: 1, y: 0, duration: 0.8, delay: 0.3, ease: 'power3.out' });
+                }
+            });
+        } else {
+            document.querySelectorAll('#playH2, #playP, #playgroundViz, #playgroundControls').forEach(el => {
+                el.style.opacity = 1; el.style.transform = 'none';
+            });
+        }
+
+        // ============================================================
+        // SECTION 6: GET STARTED — Copy + Download buttons
+        // ============================================================
+        const copyBtn = document.getElementById('copyBtn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText('npm install @vib3code/sdk').then(() => {
+                    copyBtn.textContent = 'Copied!';
+                    copyBtn.classList.add('copied');
+                    setTimeout(() => {
+                        copyBtn.textContent = 'Copy';
+                        copyBtn.classList.remove('copied');
+                    }, 2000);
+                }).catch(() => {
+                    // Fallback
+                    const ta = document.createElement('textarea');
+                    ta.value = 'npm install @vib3code/sdk';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    copyBtn.textContent = 'Copied!';
+                    copyBtn.classList.add('copied');
+                    setTimeout(() => {
+                        copyBtn.textContent = 'Copy';
+                        copyBtn.classList.remove('copied');
+                    }, 2000);
+                });
+            });
+        }
+
+        // Download CLAUDE.md
+        document.getElementById('dlClaude')?.addEventListener('click', () => {
+            triggerDownload('CLAUDE.md', `# CLAUDE.md - VIB3+ CORE Technical Reference
+
+**VIB3+ Unified 4D Visualization Engine - v2.0.0**
+
+## Overview
+VIB3+ is a 4D visualization engine with three rendering systems (Quantum, Faceted, Holographic),
+each supporting 24 geometry variants through a unified 6D rotation system.
+
+## Architecture
+- C++ WASM Core: Clifford algebra Cl(4,0) for mathematically rigorous 4D rotation
+- WebGL/WebGPU Shaders: GPU-accelerated rendering
+- MCP Protocol: Agentic/programmatic control
+- SpatialInputSystem: Universal spatial input mapping
+
+## Active Systems
+- Quantum: Complex lattice visualizations
+- Faceted: Clean 2D geometric patterns with 4D rotation projection
+- Holographic: 5-layer glassmorphic audio-reactive effects
+
+## 24 Geometry System
+geometry_index = core_type * 8 + base_geometry
+- Base (0-7): Tetrahedron, Hypercube, Sphere, Torus, Klein Bottle, Fractal, Wave, Crystal
+- Hypersphere (8-15): Projected onto 3-sphere S3
+- Hypertetrahedron (16-23): Warped to pentatope (5-cell)
+
+## 6D Rotation
+Planes: XY, XZ, YZ (3D) + XW, YW, ZW (4D)
+Order: XY * XZ * YZ * XW * YW * ZW
+
+## Quick Start
+npm install @vib3code/sdk
+import { VIB3Engine } from '@vib3code/sdk/core';
+const engine = new VIB3Engine();
+await engine.initialize();
+
+---
+Package: @vib3code/sdk@2.0.1 | MIT License | Clear Seas Solutions LLC
+`);
+        });
+
+        // Download agent context
+        document.getElementById('dlAgentCtx')?.addEventListener('click', () => {
+            document.getElementById('downloadAgentBtn')?.click();
+        });
+
+        // Download MCP config
+        document.getElementById('dlMcpConfig')?.addEventListener('click', () => {
+            triggerDownload('mcp-config.json', JSON.stringify({
+                mcpServers: {
+                    vib3: {
+                        command: "npx",
+                        args: ["@vib3code/sdk", "--mcp"],
+                        description: "VIB3+ 4D Visualization SDK"
+                    }
+                }
+            }, null, 2));
+        });
+
+        // ============================================================
+        // SUCK-UP EXPANSION — Click card → visualizer sucks into center → expands to full screen
+        // ============================================================
+        const suckupOverlay = document.getElementById('suckupOverlay');
+        const suckupWrap = document.getElementById('suckupWrap');
+        const suckupLabel = document.getElementById('suckupLabel');
+        let suckupViz = null;
+        let suckupActive = false;
+
+        function openSuckup(cardEl, systemType, sourceParams) {
+            if (suckupActive) return;
+            suckupActive = true;
+
+            // Get card position for animation origin
+            const rect = cardEl.getBoundingClientRect();
+            suckupWrap.style.top = rect.top + 'px';
+            suckupWrap.style.left = rect.left + 'px';
+            suckupWrap.style.width = rect.width + 'px';
+            suckupWrap.style.height = rect.height + 'px';
+            suckupWrap.classList.remove('expanded');
+
+            // Create viz for the expanded canvas
+            const VizClass = systemType === 'quantum' ? QuantumViz :
+                             systemType === 'holographic' ? HolographicViz : FacetedViz;
+            if (suckupViz) suckupViz.dispose();
+            suckupViz = new VizClass('suckup-canvas', {
+                ...sourceParams,
+                gridDensity: sourceParams.gridDensity + 20,
+                intensity: Math.min(1, sourceParams.intensity + 0.15)
+            });
+            registerViz('suckup-canvas', suckupViz);
+            suckupViz.active = true;
+
+            // Show overlay then expand
+            suckupOverlay.classList.add('active');
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    suckupWrap.classList.add('expanded');
+                });
+            });
+
+            // Update label
+            const sysNames = { quantum: 'Quantum', faceted: 'Faceted', holographic: 'Holographic' };
+            suckupLabel.textContent = (sysNames[systemType] || 'VIB3+') + ' — Click anywhere to close';
+        }
+
+        function closeSuckup() {
+            if (!suckupActive) return;
+            suckupWrap.classList.remove('expanded');
+            setTimeout(() => {
+                suckupOverlay.classList.remove('active');
+                suckupActive = false;
+                if (suckupViz) { suckupViz.dispose(); suckupViz = null; }
+                allViz.delete('suckup-canvas');
+            }, 500);
+        }
+
+        // Wire trinity card clicks to suck-up
+        triCards.forEach((card, idx) => {
+            if (!card) return;
+            card.addEventListener('click', () => {
+                const systems = ['quantum', 'faceted', 'holographic'];
+                const params = triVizzes[idx].params;
+                openSuckup(card, systems[idx], { ...params });
+            });
+        });
+
+        // Close handlers
+        document.getElementById('suckupClose')?.addEventListener('click', closeSuckup);
+        document.getElementById('suckupOverlay')?.addEventListener('click', (e) => {
+            if (e.target === suckupOverlay.querySelector('.suckup-bg') || e.target === suckupOverlay) {
+                closeSuckup();
+            }
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && suckupActive) closeSuckup();
+        });
+
+        function triggerDownload(filename, content) {
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+    })();
+    </script>
+</body>
+</html>

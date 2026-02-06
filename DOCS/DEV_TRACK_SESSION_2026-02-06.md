@@ -122,7 +122,43 @@ Implements proper JSON-RPC 2.0 over stdio per the Model Context Protocol spec:
 | `agent-config/README.md` | **NEW** — Agent setup guide |
 | `agent-config/claude-agent-context.md` | **NEW** — Claude context pack |
 | `agent-config/openai-agent-context.md` | **NEW** — OpenAI context pack |
-| `index-v2.html` | **NEW** — Enhanced landing page |
+| `index-v2.html` | **NEW** — Enhanced landing page (2100+ lines) |
+| `DOCS/DEV_TRACK_SESSION_2026-02-06.md` | Updated with Phase C |
+
+---
+
+## Phase C — Enhanced Landing Page (Commit 3)
+
+### `index-v2.html` — Choreographed Multi-Instance GSAP Showcase (2100+ lines)
+
+A complete Canvas2D-based landing page with 10 concurrent visualizer instances showing all 3 systems:
+
+| Section | Instances | Feature |
+|---------|-----------|---------|
+| **Hero** | 1x QuantumViz | Parallax inversion on scroll, density ramps up, 4D rotation increases |
+| **Trinity** | 1x bg + 3x cards (Quantum/Faceted/Holographic) | Hover: card density decreases + speed freezes, bg density increases + matches hue, others mute |
+| **Morph** | 3x (Faceted → Quantum → Holographic) | Scroll-locked pin, crossfade between systems, per-phase parameter animation |
+| **Playground** | 1x FacetedViz | 12 live parameter sliders with real-time update |
+| **Suck-Up** | 1x (dynamic) | Click card → visualizer animates from card position → expands to 90vw/90vh fullscreen |
+
+### Key Technical Decisions
+
+- **Canvas2D** (not WebGL) to avoid context limits with 10+ concurrent instances
+- **IntersectionObserver** gates rendering to only visible canvases
+- **30fps throttle** for battery-friendly performance
+- **prefers-reduced-motion** support throughout (instant opacity, no animations)
+- **ResizeObserver** per canvas for responsive DPR-aware sizing
+- All 8 base geometries + 2 warp functions + 6D rotation implemented in JS
+- GSAP ScrollTrigger for all scroll-locked choreography
+
+### Agent-First Features in Landing Page
+
+- "Download Agent Pack" button → generates claude-agent-context.md blob
+- "CLAUDE.md" download button → generates project instructions
+- "MCP Config" download → generates mcp-config.json
+- Copy-to-clipboard install command
+- MCP config code card with syntax highlighting
+- Tool list with 7 key tools shown
 
 ---
 
@@ -163,7 +199,7 @@ HolographicVisualizer had independent fallback breath cycle (line 955-958) that 
 | DONE | Real MCP server (JSON-RPC 2.0 over stdio) | `stdio-server.js` working |
 | DONE | Agent documentation packs | Claude + OpenAI configs |
 | DONE | All tests passing (933/933) | Verified |
-| IN PROGRESS | Enhanced landing page (index-v2.html) | Multi-instance GSAP showcase |
+| DONE | Enhanced landing page (index-v2.html) | Multi-instance GSAP showcase (2100+ lines) |
 | NEXT | Claude Code skill (wraps MCP) | After landing page |
 | NEXT | Test coverage for v2.0.0 modules | 18 modules at 0% |
 
