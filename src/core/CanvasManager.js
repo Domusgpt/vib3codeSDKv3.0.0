@@ -1,217 +1,110 @@
 /**
- * Dead Simple Canvas Manager - Just hide/show containers + fresh engines
- * No canvas destruction - HTML canvases stay put, just switch visibility
+ * CanvasManager - Creates and manages 5-layer canvas architecture per system.
+ *
+ * Provides the API surface expected by VIB3Engine:
+ *   constructor(containerId)
+ *   createSystemCanvases(systemName) -> string[]
+ *   registerContext(canvasId, gl)
+ *   destroy()
  */
 
 export class CanvasManager {
-  constructor() {
-    this.currentSystem = null;
-    this.currentEngine = null;
-  }
-
-  async switchToSystem(systemName, engineClasses) {
-    console.log(`🔄 DESTROY OLD → CREATE NEW: ${systemName}`);
-    
-    // STEP 1: DESTROY current engine completely
-    if (this.currentEngine) {
-      if (this.currentEngine.setActive) {
-        this.currentEngine.setActive(false);
-      }
-      if (this.currentEngine.destroy) {
-        this.currentEngine.destroy();
-      }
-      console.log('💥 Old engine destroyed');
+    constructor(containerId = 'vib3-container') {
+        this.containerId = containerId;
+        this.container = (typeof document !== 'undefined')
+            ? document.getElementById(containerId)
+            : null;
+        this.currentSystem = null;
+        this.createdCanvases = [];
+        this.registeredContexts = new Map();
     }
-    
-    // STEP 2: DESTROY old WebGL contexts 
-    this.destroyOldWebGLContexts();
-    
-    // STEP 3: DESTROY all canvases + CREATE 5 fresh ones
-    this.destroyAllCanvasesAndCreateFresh(systemName);
-    
-    // STEP 4: CREATE fresh engine
-    const engine = await this.createFreshEngine(systemName, engineClasses);
-    
-    // STEP 5: Start new engine
-    if (engine && engine.setActive) {
-      engine.setActive(true);
-    }
-    
-    this.currentSystem = systemName;
-    this.currentEngine = engine;
-    console.log(`✅ DESTROY → CREATE complete: ${systemName} ready`);
-    return engine;
-  }
 
-  destroyOldWebGLContexts() {
-    console.log('💥 COMPLETE DESTRUCTION: WebGL contexts + old system cleanup...');
-    
-    // STEP 1: Kill all WebGL contexts first
-    const allCanvases = document.querySelectorAll('canvas');
-    let destroyedCount = 0;
-    
-    allCanvases.forEach(canvas => {
-      // Get any existing WebGL context
-      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-      if (gl) {
-        // Force context loss
-        const loseContextExt = gl.getExtension('WEBGL_lose_context');
-        if (loseContextExt) {
-          loseContextExt.loseContext();
-          destroyedCount++;
+    /**
+     * Create 5 canvases with system-appropriate IDs inside the container.
+     * Returns the array of canvas IDs created.
+     */
+    createSystemCanvases(systemName) {
+        // Tear down previous canvases
+        this._removeCreatedCanvases();
+
+        const canvasIds = this._getCanvasIdsForSystem(systemName);
+
+        if (this.container) {
+            const viewWidth = this.container.clientWidth || (typeof window !== 'undefined' ? window.innerWidth : 800);
+            const viewHeight = this.container.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 600);
+            const dpr = (typeof window !== 'undefined') ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+
+            canvasIds.forEach((canvasId, index) => {
+                const canvas = document.createElement('canvas');
+                canvas.id = canvasId;
+                canvas.className = 'visualization-canvas';
+                canvas.style.position = 'absolute';
+                canvas.style.top = '0';
+                canvas.style.left = '0';
+                canvas.style.width = '100%';
+                canvas.style.height = '100%';
+                canvas.style.zIndex = String(index + 1);
+                canvas.width = viewWidth * dpr;
+                canvas.height = viewHeight * dpr;
+                this.container.appendChild(canvas);
+                this.createdCanvases.push(canvas);
+            });
         }
-      }
-    });
-    
-    // STEP 2: Clear all global engine references (old system cleanup)
-    if (window.engine) {
-      console.log('💥 Clearing window.engine');
-      window.engine = null;
-    }
-    if (window.quantumEngine) {
-      console.log('💥 Clearing window.quantumEngine');
-      window.quantumEngine = null;
-    }
-    if (window.holographicSystem) {
-      console.log('💥 Clearing window.holographicSystem');
-      window.holographicSystem = null;
-    }
-    if (window.polychoraSystem) {
-      console.log('💥 Clearing window.polychoraSystem');
-      window.polychoraSystem = null;
-    }
-    
-    console.log(`💥 DESTRUCTION COMPLETE: ${destroyedCount} WebGL contexts destroyed, all engine refs cleared`);
-  }
 
-  destroyAllCanvasesAndCreateFresh(systemName) {
-    console.log('💥 DESTROYING ALL CANVASES + CREATING 5 FRESH ONES');
-    
-    // STEP 1: DESTROY all existing canvases completely
-    const allCanvases = document.querySelectorAll('canvas');
-    allCanvases.forEach(canvas => canvas.remove());
-    console.log(`💥 Destroyed ${allCanvases.length} old canvases`);
-    
-    // STEP 2: Clear all containers
-    const containers = ['vib34dLayers', 'quantumLayers', 'holographicLayers', 'polychoraLayers'];
-    containers.forEach(containerId => {
-      const container = document.getElementById(containerId);
-      if (container) {
-        container.innerHTML = '';
-        container.style.display = 'none';
-      }
-    });
-    
-    // STEP 3: CREATE 5 fresh canvases for the new system
-    const targetId = systemName === 'faceted' ? 'vib34dLayers' : `${systemName}Layers`;
-    const targetContainer = document.getElementById(targetId);
-    
-    if (!targetContainer) {
-      console.error(`❌ Container ${targetId} not found`);
-      return;
+        this.currentSystem = systemName;
+        return canvasIds;
     }
-    
-    // Create canvas IDs for this system
-    const canvasIds = this.getCanvasIdsForSystem(systemName);
-    
-    // Create 5 fresh canvases
-    canvasIds.forEach((canvasId, index) => {
-      const canvas = document.createElement('canvas');
-      canvas.id = canvasId;
-      canvas.className = 'visualization-canvas';
-      canvas.style.position = 'absolute';
-      canvas.style.top = '0';
-      canvas.style.left = '0';
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.zIndex = index + 1;
-      
-      // Set canvas dimensions
-      const viewWidth = window.innerWidth;
-      const viewHeight = window.innerHeight;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = viewWidth * dpr;
-      canvas.height = viewHeight * dpr;
-      
-      targetContainer.appendChild(canvas);
-    });
-    
-    // Show the target container
-    targetContainer.style.display = 'block';
-    targetContainer.style.visibility = 'visible';
-    targetContainer.style.opacity = '1';
-    
-    console.log(`✅ Created 5 fresh canvases for ${systemName}: ${canvasIds.join(', ')}`);
-  }
-  
-  getCanvasIdsForSystem(systemName) {
-    const baseIds = ['background-canvas', 'shadow-canvas', 'content-canvas', 'highlight-canvas', 'accent-canvas'];
-    
-    switch (systemName) {
-      case 'faceted':
-        return baseIds;
-      case 'quantum':
-        return baseIds.map(id => `quantum-${id}`);
-      case 'holographic':
-        return baseIds.map(id => `holo-${id}`);
-      case 'polychora':
-        return baseIds.map(id => `polychora-${id}`);
-      default:
-        return baseIds;
+
+    /**
+     * Track a WebGL context so we can force-lose it during cleanup.
+     */
+    registerContext(canvasId, gl) {
+        this.registeredContexts.set(canvasId, gl);
     }
-  }
-  
-  async createFreshEngine(systemName, engineClasses) {
-    console.log(`🚀 Creating fresh ${systemName} engine`);
-    
-    let engine = null;
-    
-    try {
-      switch(systemName) {
-        case 'faceted':
-          if (engineClasses.VIB34DIntegratedEngine) {
-            engine = new engineClasses.VIB34DIntegratedEngine();
-            window.engine = engine;
-            console.log('✅ Fresh Faceted engine');
-          }
-          break;
-          
-        case 'quantum':
-          if (engineClasses.QuantumEngine) {
-            engine = new engineClasses.QuantumEngine();
-            window.quantumEngine = engine;
-            console.log('✅ Fresh Quantum engine');
-          }
-          break;
-          
-        case 'holographic':
-          if (engineClasses.RealHolographicSystem) {
-            engine = new engineClasses.RealHolographicSystem();
-            window.holographicSystem = engine;
-            console.log('✅ Fresh Holographic engine');
-          }
-          break;
-          
-        case 'polychora':
-          // POLYCHORA: TBD placeholder - not production ready
-          // Engine disabled until system is complete
-          console.warn('⚠️ Polychora system is TBD placeholder - not available');
-          if (false && engineClasses.NewPolychoraEngine) {
-            engine = new engineClasses.NewPolychoraEngine();
-            window.newPolychoraEngine = engine;
-            console.log('✅ Fresh TRUE 4D Polychora Engine with VIB34D DNA');
-          }
-          break;
-          
-        default:
-          console.error(`❌ Unknown system: ${systemName}`);
-      }
-      
-    } catch (error) {
-      console.error(`💥 Engine creation failed for ${systemName}:`, error);
-      engine = null;
+
+    /**
+     * Destroy all managed canvases and force-lose registered WebGL contexts.
+     */
+    destroy() {
+        // Force-lose all tracked contexts
+        for (const [, gl] of this.registeredContexts) {
+            try {
+                const ext = gl.getExtension('WEBGL_lose_context');
+                if (ext) ext.loseContext();
+            } catch (_) { /* context may already be lost */ }
+        }
+        this.registeredContexts.clear();
+
+        this._removeCreatedCanvases();
+        this.currentSystem = null;
     }
-    
-    return engine;
-  }
+
+    // ── Private helpers ──
+
+    _removeCreatedCanvases() {
+        for (const canvas of this.createdCanvases) {
+            canvas.remove();
+        }
+        this.createdCanvases = [];
+    }
+
+    _getCanvasIdsForSystem(systemName) {
+        const baseIds = [
+            'background-canvas', 'shadow-canvas', 'content-canvas',
+            'highlight-canvas', 'accent-canvas'
+        ];
+
+        switch (systemName) {
+            case 'faceted':
+                return baseIds;
+            case 'quantum':
+                return baseIds.map(id => `quantum-${id}`);
+            case 'holographic':
+                return baseIds.map(id => `holo-${id}`);
+            case 'polychora':
+                return baseIds.map(id => `polychora-${id}`);
+            default:
+                return baseIds;
+        }
+    }
 }
