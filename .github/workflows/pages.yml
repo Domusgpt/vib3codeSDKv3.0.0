@@ -32,8 +32,9 @@ jobs:
           # Disable Jekyll processing (required for ES module paths)
           touch _site/.nojekyll
 
-          # Root index (redirects to WebGPU live page)
+          # Root index and v2 landing page
           cp index.html _site/
+          cp index-v2.html _site/ 2>/dev/null || true
 
           # Gallery, WebGPU live page, test hub, and all standalone visualizations
           cp docs/.nojekyll _site/docs/ 2>/dev/null || true
@@ -46,6 +47,9 @@ jobs:
           # E2E test harness (for manual testing on devices)
           mkdir -p _site/tests
           cp tests/e2e-harness.html _site/tests/ 2>/dev/null || true
+
+          # Agent config docs (for download buttons on landing page)
+          cp -r agent-config/ _site/agent-config/ 2>/dev/null || true
 
           # Source modules (needed by WebGPU live page and test harness)
           # The live page imports ES modules from ../src/ relative to docs/
