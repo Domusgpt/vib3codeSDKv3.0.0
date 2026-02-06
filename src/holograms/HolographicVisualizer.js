@@ -951,10 +951,8 @@ export class HolographicVisualizer {
         this.gl.uniform1f(this.uniforms.rot4dYW, this.variantParams.rot4dYW || 0.0);
         this.gl.uniform1f(this.uniforms.rot4dZW, this.variantParams.rot4dZW || 0.0);
 
-        // Exhale feature: Use centralized breath or local fallback
-        const breathCycle = (this.variantParams.breath !== undefined)
-            ? this.variantParams.breath
-            : (Math.sin(time * 0.001) * 0.5 + 0.5);
+        // Exhale feature: Use centralized breath from VitalitySystem (0.0 = inhale, 1.0 = exhale)
+        const breathCycle = this.variantParams.breath || 0.0;
         this.gl.uniform1f(this.uniforms.breath, breathCycle);
 
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);

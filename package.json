@@ -6,7 +6,8 @@
   "main": "src/core/VIB3Engine.js",
   "types": "./types/adaptive-sdk.d.ts",
   "bin": {
-    "vib3": "./src/cli/index.js"
+    "vib3": "./src/cli/index.js",
+    "vib3-mcp": "./src/agent/mcp/stdio-server.js"
   },
   "sideEffects": [
     "./src/geometry/builders/*.js"
