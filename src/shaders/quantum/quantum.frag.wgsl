@@ -32,7 +32,7 @@ struct VIB3Uniforms {
     layerColor: vec3<f32>,
     densityMult: f32,
     speedMult: f32,
-    _pad2: vec3<f32>,
+    breath: f32,
 };
 
 @group(0) @binding(0) var<uniform> u: VIB3Uniforms;

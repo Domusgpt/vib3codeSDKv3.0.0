@@ -326,7 +326,9 @@ struct VIB3Uniforms {
     layerColorB: f32,
     densityMult: f32,
     speedMult: f32,
-    breath: f32, // Index 32
+    breath: f32,
+    roleIntensity: f32,
+    mouse: vec2<f32>,
 };
 
 @group(0) @binding(0) var<uniform> u: VIB3Uniforms;
@@ -583,6 +585,29 @@ export class FacetedSystem {
     setActive(active) {
         const layer = document.getElementById('faceted-layer');
         if (layer) layer.style.display = active ? 'block' : 'none';
+    }
+
+    /**
+     * Alias for initialize() — satisfies the renderer contract.
+     */
+    init() {
+        return this.initialize();
+    }
+
+    /**
+     * Resize the rendering surface.
+     */
+    resize(width, height) {
+        if (this.bridge && width && height) {
+            this.bridge.resize(width, height);
+        }
+    }
+
+    /**
+     * Alias for destroy() — satisfies the renderer contract.
+     */
+    dispose() {
+        return this.destroy();
     }
 
     destroy() {

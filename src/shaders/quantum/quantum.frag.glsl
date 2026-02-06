@@ -30,6 +30,10 @@ uniform float u_rot4dZW;
 uniform float u_mouseIntensity;
 uniform float u_clickIntensity;
 uniform float u_roleIntensity;
+uniform float u_bass;
+uniform float u_mid;
+uniform float u_high;
+uniform float u_breath;
 
 // 6D rotation matrices - 3D space rotations (XY, XZ, YZ)
 mat4 rotateXY(float theta) {

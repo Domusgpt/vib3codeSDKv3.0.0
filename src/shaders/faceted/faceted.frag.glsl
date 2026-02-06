@@ -31,6 +31,7 @@ uniform float u_roleIntensity;
 uniform float u_bass;
 uniform float u_mid;
 uniform float u_high;
+uniform float u_breath;
 
 // ── 6D Rotation Matrices ──
 

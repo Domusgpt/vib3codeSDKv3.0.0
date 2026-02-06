@@ -26,9 +26,8 @@ struct VIB3Uniforms {
     bass: f32,
     mid: f32,
     high: f32,
-    _pad0: f32,
+    breath: f32,
     mouse: vec2<f32>,
-    _pad1: vec2<f32>,
 };
 
 @group(0) @binding(0) var<uniform> u: VIB3Uniforms;
