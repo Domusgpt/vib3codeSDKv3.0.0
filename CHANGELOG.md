@@ -2,6 +2,37 @@
 
 All notable changes to VIB3+ CORE (`@vib3code/sdk`) will be documented in this file.
 
+## [2.0.1] — 2026-02-03
+
+### Added
+- **Vitality System** (`src/core/VitalitySystem.js`) — Organic breath-cycle modulation driving `u_breath` uniform across all 3 systems
+- **Exhale feature** — Breath modulation integrated into Quantum, Faceted, and Holographic fragment shaders (inline + external GLSL/WGSL)
+- **Polychora stub** (`src/polychora/PolychoraSystem.js`) — Placeholder for future 4D polytope system
+
+### Fixed
+- Quantum/Faceted external shader flashing — synced shader logic between inline and external files
+- Faceted shader logic bug (wrong SDF replaced with correct lattice-based shader)
+- Holographic shader sync with exhale breathing effect
+
+### Changed
+- Package renamed from `@vib3/sdk` to `@vib3code/sdk` for npm scope availability
+- Published to npm registry as `@vib3code/sdk@2.0.1`
+
+## [2.0.1-hygiene] — 2026-02-06
+
+### Fixed
+- **CanvasManager.js** — Rewrote to match VIB3Engine API contract (`createSystemCanvases`, `registerContext`, `destroy`); old version had no matching methods
+- **HolographicRendererAdapter.js** — Fixed broken import: `HolographicSystem` (non-existent) → `RealHolographicSystem`
+- **TradingCardManager.js** — Fixed imports pointing to non-existent `*Exact.js` and `*MultiLayer.js` generator files; now points to actual generators
+- **Version string inconsistencies** — Unified VIB3Engine (`1.2.0`→`2.0.1`), Parameters (`1.0.0`→`2.0.1`), ErrorReporter (`2.0.0`→`2.0.1`)
+- **External shader sync** — Added `u_breath` uniform to `quantum.frag.glsl`, `faceted.frag.glsl`, `quantum.frag.wgsl`, `faceted.frag.wgsl` (was present in inline shaders but missing from external files)
+
+### Changed
+- **Renamed** `src/viewer/ReactivityManager.js` → `ViewerInputHandler.js` to avoid naming collision with `src/reactivity/ReactivityManager.js` (different classes with different purposes)
+- **Removed** stale `package-lock.json` (project uses pnpm; `pnpm-lock.yaml` is canonical)
+
+---
+
 ## [2.0.0] — 2026-01-30
 
 ### Added

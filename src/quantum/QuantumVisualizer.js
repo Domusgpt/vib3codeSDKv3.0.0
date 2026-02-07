@@ -276,6 +276,7 @@ uniform float u_rot4dZW;
 uniform float u_mouseIntensity;
 uniform float u_clickIntensity;
 uniform float u_roleIntensity;
+uniform float u_breath;
 
 // 6D rotation matrices - 3D space rotations (XY, XZ, YZ)
 mat4 rotateXY(float theta) {
@@ -681,7 +682,9 @@ void main() {
     geometryIntensity += shimmer * geometryIntensity;
     
     // Apply user intensity control
-    float finalIntensity = geometryIntensity * u_intensity;
+    // Breath modulation (Exhale system)
+    float breathMod = 1.0 + (u_breath * 0.4);
+    float finalIntensity = geometryIntensity * u_intensity * breathMod;
     
     // LAYER-BY-LAYER COLOR SYSTEM with user hue/saturation/intensity controls
     // Determine canvas layer from role/variant (0=background, 1=shadow, 2=content, 3=highlight, 4=accent)
@@ -792,7 +795,8 @@ void main() {
             rot4dZW: this.gl.getUniformLocation(this.program, 'u_rot4dZW'),
             mouseIntensity: this.gl.getUniformLocation(this.program, 'u_mouseIntensity'),
             clickIntensity: this.gl.getUniformLocation(this.program, 'u_clickIntensity'),
-            roleIntensity: this.gl.getUniformLocation(this.program, 'u_roleIntensity')
+            roleIntensity: this.gl.getUniformLocation(this.program, 'u_roleIntensity'),
+            breath: this.gl.getUniformLocation(this.program, 'u_breath')
         };
     }
     
@@ -1065,6 +1069,7 @@ void main() {
         this.gl.uniform1f(this.uniforms.mouseIntensity, this.mouseIntensity);
         this.gl.uniform1f(this.uniforms.clickIntensity, this.clickIntensity);
         this.gl.uniform1f(this.uniforms.roleIntensity, roleIntensities[this.role] || 1.0);
+        this.gl.uniform1f(this.uniforms.breath, this.params.breath || 0.0);
         
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
     }

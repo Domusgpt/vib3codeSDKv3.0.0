@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "vib3": {
+      "command": "npx",
+      "args": ["@vib3code/sdk", "--mcp"],
+      "description": "VIB3+ 4D Visualization SDK — 3 systems, 24 geometries, 6D rotation",
+      "env": {}
+    }
+  },
+  "alternativeConfigs": {
+    "local": {
+      "command": "node",
+      "args": ["./src/agent/mcp/stdio-server.js"],
+      "description": "Local development MCP server"
+    },
+    "global": {
+      "command": "vib3-mcp",
+      "args": [],
+      "description": "Globally installed MCP binary"
+    }
+  },
+  "documentation": {
+    "quickstart": "https://github.com/Domusgpt/vib3codeSDKv3.0.0#quickstart",
+    "mcp-setup": "See agent-config/README.md for setup instructions"
+  }
+}

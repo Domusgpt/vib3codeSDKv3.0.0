@@ -28,7 +28,7 @@ struct VIB3Uniforms {
     high: f32,
     layerScale: f32,
     layerOpacity: f32,
-    _pad1: f32,
+    breath: f32,
     layerColor: vec3<f32>,
     densityMult: f32,
     speedMult: f32,

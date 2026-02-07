@@ -1,8 +1,8 @@
 import { RendererContract } from '../RendererContracts.js';
-import { HolographicSystem } from '../../holograms/HolographicSystem.js';
+import { RealHolographicSystem } from '../../holograms/RealHolographicSystem.js';
 
 export class HolographicRendererAdapter extends RendererContract {
-    constructor(system = new HolographicSystem({ autoStart: false })) {
+    constructor(system = new RealHolographicSystem({ autoStart: false })) {
         super();
         this.system = system;
     }

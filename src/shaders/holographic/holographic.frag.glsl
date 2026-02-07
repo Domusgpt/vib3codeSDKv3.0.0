@@ -9,7 +9,8 @@ uniform vec2 u_resolution;
 uniform float u_time;
 uniform vec2 u_mouse;
 uniform float u_geometry;
-uniform float u_density;
+uniform float u_density;        // Used by inline visualizer (scaled 0.3-2.5)
+uniform float u_gridDensity;    // Used by bridge/external (raw 5-100)
 uniform float u_speed;
 uniform vec3 u_color;
 uniform float u_intensity;
@@ -39,6 +40,9 @@ uniform float u_rot4dYZ;
 uniform float u_rot4dXW;
 uniform float u_rot4dYW;
 uniform float u_rot4dZW;
+
+// EXHALE FEATURE: Breathing uniform
+uniform float u_breath;
 
 // 6D rotation matrices - 3D space rotations (XY, XZ, YZ)
 mat4 rotateXY(float theta) {
@@ -78,9 +82,12 @@ mat4 rotateZW(float theta) {
     return mat4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, c, -s, 0, 0, s, c);
 }
 
-// 4D to 3D projection
+// 4D to 3D projection - BREATHING EFFECT
 vec3 project4Dto3D(vec4 p) {
-    float w = 2.5 / (2.5 + p.w);
+    // Modulate projection distance with breath for "exhale" effect (expansion/contraction)
+    float baseDim = 2.5;
+    float dim = baseDim + u_breath * 0.5; // Expands on exhale
+    float w = dim / (dim + p.w);
     return vec3(p.x * w, p.y * w, p.z * w);
 }
 
@@ -227,10 +234,10 @@ float torusLattice(vec3 p, float gridSize) {
 
 float kleinLattice(vec3 p, float gridSize) {
     vec3 q = fract(p * gridSize);
-    float ku = q.x * 2.0 * 3.14159;
-    float kv = q.y * 2.0 * 3.14159;
-    float kx = cos(ku) * (3.0 + cos(ku/2.0) * sin(kv) - sin(ku/2.0) * sin(2.0*kv));
-    float klein = length(vec2(kx, q.z)) - 0.1;
+    float u = q.x * 2.0 * 3.14159;
+    float v = q.y * 2.0 * 3.14159;
+    float x = cos(u) * (3.0 + cos(u/2.0) * sin(v) - sin(u/2.0) * sin(2.0*v));
+    float klein = length(vec2(x, q.z)) - 0.1;
     return 1.0 - smoothstep(0.0, 0.05, abs(klein));
 }
 
@@ -345,8 +352,17 @@ void main() {
 
     float scrollDensityMod = 1.0 + u_gridDensityShift * 0.3;
     float audioDensityMod = 1.0 + u_audioDensityBoost * 0.5;
-    // Controlled density calculation
-    float baseDensity = u_density * u_roleDensity;
+
+    // SCALE FIX: Support raw gridDensity (5-100) or pre-scaled density (0.3-2.5)
+    float effectiveDensity = u_density;
+    if (u_gridDensity > 0.1) {
+        // Convert 5-100 to 0.3-2.5
+        effectiveDensity = 0.3 + (u_gridDensity - 5.0) / 95.0 * 2.2;
+    }
+
+    float breathDensityMod = 1.0 + u_breath * 0.1;
+    float baseDensity = effectiveDensity * u_roleDensity * breathDensityMod;
+
     float densityVariations = (u_densityVariation * 0.3 + (scrollDensityMod - 1.0) * 0.4 + (audioDensityMod - 1.0) * 0.2);
     float roleDensity = baseDensity + densityVariations;
 
@@ -356,6 +372,9 @@ void main() {
     // Enhanced holographic color processing
     vec3 baseColor = u_color;
     float latticeIntensity = lattice * u_intensity;
+
+    // Breathing glow effect
+    latticeIntensity *= (1.0 + u_breath * 0.2);
 
     // Multi-layer color composition for higher fidelity
     vec3 color = baseColor * (0.2 + latticeIntensity * 0.8);

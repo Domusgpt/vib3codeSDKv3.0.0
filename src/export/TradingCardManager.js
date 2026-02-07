@@ -57,10 +57,9 @@ export class TradingCardManager {
         
         // Dynamic import based on system - USE EXACT GENERATORS THAT MATCH ENGINE VISUALS
         const generatorMap = {
-            'faceted': () => import('./FacetedCardGeneratorExact.js'),
-            'quantum': () => import('./QuantumCardGeneratorExact.js'),
-            'holographic': () => import('./HolographicCardGeneratorMultiLayer.js'),
-            'polychora': () => import('./PolychoraCardGenerator.js')
+            'faceted': () => import('./FacetedCardGenerator.js'),
+            'quantum': () => import('./QuantumCardGenerator.js'),
+            'holographic': () => import('./HolographicCardGenerator.js')
         };
         
         const importFunction = generatorMap[system];

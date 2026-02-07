@@ -6,7 +6,10 @@ library vib3_ffi;
 
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
+
+import 'package:ffi/ffi.dart' as pkg_ffi;
 
 // ============================================================================
 // Native Library Loading
@@ -269,7 +272,7 @@ class Vec4 {
 
   double get length => _length();
   double _length() {
-    return (x * x + y * y + z * z + w * w).sqrt();
+    return math.sqrt(x * x + y * y + z * z + w * w);
   }
 
   Float32List toFloat32List() => Float32List.fromList([x, y, z, w]);
@@ -528,16 +531,4 @@ class CommandBatch {
 }
 
 /// Memory allocator for native memory
-final Allocator calloc = _CallocAllocator();
-
-class _CallocAllocator implements Allocator {
-  @override
-  Pointer<T> allocate<T extends NativeType>(int byteCount, {int? alignment}) {
-    return malloc.allocate<T>(byteCount, alignment: alignment);
-  }
-
-  @override
-  void free(Pointer pointer) {
-    malloc.free(pointer);
-  }
-}
+final Allocator calloc = pkg_ffi.calloc;

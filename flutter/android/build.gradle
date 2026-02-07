@@ -47,7 +47,7 @@ android {
 
         externalNativeBuild {
             cmake {
-                cppFlags '-std=c++20 -O3'
+                cppFlags '-std=c++17 -O3'
                 arguments '-DANDROID_STL=c++_shared'
             }
         }
@@ -59,7 +59,7 @@ android {
 
     externalNativeBuild {
         cmake {
-            path '../../cpp/CMakeLists.txt'
+            path 'CMakeLists.txt'
             version '3.22.1'
         }
     }
