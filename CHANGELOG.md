@@ -5,7 +5,7 @@ All notable changes to VIB3+ CORE (`@vib3code/sdk`) will be documented in this f
 ## [2.0.2] — 2026-02-07
 
 ### Fixed
-- **CMake Configuration** — Updated `cpp/CMakeLists.txt` to conditionally build `vib3_geometry` and tests only if the source directories exist. This fixes build failures in partial SDK distributions.
+- **Distribution** — Added `cpp/` directory to `package.json` files list to ensure full C++ source tree (including `geometry` and `tests`) is included in the npm package. This resolves native build failures in downstream applications.
 
 ## [2.0.1] — 2026-02-03
 
