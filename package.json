@@ -177,7 +177,7 @@
       "import": "./src/viewer/ViewerPortal.js"
     },
     "./viewer/reactivity": {
-      "import": "./src/viewer/ReactivityManager.js"
+      "import": "./src/viewer/ViewerInputHandler.js"
     },
     "./viewer/card-bending": {
       "import": "./src/viewer/CardBending.js"
