@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'vib3_flutter'
-  s.version          = '1.7.0'
+  s.version          = '2.0.1'
   s.summary          = 'VIB3+ 4D Visualization Engine for Flutter'
   s.description      = <<-DESC
 High-performance 4D geometry visualization engine with Metal rendering,

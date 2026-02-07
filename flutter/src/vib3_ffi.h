@@ -3,6 +3,9 @@
  *
  * C interface for cross-platform FFI bindings.
  * Used by Flutter, React Native, and other FFI-capable frameworks.
+ *
+ * Self-contained: does NOT depend on cpp/ math or geometry libraries.
+ * All math is implemented directly in vib3_ffi.cpp.
  */
 
 #ifndef VIB3_FFI_H
@@ -26,17 +29,11 @@ extern "C" {
 // Types
 // ============================================================================
 
-/**
- * 4D Vector (16-byte aligned)
- */
-typedef struct VIB3_EXPORT Vib3Vec4 {
+typedef struct Vib3Vec4 {
     float x, y, z, w;
 } Vib3Vec4;
 
-/**
- * 4D Rotor (8 components for proper 4D rotation)
- */
-typedef struct VIB3_EXPORT Vib3Rotor4D {
+typedef struct Vib3Rotor4D {
     float s;      // Scalar
     float xy;     // Bivector XY
     float xz;     // Bivector XZ
@@ -47,17 +44,11 @@ typedef struct VIB3_EXPORT Vib3Rotor4D {
     float xyzw;   // Pseudoscalar
 } Vib3Rotor4D;
 
-/**
- * 4x4 Matrix (column-major)
- */
-typedef struct VIB3_EXPORT Vib3Mat4x4 {
+typedef struct Vib3Mat4x4 {
     float data[16];
 } Vib3Mat4x4;
 
-/**
- * Rotation plane enumeration
- */
-typedef enum VIB3_EXPORT Vib3RotationPlane {
+typedef enum Vib3RotationPlane {
     VIB3_PLANE_XY = 0,
     VIB3_PLANE_XZ = 1,
     VIB3_PLANE_YZ = 2,
@@ -66,39 +57,16 @@ typedef enum VIB3_EXPORT Vib3RotationPlane {
     VIB3_PLANE_ZW = 5
 } Vib3RotationPlane;
 
-/**
- * Projection type enumeration
- */
-typedef enum VIB3_EXPORT Vib3ProjectionType {
+typedef enum Vib3ProjectionType {
     VIB3_PROJ_PERSPECTIVE = 0,
     VIB3_PROJ_STEREOGRAPHIC = 1,
     VIB3_PROJ_ORTHOGRAPHIC = 2,
     VIB3_PROJ_OBLIQUE = 3
 } Vib3ProjectionType;
 
-/**
- * Command batch result
- */
-typedef struct VIB3_EXPORT Vib3BatchResult {
-    int32_t success_count;
-    int32_t error_count;
-    int32_t result_size;
-} Vib3BatchResult;
-
-/**
- * Engine handle (opaque)
- */
-typedef struct Vib3Engine* Vib3EngineHandle;
-
-/**
- * Texture handle for rendering
- */
-typedef struct {
-    void* native_handle;  // Platform-specific texture handle
-    int32_t width;
-    int32_t height;
-    int32_t format;
-} Vib3TextureHandle;
+// Engine state (opaque handle)
+typedef struct Vib3EngineState Vib3EngineState;
+typedef Vib3EngineState* Vib3EngineHandle;
 
 // ============================================================================
 // Vec4 Functions
@@ -160,27 +128,18 @@ VIB3_EXPORT Vib3Vec4* vib3_project_stereographic(const Vib3Vec4* v);
 VIB3_EXPORT Vib3Vec4* vib3_project_orthographic(const Vib3Vec4* v);
 VIB3_EXPORT Vib3Vec4* vib3_project_oblique(const Vib3Vec4* v, float shear_x, float shear_y);
 
-// Batch projection (for geometry arrays)
 VIB3_EXPORT int32_t vib3_project_batch(
-    const float* positions,   // Input: [x,y,z,w, x,y,z,w, ...]
-    int32_t count,            // Number of Vec4s
+    const float* positions,
+    int32_t count,
     Vib3ProjectionType type,
-    float param,              // Distance for perspective, unused for others
-    float* out                // Output: [x,y,z, x,y,z, ...]
+    float param,
+    float* out
 );
 
 // ============================================================================
 // Command Batching
 // ============================================================================
 
-/**
- * Process a batch of commands
- *
- * @param commands Binary command buffer
- * @param size Size of command buffer in bytes
- * @param results Output buffer for results
- * @return Number of bytes written to results
- */
 VIB3_EXPORT int32_t vib3_process_command_batch(
     const uint8_t* commands,
     uint32_t size,
@@ -220,8 +179,10 @@ VIB3_EXPORT void vib3_engine_set_visual_param(
     float value
 );
 
-VIB3_EXPORT void vib3_engine_render(Vib3EngineHandle engine);
-VIB3_EXPORT Vib3TextureHandle vib3_engine_get_texture(Vib3EngineHandle engine);
+VIB3_EXPORT const char* vib3_engine_get_system(Vib3EngineHandle engine);
+VIB3_EXPORT int32_t vib3_engine_get_geometry(Vib3EngineHandle engine);
+VIB3_EXPORT float vib3_engine_get_rotation(Vib3EngineHandle engine, Vib3RotationPlane plane);
+VIB3_EXPORT float vib3_engine_get_visual_param(Vib3EngineHandle engine, const char* param);
 
 // ============================================================================
 // Utility Functions

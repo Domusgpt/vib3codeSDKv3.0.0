@@ -50,40 +50,48 @@ if(VIB3_ENABLE_SIMD)
     endif()
 endif()
 
-# Math library
-add_library(vib3_math STATIC
-    math/Vec4.cpp
-    math/Rotor4D.cpp
-    math/Mat4x4.cpp
-    math/Projection.cpp
-)
+# Math library (required)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/math/Vec4.cpp")
+    add_library(vib3_math STATIC
+        math/Vec4.cpp
+        math/Rotor4D.cpp
+        math/Mat4x4.cpp
+        math/Projection.cpp
+    )
 
-target_include_directories(vib3_math PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)
+    target_include_directories(vib3_math PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+else()
+    message(WARNING "VIB3: math/ directory not found, skipping vib3_math library")
+endif()
 
-# Geometry library
-add_library(vib3_geometry STATIC
-    geometry/GeometryGenerator.cpp
-    geometry/Tesseract.cpp
-    geometry/Tetrahedron.cpp
-    geometry/Sphere.cpp
-    geometry/Torus.cpp
-    geometry/KleinBottle.cpp
-    geometry/Fractal.cpp
-    geometry/Wave.cpp
-    geometry/Crystal.cpp
-    geometry/WarpFunctions.cpp
-)
+# Geometry library (optional — may not exist in Flutter/submodule checkouts)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/geometry/GeometryGenerator.cpp")
+    add_library(vib3_geometry STATIC
+        geometry/GeometryGenerator.cpp
+        geometry/Tesseract.cpp
+        geometry/Tetrahedron.cpp
+        geometry/Sphere.cpp
+        geometry/Torus.cpp
+        geometry/KleinBottle.cpp
+        geometry/Fractal.cpp
+        geometry/Wave.cpp
+        geometry/Crystal.cpp
+        geometry/WarpFunctions.cpp
+    )
 
-target_link_libraries(vib3_geometry PUBLIC vib3_math)
+    target_link_libraries(vib3_geometry PUBLIC vib3_math)
 
-target_include_directories(vib3_geometry PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)
+    target_include_directories(vib3_geometry PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+else()
+    message(WARNING "VIB3: geometry/ directory not found, skipping vib3_geometry library")
+endif()
 
 # WebAssembly build
-if(EMSCRIPTEN AND VIB3_BUILD_WASM)
+if(EMSCRIPTEN AND VIB3_BUILD_WASM AND TARGET vib3_math AND TARGET vib3_geometry)
     # Combined WASM module
     add_executable(vib3_wasm
         bindings/embind.cpp
@@ -170,8 +178,8 @@ if(EMSCRIPTEN AND VIB3_BUILD_WASM)
     )
 endif()
 
-# Native tests (not for WASM)
-if(VIB3_BUILD_TESTS AND NOT EMSCRIPTEN)
+# Native tests (not for WASM, only if sources exist)
+if(VIB3_BUILD_TESTS AND NOT EMSCRIPTEN AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/Vec4_test.cpp")
     enable_testing()
 
     # Find or fetch GoogleTest
@@ -183,31 +191,36 @@ if(VIB3_BUILD_TESTS AND NOT EMSCRIPTEN)
     FetchContent_MakeAvailable(googletest)
 
     # Math tests
-    add_executable(math_tests
-        tests/Vec4_test.cpp
-        tests/Rotor4D_test.cpp
-        tests/Mat4x4_test.cpp
-        tests/Projection_test.cpp
-    )
+    if(TARGET vib3_math)
+        add_executable(math_tests
+            tests/Vec4_test.cpp
+            tests/Rotor4D_test.cpp
+            tests/Mat4x4_test.cpp
+            tests/Projection_test.cpp
+        )
 
-    target_link_libraries(math_tests PRIVATE
-        vib3_math
-        GTest::gtest_main
-    )
+        target_link_libraries(math_tests PRIVATE
+            vib3_math
+            GTest::gtest_main
+        )
+
+        include(GoogleTest)
+        gtest_discover_tests(math_tests)
+    endif()
 
     # Geometry tests
-    add_executable(geometry_tests
-        tests/Geometry_test.cpp
-    )
+    if(TARGET vib3_geometry AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/Geometry_test.cpp")
+        add_executable(geometry_tests
+            tests/Geometry_test.cpp
+        )
 
-    target_link_libraries(geometry_tests PRIVATE
-        vib3_geometry
-        GTest::gtest_main
-    )
+        target_link_libraries(geometry_tests PRIVATE
+            vib3_geometry
+            GTest::gtest_main
+        )
 
-    include(GoogleTest)
-    gtest_discover_tests(math_tests)
-    gtest_discover_tests(geometry_tests)
+        gtest_discover_tests(geometry_tests)
+    endif()
 endif()
 
 # Print configuration summary
