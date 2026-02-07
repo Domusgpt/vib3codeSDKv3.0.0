@@ -791,6 +791,186 @@
         .lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
         .lenis.lenis-stopped { overflow: hidden; }
 
+        /* ═══════════════════════════════════════════
+           OPENING CINEMATIC — VIB3CODE Text Mask
+           800vh pinned, canvas sucked into text,
+           lattice parallax layers, text fade
+           ═══════════════════════════════════════════ */
+        .opening {
+            position: relative; min-height: 800vh;
+        }
+        .opening-pinned {
+            height: 100vh; width: 100%; position: relative;
+            overflow: hidden; background: var(--bg);
+        }
+        .opening-canvas-wrap {
+            position: absolute; inset: 0; z-index: 1;
+        }
+        /* SVG text mask overlay: dark bg with VIB3CODE letter cutouts */
+        .opening-overlay {
+            position: absolute; inset: 0; z-index: 3;
+            opacity: 0; /* animated in by GSAP */
+        }
+        .opening-overlay svg {
+            display: block; width: 100%; height: 100%;
+        }
+        /* Large display text (separate from mask — shows as solid text later) */
+        .opening-title {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 5; pointer-events: none;
+            display: flex; gap: clamp(2px, 0.5vw, 8px);
+            white-space: nowrap;
+        }
+        .opening-char {
+            display: inline-block;
+            font-size: clamp(48px, 13vw, 220px);
+            font-weight: 900; letter-spacing: 0.04em;
+            color: #fff; opacity: 0;
+            transform: translateY(80px) scale(0.7);
+            will-change: transform, opacity;
+            text-shadow: 0 0 60px rgba(0,240,255,0.3), 0 0 120px rgba(168,85,247,0.15);
+        }
+        /* Lattice parallax layers (geometric grid patterns) */
+        .lattice-layer {
+            position: absolute; inset: -30%; z-index: 4;
+            opacity: 0; pointer-events: none;
+            will-change: transform, opacity;
+        }
+        .lattice-1 {
+            background:
+                repeating-linear-gradient(0deg, transparent, transparent 48px, rgba(0,240,255,0.035) 48px, rgba(0,240,255,0.035) 49px),
+                repeating-linear-gradient(90deg, transparent, transparent 48px, rgba(0,240,255,0.035) 48px, rgba(0,240,255,0.035) 49px);
+        }
+        .lattice-2 {
+            background:
+                repeating-linear-gradient(60deg, transparent, transparent 56px, rgba(168,85,247,0.03) 56px, rgba(168,85,247,0.03) 57px),
+                repeating-linear-gradient(150deg, transparent, transparent 56px, rgba(168,85,247,0.03) 56px, rgba(168,85,247,0.03) 57px);
+        }
+        .lattice-3 {
+            background:
+                repeating-linear-gradient(30deg, transparent, transparent 38px, rgba(244,63,94,0.025) 38px, rgba(244,63,94,0.025) 39px),
+                repeating-linear-gradient(120deg, transparent, transparent 38px, rgba(244,63,94,0.025) 38px, rgba(244,63,94,0.025) 39px);
+        }
+        .opening-sub {
+            position: absolute; bottom: 15%; left: 50%;
+            transform: translateX(-50%); z-index: 6;
+            text-align: center; pointer-events: none;
+        }
+        .opening-sub span {
+            display: block; font-size: 13px; letter-spacing: 4px;
+            text-transform: uppercase; color: rgba(255,255,255,0.2);
+            opacity: 0; transform: translateY(20px);
+        }
+
+        /* ═══════════════════════════════════════════
+           SECTION DIVIDERS — SVG shapes between sections
+           Hide canvas edge lines with organic curves
+           ═══════════════════════════════════════════ */
+        .section-divider {
+            position: relative; z-index: 20;
+            margin-top: -1px; /* overlap to prevent hairline gaps */
+            line-height: 0; overflow: hidden;
+            pointer-events: none;
+        }
+        .section-divider svg {
+            display: block; width: 100%;
+            height: clamp(40px, 8vw, 100px);
+        }
+        .section-divider.divider-tall svg {
+            height: clamp(60px, 12vw, 140px);
+        }
+        .section-divider.divider-short svg {
+            height: clamp(24px, 4vw, 60px);
+        }
+        .section-divider.flip { transform: scaleY(-1); }
+
+        /* ═══════════════════════════════════════════
+           CARD TILT EFFECTS — Specular highlight, glare
+           Driven by CSS custom properties from CardTiltSystem
+           ═══════════════════════════════════════════ */
+        .tilt-card {
+            transform-style: preserve-3d;
+            will-change: transform;
+        }
+        /* Specular highlight */
+        .tilt-card::before {
+            content: '';
+            position: absolute; inset: 0;
+            border-radius: inherit; z-index: 10;
+            pointer-events: none;
+            background: radial-gradient(
+                ellipse at var(--specular-x, 50%) var(--specular-y, 50%),
+                rgba(255,255,255,0.12),
+                transparent 55%
+            );
+            opacity: var(--tilt-intensity, 0);
+            transition: opacity 0.15s ease-out;
+            mix-blend-mode: overlay;
+        }
+        /* Holographic rainbow band (rotates with tilt angle) */
+        .tilt-card.tilt-holo::after {
+            content: '';
+            position: absolute; inset: 0;
+            border-radius: inherit; z-index: 9;
+            pointer-events: none;
+            background: linear-gradient(
+                var(--tilt-angle, 0deg),
+                transparent 30%,
+                rgba(0,240,255,0.06) 45%,
+                rgba(168,85,247,0.06) 50%,
+                rgba(244,63,94,0.06) 55%,
+                transparent 70%
+            );
+            opacity: calc(var(--tilt-intensity, 0) * 0.8);
+            mix-blend-mode: screen;
+        }
+
+        /* ═══════════════════════════════════════════
+           BLUR CASCADE REVEALS
+           Content starts blurred, clears on scroll entry
+           ═══════════════════════════════════════════ */
+        .blur-reveal {
+            filter: blur(6px) brightness(0.7);
+            opacity: 0;
+            transition: filter 1s cubic-bezier(0.23, 1, 0.32, 1),
+                        opacity 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .blur-reveal.revealed {
+            filter: blur(0px) brightness(1);
+            opacity: 1;
+        }
+
+        /* ═══════════════════════════════════════════
+           CANVAS TRANSITION FLOURISH
+           Brief flash/pulse at canvas swap boundaries
+           ═══════════════════════════════════════════ */
+        .canvas-flourish {
+            position: absolute; inset: 0;
+            z-index: 15; pointer-events: none;
+            opacity: 0;
+            background: radial-gradient(ellipse at center,
+                rgba(0,240,255,0.15), transparent 70%);
+            transition: opacity 0.3s ease-out;
+        }
+        .canvas-flourish.active {
+            opacity: 1;
+            animation: flourishPulse 0.6s ease-out forwards;
+        }
+        @keyframes flourishPulse {
+            0% { opacity: 0; transform: scale(0.8); }
+            30% { opacity: 1; transform: scale(1.05); }
+            100% { opacity: 0; transform: scale(1.2); }
+        }
+
+        /* ═══════════════════════════════════════════
+           SCROLL-DRIVEN COLOR THEME
+           Root hue shifts with page scroll
+           ═══════════════════════════════════════════ */
+        :root {
+            --scroll-hue: 210;
+        }
+
         /* ─── Reduced Motion ─── */
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {
@@ -835,6 +1015,64 @@
     <div class="scroll-progress" id="scrollProgress"></div>
 
     <!-- ═══════════════════════════════════════════════════
+         OPENING CINEMATIC — 800vh Scroll-Locked
+         VIB3CODE text mask over GPU canvas, lattice parallax,
+         text fade + lattice lock transition to hero
+         GPU: 1 context (Quantum), released when hero enters
+         ═══════════════════════════════════════════════════ -->
+    <section class="opening" id="openingSection">
+        <div class="opening-pinned" id="openingPinned">
+            <div class="opening-canvas-wrap canvas-wrap" style="width:100%;height:100%;">
+                <canvas class="vib3-canvas" id="opening-canvas"></canvas>
+            </div>
+
+            <!-- SVG text mask: dark overlay with VIB3CODE cutout -->
+            <div class="opening-overlay" id="openingOverlay">
+                <svg width="100%" height="100%" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <mask id="textCutout">
+                            <rect width="1920" height="1080" fill="white"/>
+                            <text x="960" y="560" text-anchor="middle" dominant-baseline="central"
+                                  font-family="'SF Pro Display',-apple-system,BlinkMacSystemFont,sans-serif"
+                                  font-size="240" font-weight="900" letter-spacing="18" fill="black">VIB3CODE</text>
+                        </mask>
+                    </defs>
+                    <rect width="1920" height="1080" fill="#030712" mask="url(#textCutout)"/>
+                </svg>
+            </div>
+
+            <!-- Geometric lattice parallax layers -->
+            <div class="lattice-layer lattice-1" id="lattice1"></div>
+            <div class="lattice-layer lattice-2" id="lattice2"></div>
+            <div class="lattice-layer lattice-3" id="lattice3"></div>
+
+            <!-- Large title text (appears during scroll) -->
+            <div class="opening-title" id="openingTitle">
+                <span class="opening-char">V</span>
+                <span class="opening-char">I</span>
+                <span class="opening-char">B</span>
+                <span class="opening-char">3</span>
+                <span class="opening-char">C</span>
+                <span class="opening-char">O</span>
+                <span class="opening-char">D</span>
+                <span class="opening-char">E</span>
+            </div>
+
+            <div class="opening-sub" id="openingSub">
+                <span>4D Visualization Engine</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── Divider: Opening → Hero ─── -->
+    <div class="section-divider divider-tall">
+        <svg viewBox="0 0 1440 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,0 L0,60 Q360,120 720,60 Q1080,0 1440,60 L1440,0 Z" fill="var(--bg)"/>
+            <path d="M0,60 Q360,120 720,60 Q1080,0 1440,60 L1440,120 L0,120 Z" fill="var(--bg)" opacity="0.5"/>
+        </svg>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
          SECTION 1: HERO — Quantum Emergence
          Full-screen Quantum system shader (1 GPU context)
          ═══════════════════════════════════════════════════ -->
@@ -858,6 +1096,13 @@
             <div class="scroll-line"></div>
         </div>
     </section>
+
+    <!-- ─── Divider: Hero → Morph ─── -->
+    <div class="section-divider">
+        <svg viewBox="0 0 1440 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,0 C480,80 960,80 1440,0 L1440,80 L0,80 Z" fill="var(--bg)"/>
+        </svg>
+    </div>
 
     <!-- ═══════════════════════════════════════════════════
          SECTION 2: MORPH EXPERIENCE — 1200vh Scroll-Locked
@@ -916,6 +1161,14 @@
             </div>
         </div>
     </section>
+
+    <!-- ─── Divider: Morph → Playground ─── -->
+    <div class="section-divider divider-short">
+        <svg viewBox="0 0 1440 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,0 L480,50 L960,10 L1440,50 L1440,60 L0,60 Z" fill="var(--bg)" opacity="0.8"/>
+            <path d="M0,30 Q240,60 480,30 Q720,0 960,30 Q1200,60 1440,30 L1440,60 L0,60 Z" fill="var(--bg)"/>
+        </svg>
+    </div>
 
     <!-- ═══════════════════════════════════════════════════
          SECTION 3: PARAMETERS PLAYGROUND — Full 6D
@@ -1043,6 +1296,13 @@
         </div>
     </section>
 
+    <!-- ─── Divider: Playground → Triptych ─── -->
+    <div class="section-divider divider-tall">
+        <svg viewBox="0 0 1440 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,100 C200,40 400,80 600,30 C800,-10 1000,60 1200,20 C1350,-5 1440,40 1440,100 Z" fill="var(--bg)"/>
+        </svg>
+    </div>
+
     <!-- ═══════════════════════════════════════════════════
          SECTION 4: PARALLAX TRIPTYCH
          3 columns with independent parallax rates
@@ -1091,6 +1351,13 @@
         </div>
     </section>
 
+    <!-- ─── Divider: Triptych → Cascade ─── -->
+    <div class="section-divider">
+        <svg viewBox="0 0 1440 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,0 L360,70 L720,20 L1080,70 L1440,0 L1440,80 L0,80 Z" fill="var(--bg)"/>
+        </svg>
+    </div>
+
     <!-- ═══════════════════════════════════════════════════
          SECTION 5: GEOMETRY CASCADE — Morphing Cards
          Cards scale up/down on scroll, glow leaks beyond borders
@@ -1103,33 +1370,40 @@
                 <p>24 geometry variants across three rendering systems</p>
             </div>
             <div class="cascade-track" id="cascadeTrack">
-                <div class="cascade-card" data-geo="0" data-hue="190" data-sys="quantum">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="0" data-hue="190" data-sys="quantum">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-0"></canvas></div>
                     <div class="cascade-overlay"><h4>Tetrahedron</h4><span class="cascade-sys sys-quantum">Quantum &middot; Base</span></div>
                 </div>
-                <div class="cascade-card" data-geo="11" data-hue="300" data-sys="holographic">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="11" data-hue="300" data-sys="holographic">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-1"></canvas></div>
                     <div class="cascade-overlay"><h4>Hypersphere Torus</h4><span class="cascade-sys sys-holographic">Holographic &middot; Hypersphere</span></div>
                 </div>
-                <div class="cascade-card" data-geo="16" data-hue="35" data-sys="faceted">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="16" data-hue="35" data-sys="faceted">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-2"></canvas></div>
                     <div class="cascade-overlay"><h4>Hypertetra Tetra</h4><span class="cascade-sys sys-faceted">Faceted &middot; Hypertetra</span></div>
                 </div>
-                <div class="cascade-card" data-geo="5" data-hue="130" data-sys="quantum">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="5" data-hue="130" data-sys="quantum">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-3"></canvas></div>
                     <div class="cascade-overlay"><h4>Fractal</h4><span class="cascade-sys sys-quantum">Quantum &middot; Base</span></div>
                 </div>
-                <div class="cascade-card" data-geo="12" data-hue="260" data-sys="holographic">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="12" data-hue="260" data-sys="holographic">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-4"></canvas></div>
                     <div class="cascade-overlay"><h4>Hypersphere Klein</h4><span class="cascade-sys sys-holographic">Holographic &middot; Hypersphere</span></div>
                 </div>
-                <div class="cascade-card" data-geo="7" data-hue="60" data-sys="faceted">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="7" data-hue="60" data-sys="faceted">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-5"></canvas></div>
                     <div class="cascade-overlay"><h4>Crystal</h4><span class="cascade-sys sys-faceted">Faceted &middot; Base</span></div>
                 </div>
             </div>
         </div>
     </section>
+
+    <!-- ─── Divider: Cascade → Energy ─── -->
+    <div class="section-divider divider-tall">
+        <svg viewBox="0 0 1440 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,80 Q180,0 360,50 Q540,100 720,40 Q900,-10 1080,50 Q1260,100 1440,20 L1440,100 L0,100 Z" fill="var(--bg)"/>
+        </svg>
+    </div>
 
     <!-- ═══════════════════════════════════════════════════
          SECTION 6: ENERGY TRANSFER — Interactive Demo
@@ -1142,7 +1416,7 @@
                     <canvas class="vib3-canvas" id="energy-bg-canvas"></canvas>
                 </div>
             </div>
-            <div class="energy-card perspective-wrap" id="energyCard">
+            <div class="energy-card tilt-card perspective-wrap" id="energyCard">
                 <div class="energy-card-canvas">
                     <canvas class="vib3-canvas" id="energy-card-canvas"></canvas>
                 </div>
@@ -1159,6 +1433,13 @@
             </div>
         </div>
     </section>
+
+    <!-- ─── Divider: Energy → Agent ─── -->
+    <div class="section-divider divider-short">
+        <svg viewBox="0 0 1440 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,0 Q360,60 720,30 Q1080,0 1440,40 L1440,60 L0,60 Z" fill="var(--bg)"/>
+        </svg>
+    </div>
 
     <!-- ═══════════════════════════════════════════════════
          SECTION 7: AGENT INTEGRATION — Download Packs
@@ -1212,6 +1493,13 @@
         </div>
     </section>
 
+    <!-- ─── Divider: Agent → CTA ─── -->
+    <div class="section-divider">
+        <svg viewBox="0 0 1440 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,40 C240,80 480,0 720,40 C960,80 1200,0 1440,40 L1440,80 L0,80 Z" fill="var(--bg)"/>
+        </svg>
+    </div>
+
     <!-- ═══════════════════════════════════════════════════
          SECTION 8: CTA
          ═══════════════════════════════════════════════════ -->
@@ -1254,6 +1542,7 @@
          ENGINE BOOT + GPU CONTEXT POOL + GSAP CHOREOGRAPHY
 
          GPU CONTEXT BUDGET:
+           Opening ......... 1 (Quantum, released on hero enter)
            Hero ............ 1 (Quantum, released on morph enter)
            Morph ........... 1 (swaps Q → H → F on scroll)
            Playground ...... 1 (Q/H/F, lazy)

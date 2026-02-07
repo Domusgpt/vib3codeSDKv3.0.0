@@ -1,8 +1,8 @@
 /**
  * GSAP Scroll Choreography — Premium Edition v2
  *
- * New architecture:
- *   Hero → Morph Experience (1200vh) → Playground → Triptych → Cascade → Energy → CTA
+ * Architecture:
+ *   Opening (800vh) → Hero → Morph (1200vh) → Playground → Triptych → Cascade → Energy → Agent → CTA
  *
  * Parameter coordination philosophy:
  *   - Density DROPS as visual elements expand (inverse relationship)
@@ -19,7 +19,7 @@
  */
 
 import { QuantumAdapter, HolographicAdapter, FacetedAdapter, Canvas2DRenderer } from './adapters.js';
-import { morphStages, trinityParams, energyCardParams } from './config.js';
+import { morphStages, trinityParams, energyCardParams, openingParams } from './config.js';
 
 // ─── Morph State ─────────────────────────────────────────────
 const morphFactories = [QuantumAdapter, HolographicAdapter, FacetedAdapter];
@@ -120,7 +120,175 @@ export function initScrollProgress() {
   });
 }
 
+// ─── OPENING CINEMATIC (800vh) ──────────────────────────────
+// 5 phases: dark canvas → text appears → mask constrains canvas to letters →
+// lattice layers parallax in → text fades, lattice locks, transition to hero
+
+export function initOpening(pool, createHero) {
+  const overlay = document.getElementById('openingOverlay');
+  const chars = document.querySelectorAll('.opening-char');
+  const lattice1 = document.getElementById('lattice1');
+  const lattice2 = document.getElementById('lattice2');
+  const lattice3 = document.getElementById('lattice3');
+  const openingSub = document.querySelector('.opening-sub span');
+
+  ScrollTrigger.create({
+    trigger: '#openingSection',
+    start: 'top top',
+    end: 'bottom bottom',
+    pin: '#openingPinned',
+    scrub: 0.6,
+    onEnter: () => {
+      pool.acquire('opening', 'opening-canvas', QuantumAdapter, openingParams);
+    },
+    onLeave: () => {
+      pool.release('opening');
+    },
+    onEnterBack: () => {
+      pool.release('hero');
+      pool.acquire('opening', 'opening-canvas', QuantumAdapter, openingParams);
+    },
+    onLeaveBack: () => {
+      pool.release('opening');
+    },
+    onUpdate: (self) => {
+      const p = self.progress;
+      const adapter = pool.get('opening');
+
+      // ── Canvas parameter evolution across all phases ──
+      if (adapter) {
+        const wave = Math.sin(p * Math.PI * 6);
+        adapter.setParams({
+          intensity: 0.3 + smoothstep(p) * 0.55 + Math.sin(p * Math.PI) * 0.1,
+          rot4dXW: p * Math.PI * 4,
+          rot4dYW: Math.sin(p * Math.PI * 2) * 2,
+          rot4dZW: p * Math.PI * 0.8,
+          hue: 220 + p * 100 + wave * 15,
+          gridDensity: 22 + Math.sin(p * Math.PI * 3) * 10,
+          chaos: 0.05 + smoothstep(clamp01((p - 0.3) / 0.4)) * 0.35,
+          speed: 0.3 + smoothstep(p) * 0.8,
+          morphFactor: 0.6 + Math.sin(p * Math.PI * 2) * 0.4,
+          dimension: 3.8 - p * 0.4,
+          geometry: p < 0.2 ? 11 : p < 0.5 ? 3 : p < 0.75 ? 4 : 7,
+        });
+      }
+
+      // ── Phase 2: Text appears letter by letter (12-35%) ──
+      const textIn = clamp01((p - 0.12) / 0.22);
+      const textOut = smoothstep(clamp01((p - 0.74) / 0.22));
+      chars.forEach((c, i) => {
+        const charP = clamp01((textIn - i * 0.07) / 0.14);
+        const ease = smoothstep(charP);
+        gsap.set(c, {
+          opacity: ease * (1 - textOut),
+          y: (1 - ease) * 80 + textOut * -60,
+          scale: 0.7 + ease * 0.3 - textOut * 0.1,
+          rotationX: (1 - ease) * 12,
+        });
+      });
+
+      // ── Phase 3: Overlay mask (canvas visible only through letters) ──
+      const maskIn = smoothstep(clamp01((p - 0.28) / 0.2));
+      const maskOut = smoothstep(clamp01((p - 0.74) / 0.2));
+      if (overlay) overlay.style.opacity = maskIn * (1 - maskOut);
+
+      // ── Subtitle ──
+      if (openingSub) {
+        const subIn = smoothstep(clamp01((p - 0.36) / 0.08));
+        const subOut = smoothstep(clamp01((p - 0.68) / 0.08));
+        gsap.set(openingSub, {
+          opacity: subIn * (1 - subOut),
+          y: (1 - subIn) * 20,
+        });
+      }
+
+      // ── Phase 4: Lattice layers slide in with parallax (45-75%) ──
+      const latticeP = clamp01((p - 0.45) / 0.3);
+      const lockP = clamp01((p - 0.82) / 0.15);
+
+      if (lattice1) {
+        const rot = lerp(latticeP * 6, Math.round(latticeP * 6 / 15) * 15, smoothstep(lockP));
+        gsap.set(lattice1, {
+          opacity: smoothstep(latticeP) * 0.7 * (1 - smoothstep(clamp01((p - 0.92) / 0.08))),
+          rotation: rot,
+          x: (1 - smoothstep(latticeP)) * -120,
+          y: (latticeP - 0.5) * -50,
+        });
+      }
+      if (lattice2) {
+        const rot2 = lerp(-latticeP * 4 + 2, Math.round((-latticeP * 4 + 2) / 12) * 12, smoothstep(lockP));
+        gsap.set(lattice2, {
+          opacity: smoothstep(clamp01((latticeP - 0.1) / 0.9)) * 0.55 * (1 - smoothstep(clamp01((p - 0.92) / 0.08))),
+          rotation: rot2,
+          x: (1 - smoothstep(latticeP)) * 100,
+          y: (latticeP - 0.5) * -35,
+        });
+      }
+      if (lattice3) {
+        const rot3 = lerp(latticeP * 9, Math.round(latticeP * 9 / 18) * 18, smoothstep(lockP));
+        gsap.set(lattice3, {
+          opacity: smoothstep(clamp01((latticeP - 0.2) / 0.8)) * 0.4 * (1 - smoothstep(clamp01((p - 0.9) / 0.1))),
+          rotation: rot3,
+          y: (latticeP - 0.5) * -70,
+        });
+      }
+    },
+  });
+}
+
+// ─── SCROLL-DRIVEN COLOR THEME ──────────────────────────────
+// Root CSS hue shifts gradually across the page for cohesion
+
+export function initScrollColorTheme() {
+  ScrollTrigger.create({
+    trigger: document.body,
+    start: 'top top',
+    end: 'bottom bottom',
+    scrub: 0.5,
+    onUpdate: (self) => {
+      const p = self.progress;
+      const hue = Math.round(210 + p * 140);
+      document.documentElement.style.setProperty('--scroll-hue', hue);
+    },
+  });
+}
+
+// ─── BLUR CASCADE REVEALS ───────────────────────────────────
+// Elements with .blur-reveal start blurred, clear on scroll entry
+
+export function initBlurReveals() {
+  document.querySelectorAll('.blur-reveal').forEach(el => {
+    ScrollTrigger.create({
+      trigger: el, start: 'top 85%', once: true,
+      onEnter: () => el.classList.add('revealed'),
+    });
+  });
+}
+
 export function initHero(pool) {
+  // Hero GPU lifecycle — acquire when entering, release on leave
+  ScrollTrigger.create({
+    trigger: '.hero', start: 'top 80%', end: 'bottom top',
+    onEnter: () => {
+      if (!pool.has('hero')) {
+        pool.acquire('hero', 'hero-canvas', QuantumAdapter, {
+          geometry: 11, hue: 210, gridDensity: 28, speed: 0.4,
+          intensity: 0.75, chaos: 0.05, morphFactor: 0.6,
+          rot4dXW: 0.15, rot4dYW: 0.08, dimension: 3.6, saturation: 0.9,
+        });
+      }
+    },
+    onEnterBack: () => {
+      if (!pool.has('hero')) {
+        pool.acquire('hero', 'hero-canvas', QuantumAdapter, {
+          geometry: 11, hue: 210, gridDensity: 28, speed: 0.4,
+          intensity: 0.75, chaos: 0.05, morphFactor: 0.6,
+          rot4dXW: 0.15, rot4dYW: 0.08, dimension: 3.6, saturation: 0.9,
+        });
+      }
+    },
+  });
+
   const tl = gsap.timeline({ delay: 0.2 });
 
   // Badge entrance
@@ -203,6 +371,7 @@ export function initMorph(pool, createHero) {
     pin: '#morphPinned', scrub: 0.6,
     onEnter: () => {
       pool.release('hero');
+      pool.release('opening');
       createMorphSystem(pool, 0);
       updateMorphUI(0);
     },
@@ -467,7 +636,7 @@ export function initCascade(c2d) {
           if (i === activeIdx) {
             // ── ACTIVE CARD: scale up, glow leaks, density drops ──
             const scaleVal = 1 + pulse * 0.12;
-            card.style.transform = `scale(${scaleVal})`;
+            card.dataset.scrollTransform = `scale(${scaleVal})`;
             card.classList.add('leaking');
             card.style.setProperty('--card-glow', `hsla(${hue}, 70%, 50%, ${0.15 + pulse * 0.1})`);
 
@@ -484,7 +653,7 @@ export function initCascade(c2d) {
           } else if (Math.abs(i - activeIdx) === 1) {
             // ── ADJACENT: subtle hue bleed, mild scale ──
             const bleedAmount = i < activeIdx ? (1 - localP) * 0.3 : localP * 0.3;
-            card.style.transform = `scale(${1 + bleedAmount * 0.04})`;
+            card.dataset.scrollTransform = `scale(${1 + bleedAmount * 0.04})`;
             card.classList.remove('leaking');
 
             inst.setParams({
@@ -496,7 +665,7 @@ export function initCascade(c2d) {
             });
           } else {
             // ── INACTIVE: base state ──
-            card.style.transform = 'scale(0.95)';
+            card.dataset.scrollTransform = 'scale(0.95)';
             card.classList.remove('leaking');
 
             inst.setParams({
@@ -634,77 +803,106 @@ export function initCTA(c2d) {
 // ─── Section Reveal Animations ──────────────────────────────
 
 export function initSectionReveals() {
-  // data-animate elements: fade + slide from below
+  // ── data-animate: 3D depth reveal (VISUAL-CODEX: 3D transform pattern) ──
   const reveals = document.querySelectorAll('[data-animate]');
   reveals.forEach(el => {
     gsap.from(el, {
-      y: 60, opacity: 0,
-      duration: 0.8, ease: 'power2.out',
-      scrollTrigger: {
-        trigger: el, start: 'top 80%', once: true,
-      },
+      y: 60, opacity: 0, rotateX: 8, scale: 0.97,
+      filter: 'blur(4px)',
+      duration: 1.0, ease: 'power3.out',
+      scrollTrigger: { trigger: el, start: 'top 82%', once: true },
     });
   });
 
-  // Agent cards: stagger entrance
+  // ── Agent cards: center-based stagger (VISUAL-CODEX: stagger pattern) ──
   const agentCards = document.querySelectorAll('.agent-card');
   if (agentCards.length > 0) {
     gsap.from(agentCards, {
-      y: 40, opacity: 0, scale: 0.96,
-      duration: 0.7, stagger: 0.1,
+      y: 50, opacity: 0, scale: 0.92, rotateY: -5,
+      duration: 0.8,
+      stagger: { amount: 0.5, from: 'center' },
       ease: 'power3.out',
-      scrollTrigger: {
-        trigger: '.agent-grid', start: 'top 80%', once: true,
-      },
+      scrollTrigger: { trigger: '.agent-grid', start: 'top 80%', once: true },
     });
   }
 
-  // Code blocks: fade in
+  // ── Code blocks: blur cascade reveal (VISUAL-CODEX: filter cascade) ──
   const codeBlocks = document.querySelectorAll('.code-block, .agent-tools');
-  codeBlocks.forEach(block => {
+  codeBlocks.forEach((block, i) => {
     gsap.from(block, {
-      y: 30, opacity: 0, scale: 0.98,
-      duration: 0.6, ease: 'power2.out',
-      scrollTrigger: {
-        trigger: block, start: 'top 85%', once: true,
+      y: 30, opacity: 0, scale: 0.97,
+      filter: 'blur(6px) brightness(0.7)',
+      duration: 0.8, delay: i * 0.1,
+      ease: 'power2.out',
+      scrollTrigger: { trigger: block, start: 'top 85%', once: true },
+    });
+  });
+
+  // ── CTA: three-phase entrance (VISUAL-CODEX: three-phase animation) ──
+  const ctaContent = document.querySelector('.cta-content');
+  if (ctaContent) {
+    const ctaTl = gsap.timeline({
+      scrollTrigger: { trigger: '#ctaSection', start: 'top 70%', once: true },
+    });
+    // Phase 1: fade up from depth
+    ctaTl.from(ctaContent, {
+      y: 100, opacity: 0, scale: 0.9, rotateX: 5,
+      filter: 'blur(8px)',
+      duration: 0.8, ease: 'power3.out',
+    });
+    // Phase 2: overshoot settle
+    ctaTl.to(ctaContent, {
+      scale: 1.02, duration: 0.2, ease: 'power2.out',
+    });
+    // Phase 3: final position
+    ctaTl.to(ctaContent, {
+      scale: 1, filter: 'blur(0px)',
+      duration: 0.3, ease: 'power2.inOut',
+    });
+  }
+
+  // ── Playground controls: wave stagger (VISUAL-CODEX: stagger suite) ──
+  const ctrlGroups = document.querySelectorAll('.ctrl-group');
+  if (ctrlGroups.length > 0) {
+    gsap.from(ctrlGroups, {
+      y: 25, opacity: 0, scale: 0.95,
+      duration: 0.5,
+      stagger: { amount: 0.6, from: 'start' },
+      ease: 'back.out(1.2)',
+      scrollTrigger: { trigger: '#playgroundControls', start: 'top 85%', once: true },
+    });
+  }
+
+  // ── Triptych stats: counter-up animation ──
+  document.querySelectorAll('.stat-number').forEach(el => {
+    ScrollTrigger.create({
+      trigger: el, start: 'top 85%', once: true,
+      onEnter: () => {
+        gsap.from(el, {
+          scale: 0.5, opacity: 0, y: 20,
+          duration: 0.6, ease: 'back.out(2)',
+        });
       },
     });
   });
 
-  // CTA section content
-  const ctaContent = document.querySelector('.cta-content');
-  if (ctaContent) {
-    gsap.from(ctaContent, {
-      y: 80, opacity: 0,
-      duration: 1.0, ease: 'power2.out',
+  // ── Section dividers: subtle parallax (VISUAL-CODEX: parallax depth) ──
+  document.querySelectorAll('.section-divider').forEach(div => {
+    gsap.to(div, {
+      y: -15, ease: 'none',
       scrollTrigger: {
-        trigger: '#ctaSection', start: 'top 70%', once: true,
+        trigger: div, start: 'top bottom', end: 'bottom top', scrub: 1.5,
       },
     });
-  }
+  });
 
-  // Playground controls stagger
-  const ctrlGroups = document.querySelectorAll('.ctrl-group');
-  if (ctrlGroups.length > 0) {
-    gsap.from(ctrlGroups, {
-      y: 20, opacity: 0,
-      duration: 0.5, stagger: 0.04,
-      ease: 'power2.out',
-      scrollTrigger: {
-        trigger: '#playgroundControls', start: 'top 85%', once: true,
-      },
-    });
-  }
-
-  // Footer
+  // ── Footer ──
   const footer = document.querySelector('footer');
   if (footer) {
     gsap.from(footer, {
       y: 30, opacity: 0,
       duration: 0.8, ease: 'power2.out',
-      scrollTrigger: {
-        trigger: footer, start: 'top 90%', once: true,
-      },
+      scrollTrigger: { trigger: footer, start: 'top 92%', once: true },
     });
   }
 }

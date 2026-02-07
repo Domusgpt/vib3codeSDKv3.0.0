@@ -92,6 +92,13 @@ export const ctaParams = {
   intensity: 0.2, chaos: 0.25, dimension: 4.0,
 };
 
+// ── Opening Cinematic: VIB3CODE text mask over GPU canvas ──
+export const openingParams = {
+  geometry: 11, hue: 220, gridDensity: 22, speed: 0.3,
+  intensity: 0.5, chaos: 0.05, morphFactor: 0.6, dimension: 3.8,
+  rot4dXW: 0.1, rot4dYW: 0.05, saturation: 0.85,
+};
+
 // ── Parallax Triptych: two visualizer columns ──
 export const parallaxParams = {
   left:  { geometry: 2, hue: 195, gridDensity: 18, speed: 0.35, intensity: 0.45, chaos: 0.1, morphFactor: 0.4, dimension: 3.6 },

@@ -1,19 +1,22 @@
 /**
- * VIB3+ Landing Page — Boot Script v2
+ * VIB3+ Landing Page — Boot Script v3
  *
- * New section order:
- *   Hero → Morph Experience (1200vh) → Playground → Triptych → Cascade → Energy → Agent → CTA
+ * Section order:
+ *   Opening (800vh) → Hero → Morph (1200vh) → Playground → Triptych →
+ *   Cascade → Energy → Agent → CTA
  *
- * Demonstrates modular SDK usage:
+ * Systems:
  *   1. ContextPool manages GPU context budget (max 3 concurrent)
  *   2. Adapters wrap each visualization system with a uniform interface
  *   3. Choreography drives shader parameters from scroll position
- *   4. Playground provides full 6D rotation (all 6 planes) with real GPU shaders
- *   5. Morph section showcases all 3 systems with scroll-driven system swaps
- *   6. Triptych: two parallaxing Canvas2D visualizer columns
- *   7. Cascade: morphing cards with glow leak effect
+ *   4. CardTiltSystem maps mouse/touch → CSS 3D transforms + visualizer params
+ *   5. Opening cinematic: VIB3CODE text mask over GPU canvas, lattice parallax
+ *   6. Morph section: 6 stages with system swaps, parameter coordination
+ *   7. Section dividers: SVG shapes hide canvas edge lines
+ *   8. Blur cascade reveals + scroll-driven color theming (VISUAL-CODEX patterns)
  *
  * GPU Context Budget:
+ *   Opening ......... 1 (Quantum, released when hero enters)
  *   Hero ............ 1 (Quantum, released when morph enters)
  *   Morph ........... 1 (swaps Q → H → F on scroll)
  *   Playground ...... 1 (Q/H/F, lazy — scroll-triggered)
@@ -27,21 +30,23 @@
 
 import { ContextPool } from './ContextPool.js';
 import { QuantumAdapter, HolographicAdapter, FacetedAdapter, Canvas2DRenderer } from './adapters.js';
+import { CardTiltSystem } from './CardTiltSystem.js';
 import {
   heroParams, energyBgParams,
   agentBgParams, playgroundDefaults, ctaParams,
-  parallaxParams,
+  parallaxParams, openingParams,
 } from './config.js';
 import {
-  initScrollProgress, initHero, initMorph,
+  initScrollProgress, initOpening, initHero, initMorph,
   initTriptych, initCascade, initEnergy, initCTA,
-  initSectionReveals,
+  initSectionReveals, initScrollColorTheme, initBlurReveals,
 } from './choreography.js';
 
 // ─── State ────────────────────────────────────────────────────
 
 const pool = new ContextPool(3);
 const c2d = new Map();
+let tiltSystem = null;
 
 // ─── Playground GPU State ─────────────────────────────────────
 
@@ -128,10 +133,63 @@ function initCanvas2D() {
   c2d.set('cta', new Canvas2DRenderer('cta-canvas', ctaParams));
 }
 
+// ─── Card Tilt System ──────────────────────────────────────────
+// Registers cascade cards and energy card for mouse-driven 3D tilt
+// with visualizer parameter mapping (rotation, speed, chaos, density)
+
+function initTiltSystem() {
+  tiltSystem = new CardTiltSystem({
+    maxTilt: 18,
+    perspective: 1200,
+    smoothing: 0.1,
+    returnSpeed: 0.06,
+  });
+
+  // Register cascade cards with their Canvas2D adapters
+  document.querySelectorAll('.cascade-card').forEach((card, i) => {
+    const adapter = c2d.get(`cas${i}`);
+    tiltSystem.register(card, adapter, {
+      maxTilt: 15,
+      sensitivity: 1.2,
+      affectsRotation: true,
+      affectsSpeed: true,
+      affectsChaos: true,
+      affectsDensity: true,
+      affectsHue: false,
+      rotationScale: 1.0,
+      speedScale: 0.3,
+      chaosScale: 0.2,
+      densityScale: 0.2,
+    });
+  });
+
+  // Register energy card (adapter set when GPU context is acquired)
+  const energyCard = document.getElementById('energyCard');
+  if (energyCard) {
+    tiltSystem.register(energyCard, null, {
+      maxTilt: 12,
+      sensitivity: 0.8,
+      affectsRotation: true,
+      affectsSpeed: false,
+      affectsChaos: true,
+      affectsDensity: false,
+      rotationScale: 0.8,
+      chaosScale: 0.15,
+    });
+  }
+
+  // Register agent cards (CSS-only tilt, no adapter)
+  document.querySelectorAll('.agent-card').forEach(card => {
+    tiltSystem.register(card, null, {
+      maxTilt: 8,
+      sensitivity: 0.6,
+    });
+  });
+}
+
 // ─── Parameters Playground (GPU-backed, full 6D) ─────────────
 
 function initPlayground() {
-  // All slider parameters including the 3 new 3D rotation planes
   const sliderParams = [
     'hue', 'gridDensity', 'speed', 'chaos',
     'morphFactor', 'intensity', 'dimension',
@@ -217,10 +275,11 @@ if (typeof Lenis !== 'undefined' && typeof gsap !== 'undefined') {
 }
 
 // Initialize everything
-createHero();
 initCanvas2D();
 
 if (typeof gsap !== 'undefined') {
+  // Opening cinematic (acquires its own GPU context)
+  initOpening(pool, createHero);
   initScrollProgress();
   initHero(pool);
   initMorph(pool, createHero);
@@ -229,19 +288,46 @@ if (typeof gsap !== 'undefined') {
   initEnergy(pool, c2d);
   initCTA(c2d);
   initSectionReveals();
+  initScrollColorTheme();
+  initBlurReveals();
 }
 
+// Acquire opening canvas immediately (first thing user sees)
+pool.acquire('opening', 'opening-canvas', QuantumAdapter, openingParams);
+
 initPlayground();
+initTiltSystem();
 requestAnimationFrame(renderLoop);
+
+// ─── Energy Card GPU Lifecycle → Tilt Adapter ─────────────────
+// When the energy GPU context is acquired/released, update the tilt system adapter
+
+if (typeof ScrollTrigger !== 'undefined') {
+  ScrollTrigger.create({
+    trigger: '#energySection', start: 'top 80%', end: 'bottom top',
+    onEnter: () => {
+      const adapter = pool.get('energyCard');
+      if (tiltSystem && adapter) {
+        tiltSystem.setAdapter(document.getElementById('energyCard'), adapter);
+      }
+    },
+  });
+}
 
 // Clean up on page hide (mobile tab switching) — re-acquire on return
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     pool.releaseAll();
   } else {
-    // Re-acquire hero context if we're at the top
-    if (window.scrollY < window.innerHeight) {
-      createHero();
+    // Re-acquire opening or hero context depending on scroll position
+    const openingSection = document.getElementById('openingSection');
+    if (openingSection) {
+      const rect = openingSection.getBoundingClientRect();
+      if (rect.top < window.innerHeight && rect.bottom > 0) {
+        pool.acquire('opening', 'opening-canvas', QuantumAdapter, openingParams);
+      } else if (window.scrollY < window.innerHeight * 2) {
+        createHero();
+      }
     }
     // Re-acquire playground if visible
     const pgSection = document.getElementById('playgroundSection');
