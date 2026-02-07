@@ -6,6 +6,7 @@
     <title>VIB3+ CORE — 4D Visualization Engine</title>
     <meta name="description" content="VIB3+ is a 4D visualization SDK with 24 geometry variants, 6D rotation, and three rendering systems. WebGL + WebGPU.">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
     <style>
@@ -561,6 +562,87 @@
         footer a { color: #444; text-decoration: none; }
         footer a:hover { color: #888; }
 
+        /* ─── Text Shimmer ─── */
+        .text-shimmer {
+            background: linear-gradient(135deg, #fff 0%, var(--accent) 40%, var(--faceted) 70%, #fff 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: textShimmer 4s linear infinite;
+        }
+        @keyframes textShimmer {
+            to { background-position: 200% center; }
+        }
+
+        /* ─── Noise Overlay ─── */
+        .noise-overlay {
+            position: fixed; inset: 0; z-index: 9998;
+            pointer-events: none; opacity: 0.022;
+            width: 100%; height: 100%;
+        }
+
+        /* ─── Ambient Background ─── */
+        .ambient-bg {
+            position: fixed; inset: 0; z-index: -1;
+            pointer-events: none;
+            background:
+                radial-gradient(ellipse at 25% 15%, rgba(0,240,255,0.07) 0%, transparent 50%),
+                radial-gradient(ellipse at 75% 80%, rgba(168,85,247,0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(244,63,94,0.03) 0%, transparent 60%);
+            animation: ambientBreath 25s ease-in-out infinite;
+        }
+        @keyframes ambientBreath {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.55; }
+        }
+
+        /* ─── Line-Split Text Reveal ─── */
+        .line-wrap {
+            overflow: hidden;
+            display: block;
+        }
+        .line-inner {
+            display: block;
+            transform: translateY(105%);
+        }
+
+        /* ─── Section Reveal ─── */
+        .section-reveal {
+            opacity: 0;
+            transform: translateY(60px);
+        }
+
+        /* ─── Card Top-Edge Light ─── */
+        .glass::before, .agent-card::before, .energy-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 10%; right: 10%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+            z-index: 1;
+        }
+
+        /* ─── 3D Perspective Container ─── */
+        .perspective-wrap {
+            perspective: 1200px;
+            perspective-origin: 50% 50%;
+        }
+
+        /* ─── Custom Scrollbar ─── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, var(--quantum), var(--faceted), var(--holographic));
+            border-radius: 3px;
+        }
+
+        /* ─── Lenis Smooth Scroll ─── */
+        html.lenis, html.lenis body { height: auto; }
+        .lenis.lenis-smooth { scroll-behavior: auto !important; }
+        .lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+        .lenis.lenis-stopped { overflow: hidden; }
+
         /* ─── Reduced Motion ─── */
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {
@@ -586,6 +668,14 @@
 </head>
 <body>
     <a href="#main" class="sr-only">Skip to content</a>
+
+    <!-- Ambient Background + Noise -->
+    <div class="ambient-bg" aria-hidden="true"></div>
+    <svg class="noise-overlay" aria-hidden="true" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+        <filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch"/></filter>
+        <rect width="100%" height="100%" filter="url(#noiseFilter)"/>
+    </svg>
+
     <div class="scroll-progress" id="scrollProgress"></div>
 
     <!-- ═══════════════════════════════════════════════════
@@ -600,7 +690,7 @@
         </div>
         <div class="hero-content" id="heroContent">
             <span class="hero-badge" id="heroBadge">v2.0.1 &mdash; Three Systems &middot; 24 Geometries &middot; 6D Rotation</span>
-            <h1 class="hero-title" id="heroTitle">VIB3+</h1>
+            <h1 class="hero-title text-shimmer" id="heroTitle">VIB3+</h1>
             <p class="hero-sub" id="heroSub">
                 The fourth dimension, rendered. Three rendering systems.
                 24 geometry variants. Six degrees of rotation freedom.
@@ -685,7 +775,7 @@
                     <canvas class="vib3-canvas" id="energy-bg-canvas"></canvas>
                 </div>
             </div>
-            <div class="energy-card" id="energyCard">
+            <div class="energy-card perspective-wrap" id="energyCard">
                 <div class="energy-card-canvas">
                     <canvas class="vib3-canvas" id="energy-card-canvas"></canvas>
                 </div>
@@ -749,11 +839,11 @@
             </div>
         </div>
         <div class="agent-content">
-            <div class="agent-header">
+            <div class="agent-header section-reveal" data-animate>
                 <h2>Agent Integration</h2>
                 <p>Drop VIB3+ into any AI agent workflow. Pre-built context packs for Claude, OpenAI, and MCP protocol.</p>
             </div>
-            <div class="agent-grid">
+            <div class="agent-grid section-reveal" data-animate>
                 <a class="agent-card" href="agent-config/mcp-config.json" download>
                     <span class="agent-card-icon">&#x1f517;</span>
                     <h4>MCP Config</h4>
@@ -796,7 +886,7 @@
          Live sliders controlling a Canvas2D visualizer
          ═══════════════════════════════════════════════════ -->
     <section class="playground" id="playgroundSection">
-        <div class="playground-header">
+        <div class="playground-header section-reveal" data-animate>
             <h2>Parameters Playground</h2>
             <p>Every parameter exposed. Drag sliders to sculpt 4D geometry in real time.</p>
         </div>
@@ -898,8 +988,8 @@
                 <canvas class="vib3-canvas" id="cta-canvas"></canvas>
             </div>
         </div>
-        <div class="cta-content">
-            <h2>Start Building</h2>
+        <div class="cta-content section-reveal" data-animate>
+            <h2 class="text-shimmer">Start Building</h2>
             <p>Three lines to a 4D visualizer. WebGPU primary, WebGL fallback, C++ WASM math core.</p>
             <div class="cta-row">
                 <a class="cta cta-primary" href="docs/webgpu-live.html">Launch Live Demo</a>

@@ -30,7 +30,7 @@ import {
 import {
   initScrollProgress, initHero, initTrinity,
   initConvergence, initEnergy, initCascade, initCTA,
-  initConvergenceHover,
+  initConvergenceHover, initSectionReveals,
 } from './choreography.js';
 
 // ─── State ────────────────────────────────────────────────────
@@ -119,6 +119,16 @@ if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
   console.warn('GSAP not loaded — scroll choreography disabled');
 }
 
+// ─── Lenis Smooth Scroll ──────────────────────────────────────
+// Wire Lenis to GSAP's ticker so ScrollTrigger stays in sync
+
+if (typeof Lenis !== 'undefined' && typeof gsap !== 'undefined') {
+  const lenis = new Lenis();
+  lenis.on('scroll', ScrollTrigger.update);
+  gsap.ticker.add((time) => lenis.raf(time * 1000));
+  gsap.ticker.lagSmoothing(0);
+}
+
 createHero();
 initCanvas2D();
 
@@ -131,6 +141,7 @@ if (typeof gsap !== 'undefined') {
   initEnergy(pool, c2d);
   initCascade(c2d);
   initCTA(c2d);
+  initSectionReveals();
 }
 
 initPlayground();
