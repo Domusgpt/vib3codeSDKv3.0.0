@@ -2,27 +2,26 @@
  * VIB3+ Landing Page — Boot Script
  *
  * Demonstrates modular SDK usage:
- *   1. ContextPool manages GPU context budget (max 2 simultaneous)
+ *   1. ContextPool manages GPU context budget
  *   2. Adapters wrap each visualization system with a uniform interface
- *   3. Canvas2DRenderer provides zero-GPU-cost procedural visuals
- *   4. Choreography drives shader parameters from scroll position
- *   5. Playground provides interactive parameter sliders
- *   6. Hover coordination shows multi-instance visual communication
+ *   3. Choreography drives shader parameters from scroll position
+ *   4. Playground provides interactive parameter sliders with REAL GPU shaders
+ *   5. Hover coordination shows multi-instance visual communication
  *
  * GPU Context Budget:
  *   Hero ............ 1 (Quantum)
  *   Trinity ......... 1 (swaps Q → H → F on scroll)
- *   Convergence ..... 0 (Canvas2D)
  *   Energy card ..... 1 (Faceted, lazy)
- *   Cascade ......... 0 (Canvas2D)
- *   Agent ........... 0 (Canvas2D)
- *   Playground ...... 0 (Canvas2D)
- *   CTA ............. 0 (Canvas2D)
- *   MAX CONCURRENT .. 1-2 (safe for mobile)
+ *   Playground ...... 1 (Q/H/F, lazy — scroll-triggered)
+ *   Convergence ..... 0 (Canvas2D ambient)
+ *   Cascade ......... 0 (Canvas2D ambient)
+ *   Agent ........... 0 (Canvas2D ambient)
+ *   CTA ............. 0 (Canvas2D ambient)
+ *   MAX CONCURRENT .. 2-3 (pool auto-evicts oldest)
  */
 
 import { ContextPool } from './ContextPool.js';
-import { QuantumAdapter, Canvas2DRenderer } from './adapters.js';
+import { QuantumAdapter, HolographicAdapter, FacetedAdapter, Canvas2DRenderer } from './adapters.js';
 import {
   heroParams, convergenceParams, energyBgParams,
   agentBgParams, playgroundDefaults, ctaParams,
@@ -35,9 +34,65 @@ import {
 
 // ─── State ────────────────────────────────────────────────────
 
-const pool = new ContextPool(2);
+const pool = new ContextPool(3);
 const c2d = new Map();
 let lastScrollSection = null;
+
+// ─── Playground GPU State ─────────────────────────────────────
+
+const pgFactories = [QuantumAdapter, HolographicAdapter, FacetedAdapter];
+const pgNames = ['Quantum', 'Holographic', 'Faceted'];
+let pgSystemIdx = 0;
+
+function getPlayground() {
+  return pool.get('playground');
+}
+
+function acquirePlayground() {
+  const adapter = pool.acquire(
+    'playground', 'playground-canvas',
+    pgFactories[pgSystemIdx], playgroundDefaults
+  );
+  const errEl = document.getElementById('pgError');
+  if (!adapter) {
+    console.error(`[Playground] Failed to acquire ${pgNames[pgSystemIdx]} GPU context`);
+    if (errEl) errEl.style.display = 'flex';
+  } else {
+    if (errEl) errEl.style.display = 'none';
+  }
+  return adapter;
+}
+
+function releasePlayground() {
+  pool.release('playground');
+}
+
+function switchPlaygroundSystem(idx) {
+  if (idx === pgSystemIdx && pool.has('playground')) return;
+  pgSystemIdx = idx;
+  releasePlayground();
+  const adapter = acquirePlayground();
+  // Re-apply current slider values to new system
+  if (adapter) {
+    adapter.setParams(readSliderValues());
+  }
+}
+
+function readSliderValues() {
+  const params = {};
+  const sliderParams = [
+    'hue', 'gridDensity', 'speed', 'chaos',
+    'morphFactor', 'intensity', 'dimension',
+    'rot4dXW', 'rot4dYW', 'rot4dZW',
+  ];
+  sliderParams.forEach(param => {
+    const input = document.getElementById(`ctrl-${param}`);
+    if (input) params[param] = parseFloat(input.value);
+  });
+  const geoSelect = document.getElementById('ctrl-geometry');
+  if (geoSelect) params.geometry = parseInt(geoSelect.value);
+  return params;
+}
 
 // ─── GPU System: Hero ─────────────────────────────────────────
 
@@ -45,7 +100,7 @@ function createHero() {
   return pool.acquire('hero', 'hero-canvas', QuantumAdapter, heroParams);
 }
 
-// ─── Canvas 2D Instances (no GPU contexts) ────────────────────
+// ─── Canvas 2D Instances (ambient backgrounds — no GPU) ───────
 
 function initCanvas2D() {
   c2d.set('convQ', new Canvas2DRenderer('conv-canvas-q', convergenceParams.quantum));
@@ -63,23 +118,20 @@ function initCanvas2D() {
   });
 
   c2d.set('agent', new Canvas2DRenderer('agent-canvas', agentBgParams));
-  c2d.set('playground', new Canvas2DRenderer('playground-canvas', playgroundDefaults));
   c2d.set('cta', new Canvas2DRenderer('cta-canvas', ctaParams));
+  // NOTE: playground uses real GPU adapter — not Canvas2D
 }
 
-// ─── Parameters Playground ────────────────────────────────────
+// ─── Parameters Playground (GPU-backed) ──────────────────────
 
 function initPlayground() {
-  const pg = c2d.get('playground');
-  if (!pg) return;
-
   const sliderParams = [
     'hue', 'gridDensity', 'speed', 'chaos',
     'morphFactor', 'intensity', 'dimension',
     'rot4dXW', 'rot4dYW', 'rot4dZW',
   ];
 
-  // Wire range sliders
+  // Wire range sliders → live GPU adapter
   sliderParams.forEach(param => {
     const input = document.getElementById(`ctrl-${param}`);
     const valEl = document.getElementById(`val-${param}`);
@@ -88,7 +140,8 @@ function initPlayground() {
     input.addEventListener('input', () => {
       const v = parseFloat(input.value);
       valEl.textContent = Number.isInteger(v) ? v : v.toFixed(2);
-      pg.setParam(param, v);
+      const pg = getPlayground();
+      if (pg) pg.setParam(param, v);
     });
   });
 
@@ -99,8 +152,36 @@ function initPlayground() {
     geoSelect.addEventListener('change', () => {
       const v = parseInt(geoSelect.value);
       geoVal.textContent = v;
-      pg.setParam('geometry', v);
+      const pg = getPlayground();
+      if (pg) pg.setParam('geometry', v);
     });
+  }
+
+  // Wire system type buttons (Quantum / Holographic / Faceted)
+  document.querySelectorAll('[data-pg-system]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.pgSystem);
+      switchPlaygroundSystem(idx);
+      document.querySelectorAll('[data-pg-system]').forEach(b =>
+        b.classList.toggle('active', parseInt(b.dataset.pgSystem) === idx)
+      );
+    });
+  });
+
+  // Scroll-triggered GPU lifecycle
+  if (typeof ScrollTrigger !== 'undefined') {
+    ScrollTrigger.create({
+      trigger: '#playgroundSection',
+      start: 'top 80%',
+      end: 'bottom top',
+      onEnter: acquirePlayground,
+      onLeave: releasePlayground,
+      onEnterBack: acquirePlayground,
+      onLeaveBack: releasePlayground,
+    });
+  } else {
+    // No GSAP — acquire immediately
+    acquirePlayground();
   }
 }
 
@@ -156,6 +237,14 @@ document.addEventListener('visibilitychange', () => {
     // Re-acquire hero context if we're at the top
     if (window.scrollY < window.innerHeight) {
       createHero();
+    }
+    // Re-acquire playground if visible
+    const pgSection = document.getElementById('playgroundSection');
+    if (pgSection) {
+      const rect = pgSection.getBoundingClientRect();
+      if (rect.top < window.innerHeight && rect.bottom > 0) {
+        acquirePlayground();
+      }
     }
     if (typeof ScrollTrigger !== 'undefined') {
       ScrollTrigger.refresh();

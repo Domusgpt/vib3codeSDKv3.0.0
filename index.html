@@ -488,6 +488,35 @@
         }
         .geo-select option { background: #0a0a12; }
 
+        /* ─── System Type Selector ─── */
+        .system-btns { display: flex; gap: 6px; }
+        .sys-btn {
+            flex: 1; padding: 10px 0; border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px; background: rgba(255,255,255,0.03);
+            color: rgba(255,255,255,0.4); font: 600 11px/1 'Inter', sans-serif;
+            letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .sys-btn:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); }
+        .sys-btn.active {
+            background: rgba(0,240,255,0.08); border-color: rgba(0,240,255,0.3);
+            color: var(--accent); box-shadow: 0 0 16px rgba(0,240,255,0.1);
+        }
+        .sys-btn.active[data-pg-system="1"] {
+            background: rgba(168,85,247,0.08); border-color: rgba(168,85,247,0.3);
+            color: var(--holographic); box-shadow: 0 0 16px rgba(168,85,247,0.1);
+        }
+        .sys-btn.active[data-pg-system="2"] {
+            background: rgba(0,255,135,0.08); border-color: rgba(0,255,135,0.3);
+            color: var(--faceted); box-shadow: 0 0 16px rgba(0,255,135,0.1);
+        }
+        .pg-error {
+            position: absolute; inset: 0; display: flex;
+            align-items: center; justify-content: center;
+            color: #ff4466; font: 600 13px/1.5 'Inter', sans-serif;
+            text-align: center; padding: 24px; display: none;
+        }
+
         /* ═══════════════════════════════════════════
            SECTION 8: CTA
            ═══════════════════════════════════════════ */
@@ -883,7 +912,7 @@
 
     <!-- ═══════════════════════════════════════════════════
          SECTION 7: PARAMETERS PLAYGROUND
-         Live sliders controlling a Canvas2D visualizer
+         Live GPU shader — Quantum / Holographic / Faceted
          ═══════════════════════════════════════════════════ -->
     <section class="playground" id="playgroundSection">
         <div class="playground-header section-reveal" data-animate>
@@ -895,8 +924,17 @@
                 <div class="canvas-wrap" style="width:100%;height:100%;border-radius:20px;">
                     <canvas class="vib3-canvas" id="playground-canvas"></canvas>
                 </div>
+                <div class="pg-error" id="pgError">GPU context unavailable.<br>Try reloading the page.</div>
             </div>
             <div class="playground-controls" id="playgroundControls">
+                <div class="ctrl-group">
+                    <label><span>System</span></label>
+                    <div class="system-btns">
+                        <button class="sys-btn active" data-pg-system="0">Quantum</button>
+                        <button class="sys-btn" data-pg-system="1">Holographic</button>
+                        <button class="sys-btn" data-pg-system="2">Faceted</button>
+                    </div>
+                </div>
                 <div class="ctrl-group">
                     <label><span>Geometry</span><span class="ctrl-val" id="val-geometry">3</span></label>
                     <select class="geo-select" id="ctrl-geometry">
