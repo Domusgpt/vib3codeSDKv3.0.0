@@ -97,6 +97,8 @@ if(EMSCRIPTEN AND VIB3_BUILD_WASM)
 
     if(TARGET vib3_geometry)
         target_link_libraries(vib3_wasm PRIVATE vib3_geometry)
+    else()
+        message(STATUS "Note: vib3_geometry target not found, building WASM without geometry support")
     endif()
 
     # Emscripten settings
