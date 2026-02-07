@@ -6,7 +6,7 @@
  */
 
 export const heroParams = {
-  geometry: 3, hue: 210, gridDensity: 28, speed: 0.4,
+  geometry: 11, hue: 210, gridDensity: 28, speed: 0.4,
   intensity: 0.75, chaos: 0.05, morphFactor: 0.6,
   rot4dXW: 0.15, rot4dYW: 0.08, dimension: 3.6, saturation: 0.9,
 };
@@ -34,6 +34,17 @@ export const convergenceParams = {
 export const energyBgParams = {
   geometry: 6, hue: 270, gridDensity: 16, speed: 0.3,
   intensity: 0.2, chaos: 0.05, dimension: 4.0,
+};
+
+export const agentBgParams = {
+  geometry: 5, hue: 240, gridDensity: 12, speed: 0.2,
+  intensity: 0.15, chaos: 0.3, dimension: 4.2,
+};
+
+export const playgroundDefaults = {
+  geometry: 3, hue: 200, gridDensity: 24, speed: 1.0,
+  morphFactor: 0.5, chaos: 0.2, intensity: 0.7,
+  dimension: 3.5, rot4dXW: 0, rot4dYW: 0, rot4dZW: 0,
 };
 
 export const ctaParams = {

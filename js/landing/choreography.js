@@ -365,3 +365,56 @@ export function initCTA(c2d) {
     },
   });
 }
+
+// ─── Convergence Hover Coordination ──────────────────────────
+// Hovering a panel: brightens it, desaturates others,
+// freezes hovered speed, transfers density to hovered
+
+export function initConvergenceHover(c2d) {
+  const panels = document.querySelectorAll('.conv-panel');
+  const keys = ['convQ', 'convH', 'convF'];
+  const baseIntensity = [0.7, 0.7, 0.7];
+  const baseSpeed = [0.8, 0.6, 0.7];
+
+  panels.forEach((panel, idx) => {
+    panel.addEventListener('mouseenter', () => {
+      keys.forEach((key, i) => {
+        const inst = c2d.get(key);
+        if (!inst) return;
+        if (i === idx) {
+          // Hovered panel: brighten, density UP, speed FREEZE
+          gsap.to(inst.params, {
+            intensity: 0.95, gridDensity: 40, speed: 0.05, chaos: 0.05,
+            duration: 0.6, ease: 'power2.out',
+          });
+          gsap.to(panel, { scale: 1.02, duration: 0.4, ease: 'power2.out' });
+        } else {
+          // Other panels: desaturate, density DOWN, dim
+          gsap.to(inst.params, {
+            intensity: 0.3, gridDensity: 10, speed: baseSpeed[i] * 0.3,
+            chaos: 0.4, duration: 0.5, ease: 'power2.out', delay: 0.05,
+          });
+          gsap.to(panels[i], { scale: 0.98, opacity: 0.6, duration: 0.4, ease: 'power2.out' });
+        }
+      });
+    });
+
+    panel.addEventListener('mouseleave', () => {
+      // Snap back: background starts first, then cards with lag
+      keys.forEach((key, i) => {
+        const inst = c2d.get(key);
+        if (!inst) return;
+        const delay = i === idx ? 0.15 : 0;
+        gsap.to(inst.params, {
+          intensity: baseIntensity[i], gridDensity: [20, 22, 18][i],
+          speed: baseSpeed[i], chaos: [0.15, 0.2, 0.1][i],
+          duration: 0.8, ease: 'elastic.out(1, 0.5)', delay,
+        });
+        gsap.to(panels[i], {
+          scale: 1, opacity: 1,
+          duration: 0.6, ease: 'power2.out', delay,
+        });
+      });
+    });
+  });
+}

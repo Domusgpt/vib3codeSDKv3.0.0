@@ -48,8 +48,9 @@ jobs:
           mkdir -p _site/tests
           cp tests/e2e-harness.html _site/tests/ 2>/dev/null || true
 
-          # Agent config docs (for download buttons on landing page)
+          # Agent config docs + CLAUDE.md (for download buttons on landing page)
           cp -r agent-config/ _site/agent-config/ 2>/dev/null || true
+          cp CLAUDE.md _site/ 2>/dev/null || true
 
           # Landing page JS modules (index.html imports ./js/landing/main.js)
           mkdir -p _site/js

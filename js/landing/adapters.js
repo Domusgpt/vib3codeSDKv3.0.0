@@ -45,11 +45,12 @@ function unwireInteraction(canvas, handlers) {
 }
 
 function observeResize(canvas, onResize) {
+  const parent = canvas.parentElement;
+  if (!parent) return null;
   const obs = new ResizeObserver(() => {
-    const p = canvas.parentElement;
-    if (p) onResize(p.clientWidth, p.clientHeight, Math.min(devicePixelRatio || 1, 2));
+    onResize(parent.clientWidth, parent.clientHeight, Math.min(devicePixelRatio || 1, 2));
   });
-  obs.observe(canvas.parentElement);
+  obs.observe(parent);
   return obs;
 }
 
@@ -113,10 +114,7 @@ export class HolographicAdapter {
       return;
     }
 
-    this._handlers = wireInteraction(canvas,
-      (x, y, i) => this.system.visualizers?.forEach(v => v.updateInteraction?.(x, y, i)),
-      () => this.system.visualizers?.forEach(v => v.updateInteraction?.(0.5, 0.5, 0)),
-    );
+    // Holographic system is audio-reactive, no mouse/touch interaction API
     this._resizeObs = observeResize(canvas, (w, h, dpr) => this.system.resize(w, h, dpr));
   }
 
@@ -131,7 +129,6 @@ export class HolographicAdapter {
   }
   dispose() {
     this.active = false;
-    unwireInteraction(this.canvas, this._handlers);
     this._resizeObs?.disconnect();
     try { this.system?.dispose(); } catch (_) { /* ignore */ }
   }
@@ -144,20 +141,24 @@ export class FacetedAdapter {
     const canvas = document.getElementById(canvasId);
     if (!canvas) { this.active = false; return; }
     this.canvas = canvas;
-    this.active = true;
+    this.active = true; // optimistic — render() is safe before init completes
     this.params = { ...DEFAULT_PARAMS, ...opts };
 
-    try {
-      this.faceted = new FacetedSystem();
-      const ok = this.faceted.initialize(canvas);
-      if (!ok) { this.active = false; return; }
-      this.faceted.updateParameters(this.params);
-      this.faceted.start();
-    } catch (e) {
-      console.warn('Faceted init failed', e);
-      this.active = false;
-      return;
-    }
+    this.faceted = new FacetedSystem();
+    // initWithBridge is the correct async API for passing a specific canvas
+    this.faceted.initWithBridge(canvas, { preferWebGPU: false })
+      .then(ok => {
+        if (ok) {
+          this.faceted.updateParameters(this.params);
+        } else {
+          console.warn('Faceted initWithBridge returned false');
+          this.active = false;
+        }
+      })
+      .catch(e => {
+        console.warn('Faceted init error', e);
+        this.active = false;
+      });
 
     this._resizeObs = observeResize(canvas, (w, h, dpr) => this.faceted.resize(w, h, dpr));
   }
@@ -168,7 +169,7 @@ export class FacetedAdapter {
   dispose() {
     this.active = false;
     this._resizeObs?.disconnect();
-    try { this.faceted?.stop(); this.faceted?.dispose(); } catch (_) { /* ignore */ }
+    try { this.faceted?.dispose(); } catch (_) { /* ignore */ }
   }
 }
 
