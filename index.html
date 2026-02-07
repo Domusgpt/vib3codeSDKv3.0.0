@@ -43,12 +43,6 @@
             border: 1px solid var(--glass-border);
             border-radius: 20px;
         }
-        .glass-subtle {
-            background: rgba(255,255,255,0.02);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(255,255,255,0.04);
-        }
 
         /* ─── Scroll Progress ─── */
         .scroll-progress {
@@ -75,7 +69,7 @@
         }
 
         /* ═══════════════════════════════════════════
-           SECTION 1: HERO — Quantum Emergence
+           SECTION 1: HERO
            ═══════════════════════════════════════════ */
         .hero {
             position: relative; height: 100vh;
@@ -134,114 +128,397 @@
         }
 
         /* ═══════════════════════════════════════════
-           SECTION 2: SYSTEM TRINITY — Three Voices
+           SECTION 2: MORPH EXPERIENCE — 1200vh Pinned
+           6-stage scroll-driven morphing with system swaps
            ═══════════════════════════════════════════ */
-        .trinity {
-            position: relative; min-height: 500vh;
+        .morph {
+            position: relative; min-height: 1200vh;
         }
-        .trinity-pinned {
+        .morph-pinned {
             height: 100vh; width: 100%; position: relative;
             overflow: hidden; background: var(--bg);
         }
-        .trinity-flash {
-            position: absolute; inset: 0; z-index: 5;
+        .morph-flash {
+            position: absolute; inset: 0; z-index: 6;
             background: var(--bg); opacity: 0; pointer-events: none;
         }
-        .trinity-label {
-            position: absolute; z-index: 10;
-            bottom: 15%; left: 50%; transform: translateX(-50%);
+
+        /* Central morphing card */
+        .morph-card {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 100px; height: 100px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            z-index: 5;
+            will-change: transform, width, height, border-radius, box-shadow;
+        }
+        .morph-card-glow {
+            position: absolute; inset: -60px;
+            border-radius: inherit;
+            background: radial-gradient(ellipse, var(--morph-glow, rgba(0,240,255,0.08)), transparent 70%);
+            filter: blur(40px);
+            z-index: -1; pointer-events: none;
+            opacity: 0; transition: opacity 0.8s;
+        }
+        .morph-card.glowing .morph-card-glow { opacity: 1; }
+
+        /* Three voice labels */
+        .morph-voices {
+            position: absolute; inset: 0; z-index: 8;
+            display: flex; align-items: center; justify-content: center;
+            gap: clamp(24px, 6vw, 80px);
+            pointer-events: none;
+        }
+        .morph-voice {
+            opacity: 0; transform: translateY(30px) scale(0.8);
+            padding: 12px 24px; border-radius: 14px;
+            background: rgba(255,255,255,0.04);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.1);
+            will-change: transform, opacity;
+        }
+        .morph-voice[data-voice="quantum"] { border-color: rgba(0,240,255,0.3); }
+        .morph-voice[data-voice="holographic"] { border-color: rgba(244,63,94,0.3); }
+        .morph-voice[data-voice="faceted"] { border-color: rgba(168,85,247,0.3); }
+        .morph-voice-label {
+            font-size: 12px; font-weight: 700; letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        .morph-voice[data-voice="quantum"] .morph-voice-label { color: var(--quantum); }
+        .morph-voice[data-voice="holographic"] .morph-voice-label { color: var(--holographic); }
+        .morph-voice[data-voice="faceted"] .morph-voice-label { color: var(--faceted); }
+
+        /* Stage label */
+        .morph-label {
+            position: absolute; bottom: 12%; left: 50%;
+            transform: translateX(-50%); z-index: 10;
             text-align: center; pointer-events: none;
         }
-        .trinity-label h2 {
-            font-size: clamp(32px, 6vw, 72px); font-weight: 900;
-            letter-spacing: 6px; text-transform: uppercase;
+        .morph-label h2 {
+            font-size: clamp(28px, 5vw, 64px); font-weight: 900;
+            letter-spacing: 5px; text-transform: uppercase;
             -webkit-text-fill-color: transparent;
             -webkit-text-stroke: 1px rgba(255,255,255,0.3);
-            opacity: 0; transform: translateY(40px);
+            opacity: 0; transform: translateY(30px);
         }
-        .trinity-label p {
+        .morph-label p {
             font-size: 13px; color: var(--text-muted);
             letter-spacing: 2px; margin-top: 8px;
-            opacity: 0; transform: translateY(20px);
+            opacity: 0; transform: translateY(15px);
         }
-        .trinity-counter {
-            position: absolute; top: 40px; right: 40px; z-index: 20;
+
+        /* Stage counter */
+        .morph-counter {
+            position: absolute; top: 40px; right: 40px; z-index: 10;
             font-size: 13px; letter-spacing: 3px; color: rgba(255,255,255,0.15);
             font-weight: 600;
         }
-        .trinity-counter .active { color: var(--accent); }
-        .trinity-progress-ring {
-            position: absolute; top: 50%; left: 40px; transform: translateY(-50%);
-            z-index: 20; display: flex; flex-direction: column; gap: 12px;
+        .morph-counter .current { color: var(--accent); }
+
+        /* Progress bar */
+        .morph-progress {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            height: 2px; z-index: 10;
+            background: rgba(255,255,255,0.04);
         }
-        .ring-dot {
+        .morph-progress-fill {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, var(--quantum), var(--faceted), var(--holographic));
+            transition: none;
+        }
+
+        /* Stage dots */
+        .morph-dots {
+            position: absolute; top: 50%; left: 40px;
+            transform: translateY(-50%); z-index: 10;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+        .morph-dot {
             width: 8px; height: 8px; border-radius: 50%;
             border: 1px solid rgba(255,255,255,0.15);
             transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
         }
-        .ring-dot.active {
+        .morph-dot.active {
             background: var(--accent); border-color: var(--accent);
             box-shadow: 0 0 12px rgba(0,240,255,0.4);
         }
 
         /* ═══════════════════════════════════════════
-           SECTION 3: CONVERGENCE — Coordinated Triptych
-           Glassmorphic panels with hover coordination
+           SECTION 3: PARAMETERS PLAYGROUND (moved up)
+           Full 6D rotation — all 6 planes
            ═══════════════════════════════════════════ */
-        .convergence {
-            position: relative; min-height: 400vh;
+        .playground {
+            position: relative; padding: 100px 24px;
+            display: flex; flex-direction: column; align-items: center;
         }
-        .convergence-pinned {
-            height: 100vh; width: 100%; position: relative;
-            display: flex; overflow: hidden; gap: 16px; padding: 16px;
+        .playground-header {
+            text-align: center; margin-bottom: 40px;
         }
-        .conv-panel {
-            flex: 1; position: relative; overflow: hidden;
-            border-radius: 20px;
+        .playground-header h2 {
+            font-size: clamp(24px, 4vw, 42px); font-weight: 800; color: #fff;
+            letter-spacing: 3px; margin-bottom: 12px;
+        }
+        .playground-header p {
+            font-size: 15px; color: var(--text-muted); max-width: 500px;
+            margin: 0 auto; line-height: 1.7;
+        }
+        .playground-layout {
+            display: grid; grid-template-columns: 1fr 320px;
+            gap: 24px; max-width: 1060px; width: 100%;
+        }
+        .playground-canvas {
+            position: relative; border-radius: 20px; overflow: hidden;
+            min-height: 480px; border: 1px solid var(--glass-border);
+            background: var(--bg);
+        }
+        .playground-controls {
+            display: flex; flex-direction: column; gap: 10px;
+            max-height: 90vh; overflow-y: auto;
+            scrollbar-width: thin; scrollbar-color: rgba(0,240,255,0.2) transparent;
+        }
+        .playground-controls::-webkit-scrollbar { width: 4px; }
+        .playground-controls::-webkit-scrollbar-thumb { background: rgba(0,240,255,0.2); border-radius: 2px; }
+        .ctrl-group {
+            padding: 12px 16px; border-radius: 14px;
+            background: var(--glass-bg);
             border: 1px solid var(--glass-border);
-            background: rgba(255,255,255,0.02);
-            transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
         }
-        .conv-panel:hover {
-            border-color: rgba(255,255,255,0.15);
-            box-shadow: 0 0 40px rgba(0,240,255,0.06);
+        .ctrl-group label {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 6px;
         }
-        .conv-panel .canvas-wrap { width: 100%; height: 100%; border-radius: 20px; }
-        .conv-tag {
-            position: absolute; bottom: 24px; left: 50%;
-            transform: translateX(-50%); z-index: 5;
-            font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
-            color: rgba(255,255,255,0.3);
-            padding: 6px 16px; border-radius: 100px;
-            background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
-            border: 1px solid rgba(255,255,255,0.06);
-            white-space: nowrap;
-            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+        .ctrl-group label span:first-child {
+            font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
         }
-        .conv-panel:hover .conv-tag {
-            color: var(--accent);
-            border-color: rgba(0,240,255,0.2);
-            background: rgba(0,240,255,0.06);
+        .ctrl-group label .ctrl-val {
+            font-size: 11px; color: var(--accent);
+            font-family: 'SF Mono', monospace; font-weight: 600;
         }
-        .conv-overlay {
-            position: absolute; inset: 0; z-index: 10;
-            display: flex; align-items: center; justify-content: center;
-            text-align: center; pointer-events: none;
+        .ctrl-group input[type="range"] {
+            width: 100%; height: 4px; -webkit-appearance: none;
+            background: rgba(255,255,255,0.06); border-radius: 2px;
+            outline: none;
         }
-        .conv-overlay h2 {
-            font-size: clamp(24px, 4vw, 48px); font-weight: 800;
-            color: #fff; letter-spacing: 3px;
-            text-shadow: 0 0 60px rgba(0,240,255,0.2);
-            opacity: 0;
+        .ctrl-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 14px; height: 14px;
+            border-radius: 50%; background: var(--accent);
+            border: 2px solid rgba(0,0,0,0.3);
+            box-shadow: 0 0 10px rgba(0,240,255,0.3);
+            cursor: pointer;
         }
-        .conv-overlay p {
-            color: var(--text-muted); font-size: 14px;
-            margin-top: 8px; max-width: 500px;
-            opacity: 0;
+        .ctrl-group input[type="range"]::-moz-range-thumb {
+            width: 14px; height: 14px;
+            border-radius: 50%; background: var(--accent);
+            border: 2px solid rgba(0,0,0,0.3);
+            box-shadow: 0 0 10px rgba(0,240,255,0.3);
+            cursor: pointer;
+        }
+        .ctrl-row {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+        }
+        .ctrl-row-3 {
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+        }
+        .geo-select {
+            width: 100%; padding: 8px 12px; border-radius: 10px;
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+            color: var(--text); font-size: 12px;
+            outline: none; cursor: pointer;
+        }
+        .geo-select option { background: #0a0a12; }
+
+        /* ─── System Type Selector ─── */
+        .system-btns { display: flex; gap: 6px; }
+        .sys-btn {
+            flex: 1; padding: 9px 0; border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px; background: rgba(255,255,255,0.03);
+            color: rgba(255,255,255,0.4); font: 600 10px/1 'Inter', sans-serif;
+            letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .sys-btn:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); }
+        .sys-btn.active {
+            background: rgba(0,240,255,0.08); border-color: rgba(0,240,255,0.3);
+            color: var(--accent); box-shadow: 0 0 16px rgba(0,240,255,0.1);
+        }
+        .sys-btn.active[data-pg-system="1"] {
+            background: rgba(168,85,247,0.08); border-color: rgba(168,85,247,0.3);
+            color: var(--holographic); box-shadow: 0 0 16px rgba(168,85,247,0.1);
+        }
+        .sys-btn.active[data-pg-system="2"] {
+            background: rgba(0,255,135,0.08); border-color: rgba(0,255,135,0.3);
+            color: var(--faceted); box-shadow: 0 0 16px rgba(0,255,135,0.1);
+        }
+        .pg-error {
+            position: absolute; inset: 0; display: none;
+            align-items: center; justify-content: center;
+            color: #ff4466; font: 600 13px/1.5 'Inter', sans-serif;
+            text-align: center; padding: 24px;
+        }
+
+        /* ─── Rotation Group Visual Separator ─── */
+        .ctrl-section-label {
+            font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+            color: rgba(255,255,255,0.2); padding: 6px 0 2px;
         }
 
         /* ═══════════════════════════════════════════
-           SECTION 4: ENERGY TRANSFER — Interactive
+           SECTION 4: PARALLAX TRIPTYCH
+           3 columns, 2 with visualizers, parallax rates
+           ═══════════════════════════════════════════ */
+        .triptych {
+            position: relative;
+            min-height: 200vh;
+            overflow: hidden;
+        }
+        .triptych-inner {
+            display: flex; gap: 0;
+            min-height: 200vh;
+            position: relative;
+        }
+        .triptych-col {
+            flex: 1; position: relative;
+            will-change: transform;
+        }
+        .triptych-viz-col {
+            overflow: hidden;
+        }
+        .triptych-canvas-wrap {
+            position: sticky; top: 0;
+            width: 100%; height: 100vh;
+            border-radius: 0;
+        }
+        .triptych-center-col {
+            display: flex; align-items: center; justify-content: center;
+            min-height: 200vh;
+        }
+        .triptych-content {
+            position: sticky; top: 50%; transform: translateY(-50%);
+            padding: 48px 32px;
+            text-align: center;
+        }
+        .triptych-title {
+            font-size: clamp(22px, 3.5vw, 40px); font-weight: 900;
+            color: #fff; letter-spacing: 3px; line-height: 1.3;
+            margin-bottom: 16px;
+        }
+        .triptych-desc {
+            font-size: 14px; color: var(--text-muted);
+            line-height: 1.8; max-width: 320px; margin: 0 auto 32px;
+        }
+        .triptych-stats {
+            display: flex; gap: 24px; justify-content: center;
+        }
+        .triptych-stat {
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+        }
+        .stat-number {
+            font-size: 28px; font-weight: 900; color: var(--accent);
+            letter-spacing: 2px;
+        }
+        .stat-label {
+            font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+            color: rgba(255,255,255,0.3);
+        }
+        .triptych-tag-wrap {
+            position: absolute; bottom: 40px; left: 50%;
+            transform: translateX(-50%); z-index: 5;
+        }
+        .triptych-tag {
+            font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+            padding: 6px 16px; border-radius: 100px;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.06);
+            white-space: nowrap;
+        }
+        .triptych-divider {
+            position: absolute; top: 0; width: 1px; height: 100%;
+            background: linear-gradient(180deg, transparent, rgba(255,255,255,0.06), transparent);
+            z-index: 5;
+        }
+        .triptych-divider.left { left: 33.33%; }
+        .triptych-divider.right { left: 66.66%; }
+
+        /* ═══════════════════════════════════════════
+           SECTION 5: CASCADE — Morphing Cards
+           Cards scale, glow leaks out, density inverts
+           ═══════════════════════════════════════════ */
+        .cascade {
+            position: relative; min-height: 400vh;
+        }
+        .cascade-pinned {
+            height: 100vh; display: flex; align-items: center;
+            justify-content: center; position: relative; overflow: hidden;
+        }
+        .cascade-header {
+            position: absolute; top: 40px; left: 50%;
+            transform: translateX(-50%); z-index: 10;
+            text-align: center;
+        }
+        .cascade-header h2 {
+            font-size: clamp(20px, 3vw, 32px); font-weight: 800;
+            color: #fff; letter-spacing: 3px; margin-bottom: 8px;
+        }
+        .cascade-header p {
+            font-size: 13px; color: var(--text-muted); letter-spacing: 1px;
+        }
+        .cascade-track {
+            display: flex; gap: 32px; will-change: transform;
+            padding: 0 calc(50vw - 190px);
+        }
+        .cascade-card {
+            flex-shrink: 0; width: min(360px, 80vw); height: 480px;
+            border-radius: 24px; overflow: visible; position: relative;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 12px 48px rgba(0,0,0,0.5);
+            opacity: 0; transform: translateY(40px) scale(0.9);
+            will-change: transform, opacity, box-shadow;
+            transition: border-color 0.5s cubic-bezier(0.23, 1, 0.32, 1),
+                        box-shadow 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .cascade-card .canvas-wrap {
+            width: 100%; height: 100%;
+            border-radius: 24px; overflow: hidden;
+        }
+        /* Glow leak pseudo-element */
+        .cascade-card::after {
+            content: '';
+            position: absolute; inset: -30px;
+            border-radius: 36px;
+            background: radial-gradient(ellipse at center,
+                var(--card-glow, rgba(0,240,255,0.12)), transparent 65%);
+            filter: blur(25px);
+            opacity: 0; z-index: -1;
+            transition: opacity 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+            pointer-events: none;
+        }
+        .cascade-card.leaking {
+            border-color: rgba(255,255,255,0.15);
+        }
+        .cascade-card.leaking::after {
+            opacity: 1;
+        }
+        .cascade-overlay {
+            position: absolute; bottom: 0; left: 0; right: 0; z-index: 5;
+            padding: 28px; border-radius: 0 0 24px 24px;
+            background: linear-gradient(transparent, rgba(3,7,18,0.92));
+        }
+        .cascade-overlay h4 { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+        .cascade-overlay .cascade-sys {
+            font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+            padding: 3px 10px; border-radius: 100px; display: inline-block;
+        }
+        .sys-quantum { color: var(--quantum); border: 1px solid rgba(0,240,255,0.25); background: rgba(0,240,255,0.06); }
+        .sys-holographic { color: var(--holographic); border: 1px solid rgba(244,63,94,0.25); background: rgba(244,63,94,0.06); }
+        .sys-faceted { color: var(--faceted); border: 1px solid rgba(168,85,247,0.25); background: rgba(168,85,247,0.06); }
+
+        /* ═══════════════════════════════════════════
+           SECTION 6: ENERGY TRANSFER
            ═══════════════════════════════════════════ */
         .energy {
             position: relative; min-height: 250vh;
@@ -302,48 +579,7 @@
         }
 
         /* ═══════════════════════════════════════════
-           SECTION 5: GEOMETRY CASCADE — Card Scroll
-           ═══════════════════════════════════════════ */
-        .cascade {
-            position: relative; min-height: 400vh;
-        }
-        .cascade-pinned {
-            height: 100vh; display: flex; align-items: center;
-            justify-content: center; position: relative; overflow: hidden;
-        }
-        .cascade-track {
-            display: flex; gap: 28px; will-change: transform;
-            padding: 0 calc(50vw - 180px);
-        }
-        .cascade-card {
-            flex-shrink: 0; width: min(340px, 75vw); height: 460px;
-            border-radius: 24px; overflow: hidden; position: relative;
-            border: 1px solid rgba(255,255,255,0.05);
-            box-shadow: 0 12px 48px rgba(0,0,0,0.5);
-            opacity: 0; transform: translateY(40px) scale(0.95);
-            will-change: transform, opacity;
-            transition: border-color 0.4s, box-shadow 0.4s;
-        }
-        .cascade-card:hover {
-            border-color: rgba(255,255,255,0.12);
-            box-shadow: 0 16px 60px rgba(0,0,0,0.6), 0 0 40px rgba(0,240,255,0.04);
-        }
-        .cascade-card .canvas-wrap { width: 100%; height: 100%; }
-        .cascade-overlay {
-            position: absolute; bottom: 0; left: 0; right: 0; z-index: 5;
-            padding: 28px; background: linear-gradient(transparent, rgba(3,7,18,0.92));
-        }
-        .cascade-overlay h4 { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 4px; }
-        .cascade-overlay .cascade-sys {
-            font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
-            padding: 3px 10px; border-radius: 100px; display: inline-block;
-        }
-        .sys-quantum { color: var(--quantum); border: 1px solid rgba(0,240,255,0.25); background: rgba(0,240,255,0.06); }
-        .sys-holographic { color: var(--holographic); border: 1px solid rgba(244,63,94,0.25); background: rgba(244,63,94,0.06); }
-        .sys-faceted { color: var(--faceted); border: 1px solid rgba(168,85,247,0.25); background: rgba(168,85,247,0.06); }
-
-        /* ═══════════════════════════════════════════
-           SECTION 6: AGENT INTEGRATION
+           SECTION 7: AGENT INTEGRATION
            ═══════════════════════════════════════════ */
         .agent-section {
             position: relative; padding: 120px 24px;
@@ -409,113 +645,6 @@
         .agent-tools .fn { color: #82aaff; }
         .agent-tools .str { color: #c3e88d; }
         .agent-tools .cmt { color: #546e7a; }
-
-        /* ═══════════════════════════════════════════
-           SECTION 7: PARAMETERS PLAYGROUND
-           ═══════════════════════════════════════════ */
-        .playground {
-            position: relative; padding: 100px 24px;
-            display: flex; flex-direction: column; align-items: center;
-        }
-        .playground-header {
-            text-align: center; margin-bottom: 40px;
-        }
-        .playground-header h2 {
-            font-size: clamp(24px, 4vw, 42px); font-weight: 800; color: #fff;
-            letter-spacing: 3px; margin-bottom: 12px;
-        }
-        .playground-header p {
-            font-size: 15px; color: var(--text-muted); max-width: 500px;
-            margin: 0 auto; line-height: 1.7;
-        }
-        .playground-layout {
-            display: grid; grid-template-columns: 1fr 320px;
-            gap: 24px; max-width: 960px; width: 100%;
-        }
-        .playground-canvas {
-            position: relative; border-radius: 20px; overflow: hidden;
-            min-height: 400px; border: 1px solid var(--glass-border);
-            background: var(--bg);
-        }
-        .playground-controls {
-            display: flex; flex-direction: column; gap: 14px;
-        }
-        .ctrl-group {
-            padding: 16px 18px; border-radius: 14px;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-        }
-        .ctrl-group label {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 8px;
-        }
-        .ctrl-group label span:first-child {
-            font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
-            color: rgba(255,255,255,0.4);
-        }
-        .ctrl-group label .ctrl-val {
-            font-size: 12px; color: var(--accent);
-            font-family: 'SF Mono', monospace; font-weight: 600;
-        }
-        .ctrl-group input[type="range"] {
-            width: 100%; height: 4px; -webkit-appearance: none;
-            background: rgba(255,255,255,0.06); border-radius: 2px;
-            outline: none;
-        }
-        .ctrl-group input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 16px; height: 16px;
-            border-radius: 50%; background: var(--accent);
-            border: 2px solid rgba(0,0,0,0.3);
-            box-shadow: 0 0 10px rgba(0,240,255,0.3);
-            cursor: pointer;
-        }
-        .ctrl-group input[type="range"]::-moz-range-thumb {
-            width: 16px; height: 16px;
-            border-radius: 50%; background: var(--accent);
-            border: 2px solid rgba(0,0,0,0.3);
-            box-shadow: 0 0 10px rgba(0,240,255,0.3);
-            cursor: pointer;
-        }
-        .ctrl-row {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-        }
-        .geo-select {
-            width: 100%; padding: 10px 14px; border-radius: 10px;
-            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-            color: var(--text); font-size: 13px;
-            outline: none; cursor: pointer;
-        }
-        .geo-select option { background: #0a0a12; }
-
-        /* ─── System Type Selector ─── */
-        .system-btns { display: flex; gap: 6px; }
-        .sys-btn {
-            flex: 1; padding: 10px 0; border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 10px; background: rgba(255,255,255,0.03);
-            color: rgba(255,255,255,0.4); font: 600 11px/1 'Inter', sans-serif;
-            letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .sys-btn:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); }
-        .sys-btn.active {
-            background: rgba(0,240,255,0.08); border-color: rgba(0,240,255,0.3);
-            color: var(--accent); box-shadow: 0 0 16px rgba(0,240,255,0.1);
-        }
-        .sys-btn.active[data-pg-system="1"] {
-            background: rgba(168,85,247,0.08); border-color: rgba(168,85,247,0.3);
-            color: var(--holographic); box-shadow: 0 0 16px rgba(168,85,247,0.1);
-        }
-        .sys-btn.active[data-pg-system="2"] {
-            background: rgba(0,255,135,0.08); border-color: rgba(0,255,135,0.3);
-            color: var(--faceted); box-shadow: 0 0 16px rgba(0,255,135,0.1);
-        }
-        .pg-error {
-            position: absolute; inset: 0; display: flex;
-            align-items: center; justify-content: center;
-            color: #ff4466; font: 600 13px/1.5 'Inter', sans-serif;
-            text-align: center; padding: 24px; display: none;
-        }
 
         /* ═══════════════════════════════════════════
            SECTION 8: CTA
@@ -626,16 +755,6 @@
             50% { opacity: 0.55; }
         }
 
-        /* ─── Line-Split Text Reveal ─── */
-        .line-wrap {
-            overflow: hidden;
-            display: block;
-        }
-        .line-inner {
-            display: block;
-            transform: translateY(105%);
-        }
-
         /* ─── Section Reveal ─── */
         .section-reveal {
             opacity: 0;
@@ -683,15 +802,23 @@
 
         /* ─── Mobile ─── */
         @media (max-width: 768px) {
-            .convergence-pinned { flex-direction: column; gap: 8px; padding: 8px; }
-            .conv-panel { border-right: none; min-height: 30vh; }
-            .trinity-progress-ring { display: none; }
+            .morph-dots { display: none; }
+            .morph-voices { gap: 12px; flex-wrap: wrap; }
+            .morph-voice { padding: 8px 14px; }
             .playground-layout { grid-template-columns: 1fr; }
             .playground-canvas { min-height: 280px; }
+            .triptych-inner { flex-direction: column; }
+            .triptych-canvas-wrap { height: 50vh; }
+            .triptych-center-col { min-height: auto; padding: 60px 0; }
+            .triptych-content { position: static; transform: none; }
+            .triptych-divider { display: none; }
+            .cascade-track { gap: 20px; }
             .agent-grid { grid-template-columns: 1fr 1fr; }
         }
         @media (max-width: 480px) {
             .agent-grid { grid-template-columns: 1fr; }
+            .ctrl-row-3 { grid-template-columns: 1fr; }
+            .triptych-stats { flex-direction: column; gap: 16px; }
         }
     </style>
 </head>
@@ -733,191 +860,71 @@
     </section>
 
     <!-- ═══════════════════════════════════════════════════
-         SECTION 2: SYSTEM TRINITY — Three Voices
-         SINGLE canvas — systems swap on scroll (1 GPU context)
+         SECTION 2: MORPH EXPERIENCE — 1200vh Scroll-Locked
+         6-stage morphing with system swaps, parameter coordination
+         Density drops as elements expand; speed/chaos follow GSAP events
          ═══════════════════════════════════════════════════ -->
-    <section class="trinity" id="trinitySection">
-        <div class="trinity-pinned" id="trinityPinned">
+    <section class="morph" id="morphSection">
+        <div class="morph-pinned" id="morphPinned">
             <div class="canvas-wrap" style="width:100%;height:100%;">
-                <canvas class="vib3-canvas" id="trinity-canvas"></canvas>
+                <canvas class="vib3-canvas" id="morph-canvas"></canvas>
             </div>
-            <div class="trinity-flash" id="trinityFlash"></div>
-            <div class="trinity-label" id="triQLbl">
-                <h2>Quantum</h2>
-                <p>Complex lattice interference &middot; Volumetric shimmer &middot; 24 geometries</p>
+            <div class="morph-flash" id="morphFlash"></div>
+
+            <!-- Central morphing glassmorphic card -->
+            <div class="morph-card" id="morphCard">
+                <div class="morph-card-glow" id="morphGlow"></div>
             </div>
-            <div class="trinity-label" id="triHLbl">
-                <h2>Holographic</h2>
-                <p>Five-layer glassmorphism &middot; Role-based rendering &middot; Moir&eacute; interference</p>
+
+            <!-- Three voice labels (stage 3) -->
+            <div class="morph-voices" id="morphVoices">
+                <div class="morph-voice" data-voice="quantum">
+                    <span class="morph-voice-label">Quantum</span>
+                </div>
+                <div class="morph-voice" data-voice="holographic">
+                    <span class="morph-voice-label">Holographic</span>
+                </div>
+                <div class="morph-voice" data-voice="faceted">
+                    <span class="morph-voice-label">Faceted</span>
+                </div>
             </div>
-            <div class="trinity-label" id="triFLbl">
-                <h2>Faceted</h2>
-                <p>Precise lattice geometry &middot; Clean projection &middot; HSL saturation control</p>
+
+            <!-- Stage label -->
+            <div class="morph-label" id="morphLabel">
+                <h2 id="morphTitle"></h2>
+                <p id="morphSub"></p>
             </div>
-            <div class="trinity-counter" id="triCounter">
-                <span class="active">01</span> / 03
+
+            <!-- Stage counter -->
+            <div class="morph-counter" id="morphCounter">
+                <span class="current">01</span> / 06
             </div>
-            <div class="trinity-progress-ring" id="triRing">
-                <div class="ring-dot active" data-idx="0"></div>
-                <div class="ring-dot" data-idx="1"></div>
-                <div class="ring-dot" data-idx="2"></div>
+
+            <!-- Stage dots -->
+            <div class="morph-dots" id="morphDots">
+                <div class="morph-dot active" data-idx="0"></div>
+                <div class="morph-dot" data-idx="1"></div>
+                <div class="morph-dot" data-idx="2"></div>
+                <div class="morph-dot" data-idx="3"></div>
+                <div class="morph-dot" data-idx="4"></div>
+                <div class="morph-dot" data-idx="5"></div>
+            </div>
+
+            <!-- Progress bar -->
+            <div class="morph-progress">
+                <div class="morph-progress-fill" id="morphProgressFill"></div>
             </div>
         </div>
     </section>
 
     <!-- ═══════════════════════════════════════════════════
-         SECTION 3: CONVERGENCE — Coordinated Triptych
-         Three glassmorphic panels (Canvas2D — 0 GPU contexts)
-         Hover one panel: it brightens, others desaturate
-         ═══════════════════════════════════════════════════ -->
-    <section class="convergence" id="convSection">
-        <div class="convergence-pinned" id="convPinned">
-            <div class="conv-panel" id="convLeft" data-sys="quantum">
-                <div class="canvas-wrap"><canvas class="vib3-canvas" id="conv-canvas-q"></canvas></div>
-                <div class="conv-tag">Quantum</div>
-            </div>
-            <div class="conv-panel" id="convCenter" data-sys="holographic">
-                <div class="canvas-wrap"><canvas class="vib3-canvas" id="conv-canvas-h"></canvas></div>
-                <div class="conv-tag">Holographic</div>
-            </div>
-            <div class="conv-panel" id="convRight" data-sys="faceted">
-                <div class="canvas-wrap"><canvas class="vib3-canvas" id="conv-canvas-f"></canvas></div>
-                <div class="conv-tag">Faceted</div>
-            </div>
-            <div class="conv-overlay" id="convOverlay">
-                <div>
-                    <h2 id="convTitle">Convergence</h2>
-                    <p id="convSub">Three systems. One unified motion. Scroll to synchronize.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ═══════════════════════════════════════════════════
-         SECTION 4: ENERGY TRANSFER — Interactive Demo
-         Canvas2D bg + Faceted GPU card (1 GPU context, lazy)
-         ═══════════════════════════════════════════════════ -->
-    <section class="energy" id="energySection">
-        <div class="energy-pinned" id="energyPinned">
-            <div class="energy-bg">
-                <div class="canvas-wrap" style="width:100%;height:100%;">
-                    <canvas class="vib3-canvas" id="energy-bg-canvas"></canvas>
-                </div>
-            </div>
-            <div class="energy-card perspective-wrap" id="energyCard">
-                <div class="energy-card-canvas">
-                    <canvas class="vib3-canvas" id="energy-card-canvas"></canvas>
-                </div>
-                <h3>Energy Transfer</h3>
-                <p>Click to drain the card shader into the background.
-                   Watch color, density, and geometry morph between elements.</p>
-                <button class="energy-btn" id="energyBtn">
-                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="9" r="3" fill="currentColor"/></svg>
-                    Trigger Sweep
-                </button>
-                <div class="energy-meter">
-                    <div class="energy-meter-fill" id="energyFill"></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ═══════════════════════════════════════════════════
-         SECTION 5: GEOMETRY CASCADE — Horizontal Card Scroll
-         Canvas2D cards (0 GPU contexts)
-         ═══════════════════════════════════════════════════ -->
-    <section class="cascade" id="cascadeSection">
-        <div class="cascade-pinned" id="cascadePinned">
-            <div class="cascade-track" id="cascadeTrack">
-                <div class="cascade-card" data-geo="0" data-hue="190" data-sys="quantum">
-                    <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-0"></canvas></div>
-                    <div class="cascade-overlay"><h4>Tetrahedron</h4><span class="cascade-sys sys-quantum">Quantum &middot; Base</span></div>
-                </div>
-                <div class="cascade-card" data-geo="11" data-hue="300" data-sys="holographic">
-                    <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-1"></canvas></div>
-                    <div class="cascade-overlay"><h4>Hypersphere Torus</h4><span class="cascade-sys sys-holographic">Holographic &middot; Hypersphere</span></div>
-                </div>
-                <div class="cascade-card" data-geo="16" data-hue="35" data-sys="faceted">
-                    <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-2"></canvas></div>
-                    <div class="cascade-overlay"><h4>Hypertetra Tetra</h4><span class="cascade-sys sys-faceted">Faceted &middot; Hypertetra</span></div>
-                </div>
-                <div class="cascade-card" data-geo="5" data-hue="130" data-sys="quantum">
-                    <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-3"></canvas></div>
-                    <div class="cascade-overlay"><h4>Fractal</h4><span class="cascade-sys sys-quantum">Quantum &middot; Base</span></div>
-                </div>
-                <div class="cascade-card" data-geo="12" data-hue="260" data-sys="holographic">
-                    <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-4"></canvas></div>
-                    <div class="cascade-overlay"><h4>Hypersphere Klein</h4><span class="cascade-sys sys-holographic">Holographic &middot; Hypersphere</span></div>
-                </div>
-                <div class="cascade-card" data-geo="7" data-hue="60" data-sys="faceted">
-                    <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-5"></canvas></div>
-                    <div class="cascade-overlay"><h4>Crystal</h4><span class="cascade-sys sys-faceted">Faceted &middot; Base</span></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ═══════════════════════════════════════════════════
-         SECTION 6: AGENT INTEGRATION — Download Packs
-         MCP config, Claude context, OpenAI context
-         ═══════════════════════════════════════════════════ -->
-    <section class="agent-section" id="agentSection">
-        <div class="agent-bg">
-            <div class="canvas-wrap" style="width:100%;height:100%;">
-                <canvas class="vib3-canvas" id="agent-canvas"></canvas>
-            </div>
-        </div>
-        <div class="agent-content">
-            <div class="agent-header section-reveal" data-animate>
-                <h2>Agent Integration</h2>
-                <p>Drop VIB3+ into any AI agent workflow. Pre-built context packs for Claude, OpenAI, and MCP protocol.</p>
-            </div>
-            <div class="agent-grid section-reveal" data-animate>
-                <a class="agent-card" href="agent-config/mcp-config.json" download>
-                    <span class="agent-card-icon">&#x1f517;</span>
-                    <h4>MCP Config</h4>
-                    <p>Model Context Protocol server configuration. Connect any MCP-compatible agent.</p>
-                    <span class="dl-badge">Download JSON</span>
-                </a>
-                <a class="agent-card" href="agent-config/claude-agent-context.md" download>
-                    <span class="agent-card-icon">&#x1f9e0;</span>
-                    <h4>Claude Context</h4>
-                    <p>Full SDK context pack for Claude. Drop into CLAUDE.md or system prompts.</p>
-                    <span class="dl-badge">Download MD</span>
-                </a>
-                <a class="agent-card" href="agent-config/openai-agent-context.md" download>
-                    <span class="agent-card-icon">&#x2699;</span>
-                    <h4>OpenAI Context</h4>
-                    <p>SDK context formatted for OpenAI assistants and custom GPTs.</p>
-                    <span class="dl-badge">Download MD</span>
-                </a>
-                <a class="agent-card" href="CLAUDE.md" download="VIB3-CLAUDE.md">
-                    <span class="agent-card-icon">&#x1f4d6;</span>
-                    <h4>Full Technical Ref</h4>
-                    <p>Complete CLAUDE.md technical reference. All APIs, shader uniforms, architecture.</p>
-                    <span class="dl-badge">Download MD</span>
-                </a>
-            </div>
-            <div class="agent-tools">
-                <span class="cmt">// MCP agentic control</span><br>
-                <span class="kw">const</span> result = <span class="kw">await</span> mcpClient.<span class="fn">callTool</span>(<span class="str">'set_parameter'</span>, {<br>
-                &nbsp;&nbsp;name: <span class="str">'geometry'</span>,<br>
-                &nbsp;&nbsp;value: <span class="str">16</span> &nbsp;<span class="cmt">// Hypertetrahedron + Tetrahedron</span><br>
-                });<br><br>
-                <span class="kw">await</span> mcpClient.<span class="fn">callTool</span>(<span class="str">'set_system'</span>, { system: <span class="str">'holographic'</span> });<br>
-                <span class="kw">await</span> mcpClient.<span class="fn">callTool</span>(<span class="str">'export_trading_card'</span>);
-            </div>
-        </div>
-    </section>
-
-    <!-- ═══════════════════════════════════════════════════
-         SECTION 7: PARAMETERS PLAYGROUND
-         Live GPU shader — Quantum / Holographic / Faceted
+         SECTION 3: PARAMETERS PLAYGROUND — Full 6D
+         All 6 rotation planes: XY, XZ, YZ (3D) + XW, YW, ZW (4D)
          ═══════════════════════════════════════════════════ -->
     <section class="playground" id="playgroundSection">
         <div class="playground-header section-reveal" data-animate>
             <h2>Parameters Playground</h2>
-            <p>Every parameter exposed. Drag sliders to sculpt 4D geometry in real time.</p>
+            <p>Every parameter exposed. All six rotation planes. Drag sliders to sculpt 4D geometry in real time.</p>
         </div>
         <div class="playground-layout">
             <div class="playground-canvas">
@@ -998,17 +1005,37 @@
                     <label><span>Dimension (4D dist)</span><span class="ctrl-val" id="val-dimension">3.5</span></label>
                     <input type="range" id="ctrl-dimension" min="3.0" max="4.5" value="3.5" step="0.01">
                 </div>
-                <div class="ctrl-group">
-                    <label><span>4D Rotation XW</span><span class="ctrl-val" id="val-rot4dXW">0.00</span></label>
-                    <input type="range" id="ctrl-rot4dXW" min="0" max="6.28" value="0" step="0.01">
-                </div>
-                <div class="ctrl-row">
+
+                <!-- 3D ROTATION (XY, XZ, YZ) — PREVIOUSLY MISSING -->
+                <div class="ctrl-section-label">3D Rotation Planes</div>
+                <div class="ctrl-row-3">
                     <div class="ctrl-group">
-                        <label><span>4D YW</span><span class="ctrl-val" id="val-rot4dYW">0.00</span></label>
+                        <label><span>XY</span><span class="ctrl-val" id="val-rot4dXY">0.00</span></label>
+                        <input type="range" id="ctrl-rot4dXY" min="0" max="6.28" value="0" step="0.01">
+                    </div>
+                    <div class="ctrl-group">
+                        <label><span>XZ</span><span class="ctrl-val" id="val-rot4dXZ">0.00</span></label>
+                        <input type="range" id="ctrl-rot4dXZ" min="0" max="6.28" value="0" step="0.01">
+                    </div>
+                    <div class="ctrl-group">
+                        <label><span>YZ</span><span class="ctrl-val" id="val-rot4dYZ">0.00</span></label>
+                        <input type="range" id="ctrl-rot4dYZ" min="0" max="6.28" value="0" step="0.01">
+                    </div>
+                </div>
+
+                <!-- 4D ROTATION (XW, YW, ZW) -->
+                <div class="ctrl-section-label">4D Rotation Planes</div>
+                <div class="ctrl-row-3">
+                    <div class="ctrl-group">
+                        <label><span>XW</span><span class="ctrl-val" id="val-rot4dXW">0.00</span></label>
+                        <input type="range" id="ctrl-rot4dXW" min="0" max="6.28" value="0" step="0.01">
+                    </div>
+                    <div class="ctrl-group">
+                        <label><span>YW</span><span class="ctrl-val" id="val-rot4dYW">0.00</span></label>
                         <input type="range" id="ctrl-rot4dYW" min="0" max="6.28" value="0" step="0.01">
                     </div>
                     <div class="ctrl-group">
-                        <label><span>4D ZW</span><span class="ctrl-val" id="val-rot4dZW">0.00</span></label>
+                        <label><span>ZW</span><span class="ctrl-val" id="val-rot4dZW">0.00</span></label>
                         <input type="range" id="ctrl-rot4dZW" min="0" max="6.28" value="0" step="0.01">
                     </div>
                 </div>
@@ -1017,8 +1044,176 @@
     </section>
 
     <!-- ═══════════════════════════════════════════════════
+         SECTION 4: PARALLAX TRIPTYCH
+         3 columns with independent parallax rates
+         Left + right: Canvas2D visualizers, center: content
+         ═══════════════════════════════════════════════════ -->
+    <section class="triptych" id="triptychSection">
+        <div class="triptych-divider left"></div>
+        <div class="triptych-divider right"></div>
+        <div class="triptych-inner">
+            <div class="triptych-col triptych-viz-col" id="triptychLeft">
+                <div class="canvas-wrap triptych-canvas-wrap">
+                    <canvas class="vib3-canvas" id="tri-left-canvas"></canvas>
+                </div>
+                <div class="triptych-tag-wrap">
+                    <span class="triptych-tag sys-quantum">Quantum Engine</span>
+                </div>
+            </div>
+            <div class="triptych-col triptych-center-col" id="triptychCenter">
+                <div class="triptych-content">
+                    <h2 class="triptych-title section-reveal" data-animate>Three Systems.<br>One Heartbeat.</h2>
+                    <p class="triptych-desc section-reveal" data-animate>Each column renders independently &mdash; unique geometries, unique parameters, unique behavior. Watch them shift as you scroll.</p>
+                    <div class="triptych-stats section-reveal" data-animate>
+                        <div class="triptych-stat">
+                            <span class="stat-number">24</span>
+                            <span class="stat-label">Geometries</span>
+                        </div>
+                        <div class="triptych-stat">
+                            <span class="stat-number">6D</span>
+                            <span class="stat-label">Rotation</span>
+                        </div>
+                        <div class="triptych-stat">
+                            <span class="stat-number">3</span>
+                            <span class="stat-label">Systems</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="triptych-col triptych-viz-col" id="triptychRight">
+                <div class="canvas-wrap triptych-canvas-wrap">
+                    <canvas class="vib3-canvas" id="tri-right-canvas"></canvas>
+                </div>
+                <div class="triptych-tag-wrap">
+                    <span class="triptych-tag sys-faceted">Faceted Engine</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════
+         SECTION 5: GEOMETRY CASCADE — Morphing Cards
+         Cards scale up/down on scroll, glow leaks beyond borders
+         Density drops as cards expand; speed/chaos sync with events
+         ═══════════════════════════════════════════════════ -->
+    <section class="cascade" id="cascadeSection">
+        <div class="cascade-pinned" id="cascadePinned">
+            <div class="cascade-header section-reveal" data-animate>
+                <h2>Geometry Cascade</h2>
+                <p>24 geometry variants across three rendering systems</p>
+            </div>
+            <div class="cascade-track" id="cascadeTrack">
+                <div class="cascade-card" data-geo="0" data-hue="190" data-sys="quantum">
+                    <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-0"></canvas></div>
+                    <div class="cascade-overlay"><h4>Tetrahedron</h4><span class="cascade-sys sys-quantum">Quantum &middot; Base</span></div>
+                </div>
+                <div class="cascade-card" data-geo="11" data-hue="300" data-sys="holographic">
+                    <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-1"></canvas></div>
+                    <div class="cascade-overlay"><h4>Hypersphere Torus</h4><span class="cascade-sys sys-holographic">Holographic &middot; Hypersphere</span></div>
+                </div>
+                <div class="cascade-card" data-geo="16" data-hue="35" data-sys="faceted">
+                    <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-2"></canvas></div>
+                    <div class="cascade-overlay"><h4>Hypertetra Tetra</h4><span class="cascade-sys sys-faceted">Faceted &middot; Hypertetra</span></div>
+                </div>
+                <div class="cascade-card" data-geo="5" data-hue="130" data-sys="quantum">
+                    <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-3"></canvas></div>
+                    <div class="cascade-overlay"><h4>Fractal</h4><span class="cascade-sys sys-quantum">Quantum &middot; Base</span></div>
+                </div>
+                <div class="cascade-card" data-geo="12" data-hue="260" data-sys="holographic">
+                    <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-4"></canvas></div>
+                    <div class="cascade-overlay"><h4>Hypersphere Klein</h4><span class="cascade-sys sys-holographic">Holographic &middot; Hypersphere</span></div>
+                </div>
+                <div class="cascade-card" data-geo="7" data-hue="60" data-sys="faceted">
+                    <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-5"></canvas></div>
+                    <div class="cascade-overlay"><h4>Crystal</h4><span class="cascade-sys sys-faceted">Faceted &middot; Base</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════
+         SECTION 6: ENERGY TRANSFER — Interactive Demo
+         Canvas2D bg + Faceted GPU card (1 GPU context, lazy)
+         ═══════════════════════════════════════════════════ -->
+    <section class="energy" id="energySection">
+        <div class="energy-pinned" id="energyPinned">
+            <div class="energy-bg">
+                <div class="canvas-wrap" style="width:100%;height:100%;">
+                    <canvas class="vib3-canvas" id="energy-bg-canvas"></canvas>
+                </div>
+            </div>
+            <div class="energy-card perspective-wrap" id="energyCard">
+                <div class="energy-card-canvas">
+                    <canvas class="vib3-canvas" id="energy-card-canvas"></canvas>
+                </div>
+                <h3>Energy Transfer</h3>
+                <p>Click to drain the card shader into the background.
+                   Watch color, density, and geometry morph between elements.</p>
+                <button class="energy-btn" id="energyBtn">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="9" r="3" fill="currentColor"/></svg>
+                    Trigger Sweep
+                </button>
+                <div class="energy-meter">
+                    <div class="energy-meter-fill" id="energyFill"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════
+         SECTION 7: AGENT INTEGRATION — Download Packs
+         ═══════════════════════════════════════════════════ -->
+    <section class="agent-section" id="agentSection">
+        <div class="agent-bg">
+            <div class="canvas-wrap" style="width:100%;height:100%;">
+                <canvas class="vib3-canvas" id="agent-canvas"></canvas>
+            </div>
+        </div>
+        <div class="agent-content">
+            <div class="agent-header section-reveal" data-animate>
+                <h2>Agent Integration</h2>
+                <p>Drop VIB3+ into any AI agent workflow. Pre-built context packs for Claude, OpenAI, and MCP protocol.</p>
+            </div>
+            <div class="agent-grid section-reveal" data-animate>
+                <a class="agent-card" href="agent-config/mcp-config.json" download>
+                    <span class="agent-card-icon">&#x1f517;</span>
+                    <h4>MCP Config</h4>
+                    <p>Model Context Protocol server configuration. Connect any MCP-compatible agent.</p>
+                    <span class="dl-badge">Download JSON</span>
+                </a>
+                <a class="agent-card" href="agent-config/claude-agent-context.md" download>
+                    <span class="agent-card-icon">&#x1f9e0;</span>
+                    <h4>Claude Context</h4>
+                    <p>Full SDK context pack for Claude. Drop into CLAUDE.md or system prompts.</p>
+                    <span class="dl-badge">Download MD</span>
+                </a>
+                <a class="agent-card" href="agent-config/openai-agent-context.md" download>
+                    <span class="agent-card-icon">&#x2699;</span>
+                    <h4>OpenAI Context</h4>
+                    <p>SDK context formatted for OpenAI assistants and custom GPTs.</p>
+                    <span class="dl-badge">Download MD</span>
+                </a>
+                <a class="agent-card" href="CLAUDE.md" download="VIB3-CLAUDE.md">
+                    <span class="agent-card-icon">&#x1f4d6;</span>
+                    <h4>Full Technical Ref</h4>
+                    <p>Complete CLAUDE.md technical reference. All APIs, shader uniforms, architecture.</p>
+                    <span class="dl-badge">Download MD</span>
+                </a>
+            </div>
+            <div class="agent-tools">
+                <span class="cmt">// MCP agentic control</span><br>
+                <span class="kw">const</span> result = <span class="kw">await</span> mcpClient.<span class="fn">callTool</span>(<span class="str">'set_parameter'</span>, {<br>
+                &nbsp;&nbsp;name: <span class="str">'geometry'</span>,<br>
+                &nbsp;&nbsp;value: <span class="str">16</span> &nbsp;<span class="cmt">// Hypertetrahedron + Tetrahedron</span><br>
+                });<br><br>
+                <span class="kw">await</span> mcpClient.<span class="fn">callTool</span>(<span class="str">'set_system'</span>, { system: <span class="str">'holographic'</span> });<br>
+                <span class="kw">await</span> mcpClient.<span class="fn">callTool</span>(<span class="str">'export_trading_card'</span>);
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════
          SECTION 8: CTA
-         Canvas2D bg (0 GPU contexts)
          ═══════════════════════════════════════════════════ -->
     <section class="cta-section" id="ctaSection">
         <div class="cta-bg">
@@ -1059,15 +1254,15 @@
          ENGINE BOOT + GPU CONTEXT POOL + GSAP CHOREOGRAPHY
 
          GPU CONTEXT BUDGET:
-           Hero ............ 1 (Quantum)
-           Trinity ......... 1 (swaps Q → H → F on scroll)
-           Convergence ..... 0 (Canvas2D)
+           Hero ............ 1 (Quantum, released on morph enter)
+           Morph ........... 1 (swaps Q → H → F on scroll)
+           Playground ...... 1 (Q/H/F, lazy)
            Energy card ..... 1 (Faceted, lazy)
+           Triptych ........ 0 (Canvas2D)
            Cascade ......... 0 (Canvas2D)
            Agent ........... 0 (Canvas2D)
-           Playground ...... 0 (Canvas2D)
            CTA ............. 0 (Canvas2D)
-           MAX CONCURRENT .. 1-2 (safe for mobile)
+           MAX CONCURRENT .. 2 (safe for mobile)
          ═══════════════════════════════════════════════════════════ -->
     <script type="module" src="./js/landing/main.js"></script>
 </body>

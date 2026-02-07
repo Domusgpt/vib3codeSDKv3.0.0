@@ -1,42 +1,47 @@
 /**
- * VIB3+ Landing Page — Boot Script
+ * VIB3+ Landing Page — Boot Script v2
+ *
+ * New section order:
+ *   Hero → Morph Experience (1200vh) → Playground → Triptych → Cascade → Energy → Agent → CTA
  *
  * Demonstrates modular SDK usage:
- *   1. ContextPool manages GPU context budget
+ *   1. ContextPool manages GPU context budget (max 3 concurrent)
  *   2. Adapters wrap each visualization system with a uniform interface
  *   3. Choreography drives shader parameters from scroll position
- *   4. Playground provides interactive parameter sliders with REAL GPU shaders
- *   5. Hover coordination shows multi-instance visual communication
+ *   4. Playground provides full 6D rotation (all 6 planes) with real GPU shaders
+ *   5. Morph section showcases all 3 systems with scroll-driven system swaps
+ *   6. Triptych: two parallaxing Canvas2D visualizer columns
+ *   7. Cascade: morphing cards with glow leak effect
  *
  * GPU Context Budget:
- *   Hero ............ 1 (Quantum)
- *   Trinity ......... 1 (swaps Q → H → F on scroll)
- *   Energy card ..... 1 (Faceted, lazy)
+ *   Hero ............ 1 (Quantum, released when morph enters)
+ *   Morph ........... 1 (swaps Q → H → F on scroll)
  *   Playground ...... 1 (Q/H/F, lazy — scroll-triggered)
- *   Convergence ..... 0 (Canvas2D ambient)
+ *   Energy card ..... 1 (Faceted, lazy)
+ *   Triptych ........ 0 (Canvas2D ambient)
  *   Cascade ......... 0 (Canvas2D ambient)
  *   Agent ........... 0 (Canvas2D ambient)
  *   CTA ............. 0 (Canvas2D ambient)
- *   MAX CONCURRENT .. 2-3 (pool auto-evicts oldest)
+ *   MAX CONCURRENT .. 2 (safe for mobile; pool auto-evicts oldest)
  */
 
 import { ContextPool } from './ContextPool.js';
 import { QuantumAdapter, HolographicAdapter, FacetedAdapter, Canvas2DRenderer } from './adapters.js';
 import {
-  heroParams, convergenceParams, energyBgParams,
+  heroParams, energyBgParams,
   agentBgParams, playgroundDefaults, ctaParams,
+  parallaxParams,
 } from './config.js';
 import {
-  initScrollProgress, initHero, initTrinity,
-  initConvergence, initEnergy, initCascade, initCTA,
-  initConvergenceHover, initSectionReveals,
+  initScrollProgress, initHero, initMorph,
+  initTriptych, initCascade, initEnergy, initCTA,
+  initSectionReveals,
 } from './choreography.js';
 
 // ─── State ────────────────────────────────────────────────────
 
 const pool = new ContextPool(3);
 const c2d = new Map();
-let lastScrollSection = null;
 
 // ─── Playground GPU State ─────────────────────────────────────
 
@@ -72,7 +77,6 @@ function switchPlaygroundSystem(idx) {
   pgSystemIdx = idx;
   releasePlayground();
   const adapter = acquirePlayground();
-  // Re-apply current slider values to new system
   if (adapter) {
     adapter.setParams(readSliderValues());
   }
@@ -84,6 +88,7 @@ function readSliderValues() {
     'hue', 'gridDensity', 'speed', 'chaos',
     'morphFactor', 'intensity', 'dimension',
     'rot4dXW', 'rot4dYW', 'rot4dZW',
+    'rot4dXY', 'rot4dXZ', 'rot4dYZ',
   ];
   sliderParams.forEach(param => {
     const input = document.getElementById(`ctrl-${param}`);
@@ -103,11 +108,11 @@ function createHero() {
 // ─── Canvas 2D Instances (ambient backgrounds — no GPU) ───────
 
 function initCanvas2D() {
-  c2d.set('convQ', new Canvas2DRenderer('conv-canvas-q', convergenceParams.quantum));
-  c2d.set('convH', new Canvas2DRenderer('conv-canvas-h', convergenceParams.holographic));
-  c2d.set('convF', new Canvas2DRenderer('conv-canvas-f', convergenceParams.faceted));
-  c2d.set('energyBg', new Canvas2DRenderer('energy-bg-canvas', energyBgParams));
+  // Triptych visualizer columns
+  c2d.set('triLeft', new Canvas2DRenderer('tri-left-canvas', parallaxParams.left));
+  c2d.set('triRight', new Canvas2DRenderer('tri-right-canvas', parallaxParams.right));
 
+  // Cascade cards
   document.querySelectorAll('.cascade-card').forEach((card, i) => {
     c2d.set(`cas${i}`, new Canvas2DRenderer(`cas-${i}`, {
       geometry: parseInt(card.dataset.geo),
@@ -117,18 +122,21 @@ function initCanvas2D() {
     }));
   });
 
+  // Section backgrounds
+  c2d.set('energyBg', new Canvas2DRenderer('energy-bg-canvas', energyBgParams));
   c2d.set('agent', new Canvas2DRenderer('agent-canvas', agentBgParams));
   c2d.set('cta', new Canvas2DRenderer('cta-canvas', ctaParams));
-  // NOTE: playground uses real GPU adapter — not Canvas2D
 }
 
-// ─── Parameters Playground (GPU-backed) ──────────────────────
+// ─── Parameters Playground (GPU-backed, full 6D) ─────────────
 
 function initPlayground() {
+  // All slider parameters including the 3 new 3D rotation planes
   const sliderParams = [
     'hue', 'gridDensity', 'speed', 'chaos',
     'morphFactor', 'intensity', 'dimension',
     'rot4dXW', 'rot4dYW', 'rot4dZW',
+    'rot4dXY', 'rot4dXZ', 'rot4dYZ',
   ];
 
   // Wire range sliders → live GPU adapter
@@ -180,7 +188,6 @@ function initPlayground() {
       onLeaveBack: releasePlayground,
     });
   } else {
-    // No GSAP — acquire immediately
     acquirePlayground();
   }
 }
@@ -201,7 +208,6 @@ if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
 }
 
 // ─── Lenis Smooth Scroll ──────────────────────────────────────
-// Wire Lenis to GSAP's ticker so ScrollTrigger stays in sync
 
 if (typeof Lenis !== 'undefined' && typeof gsap !== 'undefined') {
   const lenis = new Lenis();
@@ -210,17 +216,17 @@ if (typeof Lenis !== 'undefined' && typeof gsap !== 'undefined') {
   gsap.ticker.lagSmoothing(0);
 }
 
+// Initialize everything
 createHero();
 initCanvas2D();
 
 if (typeof gsap !== 'undefined') {
   initScrollProgress();
   initHero(pool);
-  initTrinity(pool, createHero);
-  initConvergence(c2d);
-  initConvergenceHover(c2d);
-  initEnergy(pool, c2d);
+  initMorph(pool, createHero);
+  initTriptych(c2d);
   initCascade(c2d);
+  initEnergy(pool, c2d);
   initCTA(c2d);
   initSectionReveals();
 }
@@ -231,7 +237,6 @@ requestAnimationFrame(renderLoop);
 // Clean up on page hide (mobile tab switching) — re-acquire on return
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    lastScrollSection = null;
     pool.releaseAll();
   } else {
     // Re-acquire hero context if we're at the top
