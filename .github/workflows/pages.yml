@@ -51,6 +51,10 @@ jobs:
           # Agent config docs (for download buttons on landing page)
           cp -r agent-config/ _site/agent-config/ 2>/dev/null || true
 
+          # Landing page JS modules (index.html imports ./js/landing/main.js)
+          mkdir -p _site/js
+          cp -r js/landing _site/js/
+
           # Source modules (needed by WebGPU live page and test harness)
           # The live page imports ES modules from ../src/ relative to docs/
           cp -r src/ _site/src/
@@ -58,6 +62,9 @@ jobs:
           echo "=== Deployed files ==="
           find _site -name "*.html" | sort
           echo "Total HTML files: $(find _site -name '*.html' | wc -l)"
+          echo ""
+          echo "=== Landing Page Modules ==="
+          ls -la _site/js/landing/ 2>/dev/null && echo "Landing JS modules: OK" || echo "Landing JS modules: MISSING"
           echo ""
           echo "=== WebGPU Live Page ==="
           ls -la _site/docs/webgpu-live.html 2>/dev/null && echo "WebGPU live page: OK" || echo "WebGPU live page: MISSING"
