@@ -141,25 +141,26 @@ export class FacetedAdapter {
     const canvas = document.getElementById(canvasId);
     if (!canvas) { this.active = false; return; }
     this.canvas = canvas;
-    this.active = true; // optimistic — render() is safe before init completes
     this.params = { ...DEFAULT_PARAMS, ...opts };
 
-    this.faceted = new FacetedSystem();
-    // initWithBridge is the correct async API for passing a specific canvas
-    // It auto-starts the render loop on success
-    this.faceted.initWithBridge(canvas, { preferWebGPU: false })
-      .then(ok => {
-        if (ok) {
-          this.faceted.updateParameters(this.params);
-        } else {
-          console.warn('Faceted initWithBridge returned false');
-          this.active = false;
-        }
-      })
-      .catch(e => {
-        console.warn('Faceted init error', e);
+    try {
+      this.faceted = new FacetedSystem();
+      // Synchronous direct WebGL init — matches Quantum/Holographic pattern.
+      // No async bridge, no race conditions, starts render loop immediately.
+      const ok = this.faceted.initDirect(canvas);
+      if (ok) {
+        this.active = true;
+        this.faceted.updateParameters(this.params);
+      } else {
+        console.warn('Faceted initDirect failed');
         this.active = false;
-      });
+        return;
+      }
+    } catch (e) {
+      console.warn('Faceted init error', e);
+      this.active = false;
+      return;
+    }
 
     this._resizeObs = observeResize(canvas, (w, h, dpr) => this.faceted.resize(w, h, dpr));
   }

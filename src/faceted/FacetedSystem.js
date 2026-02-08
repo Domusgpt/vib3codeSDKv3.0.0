@@ -514,13 +514,101 @@ export class FacetedSystem {
     constructor() {
         this.bridge = null;
         this.canvas = null;
+        this.gl = null;
+        this.program = null;
         this.params = {};
         this.initialized = false;
         this.contextLost = false;
         this._animFrame = null;
         this._time = 0;
         this._running = false;
+        this._quadBuffer = null;
+        this._uniformLocations = {};
+        this._useDirectGL = false;
     }
+
+    // ─── Synchronous Direct WebGL Init (matches Quantum/Holographic pattern) ───
+
+    /**
+     * Initialize directly with WebGL on a given canvas.
+     * Synchronous — no async bridge, no WebGPU.
+     * This is the preferred path for the landing page and adapters.
+     */
+    initDirect(canvas) {
+        this.canvas = canvas;
+        try {
+            this.gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+        } catch (e) {
+            console.warn('FacetedSystem: WebGL context creation failed', e);
+            return false;
+        }
+        if (!this.gl) {
+            console.warn('FacetedSystem: WebGL not available');
+            return false;
+        }
+
+        // Compile shader program
+        this.program = this._compileProgram(this.gl, VERTEX_SHADER_GLSL, FRAGMENT_SHADER_GLSL);
+        if (!this.program) {
+            console.error('FacetedSystem: Shader compilation failed');
+            return false;
+        }
+
+        // Create fullscreen quad buffer
+        const vertices = new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]);
+        this._quadBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this._quadBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
+
+        // Cache uniform locations
+        const gl = this.gl;
+        const numUniforms = gl.getProgramParameter(this.program, gl.ACTIVE_UNIFORMS);
+        for (let i = 0; i < numUniforms; i++) {
+            const info = gl.getActiveUniform(this.program, i);
+            if (info) {
+                this._uniformLocations[info.name] = gl.getUniformLocation(this.program, info.name);
+            }
+        }
+
+        this._useDirectGL = true;
+        this.initialized = true;
+        this.start();
+        return true;
+    }
+
+    _compileProgram(gl, vertexSrc, fragmentSrc) {
+        const vs = this._compileShader(gl, gl.VERTEX_SHADER, vertexSrc);
+        const fs = this._compileShader(gl, gl.FRAGMENT_SHADER, fragmentSrc);
+        if (!vs || !fs) return null;
+
+        const program = gl.createProgram();
+        gl.attachShader(program, vs);
+        gl.attachShader(program, fs);
+        gl.linkProgram(program);
+
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.error('FacetedSystem link error:', gl.getProgramInfoLog(program));
+            return null;
+        }
+
+        gl.deleteShader(vs);
+        gl.deleteShader(fs);
+        return program;
+    }
+
+    _compileShader(gl, type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            console.error('FacetedSystem shader error:', gl.getShaderInfoLog(shader));
+            gl.deleteShader(shader);
+            return null;
+        }
+        return shader;
+    }
+
+    // ─── Async Bridge Init (for SDK/WebGPU usage) ───
 
     async initWithBridge(canvas, options) {
         this.canvas = canvas;
@@ -537,7 +625,6 @@ export class FacetedSystem {
                     return false;
                 }
                 this.initialized = true;
-                // Auto-start the render loop
                 this.start();
                 return true;
             }
@@ -549,17 +636,16 @@ export class FacetedSystem {
 
     async initialize() {
         if (this.initialized) return true;
-
-        // Find default canvas if not already set
         const canvas = document.getElementById('faceted-content-canvas') ||
                       document.getElementById('content-canvas');
         if (!canvas) {
             console.warn("FacetedSystem: No canvas found for initialize()");
             return false;
         }
-
         return this.initWithBridge(canvas, { preferWebGPU: false });
     }
+
+    // ─── Parameters ───
 
     updateParameters(params) {
         if (!params) return;
@@ -567,8 +653,7 @@ export class FacetedSystem {
     }
 
     /**
-     * Build the uniform object with proper u_ prefixed names for the shader,
-     * including time and resolution which the shader needs every frame.
+     * Build the uniform object with proper u_ prefixed names for the shader.
      */
     _buildUniforms() {
         const p = this.params;
@@ -600,18 +685,14 @@ export class FacetedSystem {
         };
     }
 
-    /**
-     * Start the internal render loop (requestAnimationFrame driven).
-     */
+    // ─── Render Loop ───
+
     start() {
         if (this._running) return;
         this._running = true;
         this._renderLoop();
     }
 
-    /**
-     * Stop the internal render loop.
-     */
     stop() {
         this._running = false;
         if (this._animFrame) {
@@ -620,65 +701,112 @@ export class FacetedSystem {
         }
     }
 
-    /**
-     * Internal render loop — advances time, maps uniforms, and draws.
-     */
     _renderLoop() {
-        if (!this._running || !this.bridge) return;
+        if (!this._running) return;
 
-        // Advance internal time (similar to original: 0.016 per frame at ~60fps)
         this._time += 16.0 * (this.params.speed ?? 1.0);
 
-        // Build properly-named uniforms and push to bridge
-        this.bridge.setUniforms(this._buildUniforms());
-        this.bridge.render('faceted', { clear: true, clearColor: [0, 0, 0, 1] });
+        if (this._useDirectGL) {
+            this._renderDirectGL();
+        } else if (this.bridge) {
+            this.bridge.setUniforms(this._buildUniforms());
+            this.bridge.render('faceted', { clear: true, clearColor: [0, 0, 0, 1] });
+        }
 
         this._animFrame = requestAnimationFrame(() => this._renderLoop());
     }
 
+    /**
+     * Direct WebGL rendering — no bridge, just raw GL calls.
+     * Matches the original working FacetedSystem pattern.
+     */
+    _renderDirectGL() {
+        const gl = this.gl;
+        if (!gl || !this.program) return;
+
+        gl.useProgram(this.program);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        // Set uniforms
+        const uniforms = this._buildUniforms();
+        for (const [name, value] of Object.entries(uniforms)) {
+            const loc = this._uniformLocations[name];
+            if (loc === null || loc === undefined) continue;
+            if (Array.isArray(value)) {
+                if (value.length === 2) gl.uniform2fv(loc, value);
+                else if (value.length === 3) gl.uniform3fv(loc, value);
+                else if (value.length === 4) gl.uniform4fv(loc, value);
+            } else {
+                gl.uniform1f(loc, value);
+            }
+        }
+
+        // Draw fullscreen quad
+        gl.bindBuffer(gl.ARRAY_BUFFER, this._quadBuffer);
+        const posLoc = gl.getAttribLocation(this.program, 'a_position');
+        if (posLoc >= 0) {
+            gl.enableVertexAttribArray(posLoc);
+            gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+        }
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+
     render() {
-        // Manual single-frame render (for external callers)
-        if (this.bridge) {
+        if (this._useDirectGL) {
+            this._renderDirectGL();
+        } else if (this.bridge) {
             this.bridge.setUniforms(this._buildUniforms());
             this.bridge.render('faceted', { clear: true, clearColor: [0, 0, 0, 1] });
         }
     }
 
     getBackendType() {
+        if (this._useDirectGL) return 'webgl';
         return this.bridge ? this.bridge.getBackendType() : 'none';
     }
 
     setActive(active) {
-        if (active) {
-            this.start();
-        } else {
-            this.stop();
-        }
+        if (active) this.start();
+        else this.stop();
         const layer = document.getElementById('faceted-layer');
         if (layer) layer.style.display = active ? 'block' : 'none';
     }
 
-    // RendererContract compliance: init / resize / dispose
-    init(context) {
-        return this.initialize();
-    }
+    init(context) { return this.initialize(); }
 
     resize(width, height, pixelRatio = 1) {
-        if (this.bridge && this.bridge.resize) {
+        const w = Math.floor(width * pixelRatio);
+        const h = Math.floor(height * pixelRatio);
+        if (this.canvas) {
+            this.canvas.width = w;
+            this.canvas.height = h;
+        }
+        if (this._useDirectGL && this.gl) {
+            this.gl.viewport(0, 0, w, h);
+        } else if (this.bridge && this.bridge.resize) {
             this.bridge.resize(width, height, pixelRatio);
         }
     }
 
-    dispose() {
-        this.destroy();
-    }
+    dispose() { this.destroy(); }
 
     destroy() {
         this.stop();
+        if (this._useDirectGL && this.gl) {
+            if (this.program) this.gl.deleteProgram(this.program);
+            if (this._quadBuffer) this.gl.deleteBuffer(this._quadBuffer);
+            this.gl = null;
+            this.program = null;
+            this._quadBuffer = null;
+        }
         if (this.bridge) {
             this.bridge.dispose();
             this.bridge = null;
         }
         this.initialized = false;
+        this._useDirectGL = false;
     }
 }
