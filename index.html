@@ -964,6 +964,64 @@
         }
 
         /* ═══════════════════════════════════════════
+           SECTION TRANSITION VEILS
+           Morphing overlay cards that mask canvas handoffs
+           Acts as "stage misdirection" during system swaps
+           ═══════════════════════════════════════════ */
+        .section-veil {
+            position: fixed; inset: 0;
+            z-index: 60; pointer-events: none;
+            opacity: 0;
+            display: flex; align-items: center; justify-content: center;
+            will-change: opacity;
+        }
+        .section-veil-bg {
+            position: absolute; inset: 0;
+            background: radial-gradient(ellipse at 50% 50%,
+                rgba(8, 8, 18, 0.97) 0%,
+                rgba(8, 8, 18, 0.85) 35%,
+                rgba(8, 8, 18, 0.4) 60%,
+                transparent 80%);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .section-veil-card {
+            position: relative;
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg,
+                rgba(0, 240, 255, 0.08),
+                rgba(168, 85, 247, 0.08));
+            border: 1px solid rgba(255,255,255,0.04);
+            box-shadow: 0 0 40px rgba(0,240,255,0.06),
+                        inset 0 0 30px rgba(168,85,247,0.04);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            will-change: transform, width, height, border-radius;
+        }
+        .section-veil-card::after {
+            content: '';
+            position: absolute; inset: -2px;
+            border-radius: inherit;
+            background: conic-gradient(from var(--veil-angle, 0deg),
+                transparent 0%,
+                rgba(0, 240, 255, 0.15) 25%,
+                transparent 50%,
+                rgba(168, 85, 247, 0.15) 75%,
+                transparent 100%);
+            opacity: 0.5;
+            animation: veilSpin 4s linear infinite;
+        }
+        @keyframes veilSpin {
+            to { --veil-angle: 360deg; }
+        }
+        @property --veil-angle {
+            syntax: '<angle>';
+            initial-value: 0deg;
+            inherits: false;
+        }
+
+        /* ═══════════════════════════════════════════
            SCROLL-DRIVEN COLOR THEME
            Root hue shifts with page scroll
            ═══════════════════════════════════════════ */
@@ -1013,6 +1071,12 @@
     </svg>
 
     <div class="scroll-progress" id="scrollProgress"></div>
+
+    <!-- ─── Section Transition Veil (reusable fixed overlay) ─── -->
+    <div class="section-veil" id="sectionVeil">
+        <div class="section-veil-bg"></div>
+        <div class="section-veil-card" id="veilCard"></div>
+    </div>
 
     <!-- ═══════════════════════════════════════════════════
          OPENING CINEMATIC — 800vh Scroll-Locked
@@ -1098,9 +1162,10 @@
     </section>
 
     <!-- ─── Divider: Hero → Morph ─── -->
-    <div class="section-divider">
-        <svg viewBox="0 0 1440 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0,0 C480,80 960,80 1440,0 L1440,80 L0,80 Z" fill="var(--bg)"/>
+    <div class="section-divider divider-tall" id="divider-hero-morph">
+        <svg viewBox="0 0 1440 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,0 C360,100 720,100 1080,40 L1440,80 L1440,120 L0,120 Z" fill="var(--bg)" opacity="0.7"/>
+            <path d="M0,0 C480,80 960,80 1440,0 L1440,120 L0,120 Z" fill="var(--bg)"/>
         </svg>
     </div>
 
@@ -1163,10 +1228,10 @@
     </section>
 
     <!-- ─── Divider: Morph → Playground ─── -->
-    <div class="section-divider divider-short">
-        <svg viewBox="0 0 1440 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0,0 L480,50 L960,10 L1440,50 L1440,60 L0,60 Z" fill="var(--bg)" opacity="0.8"/>
-            <path d="M0,30 Q240,60 480,30 Q720,0 960,30 Q1200,60 1440,30 L1440,60 L0,60 Z" fill="var(--bg)"/>
+    <div class="section-divider divider-tall" id="divider-morph-playground">
+        <svg viewBox="0 0 1440 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,0 L480,100 L960,20 L1440,100 L1440,120 L0,120 Z" fill="var(--bg)" opacity="0.7"/>
+            <path d="M0,60 Q360,120 720,50 Q1080,-10 1440,60 L1440,120 L0,120 Z" fill="var(--bg)"/>
         </svg>
     </div>
 
@@ -1297,7 +1362,7 @@
     </section>
 
     <!-- ─── Divider: Playground → Triptych ─── -->
-    <div class="section-divider divider-tall">
+    <div class="section-divider divider-tall" id="divider-playground-triptych">
         <svg viewBox="0 0 1440 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M0,100 C200,40 400,80 600,30 C800,-10 1000,60 1200,20 C1350,-5 1440,40 1440,100 Z" fill="var(--bg)"/>
         </svg>
@@ -1399,7 +1464,7 @@
     </section>
 
     <!-- ─── Divider: Cascade → Energy ─── -->
-    <div class="section-divider divider-tall">
+    <div class="section-divider divider-tall" id="divider-cascade-energy">
         <svg viewBox="0 0 1440 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M0,80 Q180,0 360,50 Q540,100 720,40 Q900,-10 1080,50 Q1260,100 1440,20 L1440,100 L0,100 Z" fill="var(--bg)"/>
         </svg>

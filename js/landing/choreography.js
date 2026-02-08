@@ -802,6 +802,95 @@ export function initCTA(c2d) {
 
 // ─── Section Reveal Animations ──────────────────────────────
 
+// ─── SECTION TRANSITION VEILS ─────────────────────────────
+// Morphing overlay cards that mask canvas handoff moments.
+// At each GPU context swap boundary (hero→morph, morph→playground, etc.),
+// a glassmorphic veil fades in, the card morphs shape, masking the
+// raw canvas release/acquire gap, then fades out when the new context is ready.
+
+export function initSectionVeils() {
+  const veil = document.getElementById('sectionVeil');
+  const veilCard = document.getElementById('veilCard');
+  if (!veil || !veilCard) return;
+
+  // Handoff zones where GPU canvases swap — the veil fires at each
+  const handoffs = [
+    {
+      trigger: '#divider-hero-morph',
+      triggerStart: 'top 90%',
+      triggerEnd: 'bottom 10%',
+      cardShape: { w: 120, h: 120, radius: '50%', scale: 1.2 },
+      hue: 220,
+    },
+    {
+      trigger: '#divider-morph-playground',
+      triggerStart: 'top 85%',
+      triggerEnd: 'bottom 15%',
+      cardShape: { w: 200, h: 140, radius: '24px', scale: 1 },
+      hue: 280,
+    },
+    {
+      trigger: '#divider-playground-triptych',
+      triggerStart: 'top 90%',
+      triggerEnd: 'bottom 10%',
+      cardShape: { w: 160, h: 160, radius: '32px', scale: 0.9 },
+      hue: 190,
+    },
+    {
+      trigger: '#divider-cascade-energy',
+      triggerStart: 'top 85%',
+      triggerEnd: 'bottom 15%',
+      cardShape: { w: 100, h: 100, radius: '50%', scale: 1.1 },
+      hue: 310,
+    },
+  ];
+
+  handoffs.forEach(({ trigger, triggerStart, triggerEnd, cardShape, hue }) => {
+    const el = document.querySelector(trigger);
+    if (!el) return;
+
+    ScrollTrigger.create({
+      trigger: el,
+      start: triggerStart,
+      end: triggerEnd,
+      scrub: 0.3,
+      onUpdate: (self) => {
+        const p = self.progress;
+        // Bell curve: peak opacity at midpoint, zero at edges
+        const bell = Math.sin(p * Math.PI);
+        const intensity = bell * bell; // sharper bell
+
+        // Veil background opacity
+        veil.style.opacity = intensity * 0.85;
+
+        // Card morph: grows from small circle to target shape, then shrinks
+        const grow = smoothstep(clamp01(p * 2));       // 0→0.5: grow in
+        const shrink = smoothstep(clamp01((p - 0.5) * 2)); // 0.5→1: shrink out
+        const cardScale = cardShape.scale * (grow * (1 - shrink * 0.6));
+
+        const w = lerp(40, cardShape.w, grow) * (1 - shrink * 0.3);
+        const h = lerp(40, cardShape.h, grow) * (1 - shrink * 0.3);
+        const borderRadius = p < 0.5 ? `${lerp(50, parseFloat(cardShape.radius) || 24, grow)}${cardShape.radius.includes('%') ? '%' : 'px'}` : cardShape.radius;
+
+        gsap.set(veilCard, {
+          width: w,
+          height: h,
+          borderRadius,
+          scale: cardScale,
+          rotation: (p - 0.5) * 30, // subtle rotation through transition
+        });
+
+        // Dynamic glow color based on handoff zone hue
+        const glowAlpha = intensity * 0.2;
+        veilCard.style.boxShadow = `0 0 ${60 * intensity}px hsla(${hue}, 70%, 50%, ${glowAlpha}), inset 0 0 ${30 * intensity}px hsla(${hue + 60}, 60%, 40%, ${glowAlpha * 0.5})`;
+        veilCard.style.borderColor = `hsla(${hue}, 60%, 60%, ${intensity * 0.15})`;
+      },
+      onLeave: () => { veil.style.opacity = 0; },
+      onLeaveBack: () => { veil.style.opacity = 0; },
+    });
+  });
+}
+
 export function initSectionReveals() {
   // ── data-animate: 3D depth reveal (VISUAL-CODEX: 3D transform pattern) ──
   const reveals = document.querySelectorAll('[data-animate]');

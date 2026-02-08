@@ -288,7 +288,7 @@ const FRAGMENT_SHADER_GLSL = `
         float gray = (baseColor.r + baseColor.g + baseColor.b) / 3.0;
         vec3 color = mix(vec3(gray), baseColor, u_saturation) * finalIntensity;
 
-        gl_FragColor = vec4(color, finalIntensity * u_roleIntensity);
+        gl_FragColor = vec4(color, finalIntensity);
     }
 `;
 
@@ -470,7 +470,7 @@ fn main(input: VertexOutput) -> @location(0) vec4<f32> {
     let timeSpeed = u.time * 0.0001 * u.speed;
 
     var pos = vec4<f32>(uv2 * 3.0, sin(timeSpeed * 3.0), cos(timeSpeed * 2.0));
-    pos = vec4<f32>(pos.xy + (u.mouse - 0.5) * u.mouseIntensity * 2.0, pos.z, pos.w);
+    pos = vec4<f32>(pos.xy + (vec2<f32>(0.5, 0.5) - 0.5) * u.mouseIntensity * 2.0, pos.z, pos.w);
 
     pos = rotateXY_w(u.rot4dXY) * pos;
     pos = rotateXZ_w(u.rot4dXZ) * pos;
@@ -480,7 +480,7 @@ fn main(input: VertexOutput) -> @location(0) vec4<f32> {
     pos = rotateZW_w(u.rot4dZW) * pos;
 
     let basePoint = project4Dto3D_w(pos);
-    let warpedPoint = applyCoreWarp_w(basePoint, u.geometry, u.mouse - 0.5);
+    let warpedPoint = applyCoreWarp_w(basePoint, u.geometry, vec2<f32>(0.0, 0.0));
     let warpedPos = vec4<f32>(warpedPoint, pos.w);
     var value = geometryFunction_w(warpedPos);
 
@@ -502,7 +502,7 @@ fn main(input: VertexOutput) -> @location(0) vec4<f32> {
     let gray = (baseColor.r + baseColor.g + baseColor.b) / 3.0;
     let color = mix(vec3<f32>(gray), baseColor, u.saturation) * finalIntensity;
 
-    return vec4<f32>(color, finalIntensity * u.roleIntensity);
+    return vec4<f32>(color, finalIntensity);
 }
 `;
 

@@ -40,6 +40,7 @@ import {
   initScrollProgress, initOpening, initHero, initMorph,
   initTriptych, initCascade, initEnergy, initCTA,
   initSectionReveals, initScrollColorTheme, initBlurReveals,
+  initSectionVeils,
 } from './choreography.js';
 
 // ─── State ────────────────────────────────────────────────────
@@ -288,6 +289,7 @@ if (typeof gsap !== 'undefined') {
   initEnergy(pool, c2d);
   initCTA(c2d);
   initSectionReveals();
+  initSectionVeils();
   initScrollColorTheme();
   initBlurReveals();
 }
