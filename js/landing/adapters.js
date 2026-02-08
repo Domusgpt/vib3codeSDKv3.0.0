@@ -146,6 +146,7 @@ export class FacetedAdapter {
 
     this.faceted = new FacetedSystem();
     // initWithBridge is the correct async API for passing a specific canvas
+    // It auto-starts the render loop on success
     this.faceted.initWithBridge(canvas, { preferWebGPU: false })
       .then(ok => {
         if (ok) {
@@ -169,7 +170,7 @@ export class FacetedAdapter {
   dispose() {
     this.active = false;
     this._resizeObs?.disconnect();
-    try { this.faceted?.dispose(); } catch (_) { /* ignore */ }
+    try { this.faceted?.stop(); this.faceted?.dispose(); } catch (_) { /* ignore */ }
   }
 }
 

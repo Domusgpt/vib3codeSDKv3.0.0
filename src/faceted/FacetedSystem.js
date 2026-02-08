@@ -517,6 +517,9 @@ export class FacetedSystem {
         this.params = {};
         this.initialized = false;
         this.contextLost = false;
+        this._animFrame = null;
+        this._time = 0;
+        this._running = false;
     }
 
     async initWithBridge(canvas, options) {
@@ -534,6 +537,8 @@ export class FacetedSystem {
                     return false;
                 }
                 this.initialized = true;
+                // Auto-start the render loop
+                this.start();
                 return true;
             }
         } catch (e) {
@@ -559,20 +564,83 @@ export class FacetedSystem {
     updateParameters(params) {
         if (!params) return;
         this.params = { ...this.params, ...params };
+    }
 
-        // Handle breath mapping if key is 'breath' -> 'u_breath'
-        if ('breath' in params) {
-            this.params.u_breath = params.breath;
-        }
+    /**
+     * Build the uniform object with proper u_ prefixed names for the shader,
+     * including time and resolution which the shader needs every frame.
+     */
+    _buildUniforms() {
+        const p = this.params;
+        return {
+            u_time: this._time,
+            u_resolution: [this.canvas?.width || 800, this.canvas?.height || 600],
+            u_geometry: p.geometry ?? 0,
+            u_rot4dXY: p.rot4dXY ?? 0,
+            u_rot4dXZ: p.rot4dXZ ?? 0,
+            u_rot4dYZ: p.rot4dYZ ?? 0,
+            u_rot4dXW: p.rot4dXW ?? 0,
+            u_rot4dYW: p.rot4dYW ?? 0,
+            u_rot4dZW: p.rot4dZW ?? 0,
+            u_dimension: p.dimension ?? 3.5,
+            u_gridDensity: p.gridDensity ?? 15,
+            u_morphFactor: p.morphFactor ?? 1.0,
+            u_chaos: p.chaos ?? 0.2,
+            u_speed: p.speed ?? 1.0,
+            u_hue: p.hue ?? 200,
+            u_intensity: p.intensity ?? 0.7,
+            u_saturation: p.saturation ?? 0.8,
+            u_mouseIntensity: p.mouseIntensity ?? 0,
+            u_clickIntensity: p.clickIntensity ?? 0,
+            u_bass: p.bass ?? 0,
+            u_mid: p.mid ?? 0,
+            u_high: p.high ?? 0,
+            u_breath: p.breath ?? 0,
+            u_mouse: p.mouse ?? [0.5, 0.5],
+        };
+    }
 
-        if (this.bridge) {
-            this.bridge.setUniforms(this.params);
+    /**
+     * Start the internal render loop (requestAnimationFrame driven).
+     */
+    start() {
+        if (this._running) return;
+        this._running = true;
+        this._renderLoop();
+    }
+
+    /**
+     * Stop the internal render loop.
+     */
+    stop() {
+        this._running = false;
+        if (this._animFrame) {
+            cancelAnimationFrame(this._animFrame);
+            this._animFrame = null;
         }
     }
 
+    /**
+     * Internal render loop — advances time, maps uniforms, and draws.
+     */
+    _renderLoop() {
+        if (!this._running || !this.bridge) return;
+
+        // Advance internal time (similar to original: 0.016 per frame at ~60fps)
+        this._time += 16.0 * (this.params.speed ?? 1.0);
+
+        // Build properly-named uniforms and push to bridge
+        this.bridge.setUniforms(this._buildUniforms());
+        this.bridge.render('faceted', { clear: true, clearColor: [0, 0, 0, 1] });
+
+        this._animFrame = requestAnimationFrame(() => this._renderLoop());
+    }
+
     render() {
+        // Manual single-frame render (for external callers)
         if (this.bridge) {
-            this.bridge.render('faceted', { clear: true, clearColor: [0,0,0,0] });
+            this.bridge.setUniforms(this._buildUniforms());
+            this.bridge.render('faceted', { clear: true, clearColor: [0, 0, 0, 1] });
         }
     }
 
@@ -581,6 +649,11 @@ export class FacetedSystem {
     }
 
     setActive(active) {
+        if (active) {
+            this.start();
+        } else {
+            this.stop();
+        }
         const layer = document.getElementById('faceted-layer');
         if (layer) layer.style.display = active ? 'block' : 'none';
     }
@@ -601,6 +674,7 @@ export class FacetedSystem {
     }
 
     destroy() {
+        this.stop();
         if (this.bridge) {
             this.bridge.dispose();
             this.bridge = null;
