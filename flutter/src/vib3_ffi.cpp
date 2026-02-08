@@ -13,7 +13,7 @@
 #include <map>
 
 // Version string
-static const char* VIB3_VERSION = "2.0.1";
+static const char* VIB3_VERSION = "2.0.2";
 
 // Geometry names
 static const char* GEOMETRY_NAMES[24] = {

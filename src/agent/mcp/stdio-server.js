@@ -18,7 +18,7 @@ import { getToolList } from './tools.js';
 
 const SERVER_INFO = {
     name: 'vib3-mcp',
-    version: '2.0.1',
+    version: '2.0.2',
     description: 'VIB3+ 4D Visualization MCP Server — 3 systems, 24 geometries, 6D rotation'
 };
 
