@@ -1,46 +1,48 @@
 package com.vib3.flutter
 
-import android.content.Context
-import android.graphics.SurfaceTexture
 import android.opengl.*
+import android.graphics.SurfaceTexture
 import android.os.Handler
-import android.os.Looper
-import android.view.Surface
+import android.os.HandlerThread
+import android.view.Choreographer
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.view.TextureRegistry
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import java.nio.ShortBuffer
-import kotlin.math.cos
-import kotlin.math.sin
 
-/**
- * VIB3 Flutter Plugin for Android
- *
- * Provides 4D visualization rendering via OpenGL ES 3.0 with texture output to Flutter.
- */
-class Vib3FlutterPlugin : FlutterPlugin, MethodCallHandler {
+class Vib3FlutterPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private lateinit var channel: MethodChannel
-    private var textureRegistry: TextureRegistry? = null
     private var textureEntry: TextureRegistry.SurfaceTextureEntry? = null
-    private var renderer: Vib3Renderer? = null
-    private var context: Context? = null
+    private var renderer: Vib3GLRenderer? = null
+    private var flutterPluginBinding: FlutterPlugin.FlutterPluginBinding? = null
+
+    companion object {
+        init {
+            try {
+                System.loadLibrary("vib3_flutter")
+            } catch (e: UnsatisfiedLinkError) {
+                // Native library not available; FFI calls will fail gracefully
+            }
+        }
+    }
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        flutterPluginBinding = binding
         channel = MethodChannel(binding.binaryMessenger, "com.vib3.engine")
         channel.setMethodCallHandler(this)
-        textureRegistry = binding.textureRegistry
-        context = binding.applicationContext
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
         renderer?.dispose()
+        renderer = null
         textureEntry?.release()
+        textureEntry = null
+        flutterPluginBinding = null
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -61,45 +63,42 @@ class Vib3FlutterPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     private fun handleInitialize(call: MethodCall, result: MethodChannel.Result) {
-        val args = call.arguments as? Map<*, *> ?: run {
-            result.error("INVALID_ARGS", "Invalid arguments", null)
+        val binding = flutterPluginBinding ?: run {
+            result.error("NOT_ATTACHED", "Plugin not attached to engine", null)
             return
         }
 
-        val system = args["system"] as? String ?: "quantum"
-        val geometry = (args["geometry"] as? Number)?.toInt() ?: 0
-        val gridDensity = (args["gridDensity"] as? Number)?.toInt() ?: 32
+        val system = call.argument<String>("system") ?: "quantum"
+        val geometry = call.argument<Int>("geometry") ?: 0
+        val gridDensity = call.argument<Int>("gridDensity") ?: 32
 
         // Create texture entry
-        textureEntry = textureRegistry?.createSurfaceTexture()
-        val surfaceTexture = textureEntry?.surfaceTexture()
-
-        if (surfaceTexture == null) {
-            result.error("INIT_FAILED", "Failed to create surface texture", null)
-            return
-        }
+        textureEntry = binding.textureRegistry.createSurfaceTexture()
+        val surfaceTexture = textureEntry!!.surfaceTexture()
+        surfaceTexture.setDefaultBufferSize(1024, 1024)
 
         // Create renderer
-        renderer = Vib3Renderer(surfaceTexture, 1024, 1024)
-        renderer?.setSystem(system)
-        renderer?.setGeometry(geometry)
-        renderer?.setGridDensity(gridDensity)
+        renderer = Vib3GLRenderer(surfaceTexture).apply {
+            setSystem(system)
+            setGeometry(geometry)
+            setGridDensity(gridDensity)
+        }
 
-        // Set initial rotation if provided
+        // Apply initial rotation if provided
         @Suppress("UNCHECKED_CAST")
-        val rotation = args["rotation"] as? Map<String, Double>
+        val rotation = call.argument<Map<String, Double>>("rotation")
         if (rotation != null) {
             renderer?.setRotation(
-                xy = rotation["xy"]?.toFloat() ?: 0f,
-                xz = rotation["xz"]?.toFloat() ?: 0f,
-                yz = rotation["yz"]?.toFloat() ?: 0f,
-                xw = rotation["xw"]?.toFloat() ?: 0f,
-                yw = rotation["yw"]?.toFloat() ?: 0f,
-                zw = rotation["zw"]?.toFloat() ?: 0f
+                (rotation["xy"] ?: 0.0).toFloat(),
+                (rotation["xz"] ?: 0.0).toFloat(),
+                (rotation["yz"] ?: 0.0).toFloat(),
+                (rotation["xw"] ?: 0.0).toFloat(),
+                (rotation["yw"] ?: 0.0).toFloat(),
+                (rotation["zw"] ?: 0.0).toFloat()
             )
         }
 
-        result.success(mapOf("textureId" to textureEntry?.id()))
+        result.success(mapOf("textureId" to textureEntry!!.id()))
     }
 
     private fun handleDispose(result: MethodChannel.Result) {
@@ -111,50 +110,36 @@ class Vib3FlutterPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     private fun handleSetSystem(call: MethodCall, result: MethodChannel.Result) {
-        val system = call.argument<String>("system") ?: run {
-            result.error("INVALID_ARGS", "Missing system", null)
-            return
+        val system = call.argument<String>("system")
+        if (system != null) {
+            renderer?.setSystem(system)
         }
-        renderer?.setSystem(system)
         result.success(null)
     }
 
     private fun handleSetGeometry(call: MethodCall, result: MethodChannel.Result) {
-        val index = call.argument<Int>("index") ?: run {
-            result.error("INVALID_ARGS", "Missing geometry index", null)
-            return
+        val index = call.argument<Int>("index")
+        if (index != null) {
+            renderer?.setGeometry(index)
         }
-        renderer?.setGeometry(index)
         result.success(null)
     }
 
     private fun handleRotate(call: MethodCall, result: MethodChannel.Result) {
-        val plane = call.argument<String>("plane") ?: run {
-            result.error("INVALID_ARGS", "Missing plane", null)
-            return
-        }
-        val angle = call.argument<Double>("angle")?.toFloat() ?: run {
-            result.error("INVALID_ARGS", "Missing angle", null)
-            return
-        }
+        val plane = call.argument<String>("plane") ?: return result.success(null)
+        val angle = call.argument<Double>("angle")?.toFloat() ?: return result.success(null)
         renderer?.rotate(plane, angle)
         result.success(null)
     }
 
     private fun handleSetRotation(call: MethodCall, result: MethodChannel.Result) {
-        @Suppress("UNCHECKED_CAST")
-        val args = call.arguments as? Map<String, Double> ?: run {
-            result.error("INVALID_ARGS", "Invalid rotation", null)
-            return
-        }
-        renderer?.setRotation(
-            xy = args["xy"]?.toFloat() ?: 0f,
-            xz = args["xz"]?.toFloat() ?: 0f,
-            yz = args["yz"]?.toFloat() ?: 0f,
-            xw = args["xw"]?.toFloat() ?: 0f,
-            yw = args["yw"]?.toFloat() ?: 0f,
-            zw = args["zw"]?.toFloat() ?: 0f
-        )
+        val xy = (call.argument<Double>("xy") ?: 0.0).toFloat()
+        val xz = (call.argument<Double>("xz") ?: 0.0).toFloat()
+        val yz = (call.argument<Double>("yz") ?: 0.0).toFloat()
+        val xw = (call.argument<Double>("xw") ?: 0.0).toFloat()
+        val yw = (call.argument<Double>("yw") ?: 0.0).toFloat()
+        val zw = (call.argument<Double>("zw") ?: 0.0).toFloat()
+        renderer?.setRotation(xy, xz, yz, xw, yw, zw)
         result.success(null)
     }
 
@@ -164,13 +149,11 @@ class Vib3FlutterPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     private fun handleSetVisualParams(call: MethodCall, result: MethodChannel.Result) {
-        @Suppress("UNCHECKED_CAST")
-        val args = call.arguments as? Map<String, Double> ?: run {
-            result.error("INVALID_ARGS", "Invalid params", null)
-            return
-        }
-        args.forEach { (key, value) ->
-            renderer?.setVisualParam(key, value.toFloat())
+        val args = call.arguments as? Map<*, *> ?: return result.success(null)
+        for ((key, value) in args) {
+            if (key is String && value is Double) {
+                renderer?.setVisualParam(key, value.toFloat())
+            }
         }
         result.success(null)
     }
@@ -186,72 +169,78 @@ class Vib3FlutterPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     private fun handleCaptureFrame(result: MethodChannel.Result) {
-        val frameData = renderer?.captureFrame()
-        result.success(frameData)
+        result.success(null)
     }
 }
 
 /**
- * OpenGL ES 3.0 Renderer for VIB3 4D Visualization
+ * OpenGL ES renderer for VIB3 4D visualization.
+ * Runs on a dedicated GL thread via HandlerThread.
  */
-class Vib3Renderer(
-    private val surfaceTexture: SurfaceTexture,
-    private val width: Int,
-    private val height: Int
-) {
+class Vib3GLRenderer(private val surfaceTexture: SurfaceTexture) {
+    private var glThread: HandlerThread? = null
+    private var glHandler: Handler? = null
+
     private var eglDisplay: EGLDisplay? = null
     private var eglContext: EGLContext? = null
     private var eglSurface: EGLSurface? = null
-    private var surface: Surface? = null
 
-    private var program: Int = 0
+    private var program = 0
     private var vertexBuffer: FloatBuffer? = null
     private var indexBuffer: ShortBuffer? = null
-
-    private var isRendering = false
-    private var renderThread: Thread? = null
-    private val handler = Handler(Looper.getMainLooper())
+    private var indexCount = 0
+    private val textureSize = 1024
 
     // State
     private var currentSystem = "quantum"
     private var currentGeometry = 0
     private var gridDensity = 32
-    private var rotation = floatArrayOf(0f, 0f, 0f, 0f, 0f, 0f)
+    private val rotation = FloatArray(6) // xy, xz, yz, xw, yw, zw
     private val visualParams = mutableMapOf(
         "morphFactor" to 0.5f,
         "chaos" to 0.0f,
         "speed" to 1.0f,
         "hue" to 200f,
         "intensity" to 0.8f,
-        "saturation" to 0.7f
+        "saturation" to 0.7f,
+        "dimension" to 3.5f
     )
 
+    private var isRendering = false
+    private var startTime = System.nanoTime()
+
+    // Synchronization lock for GL context access
+    private val glLock = Object()
+
     init {
-        surfaceTexture.setDefaultBufferSize(width, height)
-        surface = Surface(surfaceTexture)
-        initEGL()
-        initShaders()
-        generateGeometry()
+        initGL()
     }
 
-    private fun initEGL() {
-        eglDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
-        if (eglDisplay == EGL14.EGL_NO_DISPLAY) {
-            throw RuntimeException("Unable to get EGL display")
-        }
+    private fun initGL() {
+        glThread = HandlerThread("Vib3GLThread").apply { start() }
+        glHandler = Handler(glThread!!.looper)
 
-        val version = IntArray(2)
-        if (!EGL14.eglInitialize(eglDisplay, version, 0, version, 1)) {
-            throw RuntimeException("Unable to initialize EGL")
+        glHandler?.post {
+            synchronized(glLock) {
+                setupEGL()
+                setupShaders()
+                generateGeometry()
+            }
         }
+    }
+
+    private fun setupEGL() {
+        eglDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
+        val version = IntArray(2)
+        EGL14.eglInitialize(eglDisplay, version, 0, version, 1)
 
         val configAttribs = intArrayOf(
-            EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
             EGL14.EGL_RED_SIZE, 8,
             EGL14.EGL_GREEN_SIZE, 8,
             EGL14.EGL_BLUE_SIZE, 8,
             EGL14.EGL_ALPHA_SIZE, 8,
             EGL14.EGL_DEPTH_SIZE, 16,
+            EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
             EGL14.EGL_NONE
         )
 
@@ -260,69 +249,63 @@ class Vib3Renderer(
         EGL14.eglChooseConfig(eglDisplay, configAttribs, 0, configs, 0, 1, numConfigs, 0)
 
         val contextAttribs = intArrayOf(
-            EGL14.EGL_CONTEXT_CLIENT_VERSION, 3,
+            EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
             EGL14.EGL_NONE
         )
+
         eglContext = EGL14.eglCreateContext(eglDisplay, configs[0], EGL14.EGL_NO_CONTEXT, contextAttribs, 0)
 
-        val surfaceAttribs = intArrayOf(EGL14.EGL_NONE)
-        eglSurface = EGL14.eglCreateWindowSurface(eglDisplay, configs[0], surface, surfaceAttribs, 0)
+        val surfaceAttribs = intArrayOf(
+            EGL14.EGL_WIDTH, textureSize,
+            EGL14.EGL_HEIGHT, textureSize,
+            EGL14.EGL_NONE
+        )
 
+        eglSurface = EGL14.eglCreatePbufferSurface(eglDisplay, configs[0], surfaceAttribs, 0)
         EGL14.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext)
+
+        surfaceTexture.setDefaultBufferSize(textureSize, textureSize)
     }
 
-    private fun initShaders() {
-        val vertexShaderCode = """
-            #version 300 es
-            precision highp float;
-
-            layout(location = 0) in vec4 aPosition;
-            layout(location = 1) in vec4 aColor;
-
+    private fun setupShaders() {
+        val vertexShaderSrc = """
+            attribute vec4 aPosition;
+            attribute vec4 aColor;
+            varying vec4 vColor;
+            varying float vDepth;
             uniform mat4 uProjection;
             uniform mat4 uView;
             uniform float uRotation[6];
-            uniform float uProjectionDistance;
+            uniform float uProjDist;
             uniform float uHue;
-            uniform float uSaturation;
             uniform float uIntensity;
+            uniform float uSaturation;
 
-            out vec4 vColor;
-            out float vDepth;
-
-            // 4D rotation matrices
-            vec4 rotateXY(vec4 p, float angle) {
-                float c = cos(angle), s = sin(angle);
+            vec4 rotateXY(vec4 p, float a) {
+                float c = cos(a), s = sin(a);
                 return vec4(c*p.x - s*p.y, s*p.x + c*p.y, p.z, p.w);
             }
-            vec4 rotateXZ(vec4 p, float angle) {
-                float c = cos(angle), s = sin(angle);
+            vec4 rotateXZ(vec4 p, float a) {
+                float c = cos(a), s = sin(a);
                 return vec4(c*p.x - s*p.z, p.y, s*p.x + c*p.z, p.w);
             }
-            vec4 rotateYZ(vec4 p, float angle) {
-                float c = cos(angle), s = sin(angle);
+            vec4 rotateYZ(vec4 p, float a) {
+                float c = cos(a), s = sin(a);
                 return vec4(p.x, c*p.y - s*p.z, s*p.y + c*p.z, p.w);
             }
-            vec4 rotateXW(vec4 p, float angle) {
-                float c = cos(angle), s = sin(angle);
+            vec4 rotateXW(vec4 p, float a) {
+                float c = cos(a), s = sin(a);
                 return vec4(c*p.x - s*p.w, p.y, p.z, s*p.x + c*p.w);
             }
-            vec4 rotateYW(vec4 p, float angle) {
-                float c = cos(angle), s = sin(angle);
+            vec4 rotateYW(vec4 p, float a) {
+                float c = cos(a), s = sin(a);
                 return vec4(p.x, c*p.y - s*p.w, p.z, s*p.y + c*p.w);
             }
-            vec4 rotateZW(vec4 p, float angle) {
-                float c = cos(angle), s = sin(angle);
+            vec4 rotateZW(vec4 p, float a) {
+                float c = cos(a), s = sin(a);
                 return vec4(p.x, p.y, c*p.z - s*p.w, s*p.z + c*p.w);
             }
 
-            // 4D to 3D projection
-            vec3 project4Dto3D(vec4 p, float d) {
-                float scale = d / (d - p.w);
-                return vec3(p.xyz * scale);
-            }
-
-            // HSV to RGB
             vec3 hsv2rgb(vec3 c) {
                 vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
                 vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
@@ -330,251 +313,260 @@ class Vib3Renderer(
             }
 
             void main() {
-                // Apply 6D rotation
-                vec4 rotated = aPosition;
-                rotated = rotateXY(rotated, uRotation[0]);
-                rotated = rotateXZ(rotated, uRotation[1]);
-                rotated = rotateYZ(rotated, uRotation[2]);
-                rotated = rotateXW(rotated, uRotation[3]);
-                rotated = rotateYW(rotated, uRotation[4]);
-                rotated = rotateZW(rotated, uRotation[5]);
+                vec4 pos = aPosition;
+                pos = rotateXY(pos, uRotation[0]);
+                pos = rotateXZ(pos, uRotation[1]);
+                pos = rotateYZ(pos, uRotation[2]);
+                pos = rotateXW(pos, uRotation[3]);
+                pos = rotateYW(pos, uRotation[4]);
+                pos = rotateZW(pos, uRotation[5]);
 
-                // Project 4D to 3D
-                vec3 projected = project4Dto3D(rotated, uProjectionDistance);
+                float d = max(uProjDist, 1.5);
+                float scale = d / (d - pos.w);
+                vec3 proj = pos.xyz * scale;
 
-                // Apply view/projection
-                gl_Position = uProjection * uView * vec4(projected, 1.0);
+                gl_Position = uProjection * uView * vec4(proj, 1.0);
 
-                // W-based coloring
-                float wNorm = (rotated.w + 1.0) * 0.5;
+                float wNorm = (pos.w + 1.0) * 0.5;
                 float hue = uHue / 360.0 + wNorm * 0.3;
                 vec3 rgb = hsv2rgb(vec3(hue, uSaturation, uIntensity));
-
                 vColor = vec4(rgb, 1.0);
                 vDepth = wNorm;
             }
         """.trimIndent()
 
-        val fragmentShaderCode = """
-            #version 300 es
-            precision highp float;
-
-            in vec4 vColor;
-            in float vDepth;
-
-            out vec4 fragColor;
-
+        val fragmentShaderSrc = """
+            precision mediump float;
+            varying vec4 vColor;
+            varying float vDepth;
             void main() {
-                // W-fog for depth cue
                 float fog = 1.0 - vDepth * 0.3;
-                fragColor = vec4(vColor.rgb * fog, vColor.a);
+                gl_FragColor = vec4(vColor.rgb * fog, vColor.a);
             }
         """.trimIndent()
 
-        val vertexShader = loadShader(GLES30.GL_VERTEX_SHADER, vertexShaderCode)
-        val fragmentShader = loadShader(GLES30.GL_FRAGMENT_SHADER, fragmentShaderCode)
+        val vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderSrc)
+        val fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderSrc)
 
-        program = GLES30.glCreateProgram()
-        GLES30.glAttachShader(program, vertexShader)
-        GLES30.glAttachShader(program, fragmentShader)
-        GLES30.glLinkProgram(program)
+        program = GLES20.glCreateProgram()
+        GLES20.glAttachShader(program, vertexShader)
+        GLES20.glAttachShader(program, fragmentShader)
+        GLES20.glLinkProgram(program)
 
-        GLES30.glDeleteShader(vertexShader)
-        GLES30.glDeleteShader(fragmentShader)
+        GLES20.glDeleteShader(vertexShader)
+        GLES20.glDeleteShader(fragmentShader)
     }
 
-    private fun loadShader(type: Int, code: String): Int {
-        val shader = GLES30.glCreateShader(type)
-        GLES30.glShaderSource(shader, code)
-        GLES30.glCompileShader(shader)
+    private fun loadShader(type: Int, source: String): Int {
+        val shader = GLES20.glCreateShader(type)
+        GLES20.glShaderSource(shader, source)
+        GLES20.glCompileShader(shader)
         return shader
     }
 
     private fun generateGeometry() {
-        // Generate tesseract (4D hypercube) as example
-        val vertices = mutableListOf<Float>()
+        val vertices = FloatArray(16 * 8)
         for (i in 0 until 16) {
             val x = if (i and 1 == 0) -1f else 1f
             val y = if (i and 2 == 0) -1f else 1f
             val z = if (i and 4 == 0) -1f else 1f
             val w = if (i and 8 == 0) -1f else 1f
-            // Position
-            vertices.addAll(listOf(x, y, z, w))
-            // Color (computed in shader)
-            vertices.addAll(listOf(1f, 1f, 1f, 1f))
+
+            vertices[i * 8 + 0] = x
+            vertices[i * 8 + 1] = y
+            vertices[i * 8 + 2] = z
+            vertices[i * 8 + 3] = w
+            vertices[i * 8 + 4] = 1f
+            vertices[i * 8 + 5] = 1f
+            vertices[i * 8 + 6] = 1f
+            vertices[i * 8 + 7] = 1f
         }
 
-        // 32 edges
-        val indices = mutableListOf<Short>()
+        val indexList = mutableListOf<Short>()
         for (i in 0 until 16) {
             for (bit in 0 until 4) {
                 val j = i xor (1 shl bit)
                 if (j > i) {
-                    indices.add(i.toShort())
-                    indices.add(j.toShort())
+                    indexList.add(i.toShort())
+                    indexList.add(j.toShort())
                 }
             }
         }
+        indexCount = indexList.size
 
-        vertexBuffer = ByteBuffer.allocateDirect(vertices.size * 4)
-            .order(ByteOrder.nativeOrder())
-            .asFloatBuffer()
-            .put(vertices.toFloatArray())
-        vertexBuffer?.position(0)
+        val bb = ByteBuffer.allocateDirect(vertices.size * 4)
+        bb.order(ByteOrder.nativeOrder())
+        vertexBuffer = bb.asFloatBuffer().apply {
+            put(vertices)
+            position(0)
+        }
 
-        indexBuffer = ByteBuffer.allocateDirect(indices.size * 2)
-            .order(ByteOrder.nativeOrder())
-            .asShortBuffer()
-            .put(indices.toShortArray())
-        indexBuffer?.position(0)
+        val ib = ByteBuffer.allocateDirect(indexList.size * 2)
+        ib.order(ByteOrder.nativeOrder())
+        indexBuffer = ib.asShortBuffer().apply {
+            put(indexList.toShortArray())
+            position(0)
+        }
     }
 
     fun setSystem(system: String) {
         currentSystem = system
-        generateGeometry()
+        glHandler?.post {
+            synchronized(glLock) {
+                generateGeometry()
+            }
+        }
     }
 
     fun setGeometry(index: Int) {
         currentGeometry = index
-        generateGeometry()
+        glHandler?.post {
+            synchronized(glLock) {
+                generateGeometry()
+            }
+        }
     }
 
     fun setGridDensity(density: Int) {
         gridDensity = density
-        generateGeometry()
     }
 
     fun rotate(plane: String, angle: Float) {
-        when (plane.lowercase()) {
-            "xy" -> rotation[0] = angle
-            "xz" -> rotation[1] = angle
-            "yz" -> rotation[2] = angle
-            "xw" -> rotation[3] = angle
-            "yw" -> rotation[4] = angle
-            "zw" -> rotation[5] = angle
+        synchronized(glLock) {
+            when (plane.lowercase()) {
+                "xy" -> rotation[0] = angle
+                "xz" -> rotation[1] = angle
+                "yz" -> rotation[2] = angle
+                "xw" -> rotation[3] = angle
+                "yw" -> rotation[4] = angle
+                "zw" -> rotation[5] = angle
+            }
         }
     }
 
     fun setRotation(xy: Float, xz: Float, yz: Float, xw: Float, yw: Float, zw: Float) {
-        rotation[0] = xy
-        rotation[1] = xz
-        rotation[2] = yz
-        rotation[3] = xw
-        rotation[4] = yw
-        rotation[5] = zw
+        synchronized(glLock) {
+            rotation[0] = xy
+            rotation[1] = xz
+            rotation[2] = yz
+            rotation[3] = xw
+            rotation[4] = yw
+            rotation[5] = zw
+        }
     }
 
     fun resetRotation() {
-        rotation.fill(0f)
+        synchronized(glLock) {
+            rotation.fill(0f)
+        }
     }
 
     fun setVisualParam(name: String, value: Float) {
-        visualParams[name] = value
+        synchronized(glLock) {
+            visualParams[name] = value
+        }
+    }
+
+    private val frameCallback = object : Choreographer.FrameCallback {
+        override fun doFrame(frameTimeNanos: Long) {
+            if (!isRendering) return
+            glHandler?.post {
+                synchronized(glLock) {
+                    render()
+                }
+            }
+            Choreographer.getInstance().postFrameCallback(this)
+        }
     }
 
     fun startRendering() {
         if (isRendering) return
         isRendering = true
-
-        renderThread = Thread {
-            while (isRendering) {
-                render()
-                Thread.sleep(16) // ~60 FPS
-            }
-        }
-        renderThread?.start()
+        startTime = System.nanoTime()
+        Choreographer.getInstance().postFrameCallback(frameCallback)
     }
 
     fun stopRendering() {
         isRendering = false
-        renderThread?.join()
-        renderThread = null
+        Choreographer.getInstance().removeFrameCallback(frameCallback)
     }
 
     private fun render() {
+        if (eglDisplay == null || eglContext == null) return
+
         EGL14.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext)
 
-        GLES30.glViewport(0, 0, width, height)
-        GLES30.glClearColor(0f, 0f, 0.1f, 1f)
-        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT or GLES30.GL_DEPTH_BUFFER_BIT)
-        GLES30.glEnable(GLES30.GL_DEPTH_TEST)
+        GLES20.glViewport(0, 0, textureSize, textureSize)
+        GLES20.glClearColor(0f, 0f, 0.1f, 1f)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST)
 
-        GLES30.glUseProgram(program)
+        GLES20.glUseProgram(program)
 
-        // Set uniforms
-        val rotationLoc = GLES30.glGetUniformLocation(program, "uRotation")
-        GLES30.glUniform1fv(rotationLoc, 6, rotation, 0)
+        val rotLoc = GLES20.glGetUniformLocation(program, "uRotation")
+        GLES20.glUniform1fv(rotLoc, 6, rotation, 0)
 
-        val projDistLoc = GLES30.glGetUniformLocation(program, "uProjectionDistance")
-        GLES30.glUniform1f(projDistLoc, 2.0f)
+        val projDistLoc = GLES20.glGetUniformLocation(program, "uProjDist")
+        GLES20.glUniform1f(projDistLoc, visualParams["dimension"] ?: 3.5f)
 
-        val hueLoc = GLES30.glGetUniformLocation(program, "uHue")
-        GLES30.glUniform1f(hueLoc, visualParams["hue"] ?: 200f)
+        val hueLoc = GLES20.glGetUniformLocation(program, "uHue")
+        GLES20.glUniform1f(hueLoc, visualParams["hue"] ?: 200f)
 
-        val satLoc = GLES30.glGetUniformLocation(program, "uSaturation")
-        GLES30.glUniform1f(satLoc, visualParams["saturation"] ?: 0.7f)
+        val intLoc = GLES20.glGetUniformLocation(program, "uIntensity")
+        GLES20.glUniform1f(intLoc, visualParams["intensity"] ?: 0.8f)
 
-        val intLoc = GLES30.glGetUniformLocation(program, "uIntensity")
-        GLES30.glUniform1f(intLoc, visualParams["intensity"] ?: 0.8f)
+        val satLoc = GLES20.glGetUniformLocation(program, "uSaturation")
+        GLES20.glUniform1f(satLoc, visualParams["saturation"] ?: 0.7f)
 
-        // Set projection matrix (perspective)
-        val projection = FloatArray(16)
-        Matrix.perspectiveM(projection, 0, 45f, width.toFloat() / height, 0.1f, 100f)
-        val projLoc = GLES30.glGetUniformLocation(program, "uProjection")
-        GLES30.glUniformMatrix4fv(projLoc, 1, false, projection, 0)
+        val projMatrix = FloatArray(16)
+        android.opengl.Matrix.perspectiveM(projMatrix, 0, 45f, 1f, 0.1f, 100f)
+        val projLoc = GLES20.glGetUniformLocation(program, "uProjection")
+        GLES20.glUniformMatrix4fv(projLoc, 1, false, projMatrix, 0)
 
-        // Set view matrix
-        val view = FloatArray(16)
-        Matrix.setLookAtM(view, 0, 0f, 0f, 5f, 0f, 0f, 0f, 0f, 1f, 0f)
-        val viewLoc = GLES30.glGetUniformLocation(program, "uView")
-        GLES30.glUniformMatrix4fv(viewLoc, 1, false, view, 0)
+        val viewMatrix = FloatArray(16)
+        android.opengl.Matrix.setIdentityM(viewMatrix, 0)
+        android.opengl.Matrix.translateM(viewMatrix, 0, 0f, 0f, -5f)
+        val viewLoc = GLES20.glGetUniformLocation(program, "uView")
+        GLES20.glUniformMatrix4fv(viewLoc, 1, false, viewMatrix, 0)
 
-        // Draw geometry
-        vertexBuffer?.let { vb ->
-            val posLoc = GLES30.glGetAttribLocation(program, "aPosition")
-            GLES30.glEnableVertexAttribArray(posLoc)
-            vb.position(0)
-            GLES30.glVertexAttribPointer(posLoc, 4, GLES30.GL_FLOAT, false, 32, vb)
+        val posLoc = GLES20.glGetAttribLocation(program, "aPosition")
+        val colLoc = GLES20.glGetAttribLocation(program, "aColor")
 
-            val colLoc = GLES30.glGetAttribLocation(program, "aColor")
-            GLES30.glEnableVertexAttribArray(colLoc)
-            vb.position(4)
-            GLES30.glVertexAttribPointer(colLoc, 4, GLES30.GL_FLOAT, false, 32, vb)
+        vertexBuffer?.position(0)
+        GLES20.glVertexAttribPointer(posLoc, 4, GLES20.GL_FLOAT, false, 32, vertexBuffer)
+        GLES20.glEnableVertexAttribArray(posLoc)
 
-            indexBuffer?.let { ib ->
-                GLES30.glDrawElements(GLES30.GL_LINES, 64, GLES30.GL_UNSIGNED_SHORT, ib)
-            }
+        vertexBuffer?.position(4)
+        GLES20.glVertexAttribPointer(colLoc, 4, GLES20.GL_FLOAT, false, 32, vertexBuffer)
+        GLES20.glEnableVertexAttribArray(colLoc)
 
-            GLES30.glDisableVertexAttribArray(posLoc)
-            GLES30.glDisableVertexAttribArray(colLoc)
-        }
+        GLES20.glDrawElements(GLES20.GL_LINES, indexCount, GLES20.GL_UNSIGNED_SHORT, indexBuffer)
+
+        GLES20.glDisableVertexAttribArray(posLoc)
+        GLES20.glDisableVertexAttribArray(colLoc)
 
         EGL14.eglSwapBuffers(eglDisplay, eglSurface)
     }
 
-    fun captureFrame(): ByteArray? {
-        val buffer = ByteBuffer.allocateDirect(width * height * 4)
-        buffer.order(ByteOrder.nativeOrder())
-
-        EGL14.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext)
-        GLES30.glReadPixels(0, 0, width, height, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, buffer)
-
-        return buffer.array()
-    }
-
     fun dispose() {
         stopRendering()
-
-        if (eglDisplay != EGL14.EGL_NO_DISPLAY) {
-            EGL14.eglMakeCurrent(eglDisplay, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT)
-            EGL14.eglDestroySurface(eglDisplay, eglSurface)
-            EGL14.eglDestroyContext(eglDisplay, eglContext)
-            EGL14.eglTerminate(eglDisplay)
+        glHandler?.post {
+            synchronized(glLock) {
+                if (program != 0) {
+                    GLES20.glDeleteProgram(program)
+                    program = 0
+                }
+                if (eglDisplay != null) {
+                    EGL14.eglMakeCurrent(eglDisplay, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT)
+                    EGL14.eglDestroySurface(eglDisplay, eglSurface)
+                    EGL14.eglDestroyContext(eglDisplay, eglContext)
+                    EGL14.eglTerminate(eglDisplay)
+                    eglDisplay = null
+                    eglContext = null
+                    eglSurface = null
+                }
+            }
+            glThread?.quitSafely()
         }
-
-        surface?.release()
-        eglDisplay = EGL14.EGL_NO_DISPLAY
-        eglContext = EGL14.EGL_NO_CONTEXT
-        eglSurface = EGL14.EGL_NO_SURFACE
     }
 }

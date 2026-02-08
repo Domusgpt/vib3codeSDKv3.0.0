@@ -1,6 +1,6 @@
 name: vib3_flutter
 description: VIB3+ 4D Visualization Engine for Flutter - High-performance 4D geometry rendering with native FFI.
-version: 1.7.0
+version: 2.0.1
 homepage: https://github.com/Domusgpt/vib34d-xr-quaternion-sdk
 
 environment:
@@ -17,7 +17,6 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
-  ffigen: ^9.0.0
 
 flutter:
   plugin:
@@ -39,14 +38,3 @@ flutter:
         pluginClass: Vib3FlutterPluginCApi
         ffiPlugin: true
 
-# FFI code generation config
-ffigen:
-  name: Vib3NativeBindings
-  description: Generated bindings for VIB3 native library
-  output: lib/src/ffi/vib3_bindings_generated.dart
-  headers:
-    entry-points:
-      - '../cpp/include/vib3_ffi.h'
-  preamble: |
-    // Auto-generated FFI bindings for VIB3 native library.
-    // Do not edit manually.

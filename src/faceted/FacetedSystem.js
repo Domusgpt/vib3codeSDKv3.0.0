@@ -585,6 +585,21 @@ export class FacetedSystem {
         if (layer) layer.style.display = active ? 'block' : 'none';
     }
 
+    // RendererContract compliance: init / resize / dispose
+    init(context) {
+        return this.initialize();
+    }
+
+    resize(width, height, pixelRatio = 1) {
+        if (this.bridge && this.bridge.resize) {
+            this.bridge.resize(width, height, pixelRatio);
+        }
+    }
+
+    dispose() {
+        this.destroy();
+    }
+
     destroy() {
         if (this.bridge) {
             this.bridge.dispose();

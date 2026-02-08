@@ -4,6 +4,7 @@
 library vib3_view;
 
 import 'package:flutter/material.dart';
+import '../ffi/vib3_ffi.dart' show RotationPlane;
 import '../vib3_engine.dart';
 
 /// Widget that displays VIB3 visualization

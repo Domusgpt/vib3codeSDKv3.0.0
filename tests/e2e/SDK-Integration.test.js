@@ -289,7 +289,7 @@ describe('VIB3+ SDK E2E Integration', () => {
             const exported = params.exportConfiguration();
 
             expect(exported.type).toBe('vib34d-integrated-config');
-            expect(exported.version).toBe('1.0.0');
+            expect(exported.version).toBe('2.0.2');
             expect(exported.parameters.rot4dXY).toBeCloseTo(1.0, 2);
             expect(exported.parameters.rot4dXZ).toBeCloseTo(2.0, 2);
             expect(exported.parameters.rot4dYZ).toBeCloseTo(3.0, 2);
