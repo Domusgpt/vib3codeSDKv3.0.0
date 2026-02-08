@@ -70,6 +70,8 @@ function acquirePlayground() {
     if (errEl) errEl.style.display = 'flex';
   } else {
     if (errEl) errEl.style.display = 'none';
+    // Always sync slider values — covers scroll-triggered re-acquire
+    adapter.setParams(readSliderValues());
   }
   return adapter;
 }
@@ -92,7 +94,7 @@ function readSliderValues() {
   const params = {};
   const sliderParams = [
     'hue', 'gridDensity', 'speed', 'chaos',
-    'morphFactor', 'intensity', 'dimension',
+    'morphFactor', 'intensity', 'dimension', 'saturation',
     'rot4dXW', 'rot4dYW', 'rot4dZW',
     'rot4dXY', 'rot4dXZ', 'rot4dYZ',
   ];
@@ -193,7 +195,7 @@ function initTiltSystem() {
 function initPlayground() {
   const sliderParams = [
     'hue', 'gridDensity', 'speed', 'chaos',
-    'morphFactor', 'intensity', 'dimension',
+    'morphFactor', 'intensity', 'dimension', 'saturation',
     'rot4dXW', 'rot4dYW', 'rot4dZW',
     'rot4dXY', 'rot4dXZ', 'rot4dYZ',
   ];
@@ -233,6 +235,57 @@ function initPlayground() {
         b.classList.toggle('active', parseInt(b.dataset.pgSystem) === idx)
       );
     });
+  });
+
+  // ── Randomize + Reset ──
+  const sliderRanges = {
+    hue: [0, 360], gridDensity: [4, 80], speed: [0.1, 3], chaos: [0, 1],
+    morphFactor: [0, 2], intensity: [0.2, 1], dimension: [3.0, 4.5],
+    saturation: [0, 1],
+    rot4dXW: [0, 6.28], rot4dYW: [0, 6.28], rot4dZW: [0, 6.28],
+    rot4dXY: [0, 6.28], rot4dXZ: [0, 6.28], rot4dYZ: [0, 6.28],
+  };
+  const defaultSliders = {
+    hue: 200, gridDensity: 24, speed: 1.0, chaos: 0.2,
+    morphFactor: 0.5, intensity: 0.7, dimension: 3.5, saturation: 0.8,
+    rot4dXW: 0, rot4dYW: 0, rot4dZW: 0, rot4dXY: 0, rot4dXZ: 0, rot4dYZ: 0,
+  };
+
+  function setAllSliders(values) {
+    for (const [param, v] of Object.entries(values)) {
+      const input = document.getElementById(`ctrl-${param}`);
+      const valEl = document.getElementById(`val-${param}`);
+      if (input) { input.value = v; }
+      if (valEl) { valEl.textContent = Number.isInteger(v) ? v : v.toFixed(2); }
+    }
+    const pg = getPlayground();
+    if (pg) pg.setParams(values);
+  }
+
+  document.getElementById('btnRandomize')?.addEventListener('click', () => {
+    const randomized = {};
+    for (const [param, [lo, hi]] of Object.entries(sliderRanges)) {
+      randomized[param] = lo + Math.random() * (hi - lo);
+      if (param === 'hue' || param === 'gridDensity') randomized[param] = Math.round(randomized[param]);
+    }
+    // Random geometry too
+    const geo = Math.floor(Math.random() * 24);
+    randomized.geometry = geo;
+    const geoSelect = document.getElementById('ctrl-geometry');
+    const geoVal = document.getElementById('val-geometry');
+    if (geoSelect) geoSelect.value = geo;
+    if (geoVal) geoVal.textContent = geo;
+    setAllSliders(randomized);
+  });
+
+  document.getElementById('btnReset')?.addEventListener('click', () => {
+    setAllSliders(defaultSliders);
+    const geoSelect = document.getElementById('ctrl-geometry');
+    const geoVal = document.getElementById('val-geometry');
+    if (geoSelect) geoSelect.value = 3;
+    if (geoVal) geoVal.textContent = '3';
+    const pg = getPlayground();
+    if (pg) pg.setParam('geometry', 3);
   });
 
   // Scroll-triggered GPU lifecycle

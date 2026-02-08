@@ -361,6 +361,28 @@
             text-align: center; padding: 24px;
         }
 
+        /* ─── Playground Action Buttons ─── */
+        .ctrl-actions {
+            display: flex; gap: 8px; margin: 8px 0;
+        }
+        .ctrl-action-btn {
+            flex: 1; padding: 8px 12px; border: 1px solid var(--accent);
+            background: rgba(0,240,255,0.06); color: var(--accent);
+            border-radius: 8px; font-size: 12px; font-weight: 600;
+            letter-spacing: 1px; text-transform: uppercase;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .ctrl-action-btn:hover {
+            background: rgba(0,240,255,0.15); box-shadow: 0 0 12px rgba(0,240,255,0.15);
+        }
+        .ctrl-action-secondary {
+            border-color: rgba(255,255,255,0.15); color: var(--text-muted);
+            background: rgba(255,255,255,0.03);
+        }
+        .ctrl-action-secondary:hover {
+            background: rgba(255,255,255,0.08); color: var(--text);
+        }
+
         /* ─── Rotation Group Visual Separator ─── */
         .ctrl-section-label {
             font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
@@ -1319,12 +1341,22 @@
                         <input type="range" id="ctrl-intensity" min="0" max="1" value="0.7" step="0.01">
                     </div>
                 </div>
-                <div class="ctrl-group">
-                    <label><span>Dimension (4D dist)</span><span class="ctrl-val" id="val-dimension">3.5</span></label>
-                    <input type="range" id="ctrl-dimension" min="3.0" max="4.5" value="3.5" step="0.01">
+                <div class="ctrl-row">
+                    <div class="ctrl-group">
+                        <label><span>Dimension (4D)</span><span class="ctrl-val" id="val-dimension">3.5</span></label>
+                        <input type="range" id="ctrl-dimension" min="3.0" max="4.5" value="3.5" step="0.01">
+                    </div>
+                    <div class="ctrl-group">
+                        <label><span>Saturation</span><span class="ctrl-val" id="val-saturation">0.80</span></label>
+                        <input type="range" id="ctrl-saturation" min="0" max="1" value="0.8" step="0.01">
+                    </div>
+                </div>
+                <div class="ctrl-actions">
+                    <button class="ctrl-action-btn" id="btnRandomize" title="Randomize all parameters">Randomize</button>
+                    <button class="ctrl-action-btn ctrl-action-secondary" id="btnReset" title="Reset to defaults">Reset</button>
                 </div>
 
-                <!-- 3D ROTATION (XY, XZ, YZ) — PREVIOUSLY MISSING -->
+                <!-- 3D ROTATION (XY, XZ, YZ) -->
                 <div class="ctrl-section-label">3D Rotation Planes</div>
                 <div class="ctrl-row-3">
                     <div class="ctrl-group">
