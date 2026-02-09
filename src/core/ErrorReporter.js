@@ -86,7 +86,7 @@ export class ErrorReporter {
             timestamp: Date.now(),
             url: typeof location !== 'undefined' ? location.pathname : '',
             userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
-            sdkVersion: '2.0.1',
+            sdkVersion: '2.0.3',
         };
 
         // Custom callback takes priority

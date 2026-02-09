@@ -361,6 +361,28 @@
             text-align: center; padding: 24px;
         }
 
+        /* ─── Playground Action Buttons ─── */
+        .ctrl-actions {
+            display: flex; gap: 8px; margin: 8px 0;
+        }
+        .ctrl-action-btn {
+            flex: 1; padding: 8px 12px; border: 1px solid var(--accent);
+            background: rgba(0,240,255,0.06); color: var(--accent);
+            border-radius: 8px; font-size: 12px; font-weight: 600;
+            letter-spacing: 1px; text-transform: uppercase;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .ctrl-action-btn:hover {
+            background: rgba(0,240,255,0.15); box-shadow: 0 0 12px rgba(0,240,255,0.15);
+        }
+        .ctrl-action-secondary {
+            border-color: rgba(255,255,255,0.15); color: var(--text-muted);
+            background: rgba(255,255,255,0.03);
+        }
+        .ctrl-action-secondary:hover {
+            background: rgba(255,255,255,0.08); color: var(--text);
+        }
+
         /* ─── Rotation Group Visual Separator ─── */
         .ctrl-section-label {
             font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
@@ -377,30 +399,42 @@
             overflow: hidden;
         }
         .triptych-inner {
-            display: flex; gap: 0;
-            min-height: 200vh;
             position: relative;
+            min-height: 200vh;
+            width: 100%;
         }
         .triptych-col {
-            flex: 1; position: relative;
-            will-change: transform;
+            position: absolute; top: 0; bottom: 0;
+            will-change: transform, clip-path;
         }
         .triptych-viz-col {
             overflow: hidden;
         }
+        /* Default: all 3 columns overlay the full width, clip-path carves visible area */
+        .triptych-col:nth-child(1) { left: 0; right: 0; z-index: 1; clip-path: inset(0 66% 0 0); }
+        .triptych-col:nth-child(2) { left: 0; right: 0; z-index: 2; clip-path: inset(0 33% 0 33%); }
+        .triptych-col:nth-child(3) { left: 0; right: 0; z-index: 1; clip-path: inset(0 0 0 66%); }
         .triptych-canvas-wrap {
             position: sticky; top: 0;
             width: 100%; height: 100vh;
             border-radius: 0;
         }
         .triptych-center-col {
-            display: flex; align-items: center; justify-content: center;
+            display: block;
             min-height: 200vh;
+            overflow: hidden;
+        }
+        .triptych-center-canvas {
+            margin-bottom: -100vh;
+            opacity: 0.55;
+            z-index: 0;
         }
         .triptych-content {
             position: sticky; top: 50%; transform: translateY(-50%);
             padding: 48px 32px;
             text-align: center;
+            z-index: 2;
+            text-shadow: 0 2px 16px rgba(0,0,0,0.7);
         }
         .triptych-title {
             font-size: clamp(22px, 3.5vw, 40px); font-weight: 900;
@@ -437,12 +471,14 @@
             white-space: nowrap;
         }
         .triptych-divider {
-            position: absolute; top: 0; width: 1px; height: 100%;
-            background: linear-gradient(180deg, transparent, rgba(255,255,255,0.06), transparent);
-            z-index: 5;
+            position: absolute; top: 0; width: 2px; height: 100%;
+            background: linear-gradient(180deg, transparent 5%, rgba(0,240,255,0.15) 30%, rgba(168,85,247,0.2) 50%, rgba(244,63,94,0.15) 70%, transparent 95%);
+            z-index: 10;
+            filter: blur(0.5px);
+            transition: left 0.15s ease-out;
         }
-        .triptych-divider.left { left: 33.33%; }
-        .triptych-divider.right { left: 66.66%; }
+        .triptych-divider.left { left: var(--tri-split-left, 34%); }
+        .triptych-divider.right { left: var(--tri-split-right, 66%); }
 
         /* ═══════════════════════════════════════════
            SECTION 5: CASCADE — Morphing Cards
@@ -655,7 +691,7 @@
             align-items: center; justify-content: center;
             padding: 80px 24px;
         }
-        .cta-bg { position: absolute; inset: 0; z-index: 0; opacity: 0.25; }
+        .cta-bg { position: absolute; inset: 0; z-index: 0; opacity: 0.6; }
         .cta-content { position: relative; z-index: 5; text-align: center; }
         .cta-content h2 {
             font-size: clamp(28px, 5vw, 56px); font-weight: 900; color: #fff;
@@ -964,11 +1000,122 @@
         }
 
         /* ═══════════════════════════════════════════
+           SECTION TRANSITION VEILS
+           Morphing overlay cards that mask canvas handoffs
+           Acts as "stage misdirection" during system swaps
+           ═══════════════════════════════════════════ */
+        .section-veil {
+            position: fixed; inset: 0;
+            z-index: 60; pointer-events: none;
+            opacity: 0;
+            display: flex; align-items: center; justify-content: center;
+            will-change: opacity;
+        }
+        .section-veil-bg {
+            position: absolute; inset: 0;
+            background: radial-gradient(ellipse at 50% 50%,
+                rgba(8, 8, 18, 0.97) 0%,
+                rgba(8, 8, 18, 0.85) 35%,
+                rgba(8, 8, 18, 0.4) 60%,
+                transparent 80%);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .section-veil-card {
+            position: relative;
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg,
+                rgba(0, 240, 255, 0.08),
+                rgba(168, 85, 247, 0.08));
+            border: 1px solid rgba(255,255,255,0.04);
+            box-shadow: 0 0 40px rgba(0,240,255,0.06),
+                        inset 0 0 30px rgba(168,85,247,0.04);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            will-change: transform, width, height, border-radius;
+        }
+        .section-veil-card::after {
+            content: '';
+            position: absolute; inset: -2px;
+            border-radius: inherit;
+            background: conic-gradient(from var(--veil-angle, 0deg),
+                transparent 0%,
+                rgba(0, 240, 255, 0.15) 25%,
+                transparent 50%,
+                rgba(168, 85, 247, 0.15) 75%,
+                transparent 100%);
+            opacity: 0.5;
+            animation: veilSpin 4s linear infinite;
+        }
+        @keyframes veilSpin {
+            to { --veil-angle: 360deg; }
+        }
+        @property --veil-angle {
+            syntax: '<angle>';
+            initial-value: 0deg;
+            inherits: false;
+        }
+
+        /* ═══════════════════════════════════════════
            SCROLL-DRIVEN COLOR THEME
            Root hue shifts with page scroll
            ═══════════════════════════════════════════ */
         :root {
             --scroll-hue: 210;
+        }
+
+        /* ═══════════════════════════════════════════
+           SCROLL VELOCITY BURST
+           Global glow pulse on fast scroll
+           ═══════════════════════════════════════════ */
+        :root {
+            --burst-intensity: 0;
+            --crescendo-vignette: 0;
+            --silence-blackout: 0;
+        }
+
+        /* Burst: ambient glow spikes when scrolling fast */
+        .ambient-bg {
+            transition: filter 0.3s ease-out;
+        }
+
+        /* Crescendo vignette: dark edges close in before the CTA silence */
+        body::after {
+            content: '';
+            position: fixed; inset: 0;
+            z-index: 55; pointer-events: none;
+            background: radial-gradient(ellipse at center,
+                transparent 50%,
+                rgba(0,0,0, var(--crescendo-vignette)) 100%);
+            opacity: 1;
+            transition: none;
+        }
+
+        /* Silence blackout: full dark screen before CTA */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            z-index: 56; pointer-events: none;
+            background: var(--bg);
+            opacity: var(--silence-blackout);
+            transition: opacity 0.15s ease-out;
+        }
+
+        /* ═══════════════════════════════════════════
+           QUATERNION-DRIVEN CSS PROPERTIES
+           Set by JS from 4D rotation state, consumed by CSS
+           ═══════════════════════════════════════════ */
+        :root {
+            --q-xw: 0;
+            --q-yw: 0;
+            --q-zw: 0;
+            --q-intensity: 0;
+        }
+
+        /* Divider SVG glow (during portal transitions) */
+        .section-divider svg {
+            transition: filter 0.2s ease-out;
         }
 
         /* ─── Reduced Motion ─── */
@@ -980,6 +1127,24 @@
             }
         }
 
+        /* ─── Clip-path split-screen for triptych columns ─── */
+        .triptych-col {
+            transition: clip-path 0.1s ease-out;
+        }
+
+        /* ─── Global mouse-reactive glow overlay ─── */
+        .mouse-glow-overlay {
+            position: fixed; inset: 0; z-index: 9997;
+            pointer-events: none;
+            background: radial-gradient(
+                circle 600px at var(--mouse-x, 50%) var(--mouse-y, 50%),
+                rgba(0,240,255,0.03) 0%,
+                transparent 100%
+            );
+            opacity: var(--mouse-active, 0);
+            transition: opacity 0.3s ease-out;
+        }
+
         /* ─── Mobile ─── */
         @media (max-width: 768px) {
             .morph-dots { display: none; }
@@ -987,18 +1152,27 @@
             .morph-voice { padding: 8px 14px; }
             .playground-layout { grid-template-columns: 1fr; }
             .playground-canvas { min-height: 280px; }
-            .triptych-inner { flex-direction: column; }
-            .triptych-canvas-wrap { height: 50vh; }
-            .triptych-center-col { min-height: auto; padding: 60px 0; }
-            .triptych-content { position: static; transform: none; }
+            .triptych { min-height: 300vh; }
+            .triptych-inner { min-height: 300vh; }
+            /* Mobile: stack columns vertically instead of overlapping */
+            .triptych-col {
+                position: relative !important; clip-path: none !important;
+                width: 100%; min-height: 100vh;
+            }
+            .triptych-canvas-wrap { height: 100vh; }
+            .triptych-center-col { min-height: 100vh; padding: 0; }
+            .triptych-center-canvas { margin-bottom: -100vh; height: 100vh; }
+            .triptych-content { position: sticky; top: 50%; transform: translateY(-50%); }
             .triptych-divider { display: none; }
             .cascade-track { gap: 20px; }
+            .cascade-card { width: min(340px, 85vw); height: 520px; }
             .agent-grid { grid-template-columns: 1fr 1fr; }
         }
         @media (max-width: 480px) {
             .agent-grid { grid-template-columns: 1fr; }
             .ctrl-row-3 { grid-template-columns: 1fr; }
             .triptych-stats { flex-direction: column; gap: 16px; }
+            .cascade-card { width: 90vw; height: 480px; }
         }
     </style>
 </head>
@@ -1012,7 +1186,14 @@
         <rect width="100%" height="100%" filter="url(#noiseFilter)"/>
     </svg>
 
+    <div class="mouse-glow-overlay" id="mouseGlow" aria-hidden="true"></div>
     <div class="scroll-progress" id="scrollProgress"></div>
+
+    <!-- ─── Section Transition Veil (reusable fixed overlay) ─── -->
+    <div class="section-veil" id="sectionVeil">
+        <div class="section-veil-bg"></div>
+        <div class="section-veil-card" id="veilCard"></div>
+    </div>
 
     <!-- ═══════════════════════════════════════════════════
          OPENING CINEMATIC — 800vh Scroll-Locked
@@ -1098,9 +1279,10 @@
     </section>
 
     <!-- ─── Divider: Hero → Morph ─── -->
-    <div class="section-divider">
-        <svg viewBox="0 0 1440 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0,0 C480,80 960,80 1440,0 L1440,80 L0,80 Z" fill="var(--bg)"/>
+    <div class="section-divider divider-tall" id="divider-hero-morph">
+        <svg viewBox="0 0 1440 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,0 C360,100 720,100 1080,40 L1440,80 L1440,120 L0,120 Z" fill="var(--bg)" opacity="0.7"/>
+            <path d="M0,0 C480,80 960,80 1440,0 L1440,120 L0,120 Z" fill="var(--bg)"/>
         </svg>
     </div>
 
@@ -1163,10 +1345,10 @@
     </section>
 
     <!-- ─── Divider: Morph → Playground ─── -->
-    <div class="section-divider divider-short">
-        <svg viewBox="0 0 1440 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0,0 L480,50 L960,10 L1440,50 L1440,60 L0,60 Z" fill="var(--bg)" opacity="0.8"/>
-            <path d="M0,30 Q240,60 480,30 Q720,0 960,30 Q1200,60 1440,30 L1440,60 L0,60 Z" fill="var(--bg)"/>
+    <div class="section-divider divider-tall" id="divider-morph-playground">
+        <svg viewBox="0 0 1440 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,0 L480,100 L960,20 L1440,100 L1440,120 L0,120 Z" fill="var(--bg)" opacity="0.7"/>
+            <path d="M0,60 Q360,120 720,50 Q1080,-10 1440,60 L1440,120 L0,120 Z" fill="var(--bg)"/>
         </svg>
     </div>
 
@@ -1254,12 +1436,22 @@
                         <input type="range" id="ctrl-intensity" min="0" max="1" value="0.7" step="0.01">
                     </div>
                 </div>
-                <div class="ctrl-group">
-                    <label><span>Dimension (4D dist)</span><span class="ctrl-val" id="val-dimension">3.5</span></label>
-                    <input type="range" id="ctrl-dimension" min="3.0" max="4.5" value="3.5" step="0.01">
+                <div class="ctrl-row">
+                    <div class="ctrl-group">
+                        <label><span>Dimension (4D)</span><span class="ctrl-val" id="val-dimension">3.5</span></label>
+                        <input type="range" id="ctrl-dimension" min="3.0" max="4.5" value="3.5" step="0.01">
+                    </div>
+                    <div class="ctrl-group">
+                        <label><span>Saturation</span><span class="ctrl-val" id="val-saturation">0.80</span></label>
+                        <input type="range" id="ctrl-saturation" min="0" max="1" value="0.8" step="0.01">
+                    </div>
+                </div>
+                <div class="ctrl-actions">
+                    <button class="ctrl-action-btn" id="btnRandomize" title="Randomize all parameters">Randomize</button>
+                    <button class="ctrl-action-btn ctrl-action-secondary" id="btnReset" title="Reset to defaults">Reset</button>
                 </div>
 
-                <!-- 3D ROTATION (XY, XZ, YZ) — PREVIOUSLY MISSING -->
+                <!-- 3D ROTATION (XY, XZ, YZ) -->
                 <div class="ctrl-section-label">3D Rotation Planes</div>
                 <div class="ctrl-row-3">
                     <div class="ctrl-group">
@@ -1297,16 +1489,16 @@
     </section>
 
     <!-- ─── Divider: Playground → Triptych ─── -->
-    <div class="section-divider divider-tall">
+    <div class="section-divider divider-tall" id="divider-playground-triptych">
         <svg viewBox="0 0 1440 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M0,100 C200,40 400,80 600,30 C800,-10 1000,60 1200,20 C1350,-5 1440,40 1440,100 Z" fill="var(--bg)"/>
         </svg>
     </div>
 
     <!-- ═══════════════════════════════════════════════════
-         SECTION 4: PARALLAX TRIPTYCH
-         3 columns with independent parallax rates
-         Left + right: Canvas2D visualizers, center: content
+         SECTION 4: PARALLAX TRIPTYCH — 3-System Coordinated Showcase
+         Left: Quantum GPU, Center: Holographic GPU (behind text),
+         Right: Faceted GPU — cross-system coordination + convergence
          ═══════════════════════════════════════════════════ -->
     <section class="triptych" id="triptychSection">
         <div class="triptych-divider left"></div>
@@ -1321,9 +1513,12 @@
                 </div>
             </div>
             <div class="triptych-col triptych-center-col" id="triptychCenter">
+                <div class="canvas-wrap triptych-canvas-wrap triptych-center-canvas">
+                    <canvas class="vib3-canvas" id="tri-center-canvas"></canvas>
+                </div>
                 <div class="triptych-content">
                     <h2 class="triptych-title section-reveal" data-animate>Three Systems.<br>One Heartbeat.</h2>
-                    <p class="triptych-desc section-reveal" data-animate>Each column renders independently &mdash; unique geometries, unique parameters, unique behavior. Watch them shift as you scroll.</p>
+                    <p class="triptych-desc section-reveal" data-animate>Quantum, Holographic, and Faceted render simultaneously &mdash; sharing rhythm, trading energy, converging at the midpoint.</p>
                     <div class="triptych-stats section-reveal" data-animate>
                         <div class="triptych-stat">
                             <span class="stat-number">24</span>
@@ -1338,6 +1533,9 @@
                             <span class="stat-label">Systems</span>
                         </div>
                     </div>
+                </div>
+                <div class="triptych-tag-wrap">
+                    <span class="triptych-tag sys-holographic">Holographic Engine</span>
                 </div>
             </div>
             <div class="triptych-col triptych-viz-col" id="triptychRight">
@@ -1360,46 +1558,54 @@
 
     <!-- ═══════════════════════════════════════════════════
          SECTION 5: GEOMETRY CASCADE — Morphing Cards
-         Cards scale up/down on scroll, glow leaks beyond borders
-         Density drops as cards expand; speed/chaos sync with events
+         Dual GPU background (Q+H split-screen) + Canvas2D card faces
          ═══════════════════════════════════════════════════ -->
     <section class="cascade" id="cascadeSection">
         <div class="cascade-pinned" id="cascadePinned">
+            <!-- Dual GPU background: Quantum left, Holographic right -->
+            <div class="cascade-gpu-bg" id="cascadeGpuBg" style="position:absolute;inset:0;z-index:0;overflow:hidden;">
+                <div class="canvas-wrap" style="position:absolute;inset:0;clip-path:inset(0 50% 0 0);" id="cascadeGpuLeft">
+                    <canvas class="vib3-canvas" id="cascade-gpu-left"></canvas>
+                </div>
+                <div class="canvas-wrap" style="position:absolute;inset:0;clip-path:inset(0 0 0 50%);" id="cascadeGpuRight">
+                    <canvas class="vib3-canvas" id="cascade-gpu-right"></canvas>
+                </div>
+            </div>
             <div class="cascade-header section-reveal" data-animate>
                 <h2>Geometry Cascade</h2>
-                <p>24 geometry variants across three rendering systems</p>
+                <p>24 geometry variants across three core types</p>
             </div>
             <div class="cascade-track" id="cascadeTrack">
-                <div class="cascade-card tilt-card tilt-holo" data-geo="0" data-hue="190" data-sys="quantum">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="0" data-hue="190">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-0"></canvas></div>
-                    <div class="cascade-overlay"><h4>Tetrahedron</h4><span class="cascade-sys sys-quantum">Quantum &middot; Base</span></div>
+                    <div class="cascade-overlay"><h4>Tetrahedron</h4><span class="cascade-sys">Base Core</span></div>
                 </div>
-                <div class="cascade-card tilt-card tilt-holo" data-geo="11" data-hue="300" data-sys="holographic">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="11" data-hue="300">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-1"></canvas></div>
-                    <div class="cascade-overlay"><h4>Hypersphere Torus</h4><span class="cascade-sys sys-holographic">Holographic &middot; Hypersphere</span></div>
+                    <div class="cascade-overlay"><h4>Hypersphere Torus</h4><span class="cascade-sys">Hypersphere Core</span></div>
                 </div>
-                <div class="cascade-card tilt-card tilt-holo" data-geo="16" data-hue="35" data-sys="faceted">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="16" data-hue="35">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-2"></canvas></div>
-                    <div class="cascade-overlay"><h4>Hypertetra Tetra</h4><span class="cascade-sys sys-faceted">Faceted &middot; Hypertetra</span></div>
+                    <div class="cascade-overlay"><h4>Hypertetra Simplex</h4><span class="cascade-sys">Hypertetra Core</span></div>
                 </div>
-                <div class="cascade-card tilt-card tilt-holo" data-geo="5" data-hue="130" data-sys="quantum">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="5" data-hue="130">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-3"></canvas></div>
-                    <div class="cascade-overlay"><h4>Fractal</h4><span class="cascade-sys sys-quantum">Quantum &middot; Base</span></div>
+                    <div class="cascade-overlay"><h4>Fractal</h4><span class="cascade-sys">Base Core</span></div>
                 </div>
-                <div class="cascade-card tilt-card tilt-holo" data-geo="12" data-hue="260" data-sys="holographic">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="12" data-hue="260">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-4"></canvas></div>
-                    <div class="cascade-overlay"><h4>Hypersphere Klein</h4><span class="cascade-sys sys-holographic">Holographic &middot; Hypersphere</span></div>
+                    <div class="cascade-overlay"><h4>Hypersphere Klein</h4><span class="cascade-sys">Hypersphere Core</span></div>
                 </div>
-                <div class="cascade-card tilt-card tilt-holo" data-geo="7" data-hue="60" data-sys="faceted">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="7" data-hue="60">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-5"></canvas></div>
-                    <div class="cascade-overlay"><h4>Crystal</h4><span class="cascade-sys sys-faceted">Faceted &middot; Base</span></div>
+                    <div class="cascade-overlay"><h4>Crystal</h4><span class="cascade-sys">Base Core</span></div>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- ─── Divider: Cascade → Energy ─── -->
-    <div class="section-divider divider-tall">
+    <div class="section-divider divider-tall" id="divider-cascade-energy">
         <svg viewBox="0 0 1440 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M0,80 Q180,0 360,50 Q540,100 720,40 Q900,-10 1080,50 Q1260,100 1440,20 L1440,100 L0,100 Z" fill="var(--bg)"/>
         </svg>
@@ -1407,7 +1613,7 @@
 
     <!-- ═══════════════════════════════════════════════════
          SECTION 6: ENERGY TRANSFER — Interactive Demo
-         Canvas2D bg + Faceted GPU card (1 GPU context, lazy)
+         Quantum GPU bg + Faceted GPU card (2 GPU contexts, lazy)
          ═══════════════════════════════════════════════════ -->
     <section class="energy" id="energySection">
         <div class="energy-pinned" id="energyPinned">
@@ -1501,12 +1707,15 @@
     </div>
 
     <!-- ═══════════════════════════════════════════════════
-         SECTION 8: CTA
+         SECTION 8: CTA — Dual GPU Finale (Quantum + Faceted dueling)
          ═══════════════════════════════════════════════════ -->
     <section class="cta-section" id="ctaSection">
-        <div class="cta-bg">
-            <div class="canvas-wrap" style="width:100%;height:100%;">
-                <canvas class="vib3-canvas" id="cta-canvas"></canvas>
+        <div class="cta-bg" style="overflow:hidden;">
+            <div class="canvas-wrap" style="position:absolute;inset:0;clip-path:polygon(0 0, 100% 0, 0 100%);" id="ctaGpuLeft">
+                <canvas class="vib3-canvas" id="cta-canvas-left"></canvas>
+            </div>
+            <div class="canvas-wrap" style="position:absolute;inset:0;clip-path:polygon(100% 0, 100% 100%, 0 100%);" id="ctaGpuRight">
+                <canvas class="vib3-canvas" id="cta-canvas-right"></canvas>
             </div>
         </div>
         <div class="cta-content section-reveal" data-animate>
@@ -1541,17 +1750,17 @@
     <!-- ═══════════════════════════════════════════════════════════
          ENGINE BOOT + GPU CONTEXT POOL + GSAP CHOREOGRAPHY
 
-         GPU CONTEXT BUDGET:
-           Opening ......... 1 (Quantum, released on hero enter)
-           Hero ............ 1 (Quantum, released on morph enter)
-           Morph ........... 1 (swaps Q → H → F on scroll)
-           Playground ...... 1 (Q/H/F, lazy)
-           Energy card ..... 1 (Faceted, lazy)
-           Triptych ........ 0 (Canvas2D)
-           Cascade ......... 0 (Canvas2D)
-           Agent ........... 0 (Canvas2D)
-           CTA ............. 0 (Canvas2D)
-           MAX CONCURRENT .. 2 (safe for mobile)
+         GPU CONTEXT BUDGET (see DOCS/SCROLL_TIMELINE_v3.md):
+           Opening ......... 1 (Quantum)
+           Hero ............ 1 (Quantum)
+           Morph ........... 1 (swaps Q → H → F)
+           Playground ...... 1 (Q/H/F, user-controlled)
+           Triptych ........ 3 (Q + H + F split-screen)
+           Cascade ......... 2 (Q + H dual GPU background)
+           Energy .......... 2 (Q background + F card)
+           Agent ........... 1 (Holographic)
+           CTA ............. 2 (Q + F dueling finale)
+           MAX CONCURRENT .. 3 (pool auto-evicts oldest)
          ═══════════════════════════════════════════════════════════ -->
     <script type="module" src="./js/landing/main.js"></script>
 </body>

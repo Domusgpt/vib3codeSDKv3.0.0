@@ -265,5 +265,5 @@ void main() {
     float gray = (baseColor.r + baseColor.g + baseColor.b) / 3.0;
     vec3 color = mix(vec3(gray), baseColor, u_saturation) * finalIntensity;
 
-    gl_FragColor = vec4(color, finalIntensity * u_roleIntensity);
+    gl_FragColor = vec4(color, finalIntensity);
 }

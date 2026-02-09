@@ -18,8 +18,8 @@
  *   1.0  — CTA, ambient (natural parallax)
  */
 
-import { QuantumAdapter, HolographicAdapter, FacetedAdapter, Canvas2DRenderer } from './adapters.js';
-import { morphStages, trinityParams, energyCardParams, openingParams } from './config.js';
+import { QuantumAdapter, HolographicAdapter, FacetedAdapter } from './adapters.js';
+import { morphStages, trinityParams, energyCardParams, openingParams, parallaxParams } from './config.js';
 
 // ─── Morph State ─────────────────────────────────────────────
 const morphFactories = [QuantumAdapter, HolographicAdapter, FacetedAdapter];
@@ -527,13 +527,43 @@ export function initMorph(pool, createHero) {
 }
 
 // ─── PARALLAX TRIPTYCH ──────────────────────────────────────
-// Two Canvas2D visualizer columns + center content
-// Each column scrolls at a different parallax rate
-// Visualizer parameters shift smoothly as you scroll through
+// All 3 GPU systems rendering simultaneously with cross-system coordination:
+//   Quantum (left) ↔ Holographic (center, behind text) ↔ Faceted (right)
+// Coordination: shared heartbeat, energy conservation, triadic hues,
+//   phase-locked 4D rotation, density cross-feed, convergence event
 
-export function initTriptych(c2d) {
+export function initTriptych(pool) {
   const left = document.getElementById('triptychLeft');
   const right = document.getElementById('triptychRight');
+
+  const centerInitParams = {
+    ...parallaxParams.left,
+    hue: 280, geometry: 3, intensity: 0.6, gridDensity: 20,
+    chaos: 0.1, speed: 0.5, saturation: 0.75,
+  };
+
+  // ── GPU Lifecycle: acquire all 3 real systems ──
+  const acquireAll = () => {
+    pool.acquire('triLeft', 'tri-left-canvas', QuantumAdapter, parallaxParams.left);
+    pool.acquire('triCenter', 'tri-center-canvas', HolographicAdapter, centerInitParams);
+    pool.acquire('triRight', 'tri-right-canvas', FacetedAdapter, parallaxParams.right);
+  };
+  const releaseAll = () => {
+    pool.release('triLeft');
+    pool.release('triCenter');
+    pool.release('triRight');
+  };
+
+  ScrollTrigger.create({
+    trigger: '#triptychSection', start: 'top 90%', end: 'bottom top',
+    onEnter: acquireAll,
+    onLeave: releaseAll,
+    onEnterBack: acquireAll,
+    onLeaveBack: releaseAll,
+  });
+
+  // ── 3-System Cross-Coordinated Choreography ──
+  const center = document.getElementById('triptychCenter');
 
   ScrollTrigger.create({
     trigger: '#triptychSection', start: 'top bottom', end: 'bottom top',
@@ -541,54 +571,169 @@ export function initTriptych(c2d) {
     onUpdate: (self) => {
       const p = self.progress;
 
-      // Parallax rates: left column faster, right column slower
+      // Parallax rates
       if (left) left.style.transform = `translateY(${(p - 0.5) * -120}px)`;
       if (right) right.style.transform = `translateY(${(p - 0.5) * -60}px)`;
 
-      // Scroll-driven parameter evolution for left (Quantum) visualizer
-      const triL = c2d.get('triLeft');
+      // ═══════ CLIP-PATH SPLIT-SCREEN ═══════
+      // All 3 columns are position:absolute overlapping the full width.
+      // Clip-path carves each column's visible territory.
+      // Scroll + mouse drive the split lines so columns fight for space.
+      const root = document.documentElement;
+      const mouseXPct = parseFloat(root.style.getPropertyValue('--mouse-x') || '50%') || 50;
+      const mouseShift = (mouseXPct / 100 - 0.5) * 6; // ±3% shift from mouse
+
+      // Split lines shift with scroll: left column starts dominant, right takes over
+      const splitLeft = 34 + (p - 0.5) * 12 + mouseShift;  // ~28-40%
+      const splitRight = 66 + (p - 0.5) * 12 + mouseShift;  // ~60-72%
+
+      // Convergence: at midpoint, columns rush toward equal thirds
+      const conv = Math.max(0, 1 - Math.abs(p - 0.5) * 4);
+      const cSplitLeft = lerp(splitLeft, 33.33, conv * 0.5);
+      const cSplitRight = lerp(splitRight, 66.66, conv * 0.5);
+
+      if (left) left.style.clipPath = `inset(0 ${100 - cSplitLeft}% 0 0)`;
+      if (center) center.style.clipPath = `inset(0 ${100 - cSplitRight}% 0 ${cSplitLeft}%)`;
+      if (right) right.style.clipPath = `inset(0 0 0 ${cSplitRight}%)`;
+
+      // Update divider line positions
+      root.style.setProperty('--tri-split-left', `${cSplitLeft}%`);
+      root.style.setProperty('--tri-split-right', `${cSplitRight}%`);
+
+      // ═══════ SHARED COORDINATION SIGNALS ═══════
+
+      // Heartbeat — all 3 systems pulse to a shared rhythm
+      const heartbeat = Math.sin(p * Math.PI * 2);
+      const pulse = Math.sin(p * Math.PI);
+
+      // Convergence — peaks at scroll midpoint, the "One Heartbeat" moment
+      const convergence = Math.max(0, 1 - Math.abs(p - 0.5) * 4);
+
+      // Triadic hue rotation (120° apart, rotating as a harmonic group)
+      const baseHue = 200 + p * 160;
+      const hueL = baseHue % 360 + convergence * ((baseHue + 120) % 360 - baseHue % 360) * 0.6;
+      const hueC = (baseHue + 120) % 360;
+      const hueR = (baseHue + 240) % 360 + convergence * ((baseHue + 120) % 360 - (baseHue + 240) % 360) * 0.6;
+
+      // Energy conservation: total intensity ≈ 2.0
+      const intL = 0.6 + heartbeat * 0.15 + convergence * 0.15;
+      const intC = 0.5 + pulse * 0.2 + convergence * 0.2;
+      const intR = 0.6 - heartbeat * 0.1 + convergence * 0.15;
+
+      // Density cross-feed: left sweeps up, right sweeps down, center bridges
+      const denL = 10 + p * 40 + heartbeat * 6;
+      const denR = 50 - p * 35 + Math.sin(p * Math.PI * 3 + 1.5) * 5;
+      const denC = (denL + denR) / 2 + heartbeat * 8;
+
+      // Phase-locked 4D rotation (120° offsets — coordinated 4D dance)
+      const rotBase = p * Math.PI * 4;
+      const xwL = rotBase;
+      const xwC = rotBase + Math.PI * 2 / 3;
+      const xwR = rotBase + Math.PI * 4 / 3;
+
+      // Call & response: left chaos → center speed → right morph
+      const chaosL = 0.15 + p * 0.25 + convergence * 0.2;
+      const speedC = 0.5 + chaosL * 0.8;
+      const morphR = 0.7 + speedC * 0.3;
+
+      // Shared speed accelerates during convergence
+      const sharedSpeed = 0.4 + pulse * 0.6 + convergence * 1.2;
+
+      // ═══════ LEFT: QUANTUM ═══════
+      const triL = pool.get('triLeft');
       if (triL) {
-        const wave = Math.sin(p * Math.PI * 4);
         triL.setParams({
-          geometry: Math.floor(p * 6) % 8,
-          hue: 195 + p * 90 + wave * 20,
-          rot4dXW: p * Math.PI * 3,
-          rot4dYW: Math.sin(p * Math.PI * 2) * 1.5,
-          gridDensity: 18 + wave * 8,
-          intensity: 0.45 + Math.sin(p * Math.PI) * 0.15,
-          chaos: 0.1 + p * 0.15,
-          morphFactor: 0.4 + Math.sin(p * Math.PI * 2) * 0.3,
+          geometry: p < 0.3 ? 2 : p < 0.6 ? 3 : p < 0.85 ? 10 : 7,
+          hue: hueL,
+          rot4dXW: xwL,
+          rot4dYW: Math.sin(p * Math.PI * 2) * 2.0,
+          rot4dZW: p * Math.PI * 0.6,
+          gridDensity: denL,
+          intensity: intL,
+          chaos: chaosL,
+          morphFactor: 0.6 + Math.sin(p * Math.PI * 2) * 0.4,
+          speed: sharedSpeed,
+          saturation: 0.85 + pulse * 0.1,
         });
       }
 
-      // Scroll-driven parameter evolution for right (Faceted) visualizer
-      const triR = c2d.get('triRight');
+      // ═══════ CENTER: HOLOGRAPHIC ═══════
+      const triC = pool.get('triCenter');
+      if (triC) {
+        triC.setParams({
+          geometry: p < 0.2 ? 3 : p < 0.4 ? 11 : p < 0.6 ? 6 : p < 0.8 ? 2 : 10,
+          hue: hueC,
+          rot4dXW: xwC,
+          rot4dYW: Math.cos(p * Math.PI * 2) * 1.5 + heartbeat * 0.5,
+          rot4dZW: -p * Math.PI * 0.3 + heartbeat * 0.4,
+          gridDensity: denC,
+          intensity: intC,
+          chaos: 0.1 + convergence * 0.4 + pulse * 0.1,
+          morphFactor: 0.5 + convergence * 0.8 + heartbeat * 0.3,
+          speed: speedC + convergence * 0.8,
+          saturation: 0.75 + convergence * 0.2,
+        });
+      }
+
+      // ═══════ RIGHT: FACETED ═══════
+      const triR = pool.get('triRight');
       if (triR) {
-        const wave = Math.sin(p * Math.PI * 3 + 1.5);
         triR.setParams({
-          geometry: 8 + Math.floor(p * 5) % 8,
-          hue: 310 - p * 120 + wave * 25,
-          rot4dXW: -p * Math.PI * 2,
-          rot4dYW: Math.cos(p * Math.PI * 2) * 1.2,
-          gridDensity: 14 + wave * 6,
-          intensity: 0.45 + Math.sin(p * Math.PI + 1) * 0.15,
-          chaos: 0.15 + p * 0.1,
-          morphFactor: 0.5 + Math.sin(p * Math.PI * 2 + 1) * 0.25,
+          geometry: p < 0.25 ? 12 : p < 0.5 ? 4 : p < 0.75 ? 20 : 5,
+          hue: hueR,
+          rot4dXW: xwR,
+          rot4dYW: Math.cos(p * Math.PI * 2) * 1.8,
+          rot4dZW: -p * Math.PI * 0.4,
+          gridDensity: denR,
+          intensity: intR,
+          chaos: 0.2 + p * 0.2 - convergence * 0.1,
+          morphFactor: morphR,
+          speed: sharedSpeed * 0.9,
+          saturation: 0.9 + pulse * 0.08,
         });
       }
     },
   });
 }
 
-// ─── CASCADE — Morphing Cards with Glow Leak ────────────────
-// Cards morph in size, glow leaks beyond borders
-// Active card: scale up (1.12), glow intensifies, density DROPS
-// Adjacent: smaller hue bleed, subtle scale
-// Inactive: normal state
+// ─── CASCADE — Inter-Card Ripple Coordination ────────────────
+// Active card: scale up, glow leaks, density drops
+// Ripple propagation: active card's energy echoes outward through ALL cards
+// with distance-based falloff — every card participates, none are idle.
+// Shared rotation phase ties all cards to a common 4D rhythm.
 
-export function initCascade(c2d) {
+export function initCascade(pool, c2d) {
   const cascadeCards = document.querySelectorAll('.cascade-card');
   const cascadeTrack = document.getElementById('cascadeTrack');
+  const gpuLeftWrap = document.getElementById('cascadeGpuLeft');
+  const gpuRightWrap = document.getElementById('cascadeGpuRight');
+
+  // ── Dual GPU background lifecycle ──
+  ScrollTrigger.create({
+    trigger: '#cascadeSection', start: 'top 90%', end: 'bottom top',
+    onEnter: () => {
+      pool.acquire('casGpuL', 'cascade-gpu-left', QuantumAdapter, {
+        geometry: 2, hue: 200, gridDensity: 20, speed: 0.5,
+        intensity: 0.55, chaos: 0.15, dimension: 3.5, morphFactor: 0.6, saturation: 0.85,
+      });
+      pool.acquire('casGpuR', 'cascade-gpu-right', HolographicAdapter, {
+        geometry: 4, hue: 320, gridDensity: 18, speed: 0.4,
+        intensity: 0.5, chaos: 0.12, dimension: 3.6, morphFactor: 0.7, saturation: 0.8,
+      });
+    },
+    onLeave: () => { pool.release('casGpuL'); pool.release('casGpuR'); },
+    onEnterBack: () => {
+      pool.acquire('casGpuL', 'cascade-gpu-left', QuantumAdapter, {
+        geometry: 2, hue: 200, gridDensity: 20, speed: 0.5,
+        intensity: 0.55, chaos: 0.15, dimension: 3.5, morphFactor: 0.6, saturation: 0.85,
+      });
+      pool.acquire('casGpuR', 'cascade-gpu-right', HolographicAdapter, {
+        geometry: 4, hue: 320, gridDensity: 18, speed: 0.4,
+        intensity: 0.5, chaos: 0.12, dimension: 3.6, morphFactor: 0.7, saturation: 0.8,
+      });
+    },
+    onLeaveBack: () => { pool.release('casGpuL'); pool.release('casGpuR'); },
+  });
 
   // Stagger entrance
   ScrollTrigger.create({
@@ -600,6 +745,27 @@ export function initCascade(c2d) {
         ease: 'power3.out',
       });
     },
+  });
+
+  // ─── Card hover interaction: mouse drives AmbientLattice params ──
+  cascadeCards.forEach((card, i) => {
+    card.addEventListener('mouseenter', () => {
+      const inst = c2d.get(`cas${i}`);
+      if (inst) inst.setParams({ speed: 1.8, chaos: 0.5, intensity: 0.95 });
+    });
+    card.addEventListener('mousemove', (e) => {
+      const inst = c2d.get(`cas${i}`);
+      if (!inst) return;
+      const rect = card.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) / rect.width;
+      const my = (e.clientY - rect.top) / rect.height;
+      inst.setParam('mouseX', mx);
+      inst.setParam('mouseY', my);
+    });
+    card.addEventListener('mouseleave', () => {
+      const inst = c2d.get(`cas${i}`);
+      if (inst) inst.setParams({ speed: 0.7, chaos: 0.18, intensity: 0.85, mouseX: 0.5, mouseY: 0.5 });
+    });
   });
 
   // Cascade header reveal
@@ -615,6 +781,7 @@ export function initCascade(c2d) {
   if (cascadeTrack && cascadeCards.length > 0) {
     const cardW = 360 + 32;
     const totalScroll = (cascadeCards.length - 1) * cardW;
+    const N = cascadeCards.length;
 
     ScrollTrigger.create({
       trigger: '#cascadeSection', start: 'top top', end: 'bottom bottom',
@@ -623,56 +790,116 @@ export function initCascade(c2d) {
         const p = self.progress;
         cascadeTrack.style.transform = `translateX(${-p * totalScroll}px)`;
 
-        const activeIdx = Math.min(Math.floor(p * cascadeCards.length), cascadeCards.length - 1);
+        const activeIdx = Math.min(Math.floor(p * N), N - 1);
         const activeHue = parseInt(cascadeCards[activeIdx].dataset.hue);
-        const localP = (p * cascadeCards.length) - activeIdx;
+        const localP = (p * N) - activeIdx;
         const pulse = Math.sin(localP * Math.PI);
+
+        // ═══ Shared rotation phase — all cards tied to a common 4D rhythm ═══
+        const sharedXW = p * Math.PI * 3;
+
+        // ═══ DUAL GPU BACKGROUND: reacts to active card ═══
+        const gpuL = pool.get('casGpuL');
+        const gpuR = pool.get('casGpuR');
+        const aCard = cascadeCards[activeIdx];
+        const aGeo = parseInt(aCard?.dataset.geo || '0');
+        const aHue = parseInt(aCard?.dataset.hue || '200');
+
+        // GPU backgrounds mirror/oppose the active card
+        if (gpuL) {
+          gpuL.setParams({
+            geometry: aGeo,
+            hue: aHue,
+            rot4dXW: sharedXW,
+            rot4dYW: Math.sin(p * Math.PI * 2) * 1.5,
+            gridDensity: 16 + pulse * 20,
+            intensity: 0.4 + pulse * 0.3,
+            chaos: 0.1 + pulse * 0.25,
+            speed: 0.4 + pulse * 0.8,
+            morphFactor: 0.5 + localP * 0.6,
+          });
+        }
+        if (gpuR) {
+          // Holographic bg plays the opposite
+          gpuR.setParams({
+            geometry: (aGeo + 16) % 24,
+            hue: (aHue + 180) % 360,
+            rot4dXW: -sharedXW * 0.7,
+            rot4dYW: Math.cos(p * Math.PI * 2) * 1.2,
+            gridDensity: 24 - pulse * 12,
+            intensity: 0.35 + (1 - pulse) * 0.25,
+            chaos: 0.15 + (1 - pulse) * 0.2,
+            speed: 0.3 + (1 - pulse) * 0.6,
+            morphFactor: 0.7 - localP * 0.3,
+          });
+        }
+        // Split line follows active card position
+        const splitPct = 30 + activeIdx / Math.max(1, cascadeCards.length - 1) * 40;
+        if (gpuLeftWrap) gpuLeftWrap.style.clipPath = `inset(0 ${100 - splitPct}% 0 0)`;
+        if (gpuRightWrap) gpuRightWrap.style.clipPath = `inset(0 0 0 ${splitPct}%)`;
 
         cascadeCards.forEach((card, i) => {
           const inst = c2d.get(`cas${i}`);
           if (!inst) return;
           const hue = parseInt(card.dataset.hue);
+          const dist = Math.abs(i - activeIdx);
+
+          // ═══ RIPPLE: distance-based falloff from active card ═══
+          const ripple = Math.max(0, 1 - dist * 0.25) * pulse;
+          const phaseOffset = dist * Math.PI / 3;
 
           if (i === activeIdx) {
-            // ── ACTIVE CARD: scale up, glow leaks, density drops ──
-            const scaleVal = 1 + pulse * 0.12;
-            card.dataset.scrollTransform = `scale(${scaleVal})`;
+            // ── ACTIVE: DRAMATICALLY BIGGER, full energy ──
+            const scaleVal = 1 + pulse * 0.25;
+            card.style.transform = `scale(${scaleVal})`;
+            card.style.zIndex = '10';
+            card.style.opacity = '1';
             card.classList.add('leaking');
-            card.style.setProperty('--card-glow', `hsla(${hue}, 70%, 50%, ${0.15 + pulse * 0.1})`);
+            card.style.setProperty('--card-glow', `hsla(${hue}, 80%, 55%, ${0.3 + pulse * 0.25})`);
+            card.style.boxShadow = `0 20px 60px rgba(0,0,0,0.6), 0 0 ${40 + pulse * 60}px hsla(${hue}, 70%, 40%, ${0.15 + pulse * 0.15})`;
 
             inst.setParams({
-              rot4dXW: localP * Math.PI,
-              intensity: 0.75 + pulse * 0.2,
-              morphFactor: 0.6 + localP * 0.6,
-              // Density DROPS as card scales up (inverse coordination)
-              gridDensity: Math.max(6, 18 - pulse * 10),
-              // Speed increases during active phase
-              speed: 0.6 + pulse * 0.8,
-              chaos: 0.15 + pulse * 0.2,
-            });
-          } else if (Math.abs(i - activeIdx) === 1) {
-            // ── ADJACENT: subtle hue bleed, mild scale ──
-            const bleedAmount = i < activeIdx ? (1 - localP) * 0.3 : localP * 0.3;
-            card.dataset.scrollTransform = `scale(${1 + bleedAmount * 0.04})`;
-            card.classList.remove('leaking');
-
-            inst.setParams({
-              hue: hue + (activeHue - hue) * bleedAmount,
-              intensity: 0.65,
-              gridDensity: 18,
-              speed: 0.6,
-              chaos: 0.15,
+              rot4dXW: sharedXW + localP * Math.PI * 2,
+              rot4dYW: Math.sin(localP * Math.PI) * 1.8,
+              rot4dZW: sharedXW * 0.4 + localP * 0.8,
+              intensity: 0.9 + pulse * 0.1,
+              morphFactor: 0.8 + localP * 1.0,
+              gridDensity: Math.max(6, 24 - pulse * 16),
+              speed: 0.8 + pulse * 1.5,
+              chaos: 0.2 + pulse * 0.45,
+              hue: hue + pulse * 40,
+              saturation: 0.95,
             });
           } else {
-            // ── INACTIVE: base state ──
-            card.dataset.scrollTransform = 'scale(0.95)';
-            card.classList.remove('leaking');
+            // ── NEIGHBORS: shrink, dim, but still alive ──
+            const dimFactor = Math.max(0.3, 1 - dist * 0.15);
+            const shrinkScale = 0.85 + ripple * 0.1;
+            card.style.transform = `scale(${shrinkScale})`;
+            card.style.zIndex = '1';
+            card.style.opacity = `${dimFactor}`;
+            card.classList.toggle('leaking', ripple > 0.15);
+            if (ripple > 0.15) {
+              card.style.setProperty('--card-glow',
+                `hsla(${hue}, 65%, 45%, ${ripple * 0.2})`);
+            } else {
+              card.classList.remove('leaking');
+            }
+            card.style.boxShadow = `0 12px 48px rgba(0,0,0,0.5)`;
+
+            const hueBleed = ripple * 0.5;
+            const echoWave = Math.sin(localP * Math.PI + phaseOffset);
+            const echo = Math.max(0, echoWave) * ripple;
 
             inst.setParams({
-              intensity: 0.55,
-              gridDensity: 18,
-              speed: 0.5,
-              chaos: 0.1,
+              hue: hue + (activeHue - hue) * hueBleed,
+              intensity: 0.4 + ripple * 0.35,
+              gridDensity: 22 - ripple * 10 + echo * 6,
+              speed: 0.4 + echo * 0.8,
+              chaos: 0.08 + echo * 0.25,
+              morphFactor: 0.4 + echo * 0.5,
+              rot4dXW: sharedXW + phaseOffset * 0.4,
+              rot4dYW: Math.sin(sharedXW + phaseOffset) * 0.7 * ripple,
+              saturation: 0.75 + ripple * 0.15,
             });
           }
         });
@@ -683,14 +910,25 @@ export function initCascade(c2d) {
 
 // ─── ENERGY TRANSFER ────────────────────────────────────────
 
-export function initEnergy(pool, c2d) {
-  // Lazy GPU lifecycle for the card
+export function initEnergy(pool) {
+  const energyBgInitParams = {
+    geometry: 6, hue: 270, gridDensity: 24, speed: 0.5,
+    intensity: 0.6, chaos: 0.15, dimension: 3.4, morphFactor: 0.8, saturation: 0.9,
+  };
+
+  // Dual GPU lifecycle: Quantum bg + Faceted card
   ScrollTrigger.create({
     trigger: '#energySection', start: 'top 80%', end: 'bottom top',
-    onEnter: () => pool.acquire('energyCard', 'energy-card-canvas', FacetedAdapter, energyCardParams),
-    onLeave: () => pool.release('energyCard'),
-    onEnterBack: () => pool.acquire('energyCard', 'energy-card-canvas', FacetedAdapter, energyCardParams),
-    onLeaveBack: () => pool.release('energyCard'),
+    onEnter: () => {
+      pool.acquire('energyBg', 'energy-bg-canvas', QuantumAdapter, energyBgInitParams);
+      pool.acquire('energyCard', 'energy-card-canvas', FacetedAdapter, energyCardParams);
+    },
+    onLeave: () => { pool.release('energyBg'); pool.release('energyCard'); },
+    onEnterBack: () => {
+      pool.acquire('energyBg', 'energy-bg-canvas', QuantumAdapter, energyBgInitParams);
+      pool.acquire('energyCard', 'energy-card-canvas', FacetedAdapter, energyCardParams);
+    },
+    onLeaveBack: () => { pool.release('energyBg'); pool.release('energyCard'); },
   });
 
   // 7-Step Pinned 3D Card Timeline
@@ -732,19 +970,55 @@ export function initEnergy(pool, c2d) {
     });
   }
 
-  // Scroll-driven background params
+  // Scroll-driven background params with GPU card cross-feeding
+  // Background responds to GPU card state: inverse intensity, shared rotation,
+  // card chaos bleeds to background, creating a living energy exchange.
   ScrollTrigger.create({
     trigger: '#energySection', start: 'top top', end: 'bottom bottom', scrub: 0.5,
     onUpdate: (self) => {
-      const bg = c2d.get('energyBg');
+      const bg = pool.get('energyBg');
       if (!bg) return;
       const p = self.progress;
+      const card = pool.get('energyCard');
+      const pulse = Math.sin(p * Math.PI);
+
+      // Base scroll-driven params — dramatic for GPU system
+      let bgIntensity = 0.4 + pulse * 0.3;
+      let bgChaos = 0.1 + p * 0.2;
+      let bgHue = 270 + p * 80;
+      let bgDensity = 18 + p * 20;
+      let bgXW = p * Math.PI * 3;
+      let bgSpeed = 0.4 + pulse * 0.6;
+
+      // ★ Cross-feed from GPU card: two systems in energy exchange
+      if (card && card.params) {
+        const cardInt = card.params.intensity || 0.6;
+        const cardChaos = card.params.chaos || 0.1;
+        const cardXW = card.params.rot4dXW || 0;
+        // Inverse intensity: when card dims, background brightens
+        bgIntensity += (1 - cardInt) * 0.3;
+        // Card chaos bleeds to background
+        bgChaos += cardChaos * 0.4;
+        // Counter-rotation: background opposes card
+        bgXW = -cardXW * 0.7 + p * Math.PI * 2;
+        // Hue complementary: bg tracks 180° from card
+        const cardHue = card.params.hue || 200;
+        bgHue = bgHue * 0.5 + ((cardHue + 180) % 360) * 0.5;
+        // Density inverse
+        const cardDen = card.params.gridDensity || 20;
+        bgDensity = bgDensity + (35 - cardDen) * 0.4;
+      }
+
       bg.setParams({
-        rot4dXW: p * 4,
-        hue: 270 + p * 60,
-        gridDensity: 16 + p * 14,
-        intensity: 0.2 + Math.sin(p * Math.PI) * 0.2,
-        chaos: 0.05 + p * 0.15,
+        rot4dXW: bgXW,
+        rot4dYW: Math.sin(p * Math.PI * 2) * 1.5,
+        rot4dZW: p * Math.PI * 0.4,
+        hue: bgHue,
+        gridDensity: Math.max(8, Math.min(60, bgDensity)),
+        intensity: Math.min(0.9, bgIntensity),
+        chaos: Math.min(0.7, bgChaos),
+        speed: bgSpeed,
+        morphFactor: 0.6 + pulse * 0.5,
       });
     },
   });
@@ -758,7 +1032,7 @@ export function initEnergy(pool, c2d) {
       if (sweeping) return;
       sweeping = true;
       const card = pool.get('energyCard');
-      const bg = c2d.get('energyBg');
+      const bg = pool.get('energyBg');
       if (!card && !bg) { sweeping = false; return; }
 
       const tl = gsap.timeline({ onComplete: () => { sweeping = false; } });
@@ -787,20 +1061,417 @@ export function initEnergy(pool, c2d) {
   }
 }
 
-// ─── CTA ────────────────────────────────────────────────────
+// ─── AGENT — GPU Holographic Background ─────────────────────
 
-export function initCTA(c2d) {
+export function initAgent(pool) {
+  ScrollTrigger.create({
+    trigger: '#agentSection', start: 'top 90%', end: 'bottom top',
+    onEnter: () => pool.acquire('agent', 'agent-canvas', HolographicAdapter, {
+      geometry: 3, hue: 240, gridDensity: 18, speed: 0.4,
+      intensity: 0.5, chaos: 0.15, dimension: 3.5, morphFactor: 0.6, saturation: 0.8,
+    }),
+    onLeave: () => pool.release('agent'),
+    onEnterBack: () => pool.acquire('agent', 'agent-canvas', HolographicAdapter, {
+      geometry: 3, hue: 240, gridDensity: 18, speed: 0.4,
+      intensity: 0.5, chaos: 0.15, dimension: 3.5, morphFactor: 0.6, saturation: 0.8,
+    }),
+    onLeaveBack: () => pool.release('agent'),
+  });
+
+  // Scroll-driven: holographic system evolves as user scrolls through cards
+  ScrollTrigger.create({
+    trigger: '#agentSection', start: 'top bottom', end: 'bottom top', scrub: 0.5,
+    onUpdate: (self) => {
+      const agent = pool.get('agent');
+      if (!agent) return;
+      const p = self.progress;
+      const pulse = Math.sin(p * Math.PI);
+      agent.setParams({
+        rot4dXW: p * Math.PI * 2,
+        rot4dYW: Math.sin(p * Math.PI * 2) * 1.0,
+        hue: 240 + p * 80 + pulse * 20,
+        gridDensity: 18 + pulse * 16,
+        intensity: 0.5 + pulse * 0.3,
+        speed: 0.4 + pulse * 0.5,
+        chaos: 0.15 + p * 0.2,
+        morphFactor: 0.6 + pulse * 0.4,
+      });
+    },
+  });
+}
+
+// ─── CTA — Dual GPU Finale (Quantum + Faceted dueling) ──────
+
+export function initCTA(pool) {
+  // Dual GPU lifecycle: Quantum left + Faceted right
+  ScrollTrigger.create({
+    trigger: '#ctaSection', start: 'top 90%', end: 'bottom top',
+    onEnter: () => {
+      pool.acquire('ctaL', 'cta-canvas-left', QuantumAdapter, {
+        geometry: 5, hue: 200, gridDensity: 16, speed: 0.3,
+        intensity: 0.3, chaos: 0.1, dimension: 3.5, morphFactor: 0.5, saturation: 0.85,
+      });
+      pool.acquire('ctaR', 'cta-canvas-right', FacetedAdapter, {
+        geometry: 7, hue: 320, gridDensity: 20, speed: 0.4,
+        intensity: 0.3, chaos: 0.12, dimension: 3.4, morphFactor: 0.6, saturation: 0.9,
+      });
+    },
+    onLeave: () => { pool.release('ctaL'); pool.release('ctaR'); },
+    onEnterBack: () => {
+      pool.acquire('ctaL', 'cta-canvas-left', QuantumAdapter, {
+        geometry: 5, hue: 200, gridDensity: 16, speed: 0.3,
+        intensity: 0.3, chaos: 0.1, dimension: 3.5, morphFactor: 0.5, saturation: 0.85,
+      });
+      pool.acquire('ctaR', 'cta-canvas-right', FacetedAdapter, {
+        geometry: 7, hue: 320, gridDensity: 20, speed: 0.4,
+        intensity: 0.3, chaos: 0.12, dimension: 3.4, morphFactor: 0.6, saturation: 0.9,
+      });
+    },
+    onLeaveBack: () => { pool.release('ctaL'); pool.release('ctaR'); },
+  });
+
+  // ★ Dual system choreography: opposition → convergence → unity
   ScrollTrigger.create({
     trigger: '#ctaSection', start: 'top bottom', end: 'bottom bottom', scrub: 1.0,
     onUpdate: (self) => {
-      const cta = c2d.get('cta');
-      if (!cta) return;
-      cta.setParams({ rot4dXW: self.progress * 2, hue: 160 + self.progress * 80, intensity: 0.2 + self.progress * 0.1 });
+      const ctaL = pool.get('ctaL');
+      const ctaR = pool.get('ctaR');
+      if (!ctaL && !ctaR) return;
+      const p = self.progress;
+      const pulse = Math.sin(p * Math.PI);
+
+      // Convergence: systems start opposed, pull together
+      const conv = smoothstep(clamp01((p - 0.6) / 0.4)); // 0 at 60%, 1 at 100%
+      const unifiedHue = 220;
+      const unifiedGeo = 11;
+
+      if (ctaL) {
+        const hueL = lerp(200, unifiedHue, conv);
+        const geoL = p < 0.3 ? 5 : p < 0.6 ? 2 : unifiedGeo;
+        ctaL.setParams({
+          geometry: geoL,
+          hue: hueL + pulse * 20 * (1 - conv),
+          rot4dXW: p * Math.PI * 3,
+          rot4dYW: Math.sin(p * Math.PI * 2) * 1.5 * (1 - conv),
+          rot4dZW: p * Math.PI * 0.5,
+          gridDensity: lerp(16, 28, p) + pulse * 8 * (1 - conv),
+          intensity: 0.3 + p * 0.5,
+          speed: 0.3 + pulse * 0.8,
+          chaos: lerp(0.1, 0.05, conv) + pulse * 0.2 * (1 - conv),
+          morphFactor: 0.5 + p * 0.6,
+          saturation: 0.85 + conv * 0.1,
+        });
+      }
+      if (ctaR) {
+        const hueR = lerp(320, unifiedHue, conv);
+        const geoR = p < 0.3 ? 7 : p < 0.6 ? 4 : unifiedGeo;
+        ctaR.setParams({
+          geometry: geoR,
+          hue: hueR - pulse * 20 * (1 - conv),
+          rot4dXW: -p * Math.PI * 3 * (1 - conv) + p * Math.PI * 3 * conv,
+          rot4dYW: Math.cos(p * Math.PI * 2) * 1.5 * (1 - conv),
+          rot4dZW: -p * Math.PI * 0.5 * (1 - conv),
+          gridDensity: lerp(20, 28, p) - pulse * 6 * (1 - conv),
+          intensity: 0.3 + p * 0.5,
+          speed: 0.4 + pulse * 0.6,
+          chaos: lerp(0.12, 0.05, conv) + pulse * 0.15 * (1 - conv),
+          morphFactor: 0.6 + p * 0.5,
+          saturation: 0.9 + conv * 0.05,
+        });
+      }
+
+      // Diagonal split line rotates from diagonal → vertical during convergence
+      const ctaLeftWrap = document.getElementById('ctaGpuLeft');
+      const ctaRightWrap = document.getElementById('ctaGpuRight');
+      if (ctaLeftWrap && ctaRightWrap) {
+        // Diagonal split morphs toward vertical at convergence
+        const topR = lerp(100, 50, conv);   // top-right x
+        const botL = lerp(0, 50, conv);     // bottom-left x
+        ctaLeftWrap.style.clipPath = `polygon(0 0, ${topR}% 0, ${botL}% 100%, 0 100%)`;
+        ctaRightWrap.style.clipPath = `polygon(${topR}% 0, 100% 0, 100% 100%, ${botL}% 100%)`;
+      }
     },
   });
 }
 
 // ─── Section Reveal Animations ──────────────────────────────
+
+// ─── SECTION TRANSITION PORTALS (replaces old faint veil system) ─────
+// CSS clip-path portals between sections: a growing shape reveals the next section
+// with glowing edges instead of a confusing faint glassmorphic square.
+// Also pulses divider gradients during transitions.
+
+export function initSectionVeils() {
+  // Portal transitions at GPU swap boundaries
+  const portals = [
+    {
+      trigger: '#divider-hero-morph',
+      nextSection: '#morphSection',
+      hue: 220,
+    },
+    {
+      trigger: '#divider-morph-playground',
+      nextSection: '#playgroundSection',
+      hue: 280,
+    },
+    {
+      trigger: '#divider-playground-triptych',
+      nextSection: '#triptychSection',
+      hue: 190,
+    },
+    {
+      trigger: '#divider-cascade-energy',
+      nextSection: '#energySection',
+      hue: 310,
+    },
+  ];
+
+  // Hide the old veil entirely — we use per-section effects instead
+  const oldVeil = document.getElementById('sectionVeil');
+  if (oldVeil) oldVeil.style.display = 'none';
+
+  portals.forEach(({ trigger, nextSection, hue }) => {
+    const divider = document.querySelector(trigger);
+    const next = document.querySelector(nextSection);
+    if (!divider) return;
+
+    // Divider glow pulse during scroll-through
+    ScrollTrigger.create({
+      trigger: divider,
+      start: 'top 95%',
+      end: 'bottom 5%',
+      scrub: 0.2,
+      onUpdate: (self) => {
+        const p = self.progress;
+        const bell = Math.sin(p * Math.PI);
+        const intensity = bell * bell;
+
+        // SVG path glow via filter
+        const svg = divider.querySelector('svg');
+        if (svg) {
+          svg.style.filter = intensity > 0.05
+            ? `drop-shadow(0 0 ${12 * intensity}px hsla(${hue}, 70%, 55%, ${intensity * 0.4}))`
+            : 'none';
+        }
+
+        // Next section clip-path reveal: grows from center point
+        if (next && intensity > 0.01) {
+          const reveal = smoothstep(clamp01((p - 0.3) / 0.7));
+          if (reveal > 0 && reveal < 1) {
+            next.style.clipPath = `circle(${reveal * 120}% at 50% 0%)`;
+          } else if (reveal >= 1) {
+            next.style.clipPath = '';
+          }
+        }
+      },
+      onLeave: () => {
+        if (next) next.style.clipPath = '';
+        const svg = divider.querySelector('svg');
+        if (svg) svg.style.filter = 'none';
+      },
+      onLeaveBack: () => {
+        if (next) next.style.clipPath = '';
+        const svg = divider.querySelector('svg');
+        if (svg) svg.style.filter = 'none';
+      },
+    });
+  });
+}
+
+// ─── SCROLL VELOCITY BURST (Event 4) ─────────────────────────
+// Fast scrolling triggers chaos/speed burst on all visible AmbientLattice renderers
+
+export function initScrollVelocityBurst(c2d) {
+  let lastScroll = 0;
+  let lastTime = 0;
+  let burstActive = false;
+  let burstCooldown = 0;
+  const VELOCITY_THRESHOLD = 2500; // px/s
+  const BURST_DECAY = 500; // ms
+
+  const tick = () => {
+    const now = performance.now();
+    const scrollY = window.scrollY || window.pageYOffset;
+    const dt = now - lastTime;
+
+    if (dt > 0 && lastTime > 0) {
+      const velocity = Math.abs(scrollY - lastScroll) / (dt / 1000);
+
+      if (velocity > VELOCITY_THRESHOLD && !burstActive && now > burstCooldown) {
+        burstActive = true;
+        burstCooldown = now + BURST_DECAY + 1000;
+        const burstFactor = Math.min(1, velocity / 5000);
+
+        // Apply burst to all AmbientLattice renderers
+        const origParams = new Map();
+        for (const [key, inst] of c2d.entries()) {
+          origParams.set(key, {
+            chaos: inst.params.chaos,
+            speed: inst.params.speed,
+            intensity: inst.params.intensity,
+          });
+          inst.setParams({
+            chaos: Math.min(1, inst.params.chaos + burstFactor * 0.4),
+            speed: inst.params.speed * (1 + burstFactor * 1.5),
+            intensity: Math.min(1, inst.params.intensity + burstFactor * 0.2),
+          });
+        }
+
+        // CSS burst
+        document.documentElement.style.setProperty('--burst-intensity', burstFactor.toFixed(2));
+
+        // Decay back
+        setTimeout(() => {
+          for (const [key, orig] of origParams.entries()) {
+            const inst = c2d.get(key);
+            if (inst) inst.setParams(orig);
+          }
+          document.documentElement.style.setProperty('--burst-intensity', '0');
+          burstActive = false;
+        }, BURST_DECAY);
+      }
+    }
+
+    lastScroll = scrollY;
+    lastTime = now;
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+// ─── PHASE SHIFT BRIDGES (Event 6) ─────────────────────────
+// Between triptych→cascade and cascade→energy: slow structure build → snap → chaos settle
+
+export function initPhaseShiftBridges(pool, c2d) {
+  // Bridge 1: Between triptych exit and cascade
+  ScrollTrigger.create({
+    trigger: '#triptychSection',
+    start: '80% top',
+    end: 'bottom top',
+    scrub: 0.3,
+    onUpdate: (self) => {
+      const p = self.progress;
+      // Structure build: all 3 triptych GPU systems crystallize together
+      const triL = pool.get('triLeft');
+      const triC = pool.get('triCenter');
+      const triR = pool.get('triRight');
+      const sp = smoothstep(p);
+      if (triL) {
+        triL.setParams({
+          gridDensity: lerp(22, 55, sp),
+          speed: lerp(0.4, 0.08, sp),
+          chaos: lerp(0.15, 0.01, sp),
+          intensity: lerp(0.65, 0.9, sp),
+        });
+      }
+      if (triC) {
+        triC.setParams({
+          gridDensity: lerp(20, 50, sp),
+          speed: lerp(0.5, 0.06, sp),
+          chaos: lerp(0.1, 0.005, sp),
+          intensity: lerp(0.5, 0.85, sp),
+        });
+      }
+      if (triR) {
+        triR.setParams({
+          gridDensity: lerp(18, 50, sp),
+          speed: lerp(0.5, 0.1, sp),
+          chaos: lerp(0.2, 0.02, sp),
+          intensity: lerp(0.65, 0.85, sp),
+        });
+      }
+    },
+  });
+
+  // Bridge 2: Cascade entrance snap
+  ScrollTrigger.create({
+    trigger: '#cascadeSection',
+    start: 'top 90%',
+    end: 'top 60%',
+    scrub: 0.2,
+    onUpdate: (self) => {
+      const p = self.progress;
+      // Snap: cascade cards get a brief chaos burst at entrance
+      const snap = p > 0.4 && p < 0.7;
+      if (snap) {
+        for (let i = 0; i < 6; i++) {
+          const inst = c2d.get(`cas${i}`);
+          if (inst) {
+            inst.setParams({
+              chaos: 0.6 * (1 - Math.abs(p - 0.55) / 0.15),
+              speed: 2.0 * (1 - Math.abs(p - 0.55) / 0.15),
+            });
+          }
+        }
+      }
+    },
+  });
+}
+
+// ─── SPEED CRESCENDO → SILENCE (Event 14) ─────────────────
+// Pre-CTA: all visible elements accelerate, then instant silence, then gentle CTA fade
+
+export function initSpeedCrescendo(pool) {
+  ScrollTrigger.create({
+    trigger: '#agentSection',
+    start: '60% top',
+    end: 'bottom top',
+    scrub: 0.4,
+    onUpdate: (self) => {
+      const p = self.progress;
+
+      // Phase A (0-80%): The Build — GPU Holographic accelerates
+      if (p < 0.8) {
+        const build = p / 0.8;
+        const agent = pool.get('agent');
+        if (agent) {
+          agent.setParams({
+            speed: 0.4 * (1 + build * 5),
+            chaos: 0.15 + build * 0.6,
+            intensity: 0.5 + build * 0.4,
+            gridDensity: 18 + build * 35,
+            rot4dXW: build * Math.PI * 4,
+            rot4dYW: Math.sin(build * Math.PI * 3) * 2,
+          });
+        }
+        document.documentElement.style.setProperty('--crescendo-vignette', (build * 0.3).toFixed(2));
+      }
+
+      // Phase B (80-88%): THE SILENCE
+      if (p >= 0.8 && p < 0.88) {
+        const agent = pool.get('agent');
+        if (agent) {
+          agent.setParams({ speed: 0, chaos: 0, intensity: 0.05, gridDensity: 4 });
+        }
+        document.documentElement.style.setProperty('--crescendo-vignette', '0');
+        document.documentElement.style.setProperty('--silence-blackout', '1');
+      }
+
+      // Phase C (88-100%): Gentle rebirth
+      if (p >= 0.88) {
+        const rebirth = (p - 0.88) / 0.12;
+        const agent = pool.get('agent');
+        if (agent) {
+          agent.setParams({
+            speed: rebirth * 0.3,
+            intensity: rebirth * 0.35,
+            gridDensity: 8 + rebirth * 10,
+            chaos: rebirth * 0.12,
+          });
+        }
+        document.documentElement.style.setProperty('--silence-blackout', (1 - rebirth).toFixed(2));
+      }
+    },
+    onLeave: () => {
+      document.documentElement.style.setProperty('--crescendo-vignette', '0');
+      document.documentElement.style.setProperty('--silence-blackout', '0');
+    },
+    onLeaveBack: () => {
+      document.documentElement.style.setProperty('--crescendo-vignette', '0');
+      document.documentElement.style.setProperty('--silence-blackout', '0');
+    },
+  });
+}
 
 export function initSectionReveals() {
   // ── data-animate: 3D depth reveal (VISUAL-CODEX: 3D transform pattern) ──

@@ -1,7 +1,8 @@
 /**
  * VIB3+ FFI Implementation
  *
- * C interface implementation wrapping C++ core classes.
+ * Self-contained C interface for 4D math operations.
+ * Does NOT depend on cpp/ math or geometry libraries.
  */
 
 #include "vib3_ffi.h"
@@ -9,9 +10,10 @@
 #include <cstring>
 #include <cmath>
 #include <string>
+#include <map>
 
 // Version string
-static const char* VIB3_VERSION = "1.7.0";
+static const char* VIB3_VERSION = "2.0.3";
 
 // Geometry names
 static const char* GEOMETRY_NAMES[24] = {
@@ -21,6 +23,30 @@ static const char* GEOMETRY_NAMES[24] = {
     "klein_bottle_hypersphere", "fractal_hypersphere", "wave_hypersphere", "crystal_hypersphere",
     "tetrahedron_hypertetra", "hypercube_hypertetra", "sphere_hypertetra", "torus_hypertetra",
     "klein_bottle_hypertetra", "fractal_hypertetra", "wave_hypertetra", "crystal_hypertetra"
+};
+
+// ============================================================================
+// Engine State
+// ============================================================================
+
+struct Vib3EngineState {
+    std::string system = "quantum";
+    int32_t geometry = 0;
+    float rotation[6] = {0, 0, 0, 0, 0, 0};
+    int32_t width = 0;
+    int32_t height = 0;
+    bool initialized = false;
+
+    std::map<std::string, float> visualParams = {
+        {"morphFactor", 0.5f},
+        {"chaos", 0.0f},
+        {"speed", 1.0f},
+        {"hue", 200.0f},
+        {"intensity", 0.8f},
+        {"saturation", 0.7f},
+        {"dimension", 3.5f},
+        {"gridDensity", 32.0f}
+    };
 };
 
 // ============================================================================
@@ -119,7 +145,6 @@ Vib3Rotor4D* vib3_rotor4d_from_euler6(
     float xy, float xz, float yz,
     float xw, float yw, float zw
 ) {
-    // Create individual rotors and compose
     Vib3Rotor4D* rxy = vib3_rotor4d_from_plane_angle(VIB3_PLANE_XY, xy);
     Vib3Rotor4D* rxz = vib3_rotor4d_from_plane_angle(VIB3_PLANE_XZ, xz);
     Vib3Rotor4D* ryz = vib3_rotor4d_from_plane_angle(VIB3_PLANE_YZ, yz);
@@ -134,7 +159,6 @@ Vib3Rotor4D* vib3_rotor4d_from_euler6(
     Vib3Rotor4D* r4 = vib3_rotor4d_multiply(r3, ryw);
     Vib3Rotor4D* result = vib3_rotor4d_multiply(r4, rzw);
 
-    // Clean up intermediates
     delete rxy; delete rxz; delete ryz;
     delete rxw; delete ryw; delete rzw;
     delete r1; delete r2; delete r3; delete r4;
@@ -150,8 +174,6 @@ Vib3Rotor4D* vib3_rotor4d_multiply(const Vib3Rotor4D* a, const Vib3Rotor4D* b) {
     Vib3Rotor4D* result = new Vib3Rotor4D();
 
     // Full Clifford algebra product for Cl(4,0)
-    // This is the correct geometric algebra multiplication
-
     result->s = a->s * b->s
               - a->xy * b->xy - a->xz * b->xz - a->yz * b->yz
               - a->xw * b->xw - a->yw * b->yw - a->zw * b->zw
@@ -196,13 +218,8 @@ Vib3Rotor4D* vib3_rotor4d_multiply(const Vib3Rotor4D* a, const Vib3Rotor4D* b) {
 }
 
 Vib3Vec4* vib3_rotor4d_rotate(const Vib3Rotor4D* r, const Vib3Vec4* v) {
-    // Rotation: v' = R * v * R†
-    // For rotors, this simplifies to a series of reflections
-
     float x = v->x, y = v->y, z = v->z, w = v->w;
 
-    // Apply rotor using sandwich product
-    // Simplified form using rotor components
     float s2 = r->s * r->s;
     float xy2 = r->xy * r->xy;
     float xz2 = r->xz * r->xz;
@@ -211,7 +228,6 @@ Vib3Vec4* vib3_rotor4d_rotate(const Vib3Rotor4D* r, const Vib3Vec4* v) {
     float yw2 = r->yw * r->yw;
     float zw2 = r->zw * r->zw;
 
-    // Compute rotated components
     float newX = x * (s2 + xy2 + xz2 + xw2 - yz2 - yw2 - zw2 - r->xyzw * r->xyzw)
                + 2 * (r->s * (r->xy * y + r->xz * z + r->xw * w)
                     + r->xy * (r->yz * z + r->yw * w)
@@ -240,17 +256,14 @@ Vib3Vec4* vib3_rotor4d_rotate(const Vib3Rotor4D* r, const Vib3Vec4* v) {
 }
 
 Vib3Rotor4D* vib3_rotor4d_slerp(const Vib3Rotor4D* a, const Vib3Rotor4D* b, float t) {
-    // Compute dot product
     float dot = a->s * b->s + a->xy * b->xy + a->xz * b->xz + a->yz * b->yz
               + a->xw * b->xw + a->yw * b->yw + a->zw * b->zw + a->xyzw * b->xyzw;
 
-    // Handle sign flip for shortest path
     float sign = (dot < 0) ? -1.0f : 1.0f;
     dot = std::abs(dot);
 
     float s0, s1;
     if (dot > 0.9995f) {
-        // Linear interpolation for nearly identical rotors
         s0 = 1.0f - t;
         s1 = t * sign;
     } else {
@@ -294,10 +307,8 @@ void vib3_rotor4d_normalize(Vib3Rotor4D* r) {
 }
 
 Vib3Mat4x4* vib3_rotor4d_to_matrix(const Vib3Rotor4D* r) {
-    // Convert rotor to 4x4 rotation matrix
     Vib3Mat4x4* m = vib3_mat4x4_identity();
 
-    // For each basis vector, compute rotated result and store as column
     Vib3Vec4 ex = {1, 0, 0, 0};
     Vib3Vec4 ey = {0, 1, 0, 0};
     Vib3Vec4 ez = {0, 0, 1, 0};
@@ -308,7 +319,6 @@ Vib3Mat4x4* vib3_rotor4d_to_matrix(const Vib3Rotor4D* r) {
     Vib3Vec4* rz = vib3_rotor4d_rotate(r, &ez);
     Vib3Vec4* rw = vib3_rotor4d_rotate(r, &ew);
 
-    // Column-major layout
     m->data[0] = rx->x;  m->data[4] = ry->x;  m->data[8]  = rz->x;  m->data[12] = rw->x;
     m->data[1] = rx->y;  m->data[5] = ry->y;  m->data[9]  = rz->y;  m->data[13] = rw->y;
     m->data[2] = rx->z;  m->data[6] = ry->z;  m->data[10] = rz->z;  m->data[14] = rw->z;
@@ -332,8 +342,7 @@ Vib3Mat4x4* vib3_mat4x4_identity(void) {
 
 Vib3Mat4x4* vib3_mat4x4_rotation_xy(float angle) {
     Vib3Mat4x4* m = vib3_mat4x4_identity();
-    float c = std::cos(angle);
-    float s = std::sin(angle);
+    float c = std::cos(angle), s = std::sin(angle);
     m->data[0] = c;  m->data[4] = -s;
     m->data[1] = s;  m->data[5] = c;
     return m;
@@ -341,8 +350,7 @@ Vib3Mat4x4* vib3_mat4x4_rotation_xy(float angle) {
 
 Vib3Mat4x4* vib3_mat4x4_rotation_xz(float angle) {
     Vib3Mat4x4* m = vib3_mat4x4_identity();
-    float c = std::cos(angle);
-    float s = std::sin(angle);
+    float c = std::cos(angle), s = std::sin(angle);
     m->data[0] = c;   m->data[8] = -s;
     m->data[2] = s;   m->data[10] = c;
     return m;
@@ -350,8 +358,7 @@ Vib3Mat4x4* vib3_mat4x4_rotation_xz(float angle) {
 
 Vib3Mat4x4* vib3_mat4x4_rotation_yz(float angle) {
     Vib3Mat4x4* m = vib3_mat4x4_identity();
-    float c = std::cos(angle);
-    float s = std::sin(angle);
+    float c = std::cos(angle), s = std::sin(angle);
     m->data[5] = c;   m->data[9] = -s;
     m->data[6] = s;   m->data[10] = c;
     return m;
@@ -359,8 +366,7 @@ Vib3Mat4x4* vib3_mat4x4_rotation_yz(float angle) {
 
 Vib3Mat4x4* vib3_mat4x4_rotation_xw(float angle) {
     Vib3Mat4x4* m = vib3_mat4x4_identity();
-    float c = std::cos(angle);
-    float s = std::sin(angle);
+    float c = std::cos(angle), s = std::sin(angle);
     m->data[0] = c;   m->data[12] = -s;
     m->data[3] = s;   m->data[15] = c;
     return m;
@@ -368,8 +374,7 @@ Vib3Mat4x4* vib3_mat4x4_rotation_xw(float angle) {
 
 Vib3Mat4x4* vib3_mat4x4_rotation_yw(float angle) {
     Vib3Mat4x4* m = vib3_mat4x4_identity();
-    float c = std::cos(angle);
-    float s = std::sin(angle);
+    float c = std::cos(angle), s = std::sin(angle);
     m->data[5] = c;   m->data[13] = -s;
     m->data[7] = s;   m->data[15] = c;
     return m;
@@ -377,8 +382,7 @@ Vib3Mat4x4* vib3_mat4x4_rotation_yw(float angle) {
 
 Vib3Mat4x4* vib3_mat4x4_rotation_zw(float angle) {
     Vib3Mat4x4* m = vib3_mat4x4_identity();
-    float c = std::cos(angle);
-    float s = std::sin(angle);
+    float c = std::cos(angle), s = std::sin(angle);
     m->data[10] = c;  m->data[14] = -s;
     m->data[11] = s;  m->data[15] = c;
     return m;
@@ -388,7 +392,6 @@ Vib3Mat4x4* vib3_mat4x4_rotation_from_angles(
     float xy, float xz, float yz,
     float xw, float yw, float zw
 ) {
-    // Compose all 6 rotation matrices
     Vib3Mat4x4* mxy = vib3_mat4x4_rotation_xy(xy);
     Vib3Mat4x4* mxz = vib3_mat4x4_rotation_xz(xz);
     Vib3Mat4x4* myz = vib3_mat4x4_rotation_yz(yz);
@@ -529,10 +532,6 @@ int32_t vib3_process_command_batch(
     uint32_t size,
     uint8_t* results
 ) {
-    // Simple command processor
-    // Commands are variable-length encoded:
-    // [type:1] [data:variable]
-
     uint32_t offset = 0;
     int32_t result_offset = 0;
 
@@ -541,38 +540,122 @@ int32_t vib3_process_command_batch(
 
         switch (cmd_type) {
             case 0x01: // SET_PARAMETER
-                // Skip param_id (4 bytes) and value (8 bytes)
                 offset += 12;
-                results[result_offset++] = 1; // Success
+                results[result_offset++] = 1;
                 break;
-
             case 0x02: // SET_GEOMETRY
-                // Skip geometry index (4 bytes)
                 offset += 4;
                 results[result_offset++] = 1;
                 break;
-
             case 0x03: // ROTATE
-                // Skip plane (1 byte) and angle (8 bytes)
                 offset += 9;
                 results[result_offset++] = 1;
                 break;
-
             case 0x04: // RESET_ROTATION
                 results[result_offset++] = 1;
                 break;
-
             case 0x05: // RENDER
                 results[result_offset++] = 1;
                 break;
-
             default:
-                results[result_offset++] = 0; // Unknown command
+                results[result_offset++] = 0;
                 break;
         }
     }
 
     return result_offset;
+}
+
+// ============================================================================
+// Engine Functions
+// ============================================================================
+
+Vib3EngineHandle vib3_engine_create(void) {
+    return new Vib3EngineState();
+}
+
+void vib3_engine_destroy(Vib3EngineHandle engine) {
+    delete engine;
+}
+
+bool vib3_engine_initialize(Vib3EngineHandle engine, int32_t width, int32_t height) {
+    if (!engine) return false;
+    engine->width = width;
+    engine->height = height;
+    engine->initialized = true;
+    return true;
+}
+
+void vib3_engine_set_system(Vib3EngineHandle engine, const char* system) {
+    if (!engine || !system) return;
+    engine->system = system;
+}
+
+void vib3_engine_set_geometry(Vib3EngineHandle engine, int32_t index) {
+    if (!engine) return;
+    if (index >= 0 && index < 24) {
+        engine->geometry = index;
+    }
+}
+
+void vib3_engine_set_rotation(Vib3EngineHandle engine, Vib3RotationPlane plane, float angle) {
+    if (!engine) return;
+    int idx = static_cast<int>(plane);
+    if (idx >= 0 && idx < 6) {
+        engine->rotation[idx] = angle;
+    }
+}
+
+void vib3_engine_set_all_rotations(
+    Vib3EngineHandle engine,
+    float xy, float xz, float yz,
+    float xw, float yw, float zw
+) {
+    if (!engine) return;
+    engine->rotation[0] = xy;
+    engine->rotation[1] = xz;
+    engine->rotation[2] = yz;
+    engine->rotation[3] = xw;
+    engine->rotation[4] = yw;
+    engine->rotation[5] = zw;
+}
+
+void vib3_engine_reset_rotation(Vib3EngineHandle engine) {
+    if (!engine) return;
+    std::memset(engine->rotation, 0, sizeof(engine->rotation));
+}
+
+void vib3_engine_set_visual_param(Vib3EngineHandle engine, const char* param, float value) {
+    if (!engine || !param) return;
+    engine->visualParams[param] = value;
+}
+
+const char* vib3_engine_get_system(Vib3EngineHandle engine) {
+    if (!engine) return "quantum";
+    return engine->system.c_str();
+}
+
+int32_t vib3_engine_get_geometry(Vib3EngineHandle engine) {
+    if (!engine) return 0;
+    return engine->geometry;
+}
+
+float vib3_engine_get_rotation(Vib3EngineHandle engine, Vib3RotationPlane plane) {
+    if (!engine) return 0.0f;
+    int idx = static_cast<int>(plane);
+    if (idx >= 0 && idx < 6) {
+        return engine->rotation[idx];
+    }
+    return 0.0f;
+}
+
+float vib3_engine_get_visual_param(Vib3EngineHandle engine, const char* param) {
+    if (!engine || !param) return 0.0f;
+    auto it = engine->visualParams.find(param);
+    if (it != engine->visualParams.end()) {
+        return it->second;
+    }
+    return 0.0f;
 }
 
 // ============================================================================
@@ -591,7 +674,7 @@ const char* vib3_geometry_name(int32_t index) {
 }
 
 bool vib3_has_simd(void) {
-#if defined(VIB3_HAS_SSE41) || defined(__EMSCRIPTEN__)
+#if defined(VIB3_HAS_SSE41) || defined(__ARM_NEON)
     return true;
 #else
     return false;

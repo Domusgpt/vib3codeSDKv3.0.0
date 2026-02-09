@@ -560,7 +560,7 @@ export class VIB3Engine {
             spatialActive: this.spatialInput.enabled,
             backend: this.getActiveBackendType(),
             timestamp: new Date().toISOString(),
-            version: '2.0.1'
+            version: '2.0.3'
         };
     }
 

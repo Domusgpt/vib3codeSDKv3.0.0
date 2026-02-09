@@ -15,31 +15,33 @@
  *   7. Section dividers: SVG shapes hide canvas edge lines
  *   8. Blur cascade reveals + scroll-driven color theming (VISUAL-CODEX patterns)
  *
- * GPU Context Budget:
- *   Opening ......... 1 (Quantum, released when hero enters)
- *   Hero ............ 1 (Quantum, released when morph enters)
- *   Morph ........... 1 (swaps Q → H → F on scroll)
- *   Playground ...... 1 (Q/H/F, lazy — scroll-triggered)
- *   Energy card ..... 1 (Faceted, lazy)
- *   Triptych ........ 0 (Canvas2D ambient)
- *   Cascade ......... 0 (Canvas2D ambient)
- *   Agent ........... 0 (Canvas2D ambient)
- *   CTA ............. 0 (Canvas2D ambient)
- *   MAX CONCURRENT .. 2 (safe for mobile; pool auto-evicts oldest)
+ * GPU Context Budget (see DOCS/SCROLL_TIMELINE_v3.md):
+ *   Opening ......... 1 (Quantum)
+ *   Hero ............ 1 (Quantum)
+ *   Morph ........... 1 (Q → H → F rotating)
+ *   Playground ...... 1 (Q/H/F, user-controlled)
+ *   Triptych ........ 3 (Q + H + F split-screen)
+ *   Cascade ......... 2 (Q + H dual GPU background) + Canvas2D cards
+ *   Energy .......... 2 (Q background + F card)
+ *   Agent ........... 1 (Holographic)
+ *   CTA ............. 2 (Q + F dueling finale)
+ *   MAX CONCURRENT .. 3 (pool auto-evicts oldest on overflow)
  */
 
 import { ContextPool } from './ContextPool.js';
-import { QuantumAdapter, HolographicAdapter, FacetedAdapter, Canvas2DRenderer } from './adapters.js';
+import { QuantumAdapter, HolographicAdapter, FacetedAdapter, AmbientLattice } from './adapters.js';
 import { CardTiltSystem } from './CardTiltSystem.js';
 import {
-  heroParams, energyBgParams,
-  agentBgParams, playgroundDefaults, ctaParams,
+  heroParams, playgroundDefaults,
   parallaxParams, openingParams,
 } from './config.js';
 import {
   initScrollProgress, initOpening, initHero, initMorph,
   initTriptych, initCascade, initEnergy, initCTA,
+  initAgent,
   initSectionReveals, initScrollColorTheme, initBlurReveals,
+  initSectionVeils, initScrollVelocityBurst, initPhaseShiftBridges,
+  initSpeedCrescendo,
 } from './choreography.js';
 
 // ─── State ────────────────────────────────────────────────────
@@ -69,6 +71,8 @@ function acquirePlayground() {
     if (errEl) errEl.style.display = 'flex';
   } else {
     if (errEl) errEl.style.display = 'none';
+    // Always sync slider values — covers scroll-triggered re-acquire
+    adapter.setParams(readSliderValues());
   }
   return adapter;
 }
@@ -91,7 +95,7 @@ function readSliderValues() {
   const params = {};
   const sliderParams = [
     'hue', 'gridDensity', 'speed', 'chaos',
-    'morphFactor', 'intensity', 'dimension',
+    'morphFactor', 'intensity', 'dimension', 'saturation',
     'rot4dXW', 'rot4dYW', 'rot4dZW',
     'rot4dXY', 'rot4dXZ', 'rot4dYZ',
   ];
@@ -110,27 +114,24 @@ function createHero() {
   return pool.acquire('hero', 'hero-canvas', QuantumAdapter, heroParams);
 }
 
-// ─── Canvas 2D Instances (ambient backgrounds — no GPU) ───────
+// ─── Ambient Lattice Instances (Canvas 2D accent — no GPU) ──────
+// Lightweight atmospheric backgrounds — NOT system impersonation.
+// Triptych columns now use real GPU adapters (Quantum + Faceted).
 
-function initCanvas2D() {
-  // Triptych visualizer columns
-  c2d.set('triLeft', new Canvas2DRenderer('tri-left-canvas', parallaxParams.left));
-  c2d.set('triRight', new Canvas2DRenderer('tri-right-canvas', parallaxParams.right));
-
-  // Cascade cards
+function initAmbientCanvases() {
+  // Cascade cards — bright vivid accent behind card content
   document.querySelectorAll('.cascade-card').forEach((card, i) => {
-    c2d.set(`cas${i}`, new Canvas2DRenderer(`cas-${i}`, {
+    c2d.set(`cas${i}`, new AmbientLattice(`cas-${i}`, {
       geometry: parseInt(card.dataset.geo),
       hue: parseInt(card.dataset.hue),
-      gridDensity: 18, speed: 0.6, intensity: 0.75, chaos: 0.15,
-      morphFactor: 0.6, dimension: 3.5,
+      gridDensity: 24, speed: 0.8, intensity: 0.9, chaos: 0.22,
+      morphFactor: 0.9, dimension: 3.3, saturation: 0.95,
     }));
   });
 
-  // Section backgrounds
-  c2d.set('energyBg', new Canvas2DRenderer('energy-bg-canvas', energyBgParams));
-  c2d.set('agent', new Canvas2DRenderer('agent-canvas', agentBgParams));
-  c2d.set('cta', new Canvas2DRenderer('cta-canvas', ctaParams));
+  // Section backgrounds — NOW GPU-driven (see SCROLL_TIMELINE_v3.md)
+  // Energy bg, Agent, CTA are all handled by GPU adapters in choreography.
+  // No Canvas2D for these sections.
 }
 
 // ─── Card Tilt System ──────────────────────────────────────────
@@ -145,7 +146,7 @@ function initTiltSystem() {
     returnSpeed: 0.06,
   });
 
-  // Register cascade cards with their Canvas2D adapters
+  // Register cascade cards with their AmbientLattice adapters
   document.querySelectorAll('.cascade-card').forEach((card, i) => {
     const adapter = c2d.get(`cas${i}`);
     tiltSystem.register(card, adapter, {
@@ -192,7 +193,7 @@ function initTiltSystem() {
 function initPlayground() {
   const sliderParams = [
     'hue', 'gridDensity', 'speed', 'chaos',
-    'morphFactor', 'intensity', 'dimension',
+    'morphFactor', 'intensity', 'dimension', 'saturation',
     'rot4dXW', 'rot4dYW', 'rot4dZW',
     'rot4dXY', 'rot4dXZ', 'rot4dYZ',
   ];
@@ -234,6 +235,57 @@ function initPlayground() {
     });
   });
 
+  // ── Randomize + Reset ──
+  const sliderRanges = {
+    hue: [0, 360], gridDensity: [4, 80], speed: [0.1, 3], chaos: [0, 1],
+    morphFactor: [0, 2], intensity: [0.2, 1], dimension: [3.0, 4.5],
+    saturation: [0, 1],
+    rot4dXW: [0, 6.28], rot4dYW: [0, 6.28], rot4dZW: [0, 6.28],
+    rot4dXY: [0, 6.28], rot4dXZ: [0, 6.28], rot4dYZ: [0, 6.28],
+  };
+  const defaultSliders = {
+    hue: 200, gridDensity: 24, speed: 1.0, chaos: 0.2,
+    morphFactor: 0.5, intensity: 0.7, dimension: 3.5, saturation: 0.8,
+    rot4dXW: 0, rot4dYW: 0, rot4dZW: 0, rot4dXY: 0, rot4dXZ: 0, rot4dYZ: 0,
+  };
+
+  function setAllSliders(values) {
+    for (const [param, v] of Object.entries(values)) {
+      const input = document.getElementById(`ctrl-${param}`);
+      const valEl = document.getElementById(`val-${param}`);
+      if (input) { input.value = v; }
+      if (valEl) { valEl.textContent = Number.isInteger(v) ? v : v.toFixed(2); }
+    }
+    const pg = getPlayground();
+    if (pg) pg.setParams(values);
+  }
+
+  document.getElementById('btnRandomize')?.addEventListener('click', () => {
+    const randomized = {};
+    for (const [param, [lo, hi]] of Object.entries(sliderRanges)) {
+      randomized[param] = lo + Math.random() * (hi - lo);
+      if (param === 'hue' || param === 'gridDensity') randomized[param] = Math.round(randomized[param]);
+    }
+    // Random geometry too
+    const geo = Math.floor(Math.random() * 24);
+    randomized.geometry = geo;
+    const geoSelect = document.getElementById('ctrl-geometry');
+    const geoVal = document.getElementById('val-geometry');
+    if (geoSelect) geoSelect.value = geo;
+    if (geoVal) geoVal.textContent = geo;
+    setAllSliders(randomized);
+  });
+
+  document.getElementById('btnReset')?.addEventListener('click', () => {
+    setAllSliders(defaultSliders);
+    const geoSelect = document.getElementById('ctrl-geometry');
+    const geoVal = document.getElementById('val-geometry');
+    if (geoSelect) geoSelect.value = 3;
+    if (geoVal) geoVal.textContent = '3';
+    const pg = getPlayground();
+    if (pg) pg.setParam('geometry', 3);
+  });
+
   // Scroll-triggered GPU lifecycle
   if (typeof ScrollTrigger !== 'undefined') {
     ScrollTrigger.create({
@@ -250,9 +302,64 @@ function initPlayground() {
   }
 }
 
-// ─── Render Loop (Canvas2D only — GPU systems self-render) ────
+// ─── Global Mouse/Touch Reactivity ─────────────────────────────
+// Tracks mouse position globally and feeds it to ALL visible renderers.
+// AmbientLattice gets mouseX/mouseY params; GPU adapters get rotation nudges.
+
+const mouseState = { x: 0.5, y: 0.5, targetX: 0.5, targetY: 0.5, active: false };
+
+function initGlobalMouseReactivity() {
+  const root = document.documentElement;
+
+  const updateMouse = (clientX, clientY) => {
+    mouseState.targetX = clientX / window.innerWidth;
+    mouseState.targetY = clientY / window.innerHeight;
+    mouseState.active = true;
+    root.style.setProperty('--mouse-x', `${mouseState.targetX * 100}%`);
+    root.style.setProperty('--mouse-y', `${mouseState.targetY * 100}%`);
+    root.style.setProperty('--mouse-active', '1');
+  };
+
+  document.addEventListener('mousemove', (e) => updateMouse(e.clientX, e.clientY));
+  document.addEventListener('touchmove', (e) => {
+    if (e.touches.length) updateMouse(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+
+  document.addEventListener('mouseleave', () => {
+    mouseState.active = false;
+    root.style.setProperty('--mouse-active', '0');
+  });
+}
+
+function feedMouseToRenderers() {
+  // Smooth interpolation
+  mouseState.x += (mouseState.targetX - mouseState.x) * 0.08;
+  mouseState.y += (mouseState.targetY - mouseState.y) * 0.08;
+  const mx = mouseState.x, my = mouseState.y;
+  const dx = mx - 0.5, dy = my - 0.5;
+
+  // Feed to all AmbientLattice instances
+  for (const inst of c2d.values()) {
+    inst.setParam('mouseX', mx);
+    inst.setParam('mouseY', my);
+  }
+
+  // Feed to visible GPU adapters — mouse interaction (non-additive)
+  if (mouseState.active) {
+    const gpuKeys = ['hero', 'opening', 'playground', 'energyCard'];
+    for (const key of gpuKeys) {
+      const adapter = pool.get(key);
+      if (!adapter || !adapter.engine) continue;
+      // Feed mouse position directly to the engine's interaction handler
+      try { adapter.engine?.updateInteraction?.(mx, my, 0.6); } catch (_) { /* noop */ }
+    }
+  }
+}
+
+// ─── Render Loop (AmbientLattice + mouse reactivity) ──
 
 function renderLoop(ts) {
+  feedMouseToRenderers();
   for (const inst of c2d.values()) inst.render(ts);
   requestAnimationFrame(renderLoop);
 }
@@ -275,7 +382,7 @@ if (typeof Lenis !== 'undefined' && typeof gsap !== 'undefined') {
 }
 
 // Initialize everything
-initCanvas2D();
+initAmbientCanvases();
 
 if (typeof gsap !== 'undefined') {
   // Opening cinematic (acquires its own GPU context)
@@ -283,13 +390,18 @@ if (typeof gsap !== 'undefined') {
   initScrollProgress();
   initHero(pool);
   initMorph(pool, createHero);
-  initTriptych(c2d);
-  initCascade(c2d);
-  initEnergy(pool, c2d);
-  initCTA(c2d);
+  initTriptych(pool);       // 3 GPU: Q + H + F split-screen
+  initCascade(pool, c2d);   // 2 GPU bg (Q + H) + Canvas2D cards
+  initEnergy(pool);         // 2 GPU: Q bg + F card
+  initAgent(pool);          // 1 GPU: H background
+  initCTA(pool);            // 2 GPU: Q + F dueling finale
   initSectionReveals();
+  initSectionVeils();
   initScrollColorTheme();
   initBlurReveals();
+  initScrollVelocityBurst(c2d);
+  initPhaseShiftBridges(pool, c2d);
+  initSpeedCrescendo(pool);
 }
 
 // Acquire opening canvas immediately (first thing user sees)
@@ -297,6 +409,7 @@ pool.acquire('opening', 'opening-canvas', QuantumAdapter, openingParams);
 
 initPlayground();
 initTiltSystem();
+initGlobalMouseReactivity();
 requestAnimationFrame(renderLoop);
 
 // ─── Energy Card GPU Lifecycle → Tilt Adapter ─────────────────

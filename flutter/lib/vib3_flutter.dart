@@ -25,6 +25,6 @@
 library vib3_flutter;
 
 export 'src/vib3_engine.dart';
-export 'src/ffi/vib3_ffi.dart' show Vec4, Rotor4D, Mat4x4, RotationPlane, Projection;
+export 'src/ffi/vib3_ffi.dart' show Vec4, Rotor4D, Mat4x4, RotationPlane, Projection, Vib3Utils, CommandBatch;
 export 'src/widgets/vib3_view.dart';
 export 'src/widgets/vib3_controls.dart';

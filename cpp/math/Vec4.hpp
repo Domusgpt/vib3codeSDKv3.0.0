@@ -50,6 +50,10 @@ public:
     Vec4(__m128 v) noexcept : simd(v) {}
 #endif
 
+#ifdef __EMSCRIPTEN__
+    Vec4(v128_t v) noexcept : simd(v) {}
+#endif
+
     // Static factories
     static constexpr Vec4 zero() noexcept { return Vec4(0, 0, 0, 0); }
     static constexpr Vec4 one() noexcept { return Vec4(1, 1, 1, 1); }
