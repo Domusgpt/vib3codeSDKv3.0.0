@@ -15,18 +15,16 @@
  *   7. Section dividers: SVG shapes hide canvas edge lines
  *   8. Blur cascade reveals + scroll-driven color theming (VISUAL-CODEX patterns)
  *
- * GPU Context Budget:
- *   Opening ......... 1 (Quantum, released when hero enters)
- *   Hero ............ 1 (Quantum, released when morph enters)
- *   Morph ........... 1 (swaps Q → H → F on scroll)
- *   Playground ...... 1 (Q/H/F, lazy — scroll-triggered)
- *   Triptych L ...... 1 (Quantum GPU, scroll-triggered)
- *   Triptych C ...... 1 (Holographic GPU, behind text)
- *   Triptych R ...... 1 (Faceted GPU, scroll-triggered)
- *   Energy card ..... 1 (Faceted, lazy)
- *   Cascade ......... 0 (AmbientLattice accent — no GPU)
- *   Agent ........... 0 (AmbientLattice accent — no GPU)
- *   CTA ............. 0 (AmbientLattice accent — no GPU)
+ * GPU Context Budget (see DOCS/SCROLL_TIMELINE_v3.md):
+ *   Opening ......... 1 (Quantum)
+ *   Hero ............ 1 (Quantum)
+ *   Morph ........... 1 (Q → H → F rotating)
+ *   Playground ...... 1 (Q/H/F, user-controlled)
+ *   Triptych ........ 3 (Q + H + F split-screen)
+ *   Cascade ......... 2 (Q + H dual GPU background) + Canvas2D cards
+ *   Energy .......... 2 (Q background + F card)
+ *   Agent ........... 1 (Holographic)
+ *   CTA ............. 2 (Q + F dueling finale)
  *   MAX CONCURRENT .. 3 (pool auto-evicts oldest on overflow)
  */
 
@@ -34,13 +32,13 @@ import { ContextPool } from './ContextPool.js';
 import { QuantumAdapter, HolographicAdapter, FacetedAdapter, AmbientLattice } from './adapters.js';
 import { CardTiltSystem } from './CardTiltSystem.js';
 import {
-  heroParams, energyBgParams,
-  agentBgParams, playgroundDefaults, ctaParams,
+  heroParams, playgroundDefaults,
   parallaxParams, openingParams,
 } from './config.js';
 import {
   initScrollProgress, initOpening, initHero, initMorph,
   initTriptych, initCascade, initEnergy, initCTA,
+  initAgent,
   initSectionReveals, initScrollColorTheme, initBlurReveals,
   initSectionVeils, initScrollVelocityBurst, initPhaseShiftBridges,
   initSpeedCrescendo,
@@ -131,10 +129,9 @@ function initAmbientCanvases() {
     }));
   });
 
-  // Section backgrounds — subtle atmospheric accents
-  c2d.set('energyBg', new AmbientLattice('energy-bg-canvas', energyBgParams));
-  c2d.set('agent', new AmbientLattice('agent-canvas', agentBgParams));
-  c2d.set('cta', new AmbientLattice('cta-canvas', ctaParams));
+  // Section backgrounds — NOW GPU-driven (see SCROLL_TIMELINE_v3.md)
+  // Energy bg, Agent, CTA are all handled by GPU adapters in choreography.
+  // No Canvas2D for these sections.
 }
 
 // ─── Card Tilt System ──────────────────────────────────────────
@@ -393,17 +390,18 @@ if (typeof gsap !== 'undefined') {
   initScrollProgress();
   initHero(pool);
   initMorph(pool, createHero);
-  initTriptych(pool);    // Real GPU: Quantum (left) + Faceted (right)
-  initCascade(c2d);
-  initEnergy(pool, c2d);
-  initCTA(c2d);
+  initTriptych(pool);       // 3 GPU: Q + H + F split-screen
+  initCascade(pool, c2d);   // 2 GPU bg (Q + H) + Canvas2D cards
+  initEnergy(pool);         // 2 GPU: Q bg + F card
+  initAgent(pool);          // 1 GPU: H background
+  initCTA(pool);            // 2 GPU: Q + F dueling finale
   initSectionReveals();
   initSectionVeils();
   initScrollColorTheme();
   initBlurReveals();
   initScrollVelocityBurst(c2d);
   initPhaseShiftBridges(pool, c2d);
-  initSpeedCrescendo(c2d);
+  initSpeedCrescendo(pool);
 }
 
 // Acquire opening canvas immediately (first thing user sees)

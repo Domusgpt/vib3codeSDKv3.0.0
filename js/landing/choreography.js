@@ -702,9 +702,38 @@ export function initTriptych(pool) {
 // with distance-based falloff — every card participates, none are idle.
 // Shared rotation phase ties all cards to a common 4D rhythm.
 
-export function initCascade(c2d) {
+export function initCascade(pool, c2d) {
   const cascadeCards = document.querySelectorAll('.cascade-card');
   const cascadeTrack = document.getElementById('cascadeTrack');
+  const gpuLeftWrap = document.getElementById('cascadeGpuLeft');
+  const gpuRightWrap = document.getElementById('cascadeGpuRight');
+
+  // ── Dual GPU background lifecycle ──
+  ScrollTrigger.create({
+    trigger: '#cascadeSection', start: 'top 90%', end: 'bottom top',
+    onEnter: () => {
+      pool.acquire('casGpuL', 'cascade-gpu-left', QuantumAdapter, {
+        geometry: 2, hue: 200, gridDensity: 20, speed: 0.5,
+        intensity: 0.55, chaos: 0.15, dimension: 3.5, morphFactor: 0.6, saturation: 0.85,
+      });
+      pool.acquire('casGpuR', 'cascade-gpu-right', HolographicAdapter, {
+        geometry: 4, hue: 320, gridDensity: 18, speed: 0.4,
+        intensity: 0.5, chaos: 0.12, dimension: 3.6, morphFactor: 0.7, saturation: 0.8,
+      });
+    },
+    onLeave: () => { pool.release('casGpuL'); pool.release('casGpuR'); },
+    onEnterBack: () => {
+      pool.acquire('casGpuL', 'cascade-gpu-left', QuantumAdapter, {
+        geometry: 2, hue: 200, gridDensity: 20, speed: 0.5,
+        intensity: 0.55, chaos: 0.15, dimension: 3.5, morphFactor: 0.6, saturation: 0.85,
+      });
+      pool.acquire('casGpuR', 'cascade-gpu-right', HolographicAdapter, {
+        geometry: 4, hue: 320, gridDensity: 18, speed: 0.4,
+        intensity: 0.5, chaos: 0.12, dimension: 3.6, morphFactor: 0.7, saturation: 0.8,
+      });
+    },
+    onLeaveBack: () => { pool.release('casGpuL'); pool.release('casGpuR'); },
+  });
 
   // Stagger entrance
   ScrollTrigger.create({
@@ -722,9 +751,7 @@ export function initCascade(c2d) {
   cascadeCards.forEach((card, i) => {
     card.addEventListener('mouseenter', () => {
       const inst = c2d.get(`cas${i}`);
-      if (inst) {
-        inst.setParams({ speed: 1.8, chaos: 0.5, intensity: 0.95 });
-      }
+      if (inst) inst.setParams({ speed: 1.8, chaos: 0.5, intensity: 0.95 });
     });
     card.addEventListener('mousemove', (e) => {
       const inst = c2d.get(`cas${i}`);
@@ -734,14 +761,10 @@ export function initCascade(c2d) {
       const my = (e.clientY - rect.top) / rect.height;
       inst.setParam('mouseX', mx);
       inst.setParam('mouseY', my);
-      inst.setParam('rot4dXW', (inst.params.rot4dXW || 0) + (mx - 0.5) * 0.1);
-      inst.setParam('rot4dYW', (inst.params.rot4dYW || 0) + (my - 0.5) * 0.1);
     });
     card.addEventListener('mouseleave', () => {
       const inst = c2d.get(`cas${i}`);
-      if (inst) {
-        inst.setParams({ speed: 0.7, chaos: 0.18, intensity: 0.85, mouseX: 0.5, mouseY: 0.5 });
-      }
+      if (inst) inst.setParams({ speed: 0.7, chaos: 0.18, intensity: 0.85, mouseX: 0.5, mouseY: 0.5 });
     });
   });
 
@@ -774,6 +797,46 @@ export function initCascade(c2d) {
 
         // ═══ Shared rotation phase — all cards tied to a common 4D rhythm ═══
         const sharedXW = p * Math.PI * 3;
+
+        // ═══ DUAL GPU BACKGROUND: reacts to active card ═══
+        const gpuL = pool.get('casGpuL');
+        const gpuR = pool.get('casGpuR');
+        const aCard = cascadeCards[activeIdx];
+        const aGeo = parseInt(aCard?.dataset.geo || '0');
+        const aHue = parseInt(aCard?.dataset.hue || '200');
+
+        // GPU backgrounds mirror/oppose the active card
+        if (gpuL) {
+          gpuL.setParams({
+            geometry: aGeo,
+            hue: aHue,
+            rot4dXW: sharedXW,
+            rot4dYW: Math.sin(p * Math.PI * 2) * 1.5,
+            gridDensity: 16 + pulse * 20,
+            intensity: 0.4 + pulse * 0.3,
+            chaos: 0.1 + pulse * 0.25,
+            speed: 0.4 + pulse * 0.8,
+            morphFactor: 0.5 + localP * 0.6,
+          });
+        }
+        if (gpuR) {
+          // Holographic bg plays the opposite
+          gpuR.setParams({
+            geometry: (aGeo + 16) % 24,
+            hue: (aHue + 180) % 360,
+            rot4dXW: -sharedXW * 0.7,
+            rot4dYW: Math.cos(p * Math.PI * 2) * 1.2,
+            gridDensity: 24 - pulse * 12,
+            intensity: 0.35 + (1 - pulse) * 0.25,
+            chaos: 0.15 + (1 - pulse) * 0.2,
+            speed: 0.3 + (1 - pulse) * 0.6,
+            morphFactor: 0.7 - localP * 0.3,
+          });
+        }
+        // Split line follows active card position
+        const splitPct = 30 + activeIdx / Math.max(1, cascadeCards.length - 1) * 40;
+        if (gpuLeftWrap) gpuLeftWrap.style.clipPath = `inset(0 ${100 - splitPct}% 0 0)`;
+        if (gpuRightWrap) gpuRightWrap.style.clipPath = `inset(0 0 0 ${splitPct}%)`;
 
         cascadeCards.forEach((card, i) => {
           const inst = c2d.get(`cas${i}`);
@@ -847,14 +910,25 @@ export function initCascade(c2d) {
 
 // ─── ENERGY TRANSFER ────────────────────────────────────────
 
-export function initEnergy(pool, c2d) {
-  // Lazy GPU lifecycle for the card
+export function initEnergy(pool) {
+  const energyBgInitParams = {
+    geometry: 6, hue: 270, gridDensity: 24, speed: 0.5,
+    intensity: 0.6, chaos: 0.15, dimension: 3.4, morphFactor: 0.8, saturation: 0.9,
+  };
+
+  // Dual GPU lifecycle: Quantum bg + Faceted card
   ScrollTrigger.create({
     trigger: '#energySection', start: 'top 80%', end: 'bottom top',
-    onEnter: () => pool.acquire('energyCard', 'energy-card-canvas', FacetedAdapter, energyCardParams),
-    onLeave: () => pool.release('energyCard'),
-    onEnterBack: () => pool.acquire('energyCard', 'energy-card-canvas', FacetedAdapter, energyCardParams),
-    onLeaveBack: () => pool.release('energyCard'),
+    onEnter: () => {
+      pool.acquire('energyBg', 'energy-bg-canvas', QuantumAdapter, energyBgInitParams);
+      pool.acquire('energyCard', 'energy-card-canvas', FacetedAdapter, energyCardParams);
+    },
+    onLeave: () => { pool.release('energyBg'); pool.release('energyCard'); },
+    onEnterBack: () => {
+      pool.acquire('energyBg', 'energy-bg-canvas', QuantumAdapter, energyBgInitParams);
+      pool.acquire('energyCard', 'energy-card-canvas', FacetedAdapter, energyCardParams);
+    },
+    onLeaveBack: () => { pool.release('energyBg'); pool.release('energyCard'); },
   });
 
   // 7-Step Pinned 3D Card Timeline
@@ -902,43 +976,49 @@ export function initEnergy(pool, c2d) {
   ScrollTrigger.create({
     trigger: '#energySection', start: 'top top', end: 'bottom bottom', scrub: 0.5,
     onUpdate: (self) => {
-      const bg = c2d.get('energyBg');
+      const bg = pool.get('energyBg');
       if (!bg) return;
       const p = self.progress;
       const card = pool.get('energyCard');
+      const pulse = Math.sin(p * Math.PI);
 
-      // Base scroll-driven params
-      let bgIntensity = 0.2 + Math.sin(p * Math.PI) * 0.2;
-      let bgChaos = 0.05 + p * 0.15;
-      let bgHue = 270 + p * 60;
-      let bgDensity = 16 + p * 14;
-      let bgXW = p * 4;
+      // Base scroll-driven params — dramatic for GPU system
+      let bgIntensity = 0.4 + pulse * 0.3;
+      let bgChaos = 0.1 + p * 0.2;
+      let bgHue = 270 + p * 80;
+      let bgDensity = 18 + p * 20;
+      let bgXW = p * Math.PI * 3;
+      let bgSpeed = 0.4 + pulse * 0.6;
 
-      // Cross-feed from GPU card when available
+      // ★ Cross-feed from GPU card: two systems in energy exchange
       if (card && card.params) {
         const cardInt = card.params.intensity || 0.6;
         const cardChaos = card.params.chaos || 0.1;
         const cardXW = card.params.rot4dXW || 0;
         // Inverse intensity: when card dims, background brightens
-        bgIntensity += (1 - cardInt) * 0.2;
-        // Card chaos bleeds to background (dampened)
-        bgChaos += cardChaos * 0.3;
-        // Counter-rotation: background rotates opposite to card
-        bgXW = -cardXW * 0.6 + p * 2;
-        // Hue complementary shift: bg tracks 180° from card hue
+        bgIntensity += (1 - cardInt) * 0.3;
+        // Card chaos bleeds to background
+        bgChaos += cardChaos * 0.4;
+        // Counter-rotation: background opposes card
+        bgXW = -cardXW * 0.7 + p * Math.PI * 2;
+        // Hue complementary: bg tracks 180° from card
         const cardHue = card.params.hue || 200;
-        bgHue = bgHue * 0.6 + ((cardHue + 180) % 360) * 0.4;
-        // Density inverse: when card density drops, bg density rises
+        bgHue = bgHue * 0.5 + ((cardHue + 180) % 360) * 0.5;
+        // Density inverse
         const cardDen = card.params.gridDensity || 20;
-        bgDensity = bgDensity + (30 - cardDen) * 0.3;
+        bgDensity = bgDensity + (35 - cardDen) * 0.4;
       }
 
       bg.setParams({
         rot4dXW: bgXW,
+        rot4dYW: Math.sin(p * Math.PI * 2) * 1.5,
+        rot4dZW: p * Math.PI * 0.4,
         hue: bgHue,
-        gridDensity: Math.max(8, bgDensity),
-        intensity: Math.min(0.8, bgIntensity),
-        chaos: Math.min(0.6, bgChaos),
+        gridDensity: Math.max(8, Math.min(60, bgDensity)),
+        intensity: Math.min(0.9, bgIntensity),
+        chaos: Math.min(0.7, bgChaos),
+        speed: bgSpeed,
+        morphFactor: 0.6 + pulse * 0.5,
       });
     },
   });
@@ -952,7 +1032,7 @@ export function initEnergy(pool, c2d) {
       if (sweeping) return;
       sweeping = true;
       const card = pool.get('energyCard');
-      const bg = c2d.get('energyBg');
+      const bg = pool.get('energyBg');
       if (!card && !bg) { sweeping = false; return; }
 
       const tl = gsap.timeline({ onComplete: () => { sweeping = false; } });
@@ -981,27 +1061,135 @@ export function initEnergy(pool, c2d) {
   }
 }
 
-// ─── CTA ────────────────────────────────────────────────────
+// ─── AGENT — GPU Holographic Background ─────────────────────
 
-export function initCTA(c2d) {
+export function initAgent(pool) {
+  ScrollTrigger.create({
+    trigger: '#agentSection', start: 'top 90%', end: 'bottom top',
+    onEnter: () => pool.acquire('agent', 'agent-canvas', HolographicAdapter, {
+      geometry: 3, hue: 240, gridDensity: 18, speed: 0.4,
+      intensity: 0.5, chaos: 0.15, dimension: 3.5, morphFactor: 0.6, saturation: 0.8,
+    }),
+    onLeave: () => pool.release('agent'),
+    onEnterBack: () => pool.acquire('agent', 'agent-canvas', HolographicAdapter, {
+      geometry: 3, hue: 240, gridDensity: 18, speed: 0.4,
+      intensity: 0.5, chaos: 0.15, dimension: 3.5, morphFactor: 0.6, saturation: 0.8,
+    }),
+    onLeaveBack: () => pool.release('agent'),
+  });
+
+  // Scroll-driven: holographic system evolves as user scrolls through cards
+  ScrollTrigger.create({
+    trigger: '#agentSection', start: 'top bottom', end: 'bottom top', scrub: 0.5,
+    onUpdate: (self) => {
+      const agent = pool.get('agent');
+      if (!agent) return;
+      const p = self.progress;
+      const pulse = Math.sin(p * Math.PI);
+      agent.setParams({
+        rot4dXW: p * Math.PI * 2,
+        rot4dYW: Math.sin(p * Math.PI * 2) * 1.0,
+        hue: 240 + p * 80 + pulse * 20,
+        gridDensity: 18 + pulse * 16,
+        intensity: 0.5 + pulse * 0.3,
+        speed: 0.4 + pulse * 0.5,
+        chaos: 0.15 + p * 0.2,
+        morphFactor: 0.6 + pulse * 0.4,
+      });
+    },
+  });
+}
+
+// ─── CTA — Dual GPU Finale (Quantum + Faceted dueling) ──────
+
+export function initCTA(pool) {
+  // Dual GPU lifecycle: Quantum left + Faceted right
+  ScrollTrigger.create({
+    trigger: '#ctaSection', start: 'top 90%', end: 'bottom top',
+    onEnter: () => {
+      pool.acquire('ctaL', 'cta-canvas-left', QuantumAdapter, {
+        geometry: 5, hue: 200, gridDensity: 16, speed: 0.3,
+        intensity: 0.3, chaos: 0.1, dimension: 3.5, morphFactor: 0.5, saturation: 0.85,
+      });
+      pool.acquire('ctaR', 'cta-canvas-right', FacetedAdapter, {
+        geometry: 7, hue: 320, gridDensity: 20, speed: 0.4,
+        intensity: 0.3, chaos: 0.12, dimension: 3.4, morphFactor: 0.6, saturation: 0.9,
+      });
+    },
+    onLeave: () => { pool.release('ctaL'); pool.release('ctaR'); },
+    onEnterBack: () => {
+      pool.acquire('ctaL', 'cta-canvas-left', QuantumAdapter, {
+        geometry: 5, hue: 200, gridDensity: 16, speed: 0.3,
+        intensity: 0.3, chaos: 0.1, dimension: 3.5, morphFactor: 0.5, saturation: 0.85,
+      });
+      pool.acquire('ctaR', 'cta-canvas-right', FacetedAdapter, {
+        geometry: 7, hue: 320, gridDensity: 20, speed: 0.4,
+        intensity: 0.3, chaos: 0.12, dimension: 3.4, morphFactor: 0.6, saturation: 0.9,
+      });
+    },
+    onLeaveBack: () => { pool.release('ctaL'); pool.release('ctaR'); },
+  });
+
+  // ★ Dual system choreography: opposition → convergence → unity
   ScrollTrigger.create({
     trigger: '#ctaSection', start: 'top bottom', end: 'bottom bottom', scrub: 1.0,
     onUpdate: (self) => {
-      const cta = c2d.get('cta');
-      if (!cta) return;
+      const ctaL = pool.get('ctaL');
+      const ctaR = pool.get('ctaR');
+      if (!ctaL && !ctaR) return;
       const p = self.progress;
       const pulse = Math.sin(p * Math.PI);
-      cta.setParams({
-        rot4dXW: p * Math.PI * 3,
-        rot4dYW: Math.sin(p * Math.PI * 2) * 1.5,
-        rot4dZW: p * Math.PI * 0.5,
-        hue: 160 + p * 120 + pulse * 20,
-        intensity: 0.5 + pulse * 0.35,
-        gridDensity: 18 + p * 16,
-        speed: 0.4 + pulse * 0.6,
-        chaos: 0.15 + pulse * 0.2,
-        morphFactor: 0.5 + p * 0.6,
-      });
+
+      // Convergence: systems start opposed, pull together
+      const conv = smoothstep(clamp01((p - 0.6) / 0.4)); // 0 at 60%, 1 at 100%
+      const unifiedHue = 220;
+      const unifiedGeo = 11;
+
+      if (ctaL) {
+        const hueL = lerp(200, unifiedHue, conv);
+        const geoL = p < 0.3 ? 5 : p < 0.6 ? 2 : unifiedGeo;
+        ctaL.setParams({
+          geometry: geoL,
+          hue: hueL + pulse * 20 * (1 - conv),
+          rot4dXW: p * Math.PI * 3,
+          rot4dYW: Math.sin(p * Math.PI * 2) * 1.5 * (1 - conv),
+          rot4dZW: p * Math.PI * 0.5,
+          gridDensity: lerp(16, 28, p) + pulse * 8 * (1 - conv),
+          intensity: 0.3 + p * 0.5,
+          speed: 0.3 + pulse * 0.8,
+          chaos: lerp(0.1, 0.05, conv) + pulse * 0.2 * (1 - conv),
+          morphFactor: 0.5 + p * 0.6,
+          saturation: 0.85 + conv * 0.1,
+        });
+      }
+      if (ctaR) {
+        const hueR = lerp(320, unifiedHue, conv);
+        const geoR = p < 0.3 ? 7 : p < 0.6 ? 4 : unifiedGeo;
+        ctaR.setParams({
+          geometry: geoR,
+          hue: hueR - pulse * 20 * (1 - conv),
+          rot4dXW: -p * Math.PI * 3 * (1 - conv) + p * Math.PI * 3 * conv,
+          rot4dYW: Math.cos(p * Math.PI * 2) * 1.5 * (1 - conv),
+          rot4dZW: -p * Math.PI * 0.5 * (1 - conv),
+          gridDensity: lerp(20, 28, p) - pulse * 6 * (1 - conv),
+          intensity: 0.3 + p * 0.5,
+          speed: 0.4 + pulse * 0.6,
+          chaos: lerp(0.12, 0.05, conv) + pulse * 0.15 * (1 - conv),
+          morphFactor: 0.6 + p * 0.5,
+          saturation: 0.9 + conv * 0.05,
+        });
+      }
+
+      // Diagonal split line rotates from diagonal → vertical during convergence
+      const ctaLeftWrap = document.getElementById('ctaGpuLeft');
+      const ctaRightWrap = document.getElementById('ctaGpuRight');
+      if (ctaLeftWrap && ctaRightWrap) {
+        // Diagonal split morphs toward vertical at convergence
+        const topR = lerp(100, 50, conv);   // top-right x
+        const botL = lerp(0, 50, conv);     // bottom-left x
+        ctaLeftWrap.style.clipPath = `polygon(0 0, ${topR}% 0, ${botL}% 100%, 0 100%)`;
+        ctaRightWrap.style.clipPath = `polygon(${topR}% 0, 100% 0, 100% 100%, ${botL}% 100%)`;
+      }
     },
   });
 }
@@ -1223,7 +1411,7 @@ export function initPhaseShiftBridges(pool, c2d) {
 // ─── SPEED CRESCENDO → SILENCE (Event 14) ─────────────────
 // Pre-CTA: all visible elements accelerate, then instant silence, then gentle CTA fade
 
-export function initSpeedCrescendo(c2d) {
+export function initSpeedCrescendo(pool) {
   ScrollTrigger.create({
     trigger: '#agentSection',
     start: '60% top',
@@ -1232,25 +1420,26 @@ export function initSpeedCrescendo(c2d) {
     onUpdate: (self) => {
       const p = self.progress;
 
-      // Phase A (0-80%): The Build
+      // Phase A (0-80%): The Build — GPU Holographic accelerates
       if (p < 0.8) {
         const build = p / 0.8;
-        const agent = c2d.get('agent');
+        const agent = pool.get('agent');
         if (agent) {
           agent.setParams({
-            speed: 0.3 * (1 + build * 4),
-            chaos: 0.2 + build * 0.6,
-            intensity: 0.45 + build * 0.4,
-            gridDensity: 16 + build * 30,
+            speed: 0.4 * (1 + build * 5),
+            chaos: 0.15 + build * 0.6,
+            intensity: 0.5 + build * 0.4,
+            gridDensity: 18 + build * 35,
+            rot4dXW: build * Math.PI * 4,
+            rot4dYW: Math.sin(build * Math.PI * 3) * 2,
           });
         }
-        // Vignette effect via CSS
         document.documentElement.style.setProperty('--crescendo-vignette', (build * 0.3).toFixed(2));
       }
 
       // Phase B (80-88%): THE SILENCE
       if (p >= 0.8 && p < 0.88) {
-        const agent = c2d.get('agent');
+        const agent = pool.get('agent');
         if (agent) {
           agent.setParams({ speed: 0, chaos: 0, intensity: 0.05, gridDensity: 4 });
         }
@@ -1261,13 +1450,13 @@ export function initSpeedCrescendo(c2d) {
       // Phase C (88-100%): Gentle rebirth
       if (p >= 0.88) {
         const rebirth = (p - 0.88) / 0.12;
-        const agent = c2d.get('agent');
+        const agent = pool.get('agent');
         if (agent) {
           agent.setParams({
-            speed: rebirth * 0.2,
-            intensity: rebirth * 0.3,
-            gridDensity: 8 + rebirth * 8,
-            chaos: rebirth * 0.1,
+            speed: rebirth * 0.3,
+            intensity: rebirth * 0.35,
+            gridDensity: 8 + rebirth * 10,
+            chaos: rebirth * 0.12,
           });
         }
         document.documentElement.style.setProperty('--silence-blackout', (1 - rebirth).toFixed(2));

@@ -1558,11 +1558,19 @@
 
     <!-- ═══════════════════════════════════════════════════
          SECTION 5: GEOMETRY CASCADE — Morphing Cards
-         Cards scale up/down on scroll, glow leaks beyond borders
-         Density drops as cards expand; speed/chaos sync with events
+         Dual GPU background (Q+H split-screen) + Canvas2D card faces
          ═══════════════════════════════════════════════════ -->
     <section class="cascade" id="cascadeSection">
         <div class="cascade-pinned" id="cascadePinned">
+            <!-- Dual GPU background: Quantum left, Holographic right -->
+            <div class="cascade-gpu-bg" id="cascadeGpuBg" style="position:absolute;inset:0;z-index:0;overflow:hidden;">
+                <div class="canvas-wrap" style="position:absolute;inset:0;clip-path:inset(0 50% 0 0);" id="cascadeGpuLeft">
+                    <canvas class="vib3-canvas" id="cascade-gpu-left"></canvas>
+                </div>
+                <div class="canvas-wrap" style="position:absolute;inset:0;clip-path:inset(0 0 0 50%);" id="cascadeGpuRight">
+                    <canvas class="vib3-canvas" id="cascade-gpu-right"></canvas>
+                </div>
+            </div>
             <div class="cascade-header section-reveal" data-animate>
                 <h2>Geometry Cascade</h2>
                 <p>24 geometry variants across three core types</p>
@@ -1605,7 +1613,7 @@
 
     <!-- ═══════════════════════════════════════════════════
          SECTION 6: ENERGY TRANSFER — Interactive Demo
-         AmbientLattice bg + Faceted GPU card (1 GPU context, lazy)
+         Quantum GPU bg + Faceted GPU card (2 GPU contexts, lazy)
          ═══════════════════════════════════════════════════ -->
     <section class="energy" id="energySection">
         <div class="energy-pinned" id="energyPinned">
@@ -1699,12 +1707,15 @@
     </div>
 
     <!-- ═══════════════════════════════════════════════════
-         SECTION 8: CTA
+         SECTION 8: CTA — Dual GPU Finale (Quantum + Faceted dueling)
          ═══════════════════════════════════════════════════ -->
     <section class="cta-section" id="ctaSection">
-        <div class="cta-bg">
-            <div class="canvas-wrap" style="width:100%;height:100%;">
-                <canvas class="vib3-canvas" id="cta-canvas"></canvas>
+        <div class="cta-bg" style="overflow:hidden;">
+            <div class="canvas-wrap" style="position:absolute;inset:0;clip-path:polygon(0 0, 100% 0, 0 100%);" id="ctaGpuLeft">
+                <canvas class="vib3-canvas" id="cta-canvas-left"></canvas>
+            </div>
+            <div class="canvas-wrap" style="position:absolute;inset:0;clip-path:polygon(100% 0, 100% 100%, 0 100%);" id="ctaGpuRight">
+                <canvas class="vib3-canvas" id="cta-canvas-right"></canvas>
             </div>
         </div>
         <div class="cta-content section-reveal" data-animate>
@@ -1739,18 +1750,16 @@
     <!-- ═══════════════════════════════════════════════════════════
          ENGINE BOOT + GPU CONTEXT POOL + GSAP CHOREOGRAPHY
 
-         GPU CONTEXT BUDGET:
-           Opening ......... 1 (Quantum, released on hero enter)
-           Hero ............ 1 (Quantum, released on morph enter)
-           Morph ........... 1 (swaps Q → H → F on scroll)
-           Playground ...... 1 (Q/H/F, lazy)
-           Triptych L ...... 1 (Quantum GPU, scroll-triggered)
-           Triptych C ...... 1 (Holographic GPU, scroll-triggered)
-           Triptych R ...... 1 (Faceted GPU, scroll-triggered)
-           Energy card ..... 1 (Faceted, lazy)
-           Cascade ......... 0 (AmbientLattice accent)
-           Agent ........... 0 (AmbientLattice accent)
-           CTA ............. 0 (AmbientLattice accent)
+         GPU CONTEXT BUDGET (see DOCS/SCROLL_TIMELINE_v3.md):
+           Opening ......... 1 (Quantum)
+           Hero ............ 1 (Quantum)
+           Morph ........... 1 (swaps Q → H → F)
+           Playground ...... 1 (Q/H/F, user-controlled)
+           Triptych ........ 3 (Q + H + F split-screen)
+           Cascade ......... 2 (Q + H dual GPU background)
+           Energy .......... 2 (Q background + F card)
+           Agent ........... 1 (Holographic)
+           CTA ............. 2 (Q + F dueling finale)
            MAX CONCURRENT .. 3 (pool auto-evicts oldest)
          ═══════════════════════════════════════════════════════════ -->
     <script type="module" src="./js/landing/main.js"></script>
