@@ -216,78 +216,83 @@ export class AmbientLattice {
     const t = time * p.speed * 0.001;
     const geo = Math.floor(p.geometry) % 24;
     const base = geo % 8, core = Math.floor(geo / 8);
-    const cx = w / 2, cy = h / 2, sc = Math.min(w, h) * 0.38;
+    const cx = w / 2, cy = h / 2;
+    // DRAMATIC scale: geometry fills the canvas
+    const sc = Math.max(w, h) * 0.55;
     const density = Math.max(4, Math.floor(p.gridDensity));
     const dim = p.dimension || 3.5;
     const sat = Math.round((p.saturation ?? 0.8) * 100);
+    // Mouse reactivity (fed externally via setParam('mouseX'/mouseY'))
+    const mx = p.mouseX ?? 0.5, my = p.mouseY ?? 0.5;
+    const mouseShift = (mx - 0.5) * 0.3;
 
-    // ── Layer 0: Deep background ──
+    // ── Layer 0: Deep background with hue shift ──
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
-    const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.7);
-    bg.addColorStop(0, `hsla(${p.hue}, ${sat}%, 8%, 1)`);
-    bg.addColorStop(0.5, `hsla(${(p.hue + 20) % 360}, ${sat - 10}%, 4%, 1)`);
-    bg.addColorStop(1, `hsla(${(p.hue + 40) % 360}, ${sat - 20}%, 2%, 1)`);
+    const bgR = Math.max(w, h) * 0.85;
+    const bg = ctx.createRadialGradient(cx + (mx - 0.5) * w * 0.2, cy + (my - 0.5) * h * 0.2, 0, cx, cy, bgR);
+    bg.addColorStop(0, `hsla(${p.hue}, ${sat}%, 12%, 1)`);
+    bg.addColorStop(0.4, `hsla(${(p.hue + 20) % 360}, ${sat}%, 6%, 1)`);
+    bg.addColorStop(1, `hsla(${(p.hue + 40) % 360}, ${Math.max(0, sat - 20)}%, 2%, 1)`);
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
 
-    // ── Layer 1: Ambient nebula wash ──
-    const nebulaAlpha = 0.12 + p.intensity * 0.15;
-    for (let n = 0; n < 3; n++) {
-      const nAng = t * 0.15 + n * 2.094 + (p.rot4dZW || 0) * 0.5;
-      const nR = sc * (0.6 + Math.sin(t * 0.3 + n) * 0.3);
-      const nx = cx + Math.cos(nAng) * sc * 0.25;
-      const ny = cy + Math.sin(nAng) * sc * 0.2;
+    // ── Layer 1: BIG nebula clouds — fill the canvas with color ──
+    const nebulaAlpha = 0.25 + p.intensity * 0.35;
+    for (let n = 0; n < 4; n++) {
+      const nAng = t * 0.12 + n * 1.57 + (p.rot4dZW || 0) * 0.5 + mouseShift;
+      const nR = sc * (0.7 + Math.sin(t * 0.25 + n * 1.2) * 0.4);
+      const nx = cx + Math.cos(nAng) * sc * 0.35;
+      const ny = cy + Math.sin(nAng) * sc * 0.3;
       const nGrad = ctx.createRadialGradient(nx, ny, 0, nx, ny, nR);
-      const nHue = (p.hue + n * 60 + core * 40) % 360;
-      nGrad.addColorStop(0, `hsla(${nHue}, ${sat}%, 45%, ${nebulaAlpha})`);
-      nGrad.addColorStop(0.4, `hsla(${nHue}, ${sat - 10}%, 30%, ${nebulaAlpha * 0.5})`);
-      nGrad.addColorStop(1, `hsla(${nHue}, ${sat}%, 15%, 0)`);
+      const nHue = (p.hue + n * 80 + core * 50) % 360;
+      nGrad.addColorStop(0, `hsla(${nHue}, ${sat}%, 50%, ${nebulaAlpha})`);
+      nGrad.addColorStop(0.3, `hsla(${nHue}, ${Math.max(0, sat - 10)}%, 35%, ${nebulaAlpha * 0.6})`);
+      nGrad.addColorStop(0.7, `hsla(${(nHue + 30) % 360}, ${sat}%, 20%, ${nebulaAlpha * 0.2})`);
+      nGrad.addColorStop(1, `hsla(${nHue}, ${sat}%, 10%, 0)`);
       ctx.fillStyle = nGrad;
       ctx.fillRect(0, 0, w, h);
     }
 
-    // ── Layer 2: Primary geometry — filled shapes with gradient strokes ──
-    ctx.globalAlpha = p.intensity;
+    // ── Layer 2: Primary geometry — BOLD filled shapes ──
+    ctx.globalAlpha = Math.min(1, p.intensity * 1.2);
     const halfDensity = Math.ceil(density / 2);
 
     for (let i = 0; i < density; i++) {
       const f = i / density;
-      const ang = f * Math.PI * 2 + t + (p.rot4dXW || 0);
+      const ang = f * Math.PI * 2 + t + (p.rot4dXW || 0) + mouseShift * 2;
       const hShift = (p.hue + f * 120 + core * 60) % 360;
 
       // 4D projection factor
       const w4 = Math.sin(t * 0.5 + f * 3.14 + (p.rot4dYW || 0)) * 0.4;
       const pf = 1.0 / (dim - w4);
 
-      // Primary stroke + fill
-      const strokeAlpha = 0.25 + p.chaos * 0.4 + p.intensity * 0.15;
-      const fillAlpha = 0.04 + p.chaos * 0.06 + (i < halfDensity ? 0.03 : 0);
-      ctx.strokeStyle = `hsla(${hShift}, ${sat}%, 58%, ${strokeAlpha})`;
-      ctx.fillStyle = `hsla(${hShift}, ${sat - 10}%, 40%, ${fillAlpha})`;
-      ctx.lineWidth = 1.5 + p.morphFactor * 1.2 + (i === 0 ? 1 : 0);
+      // BOLD stroke + visible fill
+      const strokeAlpha = 0.45 + p.chaos * 0.4 + p.intensity * 0.15;
+      const fillAlpha = 0.12 + p.chaos * 0.15 + (i < halfDensity ? 0.08 : 0);
+      ctx.strokeStyle = `hsla(${hShift}, ${sat}%, 65%, ${strokeAlpha})`;
+      ctx.fillStyle = `hsla(${hShift}, ${Math.max(0, sat - 5)}%, 45%, ${fillAlpha})`;
+      ctx.lineWidth = 2 + p.morphFactor * 1.5 + (i === 0 ? 1.5 : 0);
 
       ctx.beginPath();
       this._drawGeometry(ctx, base, cx, cy, sc, pf, f, ang, t, w, h, p);
       ctx.fill();
       ctx.stroke();
 
-      // Core warp overlay (Hypersphere / Hypertetra) — now visible
+      // Core warp overlay (Hypersphere / Hypertetra) — BOLD
       if (core > 0 && i % 2 === 0) {
         const warpHue = (hShift + 180) % 360;
-        ctx.strokeStyle = `hsla(${warpHue}, ${sat}%, 50%, ${0.12 + p.chaos * 0.15})`;
-        ctx.lineWidth = 1 + p.morphFactor * 0.5;
+        ctx.strokeStyle = `hsla(${warpHue}, ${sat}%, 60%, ${0.25 + p.chaos * 0.25})`;
+        ctx.lineWidth = 1.5 + p.morphFactor * 0.8;
         ctx.beginPath();
         if (core === 1) {
-          // Hypersphere: concentric rings with 4D wobble
-          const hR = sc * f * pf * 1.1;
-          const wobble = Math.sin(t + f * 5 + (p.rot4dZW || 0)) * sc * 0.05;
-          ctx.arc(cx + wobble, cy - wobble * 0.7, Math.max(2, hR), 0, Math.PI * 2);
+          const hR = sc * f * pf * 1.2;
+          const wobble = Math.sin(t + f * 5 + (p.rot4dZW || 0)) * sc * 0.08;
+          ctx.arc(cx + wobble, cy - wobble * 0.7, Math.max(3, hR), 0, Math.PI * 2);
         } else {
-          // Hypertetra: pentatope wireframe
           for (let v = 0; v < 5; v++) {
             const a = f * Math.PI * 2 / 5 * v + t * 0.3 + (p.rot4dZW || 0);
-            const r = sc * (0.3 + f * 0.3) * pf;
+            const r = sc * (0.35 + f * 0.35) * pf;
             v === 0 ? ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r)
                      : ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
           }
@@ -297,22 +302,25 @@ export class AmbientLattice {
       }
     }
 
-    // ── Layer 3: Additive glow pass ──
+    // ── Layer 3: Additive glow pass — BIG and BRIGHT ──
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = p.intensity * 0.5;
+    ctx.globalAlpha = Math.min(1, p.intensity * 0.8);
 
-    // Center glow beacon
-    const glowR = sc * (0.4 + Math.sin(t * 0.7) * 0.15);
-    const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
+    // Center glow beacon — covers significant canvas area
+    const glowR = sc * (0.55 + Math.sin(t * 0.7) * 0.2);
+    const glowGrad = ctx.createRadialGradient(
+      cx + (mx - 0.5) * sc * 0.3, cy + (my - 0.5) * sc * 0.3,
+      0, cx, cy, glowR
+    );
     const glowHue = (p.hue + Math.sin(t * 0.3) * 30) % 360;
-    glowGrad.addColorStop(0, `hsla(${glowHue}, ${sat}%, 60%, ${0.15 + p.chaos * 0.1})`);
-    glowGrad.addColorStop(0.5, `hsla(${glowHue}, ${sat}%, 40%, ${0.05 + p.chaos * 0.05})`);
+    glowGrad.addColorStop(0, `hsla(${glowHue}, ${sat}%, 65%, ${0.3 + p.chaos * 0.2})`);
+    glowGrad.addColorStop(0.4, `hsla(${glowHue}, ${sat}%, 45%, ${0.12 + p.chaos * 0.1})`);
     glowGrad.addColorStop(1, `hsla(${glowHue}, ${sat}%, 20%, 0)`);
     ctx.fillStyle = glowGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Geometry glow accents (every 4th element — performance-friendly)
-    const glowCount = Math.min(8, Math.floor(density / 3));
+    // Glow accent dots — brighter, larger
+    const glowCount = Math.min(12, Math.floor(density / 2));
     for (let i = 0; i < glowCount; i++) {
       const f = i / glowCount;
       const ang = f * Math.PI * 2 + t * 0.8 + (p.rot4dXW || 0);
@@ -320,32 +328,31 @@ export class AmbientLattice {
       const pf = 1.0 / (dim - w4);
       const hShift = (p.hue + f * 120 + core * 60) % 360;
 
-      // Glow dot at geometry vertex
-      const gx = cx + Math.cos(ang) * sc * f * pf;
-      const gy = cy + Math.sin(ang) * sc * f * pf;
-      const dotR = 3 + p.morphFactor * 4 + Math.sin(t * 2 + f * 10) * 2;
-      const dotGrad = ctx.createRadialGradient(gx, gy, 0, gx, gy, dotR * 3);
-      dotGrad.addColorStop(0, `hsla(${hShift}, ${sat}%, 70%, 0.4)`);
-      dotGrad.addColorStop(0.3, `hsla(${hShift}, ${sat}%, 55%, 0.15)`);
+      const gx = cx + Math.cos(ang) * sc * (0.2 + f * 0.6) * pf;
+      const gy = cy + Math.sin(ang) * sc * (0.2 + f * 0.6) * pf;
+      const dotR = 5 + p.morphFactor * 6 + Math.sin(t * 2 + f * 10) * 3;
+      const dotGrad = ctx.createRadialGradient(gx, gy, 0, gx, gy, dotR * 4);
+      dotGrad.addColorStop(0, `hsla(${hShift}, ${sat}%, 80%, 0.6)`);
+      dotGrad.addColorStop(0.25, `hsla(${hShift}, ${sat}%, 60%, 0.25)`);
       dotGrad.addColorStop(1, `hsla(${hShift}, ${sat}%, 40%, 0)`);
       ctx.fillStyle = dotGrad;
-      ctx.fillRect(gx - dotR * 3, gy - dotR * 3, dotR * 6, dotR * 6);
+      ctx.fillRect(gx - dotR * 4, gy - dotR * 4, dotR * 8, dotR * 8);
     }
 
-    // ── Layer 4: Edge highlights (thin bright lines on geometry edges) ──
+    // ── Layer 4: Edge highlights — VIVID bright lines ──
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = p.intensity * 0.6;
-    const edgeCount = Math.min(density, 12);
+    ctx.globalAlpha = Math.min(1, p.intensity * 0.9);
+    const edgeCount = Math.min(density, 16);
     for (let i = 0; i < edgeCount; i++) {
       const f = i / edgeCount;
       const ang = f * Math.PI * 2 + t * 1.1 + (p.rot4dXW || 0) * 1.2;
       const hShift = (p.hue + f * 80 + 30) % 360;
       const w4 = Math.sin(t * 0.5 + f * 3.14 + (p.rot4dYW || 0)) * 0.4;
       const pf = 1.0 / (dim - w4);
-      ctx.strokeStyle = `hsla(${hShift}, ${sat + 10}%, 72%, ${0.2 + p.chaos * 0.25})`;
-      ctx.lineWidth = 0.5 + p.morphFactor * 0.3;
+      ctx.strokeStyle = `hsla(${hShift}, ${Math.min(100, sat + 15)}%, 78%, ${0.35 + p.chaos * 0.3})`;
+      ctx.lineWidth = 0.8 + p.morphFactor * 0.5;
       ctx.beginPath();
-      this._drawGeometry(ctx, base, cx, cy, sc * 0.95, pf, f, ang + 0.1, t, w, h, p);
+      this._drawGeometry(ctx, base, cx, cy, sc * 0.92, pf, f, ang + 0.1, t, w, h, p);
       ctx.stroke();
     }
 

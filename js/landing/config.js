@@ -70,13 +70,13 @@ export const energyCardParams = {
 };
 
 export const energyBgParams = {
-  geometry: 6, hue: 270, gridDensity: 20, speed: 0.4,
-  intensity: 0.55, chaos: 0.12, dimension: 3.6, morphFactor: 0.7, saturation: 0.85,
+  geometry: 6, hue: 270, gridDensity: 24, speed: 0.5,
+  intensity: 0.7, chaos: 0.18, dimension: 3.4, morphFactor: 0.8, saturation: 0.9,
 };
 
 export const agentBgParams = {
-  geometry: 5, hue: 240, gridDensity: 16, speed: 0.3,
-  intensity: 0.45, chaos: 0.2, dimension: 3.8, morphFactor: 0.6, saturation: 0.8,
+  geometry: 5, hue: 240, gridDensity: 22, speed: 0.5,
+  intensity: 0.75, chaos: 0.25, dimension: 3.5, morphFactor: 0.8, saturation: 0.85,
 };
 
 export const playgroundDefaults = {
@@ -88,8 +88,8 @@ export const playgroundDefaults = {
 };
 
 export const ctaParams = {
-  geometry: 5, hue: 160, gridDensity: 18, speed: 0.35,
-  intensity: 0.5, chaos: 0.2, dimension: 3.7, morphFactor: 0.5, saturation: 0.85,
+  geometry: 5, hue: 160, gridDensity: 24, speed: 0.5,
+  intensity: 0.75, chaos: 0.25, dimension: 3.5, morphFactor: 0.7, saturation: 0.9,
 };
 
 // ── Opening Cinematic: VIB3CODE text mask over GPU canvas ──

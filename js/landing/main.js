@@ -121,13 +121,13 @@ function createHero() {
 // Triptych columns now use real GPU adapters (Quantum + Faceted).
 
 function initAmbientCanvases() {
-  // Cascade cards — ambient accent behind card content
+  // Cascade cards — bright vivid accent behind card content
   document.querySelectorAll('.cascade-card').forEach((card, i) => {
     c2d.set(`cas${i}`, new AmbientLattice(`cas-${i}`, {
       geometry: parseInt(card.dataset.geo),
       hue: parseInt(card.dataset.hue),
-      gridDensity: 22, speed: 0.7, intensity: 0.85, chaos: 0.18,
-      morphFactor: 0.8, dimension: 3.4, saturation: 0.9,
+      gridDensity: 24, speed: 0.8, intensity: 0.9, chaos: 0.22,
+      morphFactor: 0.9, dimension: 3.3, saturation: 0.95,
     }));
   });
 
@@ -305,9 +305,64 @@ function initPlayground() {
   }
 }
 
-// ─── Render Loop (AmbientLattice only — GPU systems self-render) ──
+// ─── Global Mouse/Touch Reactivity ─────────────────────────────
+// Tracks mouse position globally and feeds it to ALL visible renderers.
+// AmbientLattice gets mouseX/mouseY params; GPU adapters get rotation nudges.
+
+const mouseState = { x: 0.5, y: 0.5, targetX: 0.5, targetY: 0.5, active: false };
+
+function initGlobalMouseReactivity() {
+  const root = document.documentElement;
+
+  const updateMouse = (clientX, clientY) => {
+    mouseState.targetX = clientX / window.innerWidth;
+    mouseState.targetY = clientY / window.innerHeight;
+    mouseState.active = true;
+    root.style.setProperty('--mouse-x', `${mouseState.targetX * 100}%`);
+    root.style.setProperty('--mouse-y', `${mouseState.targetY * 100}%`);
+    root.style.setProperty('--mouse-active', '1');
+  };
+
+  document.addEventListener('mousemove', (e) => updateMouse(e.clientX, e.clientY));
+  document.addEventListener('touchmove', (e) => {
+    if (e.touches.length) updateMouse(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+
+  document.addEventListener('mouseleave', () => {
+    mouseState.active = false;
+    root.style.setProperty('--mouse-active', '0');
+  });
+}
+
+function feedMouseToRenderers() {
+  // Smooth interpolation
+  mouseState.x += (mouseState.targetX - mouseState.x) * 0.08;
+  mouseState.y += (mouseState.targetY - mouseState.y) * 0.08;
+  const mx = mouseState.x, my = mouseState.y;
+  const dx = mx - 0.5, dy = my - 0.5;
+
+  // Feed to all AmbientLattice instances
+  for (const inst of c2d.values()) {
+    inst.setParam('mouseX', mx);
+    inst.setParam('mouseY', my);
+  }
+
+  // Feed to visible GPU adapters — mouse interaction (non-additive)
+  if (mouseState.active) {
+    const gpuKeys = ['hero', 'opening', 'playground', 'energyCard'];
+    for (const key of gpuKeys) {
+      const adapter = pool.get(key);
+      if (!adapter || !adapter.engine) continue;
+      // Feed mouse position directly to the engine's interaction handler
+      try { adapter.engine?.updateInteraction?.(mx, my, 0.6); } catch (_) { /* noop */ }
+    }
+  }
+}
+
+// ─── Render Loop (AmbientLattice + mouse reactivity) ──
 
 function renderLoop(ts) {
+  feedMouseToRenderers();
   for (const inst of c2d.values()) inst.render(ts);
   requestAnimationFrame(renderLoop);
 }
@@ -356,6 +411,7 @@ pool.acquire('opening', 'opening-canvas', QuantumAdapter, openingParams);
 
 initPlayground();
 initTiltSystem();
+initGlobalMouseReactivity();
 requestAnimationFrame(renderLoop);
 
 // ─── Energy Card GPU Lifecycle → Tilt Adapter ─────────────────

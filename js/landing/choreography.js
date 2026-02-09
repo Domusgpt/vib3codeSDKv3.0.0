@@ -563,6 +563,8 @@ export function initTriptych(pool) {
   });
 
   // ── 3-System Cross-Coordinated Choreography ──
+  const center = document.getElementById('triptychCenter');
+
   ScrollTrigger.create({
     trigger: '#triptychSection', start: 'top bottom', end: 'bottom top',
     scrub: 0.5,
@@ -572,6 +574,31 @@ export function initTriptych(pool) {
       // Parallax rates
       if (left) left.style.transform = `translateY(${(p - 0.5) * -120}px)`;
       if (right) right.style.transform = `translateY(${(p - 0.5) * -60}px)`;
+
+      // ═══════ CLIP-PATH SPLIT-SCREEN ═══════
+      // All 3 columns are position:absolute overlapping the full width.
+      // Clip-path carves each column's visible territory.
+      // Scroll + mouse drive the split lines so columns fight for space.
+      const root = document.documentElement;
+      const mouseXPct = parseFloat(root.style.getPropertyValue('--mouse-x') || '50%') || 50;
+      const mouseShift = (mouseXPct / 100 - 0.5) * 6; // ±3% shift from mouse
+
+      // Split lines shift with scroll: left column starts dominant, right takes over
+      const splitLeft = 34 + (p - 0.5) * 12 + mouseShift;  // ~28-40%
+      const splitRight = 66 + (p - 0.5) * 12 + mouseShift;  // ~60-72%
+
+      // Convergence: at midpoint, columns rush toward equal thirds
+      const conv = Math.max(0, 1 - Math.abs(p - 0.5) * 4);
+      const cSplitLeft = lerp(splitLeft, 33.33, conv * 0.5);
+      const cSplitRight = lerp(splitRight, 66.66, conv * 0.5);
+
+      if (left) left.style.clipPath = `inset(0 ${100 - cSplitLeft}% 0 0)`;
+      if (center) center.style.clipPath = `inset(0 ${100 - cSplitRight}% 0 ${cSplitLeft}%)`;
+      if (right) right.style.clipPath = `inset(0 0 0 ${cSplitRight}%)`;
+
+      // Update divider line positions
+      root.style.setProperty('--tri-split-left', `${cSplitLeft}%`);
+      root.style.setProperty('--tri-split-right', `${cSplitRight}%`);
 
       // ═══════ SHARED COORDINATION SIGNALS ═══════
 
@@ -691,6 +718,33 @@ export function initCascade(c2d) {
     },
   });
 
+  // ─── Card hover interaction: mouse drives AmbientLattice params ──
+  cascadeCards.forEach((card, i) => {
+    card.addEventListener('mouseenter', () => {
+      const inst = c2d.get(`cas${i}`);
+      if (inst) {
+        inst.setParams({ speed: 1.8, chaos: 0.5, intensity: 0.95 });
+      }
+    });
+    card.addEventListener('mousemove', (e) => {
+      const inst = c2d.get(`cas${i}`);
+      if (!inst) return;
+      const rect = card.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) / rect.width;
+      const my = (e.clientY - rect.top) / rect.height;
+      inst.setParam('mouseX', mx);
+      inst.setParam('mouseY', my);
+      inst.setParam('rot4dXW', (inst.params.rot4dXW || 0) + (mx - 0.5) * 0.1);
+      inst.setParam('rot4dYW', (inst.params.rot4dYW || 0) + (my - 0.5) * 0.1);
+    });
+    card.addEventListener('mouseleave', () => {
+      const inst = c2d.get(`cas${i}`);
+      if (inst) {
+        inst.setParams({ speed: 0.7, chaos: 0.18, intensity: 0.85, mouseX: 0.5, mouseY: 0.5 });
+      }
+    });
+  });
+
   // Cascade header reveal
   ScrollTrigger.create({
     trigger: '#cascadeSection', start: 'top 80%', once: true,
@@ -728,58 +782,61 @@ export function initCascade(c2d) {
           const dist = Math.abs(i - activeIdx);
 
           // ═══ RIPPLE: distance-based falloff from active card ═══
-          // Every card gets some energy — closer = stronger
           const ripple = Math.max(0, 1 - dist * 0.25) * pulse;
-          const phaseOffset = dist * Math.PI / 3; // each card offset in phase
+          const phaseOffset = dist * Math.PI / 3;
 
           if (i === activeIdx) {
-            // ── ACTIVE: full energy, density drops, speed peaks ──
-            const scaleVal = 1 + pulse * 0.14;
-            card.dataset.scrollTransform = `scale(${scaleVal})`;
+            // ── ACTIVE: DRAMATICALLY BIGGER, full energy ──
+            const scaleVal = 1 + pulse * 0.25;
+            card.style.transform = `scale(${scaleVal})`;
+            card.style.zIndex = '10';
+            card.style.opacity = '1';
             card.classList.add('leaking');
-            card.style.setProperty('--card-glow', `hsla(${hue}, 75%, 50%, ${0.2 + pulse * 0.15})`);
+            card.style.setProperty('--card-glow', `hsla(${hue}, 80%, 55%, ${0.3 + pulse * 0.25})`);
+            card.style.boxShadow = `0 20px 60px rgba(0,0,0,0.6), 0 0 ${40 + pulse * 60}px hsla(${hue}, 70%, 40%, ${0.15 + pulse * 0.15})`;
 
             inst.setParams({
-              rot4dXW: sharedXW + localP * Math.PI * 1.5,
-              rot4dYW: Math.sin(localP * Math.PI) * 1.2,
-              rot4dZW: sharedXW * 0.3 + localP * 0.5,
-              intensity: 0.85 + pulse * 0.15,
-              morphFactor: 0.8 + localP * 0.8,
-              gridDensity: Math.max(6, 22 - pulse * 14),
-              speed: 0.7 + pulse * 1.2,
-              chaos: 0.18 + pulse * 0.35,
-              hue: hue + pulse * 30,
-              saturation: 0.9 + pulse * 0.1,
+              rot4dXW: sharedXW + localP * Math.PI * 2,
+              rot4dYW: Math.sin(localP * Math.PI) * 1.8,
+              rot4dZW: sharedXW * 0.4 + localP * 0.8,
+              intensity: 0.9 + pulse * 0.1,
+              morphFactor: 0.8 + localP * 1.0,
+              gridDensity: Math.max(6, 24 - pulse * 16),
+              speed: 0.8 + pulse * 1.5,
+              chaos: 0.2 + pulse * 0.45,
+              hue: hue + pulse * 40,
+              saturation: 0.95,
             });
           } else {
-            // ── ALL OTHER CARDS: ripple-driven coordination ──
-            const rippleScale = 1 + ripple * 0.06 * (1 / Math.max(1, dist));
-            card.dataset.scrollTransform = `scale(${rippleScale})`;
-            card.classList.toggle('leaking', ripple > 0.2);
-            if (ripple > 0.2) {
+            // ── NEIGHBORS: shrink, dim, but still alive ──
+            const dimFactor = Math.max(0.3, 1 - dist * 0.15);
+            const shrinkScale = 0.85 + ripple * 0.1;
+            card.style.transform = `scale(${shrinkScale})`;
+            card.style.zIndex = '1';
+            card.style.opacity = `${dimFactor}`;
+            card.classList.toggle('leaking', ripple > 0.15);
+            if (ripple > 0.15) {
               card.style.setProperty('--card-glow',
-                `hsla(${hue}, 60%, 45%, ${ripple * 0.15})`);
+                `hsla(${hue}, 65%, 45%, ${ripple * 0.2})`);
             } else {
               card.classList.remove('leaking');
             }
+            card.style.boxShadow = `0 12px 48px rgba(0,0,0,0.5)`;
 
-            // Hue bleeds from active card, fading with distance
-            const hueBleed = ripple * 0.4;
-            // Speed/chaos echo from active card with phase offset
+            const hueBleed = ripple * 0.5;
             const echoWave = Math.sin(localP * Math.PI + phaseOffset);
             const echo = Math.max(0, echoWave) * ripple;
 
             inst.setParams({
               hue: hue + (activeHue - hue) * hueBleed,
-              intensity: 0.55 + ripple * 0.25,
-              gridDensity: 22 - ripple * 8 + echo * 4,
-              speed: 0.5 + echo * 0.6,
-              chaos: 0.1 + echo * 0.2,
-              morphFactor: 0.5 + echo * 0.4,
-              // Shared rotation keeps all cards in the same 4D rhythm
-              rot4dXW: sharedXW + phaseOffset * 0.3,
-              rot4dYW: Math.sin(sharedXW + phaseOffset) * 0.5 * ripple,
-              saturation: 0.8 + ripple * 0.1,
+              intensity: 0.4 + ripple * 0.35,
+              gridDensity: 22 - ripple * 10 + echo * 6,
+              speed: 0.4 + echo * 0.8,
+              chaos: 0.08 + echo * 0.25,
+              morphFactor: 0.4 + echo * 0.5,
+              rot4dXW: sharedXW + phaseOffset * 0.4,
+              rot4dYW: Math.sin(sharedXW + phaseOffset) * 0.7 * ripple,
+              saturation: 0.75 + ripple * 0.15,
             });
           }
         });
@@ -932,7 +989,19 @@ export function initCTA(c2d) {
     onUpdate: (self) => {
       const cta = c2d.get('cta');
       if (!cta) return;
-      cta.setParams({ rot4dXW: self.progress * 2, hue: 160 + self.progress * 80, intensity: 0.2 + self.progress * 0.1 });
+      const p = self.progress;
+      const pulse = Math.sin(p * Math.PI);
+      cta.setParams({
+        rot4dXW: p * Math.PI * 3,
+        rot4dYW: Math.sin(p * Math.PI * 2) * 1.5,
+        rot4dZW: p * Math.PI * 0.5,
+        hue: 160 + p * 120 + pulse * 20,
+        intensity: 0.5 + pulse * 0.35,
+        gridDensity: 18 + p * 16,
+        speed: 0.4 + pulse * 0.6,
+        chaos: 0.15 + pulse * 0.2,
+        morphFactor: 0.5 + p * 0.6,
+      });
     },
   });
 }
