@@ -527,80 +527,141 @@ export function initMorph(pool, createHero) {
 }
 
 // ─── PARALLAX TRIPTYCH ──────────────────────────────────────
-// Two GPU visualizer columns (Quantum left + Faceted right) + center content
-// Each column scrolls at a different parallax rate
-// Visualizer parameters shift smoothly as you scroll through
+// All 3 GPU systems rendering simultaneously with cross-system coordination:
+//   Quantum (left) ↔ Holographic (center, behind text) ↔ Faceted (right)
+// Coordination: shared heartbeat, energy conservation, triadic hues,
+//   phase-locked 4D rotation, density cross-feed, convergence event
 
 export function initTriptych(pool) {
   const left = document.getElementById('triptychLeft');
   const right = document.getElementById('triptychRight');
 
-  // ── GPU Lifecycle: acquire real Quantum (left) + Faceted (right) ──
-  // By triptych time, morph + earlier contexts are released.
-  // Pool max 3 handles any edge overlap with playground.
+  const centerInitParams = {
+    ...parallaxParams.left,
+    hue: 280, geometry: 3, intensity: 0.6, gridDensity: 20,
+    chaos: 0.1, speed: 0.5, saturation: 0.75,
+  };
+
+  // ── GPU Lifecycle: acquire all 3 real systems ──
+  const acquireAll = () => {
+    pool.acquire('triLeft', 'tri-left-canvas', QuantumAdapter, parallaxParams.left);
+    pool.acquire('triCenter', 'tri-center-canvas', HolographicAdapter, centerInitParams);
+    pool.acquire('triRight', 'tri-right-canvas', FacetedAdapter, parallaxParams.right);
+  };
+  const releaseAll = () => {
+    pool.release('triLeft');
+    pool.release('triCenter');
+    pool.release('triRight');
+  };
+
   ScrollTrigger.create({
     trigger: '#triptychSection', start: 'top 90%', end: 'bottom top',
-    onEnter: () => {
-      pool.acquire('triLeft', 'tri-left-canvas', QuantumAdapter, parallaxParams.left);
-      pool.acquire('triRight', 'tri-right-canvas', FacetedAdapter, parallaxParams.right);
-    },
-    onLeave: () => { pool.release('triLeft'); pool.release('triRight'); },
-    onEnterBack: () => {
-      pool.acquire('triLeft', 'tri-left-canvas', QuantumAdapter, parallaxParams.left);
-      pool.acquire('triRight', 'tri-right-canvas', FacetedAdapter, parallaxParams.right);
-    },
-    onLeaveBack: () => { pool.release('triLeft'); pool.release('triRight'); },
+    onEnter: acquireAll,
+    onLeave: releaseAll,
+    onEnterBack: acquireAll,
+    onLeaveBack: releaseAll,
   });
 
-  // ── Scroll Choreography ──
+  // ── 3-System Cross-Coordinated Choreography ──
   ScrollTrigger.create({
     trigger: '#triptychSection', start: 'top bottom', end: 'bottom top',
     scrub: 0.5,
     onUpdate: (self) => {
       const p = self.progress;
 
-      // Parallax rates: left column faster, right column slower
+      // Parallax rates
       if (left) left.style.transform = `translateY(${(p - 0.5) * -120}px)`;
       if (right) right.style.transform = `translateY(${(p - 0.5) * -60}px)`;
 
-      // ── Left: Quantum — density sweep UP, warm hue arc ──
+      // ═══════ SHARED COORDINATION SIGNALS ═══════
+
+      // Heartbeat — all 3 systems pulse to a shared rhythm
+      const heartbeat = Math.sin(p * Math.PI * 2);
+      const pulse = Math.sin(p * Math.PI);
+
+      // Convergence — peaks at scroll midpoint, the "One Heartbeat" moment
+      const convergence = Math.max(0, 1 - Math.abs(p - 0.5) * 4);
+
+      // Triadic hue rotation (120° apart, rotating as a harmonic group)
+      const baseHue = 200 + p * 160;
+      const hueL = baseHue % 360 + convergence * ((baseHue + 120) % 360 - baseHue % 360) * 0.6;
+      const hueC = (baseHue + 120) % 360;
+      const hueR = (baseHue + 240) % 360 + convergence * ((baseHue + 120) % 360 - (baseHue + 240) % 360) * 0.6;
+
+      // Energy conservation: total intensity ≈ 2.0
+      const intL = 0.6 + heartbeat * 0.15 + convergence * 0.15;
+      const intC = 0.5 + pulse * 0.2 + convergence * 0.2;
+      const intR = 0.6 - heartbeat * 0.1 + convergence * 0.15;
+
+      // Density cross-feed: left sweeps up, right sweeps down, center bridges
+      const denL = 10 + p * 40 + heartbeat * 6;
+      const denR = 50 - p * 35 + Math.sin(p * Math.PI * 3 + 1.5) * 5;
+      const denC = (denL + denR) / 2 + heartbeat * 8;
+
+      // Phase-locked 4D rotation (120° offsets — coordinated 4D dance)
+      const rotBase = p * Math.PI * 4;
+      const xwL = rotBase;
+      const xwC = rotBase + Math.PI * 2 / 3;
+      const xwR = rotBase + Math.PI * 4 / 3;
+
+      // Call & response: left chaos → center speed → right morph
+      const chaosL = 0.15 + p * 0.25 + convergence * 0.2;
+      const speedC = 0.5 + chaosL * 0.8;
+      const morphR = 0.7 + speedC * 0.3;
+
+      // Shared speed accelerates during convergence
+      const sharedSpeed = 0.4 + pulse * 0.6 + convergence * 1.2;
+
+      // ═══════ LEFT: QUANTUM ═══════
       const triL = pool.get('triLeft');
       if (triL) {
-        const wave = Math.sin(p * Math.PI * 4);
-        const pulse = Math.sin(p * Math.PI);
-        const densitySweep = 10 + p * 40;
         triL.setParams({
           geometry: p < 0.3 ? 2 : p < 0.6 ? 3 : p < 0.85 ? 10 : 7,
-          hue: 195 + p * 100 + wave * 25,
-          rot4dXW: p * Math.PI * 4,
+          hue: hueL,
+          rot4dXW: xwL,
           rot4dYW: Math.sin(p * Math.PI * 2) * 2.0,
           rot4dZW: p * Math.PI * 0.6,
-          gridDensity: densitySweep + wave * 6,
-          intensity: 0.65 + pulse * 0.2 + wave * 0.05,
-          chaos: 0.15 + p * 0.25,
+          gridDensity: denL,
+          intensity: intL,
+          chaos: chaosL,
           morphFactor: 0.6 + Math.sin(p * Math.PI * 2) * 0.4,
-          speed: 0.4 + pulse * 0.6,
+          speed: sharedSpeed,
           saturation: 0.85 + pulse * 0.1,
         });
       }
 
-      // ── Right: Faceted — density sweep DOWN, cool hue arc (opposing) ──
+      // ═══════ CENTER: HOLOGRAPHIC ═══════
+      const triC = pool.get('triCenter');
+      if (triC) {
+        triC.setParams({
+          geometry: p < 0.2 ? 3 : p < 0.4 ? 11 : p < 0.6 ? 6 : p < 0.8 ? 2 : 10,
+          hue: hueC,
+          rot4dXW: xwC,
+          rot4dYW: Math.cos(p * Math.PI * 2) * 1.5 + heartbeat * 0.5,
+          rot4dZW: -p * Math.PI * 0.3 + heartbeat * 0.4,
+          gridDensity: denC,
+          intensity: intC,
+          chaos: 0.1 + convergence * 0.4 + pulse * 0.1,
+          morphFactor: 0.5 + convergence * 0.8 + heartbeat * 0.3,
+          speed: speedC + convergence * 0.8,
+          saturation: 0.75 + convergence * 0.2,
+        });
+      }
+
+      // ═══════ RIGHT: FACETED ═══════
       const triR = pool.get('triRight');
       if (triR) {
-        const wave = Math.sin(p * Math.PI * 3 + 1.5);
-        const pulse = Math.sin(p * Math.PI + 0.5);
-        const densitySweep = 50 - p * 35;
         triR.setParams({
           geometry: p < 0.25 ? 12 : p < 0.5 ? 4 : p < 0.75 ? 20 : 5,
-          hue: 310 - p * 130 + wave * 30,
-          rot4dXW: -p * Math.PI * 3,
+          hue: hueR,
+          rot4dXW: xwR,
           rot4dYW: Math.cos(p * Math.PI * 2) * 1.8,
           rot4dZW: -p * Math.PI * 0.4,
-          gridDensity: densitySweep + wave * 5,
-          intensity: 0.65 + pulse * 0.2 + wave * 0.05,
-          chaos: 0.2 + p * 0.2,
-          morphFactor: 0.7 + Math.sin(p * Math.PI * 2 + 1) * 0.35,
-          speed: 0.5 + pulse * 0.5,
+          gridDensity: denR,
+          intensity: intR,
+          chaos: 0.2 + p * 0.2 - convergence * 0.1,
+          morphFactor: morphR,
+          speed: sharedSpeed * 0.9,
           saturation: 0.9 + pulse * 0.08,
         });
       }
@@ -608,11 +669,11 @@ export function initTriptych(pool) {
   });
 }
 
-// ─── CASCADE — Morphing Cards with Glow Leak ────────────────
-// Cards morph in size, glow leaks beyond borders
-// Active card: scale up (1.12), glow intensifies, density DROPS
-// Adjacent: smaller hue bleed, subtle scale
-// Inactive: normal state
+// ─── CASCADE — Inter-Card Ripple Coordination ────────────────
+// Active card: scale up, glow leaks, density drops
+// Ripple propagation: active card's energy echoes outward through ALL cards
+// with distance-based falloff — every card participates, none are idle.
+// Shared rotation phase ties all cards to a common 4D rhythm.
 
 export function initCascade(c2d) {
   const cascadeCards = document.querySelectorAll('.cascade-card');
@@ -643,6 +704,7 @@ export function initCascade(c2d) {
   if (cascadeTrack && cascadeCards.length > 0) {
     const cardW = 360 + 32;
     const totalScroll = (cascadeCards.length - 1) * cardW;
+    const N = cascadeCards.length;
 
     ScrollTrigger.create({
       trigger: '#cascadeSection', start: 'top top', end: 'bottom bottom',
@@ -651,66 +713,73 @@ export function initCascade(c2d) {
         const p = self.progress;
         cascadeTrack.style.transform = `translateX(${-p * totalScroll}px)`;
 
-        const activeIdx = Math.min(Math.floor(p * cascadeCards.length), cascadeCards.length - 1);
+        const activeIdx = Math.min(Math.floor(p * N), N - 1);
         const activeHue = parseInt(cascadeCards[activeIdx].dataset.hue);
-        const localP = (p * cascadeCards.length) - activeIdx;
+        const localP = (p * N) - activeIdx;
         const pulse = Math.sin(localP * Math.PI);
+
+        // ═══ Shared rotation phase — all cards tied to a common 4D rhythm ═══
+        const sharedXW = p * Math.PI * 3;
 
         cascadeCards.forEach((card, i) => {
           const inst = c2d.get(`cas${i}`);
           if (!inst) return;
           const hue = parseInt(card.dataset.hue);
+          const dist = Math.abs(i - activeIdx);
+
+          // ═══ RIPPLE: distance-based falloff from active card ═══
+          // Every card gets some energy — closer = stronger
+          const ripple = Math.max(0, 1 - dist * 0.25) * pulse;
+          const phaseOffset = dist * Math.PI / 3; // each card offset in phase
 
           if (i === activeIdx) {
-            // ── ACTIVE CARD: scale up, glow leaks, density drops, dramatic params ──
+            // ── ACTIVE: full energy, density drops, speed peaks ──
             const scaleVal = 1 + pulse * 0.14;
             card.dataset.scrollTransform = `scale(${scaleVal})`;
             card.classList.add('leaking');
             card.style.setProperty('--card-glow', `hsla(${hue}, 75%, 50%, ${0.2 + pulse * 0.15})`);
 
             inst.setParams({
-              rot4dXW: localP * Math.PI * 1.5,
+              rot4dXW: sharedXW + localP * Math.PI * 1.5,
               rot4dYW: Math.sin(localP * Math.PI) * 1.2,
-              rot4dZW: localP * 0.5,
+              rot4dZW: sharedXW * 0.3 + localP * 0.5,
               intensity: 0.85 + pulse * 0.15,
               morphFactor: 0.8 + localP * 0.8,
-              // Density DROPS as card scales up (inverse coordination)
               gridDensity: Math.max(6, 22 - pulse * 14),
-              // Speed ramps up significantly
               speed: 0.7 + pulse * 1.2,
               chaos: 0.18 + pulse * 0.35,
-              // Hue shifts during active phase
               hue: hue + pulse * 30,
               saturation: 0.9 + pulse * 0.1,
             });
-          } else if (Math.abs(i - activeIdx) === 1) {
-            // ── ADJACENT: hue bleed, mild scale, complementary params ──
-            const bleedAmount = i < activeIdx ? (1 - localP) * 0.35 : localP * 0.35;
-            card.dataset.scrollTransform = `scale(${1 + bleedAmount * 0.06})`;
-            card.classList.toggle('leaking', bleedAmount > 0.15);
-            if (bleedAmount > 0.15) {
-              card.style.setProperty('--card-glow', `hsla(${hue}, 60%, 45%, ${bleedAmount * 0.2})`);
+          } else {
+            // ── ALL OTHER CARDS: ripple-driven coordination ──
+            const rippleScale = 1 + ripple * 0.06 * (1 / Math.max(1, dist));
+            card.dataset.scrollTransform = `scale(${rippleScale})`;
+            card.classList.toggle('leaking', ripple > 0.2);
+            if (ripple > 0.2) {
+              card.style.setProperty('--card-glow',
+                `hsla(${hue}, 60%, 45%, ${ripple * 0.15})`);
+            } else {
+              card.classList.remove('leaking');
             }
 
-            inst.setParams({
-              hue: hue + (activeHue - hue) * bleedAmount,
-              intensity: 0.7 + bleedAmount * 0.1,
-              gridDensity: 22 - bleedAmount * 6,
-              speed: 0.7 + bleedAmount * 0.3,
-              chaos: 0.18 + bleedAmount * 0.1,
-              rot4dXW: bleedAmount * 0.5,
-            });
-          } else {
-            // ── INACTIVE: still visually present, just calmer ──
-            card.dataset.scrollTransform = 'scale(0.97)';
-            card.classList.remove('leaking');
+            // Hue bleeds from active card, fading with distance
+            const hueBleed = ripple * 0.4;
+            // Speed/chaos echo from active card with phase offset
+            const echoWave = Math.sin(localP * Math.PI + phaseOffset);
+            const echo = Math.max(0, echoWave) * ripple;
 
             inst.setParams({
-              intensity: 0.6,
-              gridDensity: 22,
-              speed: 0.6,
-              chaos: 0.12,
-              saturation: 0.85,
+              hue: hue + (activeHue - hue) * hueBleed,
+              intensity: 0.55 + ripple * 0.25,
+              gridDensity: 22 - ripple * 8 + echo * 4,
+              speed: 0.5 + echo * 0.6,
+              chaos: 0.1 + echo * 0.2,
+              morphFactor: 0.5 + echo * 0.4,
+              // Shared rotation keeps all cards in the same 4D rhythm
+              rot4dXW: sharedXW + phaseOffset * 0.3,
+              rot4dYW: Math.sin(sharedXW + phaseOffset) * 0.5 * ripple,
+              saturation: 0.8 + ripple * 0.1,
             });
           }
         });
@@ -770,19 +839,49 @@ export function initEnergy(pool, c2d) {
     });
   }
 
-  // Scroll-driven background params
+  // Scroll-driven background params with GPU card cross-feeding
+  // Background responds to GPU card state: inverse intensity, shared rotation,
+  // card chaos bleeds to background, creating a living energy exchange.
   ScrollTrigger.create({
     trigger: '#energySection', start: 'top top', end: 'bottom bottom', scrub: 0.5,
     onUpdate: (self) => {
       const bg = c2d.get('energyBg');
       if (!bg) return;
       const p = self.progress;
+      const card = pool.get('energyCard');
+
+      // Base scroll-driven params
+      let bgIntensity = 0.2 + Math.sin(p * Math.PI) * 0.2;
+      let bgChaos = 0.05 + p * 0.15;
+      let bgHue = 270 + p * 60;
+      let bgDensity = 16 + p * 14;
+      let bgXW = p * 4;
+
+      // Cross-feed from GPU card when available
+      if (card && card.params) {
+        const cardInt = card.params.intensity || 0.6;
+        const cardChaos = card.params.chaos || 0.1;
+        const cardXW = card.params.rot4dXW || 0;
+        // Inverse intensity: when card dims, background brightens
+        bgIntensity += (1 - cardInt) * 0.2;
+        // Card chaos bleeds to background (dampened)
+        bgChaos += cardChaos * 0.3;
+        // Counter-rotation: background rotates opposite to card
+        bgXW = -cardXW * 0.6 + p * 2;
+        // Hue complementary shift: bg tracks 180° from card hue
+        const cardHue = card.params.hue || 200;
+        bgHue = bgHue * 0.6 + ((cardHue + 180) % 360) * 0.4;
+        // Density inverse: when card density drops, bg density rises
+        const cardDen = card.params.gridDensity || 20;
+        bgDensity = bgDensity + (30 - cardDen) * 0.3;
+      }
+
       bg.setParams({
-        rot4dXW: p * 4,
-        hue: 270 + p * 60,
-        gridDensity: 16 + p * 14,
-        intensity: 0.2 + Math.sin(p * Math.PI) * 0.2,
-        chaos: 0.05 + p * 0.15,
+        rot4dXW: bgXW,
+        hue: bgHue,
+        gridDensity: Math.max(8, bgDensity),
+        intensity: Math.min(0.8, bgIntensity),
+        chaos: Math.min(0.6, bgChaos),
       });
     },
   });
@@ -995,23 +1094,33 @@ export function initPhaseShiftBridges(pool, c2d) {
     scrub: 0.3,
     onUpdate: (self) => {
       const p = self.progress;
-      // Structure build: triptych GPU visuals crystallize
+      // Structure build: all 3 triptych GPU systems crystallize together
       const triL = pool.get('triLeft');
+      const triC = pool.get('triCenter');
       const triR = pool.get('triRight');
+      const sp = smoothstep(p);
       if (triL) {
         triL.setParams({
-          gridDensity: lerp(22, 55, smoothstep(p)),
-          speed: lerp(0.4, 0.08, smoothstep(p)),
-          chaos: lerp(0.15, 0.01, smoothstep(p)),
-          intensity: lerp(0.65, 0.9, smoothstep(p)),
+          gridDensity: lerp(22, 55, sp),
+          speed: lerp(0.4, 0.08, sp),
+          chaos: lerp(0.15, 0.01, sp),
+          intensity: lerp(0.65, 0.9, sp),
+        });
+      }
+      if (triC) {
+        triC.setParams({
+          gridDensity: lerp(20, 50, sp),
+          speed: lerp(0.5, 0.06, sp),
+          chaos: lerp(0.1, 0.005, sp),
+          intensity: lerp(0.5, 0.85, sp),
         });
       }
       if (triR) {
         triR.setParams({
-          gridDensity: lerp(18, 50, smoothstep(p)),
-          speed: lerp(0.5, 0.1, smoothstep(p)),
-          chaos: lerp(0.2, 0.02, smoothstep(p)),
-          intensity: lerp(0.65, 0.85, smoothstep(p)),
+          gridDensity: lerp(18, 50, sp),
+          speed: lerp(0.5, 0.1, sp),
+          chaos: lerp(0.2, 0.02, sp),
+          intensity: lerp(0.65, 0.85, sp),
         });
       }
     },

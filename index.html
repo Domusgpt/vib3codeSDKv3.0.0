@@ -416,13 +416,21 @@
             border-radius: 0;
         }
         .triptych-center-col {
-            display: flex; align-items: center; justify-content: center;
+            display: block;
             min-height: 200vh;
+            overflow: hidden;
+        }
+        .triptych-center-canvas {
+            margin-bottom: -100vh;
+            opacity: 0.4;
+            z-index: 0;
         }
         .triptych-content {
             position: sticky; top: 50%; transform: translateY(-50%);
             padding: 48px 32px;
             text-align: center;
+            z-index: 2;
+            text-shadow: 0 2px 16px rgba(0,0,0,0.7);
         }
         .triptych-title {
             font-size: clamp(22px, 3.5vw, 40px); font-weight: 900;
@@ -1454,9 +1462,9 @@
     </div>
 
     <!-- ═══════════════════════════════════════════════════
-         SECTION 4: PARALLAX TRIPTYCH
-         3 columns with independent parallax rates
-         Left: Quantum GPU, Right: Faceted GPU, Center: content
+         SECTION 4: PARALLAX TRIPTYCH — 3-System Coordinated Showcase
+         Left: Quantum GPU, Center: Holographic GPU (behind text),
+         Right: Faceted GPU — cross-system coordination + convergence
          ═══════════════════════════════════════════════════ -->
     <section class="triptych" id="triptychSection">
         <div class="triptych-divider left"></div>
@@ -1471,9 +1479,12 @@
                 </div>
             </div>
             <div class="triptych-col triptych-center-col" id="triptychCenter">
+                <div class="canvas-wrap triptych-canvas-wrap triptych-center-canvas">
+                    <canvas class="vib3-canvas" id="tri-center-canvas"></canvas>
+                </div>
                 <div class="triptych-content">
                     <h2 class="triptych-title section-reveal" data-animate>Three Systems.<br>One Heartbeat.</h2>
-                    <p class="triptych-desc section-reveal" data-animate>Each column renders independently &mdash; unique geometries, unique parameters, unique behavior. Watch them shift as you scroll.</p>
+                    <p class="triptych-desc section-reveal" data-animate>Quantum, Holographic, and Faceted render simultaneously &mdash; sharing rhythm, trading energy, converging at the midpoint.</p>
                     <div class="triptych-stats section-reveal" data-animate>
                         <div class="triptych-stat">
                             <span class="stat-number">24</span>
@@ -1488,6 +1499,9 @@
                             <span class="stat-label">Systems</span>
                         </div>
                     </div>
+                </div>
+                <div class="triptych-tag-wrap">
+                    <span class="triptych-tag sys-holographic">Holographic Engine</span>
                 </div>
             </div>
             <div class="triptych-col triptych-viz-col" id="triptychRight">
@@ -1697,6 +1711,7 @@
            Morph ........... 1 (swaps Q → H → F on scroll)
            Playground ...... 1 (Q/H/F, lazy)
            Triptych L ...... 1 (Quantum GPU, scroll-triggered)
+           Triptych C ...... 1 (Holographic GPU, scroll-triggered)
            Triptych R ...... 1 (Faceted GPU, scroll-triggered)
            Energy card ..... 1 (Faceted, lazy)
            Cascade ......... 0 (AmbientLattice accent)
