@@ -175,11 +175,12 @@ export class FacetedAdapter {
   }
 }
 
-// ─── Canvas 2D Renderer (no GPU context) ───────────────────────
-// Multi-layer renderer: ambient nebula → filled geometry → glow pass → sparkles
-// Uses globalCompositeOperation 'lighter' for additive glow
+// ─── Ambient Lattice (Canvas 2D accent — no GPU context) ────────
+// Complementary accent renderer: ambient nebula → lattice geometry → glow pass
+// NOT a visualization system — a lightweight parallax-ready atmosphere layer.
+// Uses globalCompositeOperation 'lighter' for additive glow.
 
-export class Canvas2DRenderer {
+export class AmbientLattice {
   constructor(canvasId, opts = {}) {
     this.canvas = document.getElementById(canvasId);
     if (!this.canvas) { this.active = false; return; }

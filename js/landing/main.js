@@ -20,16 +20,17 @@
  *   Hero ............ 1 (Quantum, released when morph enters)
  *   Morph ........... 1 (swaps Q → H → F on scroll)
  *   Playground ...... 1 (Q/H/F, lazy — scroll-triggered)
+ *   Triptych L ...... 1 (Quantum, scroll-triggered — real GPU)
+ *   Triptych R ...... 1 (Faceted, scroll-triggered — real GPU)
  *   Energy card ..... 1 (Faceted, lazy)
- *   Triptych ........ 0 (Canvas2D ambient)
- *   Cascade ......... 0 (Canvas2D ambient)
- *   Agent ........... 0 (Canvas2D ambient)
- *   CTA ............. 0 (Canvas2D ambient)
- *   MAX CONCURRENT .. 2 (safe for mobile; pool auto-evicts oldest)
+ *   Cascade ......... 0 (AmbientLattice accent — no GPU)
+ *   Agent ........... 0 (AmbientLattice accent — no GPU)
+ *   CTA ............. 0 (AmbientLattice accent — no GPU)
+ *   MAX CONCURRENT .. 3 (pool auto-evicts oldest on overflow)
  */
 
 import { ContextPool } from './ContextPool.js';
-import { QuantumAdapter, HolographicAdapter, FacetedAdapter, Canvas2DRenderer } from './adapters.js';
+import { QuantumAdapter, HolographicAdapter, FacetedAdapter, AmbientLattice } from './adapters.js';
 import { CardTiltSystem } from './CardTiltSystem.js';
 import {
   heroParams, energyBgParams,
@@ -114,16 +115,14 @@ function createHero() {
   return pool.acquire('hero', 'hero-canvas', QuantumAdapter, heroParams);
 }
 
-// ─── Canvas 2D Instances (ambient backgrounds — no GPU) ───────
+// ─── Ambient Lattice Instances (Canvas 2D accent — no GPU) ──────
+// Lightweight atmospheric backgrounds — NOT system impersonation.
+// Triptych columns now use real GPU adapters (Quantum + Faceted).
 
-function initCanvas2D() {
-  // Triptych visualizer columns
-  c2d.set('triLeft', new Canvas2DRenderer('tri-left-canvas', parallaxParams.left));
-  c2d.set('triRight', new Canvas2DRenderer('tri-right-canvas', parallaxParams.right));
-
-  // Cascade cards — high intensity for vibrant card visuals
+function initAmbientCanvases() {
+  // Cascade cards — ambient accent behind card content
   document.querySelectorAll('.cascade-card').forEach((card, i) => {
-    c2d.set(`cas${i}`, new Canvas2DRenderer(`cas-${i}`, {
+    c2d.set(`cas${i}`, new AmbientLattice(`cas-${i}`, {
       geometry: parseInt(card.dataset.geo),
       hue: parseInt(card.dataset.hue),
       gridDensity: 22, speed: 0.7, intensity: 0.85, chaos: 0.18,
@@ -131,10 +130,10 @@ function initCanvas2D() {
     }));
   });
 
-  // Section backgrounds
-  c2d.set('energyBg', new Canvas2DRenderer('energy-bg-canvas', energyBgParams));
-  c2d.set('agent', new Canvas2DRenderer('agent-canvas', agentBgParams));
-  c2d.set('cta', new Canvas2DRenderer('cta-canvas', ctaParams));
+  // Section backgrounds — subtle atmospheric accents
+  c2d.set('energyBg', new AmbientLattice('energy-bg-canvas', energyBgParams));
+  c2d.set('agent', new AmbientLattice('agent-canvas', agentBgParams));
+  c2d.set('cta', new AmbientLattice('cta-canvas', ctaParams));
 }
 
 // ─── Card Tilt System ──────────────────────────────────────────
@@ -149,7 +148,7 @@ function initTiltSystem() {
     returnSpeed: 0.06,
   });
 
-  // Register cascade cards with their Canvas2D adapters
+  // Register cascade cards with their AmbientLattice adapters
   document.querySelectorAll('.cascade-card').forEach((card, i) => {
     const adapter = c2d.get(`cas${i}`);
     tiltSystem.register(card, adapter, {
@@ -305,7 +304,7 @@ function initPlayground() {
   }
 }
 
-// ─── Render Loop (Canvas2D only — GPU systems self-render) ────
+// ─── Render Loop (AmbientLattice only — GPU systems self-render) ──
 
 function renderLoop(ts) {
   for (const inst of c2d.values()) inst.render(ts);
@@ -330,7 +329,7 @@ if (typeof Lenis !== 'undefined' && typeof gsap !== 'undefined') {
 }
 
 // Initialize everything
-initCanvas2D();
+initAmbientCanvases();
 
 if (typeof gsap !== 'undefined') {
   // Opening cinematic (acquires its own GPU context)
@@ -338,7 +337,7 @@ if (typeof gsap !== 'undefined') {
   initScrollProgress();
   initHero(pool);
   initMorph(pool, createHero);
-  initTriptych(c2d);
+  initTriptych(pool);    // Real GPU: Quantum (left) + Faceted (right)
   initCascade(c2d);
   initEnergy(pool, c2d);
   initCTA(c2d);
@@ -347,7 +346,7 @@ if (typeof gsap !== 'undefined') {
   initScrollColorTheme();
   initBlurReveals();
   initScrollVelocityBurst(c2d);
-  initPhaseShiftBridges(c2d);
+  initPhaseShiftBridges(pool, c2d);
   initSpeedCrescendo(c2d);
 }
 

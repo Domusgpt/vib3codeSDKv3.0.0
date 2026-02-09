@@ -1456,7 +1456,7 @@
     <!-- ═══════════════════════════════════════════════════
          SECTION 4: PARALLAX TRIPTYCH
          3 columns with independent parallax rates
-         Left + right: Canvas2D visualizers, center: content
+         Left: Quantum GPU, Right: Faceted GPU, Center: content
          ═══════════════════════════════════════════════════ -->
     <section class="triptych" id="triptychSection">
         <div class="triptych-divider left"></div>
@@ -1517,32 +1517,32 @@
         <div class="cascade-pinned" id="cascadePinned">
             <div class="cascade-header section-reveal" data-animate>
                 <h2>Geometry Cascade</h2>
-                <p>24 geometry variants across three rendering systems</p>
+                <p>24 geometry variants across three core types</p>
             </div>
             <div class="cascade-track" id="cascadeTrack">
-                <div class="cascade-card tilt-card tilt-holo" data-geo="0" data-hue="190" data-sys="quantum">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="0" data-hue="190">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-0"></canvas></div>
-                    <div class="cascade-overlay"><h4>Tetrahedron</h4><span class="cascade-sys sys-quantum">Quantum &middot; Base</span></div>
+                    <div class="cascade-overlay"><h4>Tetrahedron</h4><span class="cascade-sys">Base Core</span></div>
                 </div>
-                <div class="cascade-card tilt-card tilt-holo" data-geo="11" data-hue="300" data-sys="holographic">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="11" data-hue="300">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-1"></canvas></div>
-                    <div class="cascade-overlay"><h4>Hypersphere Torus</h4><span class="cascade-sys sys-holographic">Holographic &middot; Hypersphere</span></div>
+                    <div class="cascade-overlay"><h4>Hypersphere Torus</h4><span class="cascade-sys">Hypersphere Core</span></div>
                 </div>
-                <div class="cascade-card tilt-card tilt-holo" data-geo="16" data-hue="35" data-sys="faceted">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="16" data-hue="35">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-2"></canvas></div>
-                    <div class="cascade-overlay"><h4>Hypertetra Tetra</h4><span class="cascade-sys sys-faceted">Faceted &middot; Hypertetra</span></div>
+                    <div class="cascade-overlay"><h4>Hypertetra Simplex</h4><span class="cascade-sys">Hypertetra Core</span></div>
                 </div>
-                <div class="cascade-card tilt-card tilt-holo" data-geo="5" data-hue="130" data-sys="quantum">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="5" data-hue="130">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-3"></canvas></div>
-                    <div class="cascade-overlay"><h4>Fractal</h4><span class="cascade-sys sys-quantum">Quantum &middot; Base</span></div>
+                    <div class="cascade-overlay"><h4>Fractal</h4><span class="cascade-sys">Base Core</span></div>
                 </div>
-                <div class="cascade-card tilt-card tilt-holo" data-geo="12" data-hue="260" data-sys="holographic">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="12" data-hue="260">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-4"></canvas></div>
-                    <div class="cascade-overlay"><h4>Hypersphere Klein</h4><span class="cascade-sys sys-holographic">Holographic &middot; Hypersphere</span></div>
+                    <div class="cascade-overlay"><h4>Hypersphere Klein</h4><span class="cascade-sys">Hypersphere Core</span></div>
                 </div>
-                <div class="cascade-card tilt-card tilt-holo" data-geo="7" data-hue="60" data-sys="faceted">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="7" data-hue="60">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-5"></canvas></div>
-                    <div class="cascade-overlay"><h4>Crystal</h4><span class="cascade-sys sys-faceted">Faceted &middot; Base</span></div>
+                    <div class="cascade-overlay"><h4>Crystal</h4><span class="cascade-sys">Base Core</span></div>
                 </div>
             </div>
         </div>
@@ -1557,7 +1557,7 @@
 
     <!-- ═══════════════════════════════════════════════════
          SECTION 6: ENERGY TRANSFER — Interactive Demo
-         Canvas2D bg + Faceted GPU card (1 GPU context, lazy)
+         AmbientLattice bg + Faceted GPU card (1 GPU context, lazy)
          ═══════════════════════════════════════════════════ -->
     <section class="energy" id="energySection">
         <div class="energy-pinned" id="energyPinned">
@@ -1696,12 +1696,13 @@
            Hero ............ 1 (Quantum, released on morph enter)
            Morph ........... 1 (swaps Q → H → F on scroll)
            Playground ...... 1 (Q/H/F, lazy)
+           Triptych L ...... 1 (Quantum GPU, scroll-triggered)
+           Triptych R ...... 1 (Faceted GPU, scroll-triggered)
            Energy card ..... 1 (Faceted, lazy)
-           Triptych ........ 0 (Canvas2D)
-           Cascade ......... 0 (Canvas2D)
-           Agent ........... 0 (Canvas2D)
-           CTA ............. 0 (Canvas2D)
-           MAX CONCURRENT .. 2 (safe for mobile)
+           Cascade ......... 0 (AmbientLattice accent)
+           Agent ........... 0 (AmbientLattice accent)
+           CTA ............. 0 (AmbientLattice accent)
+           MAX CONCURRENT .. 3 (pool auto-evicts oldest)
          ═══════════════════════════════════════════════════════════ -->
     <script type="module" src="./js/landing/main.js"></script>
 </body>

@@ -18,8 +18,8 @@
  *   1.0  — CTA, ambient (natural parallax)
  */
 
-import { QuantumAdapter, HolographicAdapter, FacetedAdapter, Canvas2DRenderer } from './adapters.js';
-import { morphStages, trinityParams, energyCardParams, openingParams } from './config.js';
+import { QuantumAdapter, HolographicAdapter, FacetedAdapter } from './adapters.js';
+import { morphStages, trinityParams, energyCardParams, openingParams, parallaxParams } from './config.js';
 
 // ─── Morph State ─────────────────────────────────────────────
 const morphFactories = [QuantumAdapter, HolographicAdapter, FacetedAdapter];
@@ -527,14 +527,32 @@ export function initMorph(pool, createHero) {
 }
 
 // ─── PARALLAX TRIPTYCH ──────────────────────────────────────
-// Two Canvas2D visualizer columns + center content
+// Two GPU visualizer columns (Quantum left + Faceted right) + center content
 // Each column scrolls at a different parallax rate
 // Visualizer parameters shift smoothly as you scroll through
 
-export function initTriptych(c2d) {
+export function initTriptych(pool) {
   const left = document.getElementById('triptychLeft');
   const right = document.getElementById('triptychRight');
 
+  // ── GPU Lifecycle: acquire real Quantum (left) + Faceted (right) ──
+  // By triptych time, morph + earlier contexts are released.
+  // Pool max 3 handles any edge overlap with playground.
+  ScrollTrigger.create({
+    trigger: '#triptychSection', start: 'top 90%', end: 'bottom top',
+    onEnter: () => {
+      pool.acquire('triLeft', 'tri-left-canvas', QuantumAdapter, parallaxParams.left);
+      pool.acquire('triRight', 'tri-right-canvas', FacetedAdapter, parallaxParams.right);
+    },
+    onLeave: () => { pool.release('triLeft'); pool.release('triRight'); },
+    onEnterBack: () => {
+      pool.acquire('triLeft', 'tri-left-canvas', QuantumAdapter, parallaxParams.left);
+      pool.acquire('triRight', 'tri-right-canvas', FacetedAdapter, parallaxParams.right);
+    },
+    onLeaveBack: () => { pool.release('triLeft'); pool.release('triRight'); },
+  });
+
+  // ── Scroll Choreography ──
   ScrollTrigger.create({
     trigger: '#triptychSection', start: 'top bottom', end: 'bottom top',
     scrub: 0.5,
@@ -545,12 +563,11 @@ export function initTriptych(c2d) {
       if (left) left.style.transform = `translateY(${(p - 0.5) * -120}px)`;
       if (right) right.style.transform = `translateY(${(p - 0.5) * -60}px)`;
 
-      // ── Left visualizer: density sweep UP, warm hue arc ──
-      const triL = c2d.get('triLeft');
+      // ── Left: Quantum — density sweep UP, warm hue arc ──
+      const triL = pool.get('triLeft');
       if (triL) {
         const wave = Math.sin(p * Math.PI * 4);
         const pulse = Math.sin(p * Math.PI);
-        // Density sweeps from sparse→dense across section
         const densitySweep = 10 + p * 40;
         triL.setParams({
           geometry: p < 0.3 ? 2 : p < 0.6 ? 3 : p < 0.85 ? 10 : 7,
@@ -567,12 +584,11 @@ export function initTriptych(c2d) {
         });
       }
 
-      // ── Right visualizer: density sweep DOWN, cool hue arc (opposing) ──
-      const triR = c2d.get('triRight');
+      // ── Right: Faceted — density sweep DOWN, cool hue arc (opposing) ──
+      const triR = pool.get('triRight');
       if (triR) {
         const wave = Math.sin(p * Math.PI * 3 + 1.5);
         const pulse = Math.sin(p * Math.PI + 0.5);
-        // Density sweeps from dense→sparse (opposing left)
         const densitySweep = 50 - p * 35;
         triR.setParams({
           geometry: p < 0.25 ? 12 : p < 0.5 ? 4 : p < 0.75 ? 20 : 5,
@@ -907,7 +923,7 @@ export function initSectionVeils() {
 }
 
 // ─── SCROLL VELOCITY BURST (Event 4) ─────────────────────────
-// Fast scrolling triggers chaos/speed burst on all visible Canvas2D renderers
+// Fast scrolling triggers chaos/speed burst on all visible AmbientLattice renderers
 
 export function initScrollVelocityBurst(c2d) {
   let lastScroll = 0;
@@ -930,7 +946,7 @@ export function initScrollVelocityBurst(c2d) {
         burstCooldown = now + BURST_DECAY + 1000;
         const burstFactor = Math.min(1, velocity / 5000);
 
-        // Apply burst to all Canvas2D renderers
+        // Apply burst to all AmbientLattice renderers
         const origParams = new Map();
         for (const [key, inst] of c2d.entries()) {
           origParams.set(key, {
@@ -970,7 +986,7 @@ export function initScrollVelocityBurst(c2d) {
 // ─── PHASE SHIFT BRIDGES (Event 6) ─────────────────────────
 // Between triptych→cascade and cascade→energy: slow structure build → snap → chaos settle
 
-export function initPhaseShiftBridges(c2d) {
+export function initPhaseShiftBridges(pool, c2d) {
   // Bridge 1: Between triptych exit and cascade
   ScrollTrigger.create({
     trigger: '#triptychSection',
@@ -979,9 +995,9 @@ export function initPhaseShiftBridges(c2d) {
     scrub: 0.3,
     onUpdate: (self) => {
       const p = self.progress;
-      // Structure build: triptych visuals crystallize
-      const triL = c2d.get('triLeft');
-      const triR = c2d.get('triRight');
+      // Structure build: triptych GPU visuals crystallize
+      const triL = pool.get('triLeft');
+      const triR = pool.get('triRight');
       if (triL) {
         triL.setParams({
           gridDensity: lerp(22, 55, smoothstep(p)),
