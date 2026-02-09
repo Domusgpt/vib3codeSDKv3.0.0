@@ -27,6 +27,11 @@ export class CardTiltSystem {
     this.cards = new Map();
     this._active = true;
     this._rafId = null;
+    // Scroll velocity tracking for push displacement (Event 18)
+    this._scrollY = 0;
+    this._scrollVelocity = 0;
+    this._lastScrollTime = 0;
+    this._initScrollTracking();
     this._startLoop();
   }
 
@@ -136,6 +141,24 @@ export class CardTiltSystem {
 
   // ─── Internal ──────────────────────────────────────────────
 
+  _initScrollTracking() {
+    let lastY = window.scrollY || 0;
+    const onScroll = () => {
+      const now = performance.now();
+      const dt = now - this._lastScrollTime;
+      const newY = window.scrollY || 0;
+      if (dt > 0) {
+        const rawV = (newY - lastY) / (dt / 1000);
+        // Smooth velocity
+        this._scrollVelocity += (rawV - this._scrollVelocity) * 0.15;
+      }
+      lastY = newY;
+      this._scrollY = newY;
+      this._lastScrollTime = now;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+  }
+
   _startLoop() {
     const tick = () => {
       if (!this._active) return;
@@ -168,8 +191,13 @@ export class CardTiltSystem {
     const rotX = -ty * cfg.maxTilt;
     const scrollT = el.dataset.scrollTransform || '';
 
+    // Scroll-push displacement (Event 18): scroll velocity tilts cards backward
+    const scrollPush = Math.max(-8, Math.min(8, this._scrollVelocity * 0.002));
+    const scrollTy = Math.max(-12, Math.min(12, this._scrollVelocity * 0.003));
+    const totalRotX = rotX + scrollPush;
+
     el.style.transform =
-      `perspective(${cfg.perspective}px) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg) ${scrollT}`;
+      `perspective(${cfg.perspective}px) rotateX(${totalRotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg) translateY(${scrollTy.toFixed(1)}px) ${scrollT}`;
 
     // CSS custom properties for specular/glare
     const intensity = Math.min(1, Math.sqrt(tx * tx + ty * ty));
@@ -186,31 +214,35 @@ export class CardTiltSystem {
     if (!adapter || !adapter.active) return;
 
     const intensity = Math.min(1, Math.sqrt(tx * tx + ty * ty));
-    if (intensity < 0.01) return; // Dead zone
+    // Also factor in scroll velocity for reactivity
+    const scrollIntensity = Math.min(1, Math.abs(this._scrollVelocity) / 3000);
+    const combinedIntensity = Math.max(intensity, scrollIntensity);
+    if (combinedIntensity < 0.01) return; // Dead zone
 
     const p = {};
 
     if (cfg.affectsRotation) {
-      // Map tilt to 3D rotation planes (XY, XZ) — usually zeroed by choreography
-      // so tilt has exclusive control over these
+      // Map tilt to 3D rotation planes (XY, XZ)
       p.rot4dXY = ty * cfg.rotationScale;
       p.rot4dXZ = tx * cfg.rotationScale;
-      // Small 4D offset for extra dimensionality
-      p.rot4dYW = (adapter.params?.rot4dYW || 0) + tx * cfg.rotationScale * 0.3;
+      // Scroll velocity drives 4D rotation (Event 18: "scroll drives 4th dimension")
+      const scrollRot = scrollIntensity * cfg.rotationScale * 0.5;
+      p.rot4dYW = (adapter.params?.rot4dYW || 0) + tx * cfg.rotationScale * 0.3 + scrollRot;
     }
 
     if (cfg.affectsSpeed) {
-      p.speed = (adapter.params?.speed || 1.0) * (1 + intensity * cfg.speedScale);
+      const speedBoost = 1 + combinedIntensity * cfg.speedScale;
+      p.speed = (adapter.params?.speed || 1.0) * speedBoost;
     }
 
     if (cfg.affectsChaos) {
       const base = adapter.params?.chaos ?? 0.2;
-      p.chaos = Math.min(1, base + intensity * cfg.chaosScale);
+      p.chaos = Math.min(1, base + combinedIntensity * cfg.chaosScale);
     }
 
     if (cfg.affectsDensity) {
       const base = adapter.params?.gridDensity ?? 24;
-      p.gridDensity = Math.max(4, base * (1 - intensity * cfg.densityScale));
+      p.gridDensity = Math.max(4, base * (1 - combinedIntensity * cfg.densityScale));
     }
 
     if (cfg.affectsHue) {

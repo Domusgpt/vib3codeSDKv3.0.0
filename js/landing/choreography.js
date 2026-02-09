@@ -545,35 +545,47 @@ export function initTriptych(c2d) {
       if (left) left.style.transform = `translateY(${(p - 0.5) * -120}px)`;
       if (right) right.style.transform = `translateY(${(p - 0.5) * -60}px)`;
 
-      // Scroll-driven parameter evolution for left (Quantum) visualizer
+      // ── Left visualizer: density sweep UP, warm hue arc ──
       const triL = c2d.get('triLeft');
       if (triL) {
         const wave = Math.sin(p * Math.PI * 4);
+        const pulse = Math.sin(p * Math.PI);
+        // Density sweeps from sparse→dense across section
+        const densitySweep = 10 + p * 40;
         triL.setParams({
-          geometry: Math.floor(p * 6) % 8,
-          hue: 195 + p * 90 + wave * 20,
-          rot4dXW: p * Math.PI * 3,
-          rot4dYW: Math.sin(p * Math.PI * 2) * 1.5,
-          gridDensity: 18 + wave * 8,
-          intensity: 0.45 + Math.sin(p * Math.PI) * 0.15,
-          chaos: 0.1 + p * 0.15,
-          morphFactor: 0.4 + Math.sin(p * Math.PI * 2) * 0.3,
+          geometry: p < 0.3 ? 2 : p < 0.6 ? 3 : p < 0.85 ? 10 : 7,
+          hue: 195 + p * 100 + wave * 25,
+          rot4dXW: p * Math.PI * 4,
+          rot4dYW: Math.sin(p * Math.PI * 2) * 2.0,
+          rot4dZW: p * Math.PI * 0.6,
+          gridDensity: densitySweep + wave * 6,
+          intensity: 0.65 + pulse * 0.2 + wave * 0.05,
+          chaos: 0.15 + p * 0.25,
+          morphFactor: 0.6 + Math.sin(p * Math.PI * 2) * 0.4,
+          speed: 0.4 + pulse * 0.6,
+          saturation: 0.85 + pulse * 0.1,
         });
       }
 
-      // Scroll-driven parameter evolution for right (Faceted) visualizer
+      // ── Right visualizer: density sweep DOWN, cool hue arc (opposing) ──
       const triR = c2d.get('triRight');
       if (triR) {
         const wave = Math.sin(p * Math.PI * 3 + 1.5);
+        const pulse = Math.sin(p * Math.PI + 0.5);
+        // Density sweeps from dense→sparse (opposing left)
+        const densitySweep = 50 - p * 35;
         triR.setParams({
-          geometry: 8 + Math.floor(p * 5) % 8,
-          hue: 310 - p * 120 + wave * 25,
-          rot4dXW: -p * Math.PI * 2,
-          rot4dYW: Math.cos(p * Math.PI * 2) * 1.2,
-          gridDensity: 14 + wave * 6,
-          intensity: 0.45 + Math.sin(p * Math.PI + 1) * 0.15,
-          chaos: 0.15 + p * 0.1,
-          morphFactor: 0.5 + Math.sin(p * Math.PI * 2 + 1) * 0.25,
+          geometry: p < 0.25 ? 12 : p < 0.5 ? 4 : p < 0.75 ? 20 : 5,
+          hue: 310 - p * 130 + wave * 30,
+          rot4dXW: -p * Math.PI * 3,
+          rot4dYW: Math.cos(p * Math.PI * 2) * 1.8,
+          rot4dZW: -p * Math.PI * 0.4,
+          gridDensity: densitySweep + wave * 5,
+          intensity: 0.65 + pulse * 0.2 + wave * 0.05,
+          chaos: 0.2 + p * 0.2,
+          morphFactor: 0.7 + Math.sin(p * Math.PI * 2 + 1) * 0.35,
+          speed: 0.5 + pulse * 0.5,
+          saturation: 0.9 + pulse * 0.08,
         });
       }
     },
@@ -634,45 +646,55 @@ export function initCascade(c2d) {
           const hue = parseInt(card.dataset.hue);
 
           if (i === activeIdx) {
-            // ── ACTIVE CARD: scale up, glow leaks, density drops ──
-            const scaleVal = 1 + pulse * 0.12;
+            // ── ACTIVE CARD: scale up, glow leaks, density drops, dramatic params ──
+            const scaleVal = 1 + pulse * 0.14;
             card.dataset.scrollTransform = `scale(${scaleVal})`;
             card.classList.add('leaking');
-            card.style.setProperty('--card-glow', `hsla(${hue}, 70%, 50%, ${0.15 + pulse * 0.1})`);
+            card.style.setProperty('--card-glow', `hsla(${hue}, 75%, 50%, ${0.2 + pulse * 0.15})`);
 
             inst.setParams({
-              rot4dXW: localP * Math.PI,
-              intensity: 0.75 + pulse * 0.2,
-              morphFactor: 0.6 + localP * 0.6,
+              rot4dXW: localP * Math.PI * 1.5,
+              rot4dYW: Math.sin(localP * Math.PI) * 1.2,
+              rot4dZW: localP * 0.5,
+              intensity: 0.85 + pulse * 0.15,
+              morphFactor: 0.8 + localP * 0.8,
               // Density DROPS as card scales up (inverse coordination)
-              gridDensity: Math.max(6, 18 - pulse * 10),
-              // Speed increases during active phase
-              speed: 0.6 + pulse * 0.8,
-              chaos: 0.15 + pulse * 0.2,
+              gridDensity: Math.max(6, 22 - pulse * 14),
+              // Speed ramps up significantly
+              speed: 0.7 + pulse * 1.2,
+              chaos: 0.18 + pulse * 0.35,
+              // Hue shifts during active phase
+              hue: hue + pulse * 30,
+              saturation: 0.9 + pulse * 0.1,
             });
           } else if (Math.abs(i - activeIdx) === 1) {
-            // ── ADJACENT: subtle hue bleed, mild scale ──
-            const bleedAmount = i < activeIdx ? (1 - localP) * 0.3 : localP * 0.3;
-            card.dataset.scrollTransform = `scale(${1 + bleedAmount * 0.04})`;
-            card.classList.remove('leaking');
+            // ── ADJACENT: hue bleed, mild scale, complementary params ──
+            const bleedAmount = i < activeIdx ? (1 - localP) * 0.35 : localP * 0.35;
+            card.dataset.scrollTransform = `scale(${1 + bleedAmount * 0.06})`;
+            card.classList.toggle('leaking', bleedAmount > 0.15);
+            if (bleedAmount > 0.15) {
+              card.style.setProperty('--card-glow', `hsla(${hue}, 60%, 45%, ${bleedAmount * 0.2})`);
+            }
 
             inst.setParams({
               hue: hue + (activeHue - hue) * bleedAmount,
-              intensity: 0.65,
-              gridDensity: 18,
-              speed: 0.6,
-              chaos: 0.15,
+              intensity: 0.7 + bleedAmount * 0.1,
+              gridDensity: 22 - bleedAmount * 6,
+              speed: 0.7 + bleedAmount * 0.3,
+              chaos: 0.18 + bleedAmount * 0.1,
+              rot4dXW: bleedAmount * 0.5,
             });
           } else {
-            // ── INACTIVE: base state ──
-            card.dataset.scrollTransform = 'scale(0.95)';
+            // ── INACTIVE: still visually present, just calmer ──
+            card.dataset.scrollTransform = 'scale(0.97)';
             card.classList.remove('leaking');
 
             inst.setParams({
-              intensity: 0.55,
-              gridDensity: 18,
-              speed: 0.5,
-              chaos: 0.1,
+              intensity: 0.6,
+              gridDensity: 22,
+              speed: 0.6,
+              chaos: 0.12,
+              saturation: 0.85,
             });
           }
         });
@@ -802,92 +824,269 @@ export function initCTA(c2d) {
 
 // ─── Section Reveal Animations ──────────────────────────────
 
-// ─── SECTION TRANSITION VEILS ─────────────────────────────
-// Morphing overlay cards that mask canvas handoff moments.
-// At each GPU context swap boundary (hero→morph, morph→playground, etc.),
-// a glassmorphic veil fades in, the card morphs shape, masking the
-// raw canvas release/acquire gap, then fades out when the new context is ready.
+// ─── SECTION TRANSITION PORTALS (replaces old faint veil system) ─────
+// CSS clip-path portals between sections: a growing shape reveals the next section
+// with glowing edges instead of a confusing faint glassmorphic square.
+// Also pulses divider gradients during transitions.
 
 export function initSectionVeils() {
-  const veil = document.getElementById('sectionVeil');
-  const veilCard = document.getElementById('veilCard');
-  if (!veil || !veilCard) return;
-
-  // Handoff zones where GPU canvases swap — the veil fires at each
-  const handoffs = [
+  // Portal transitions at GPU swap boundaries
+  const portals = [
     {
       trigger: '#divider-hero-morph',
-      triggerStart: 'top 90%',
-      triggerEnd: 'bottom 10%',
-      cardShape: { w: 120, h: 120, radius: '50%', scale: 1.2 },
+      nextSection: '#morphSection',
       hue: 220,
     },
     {
       trigger: '#divider-morph-playground',
-      triggerStart: 'top 85%',
-      triggerEnd: 'bottom 15%',
-      cardShape: { w: 200, h: 140, radius: '24px', scale: 1 },
+      nextSection: '#playgroundSection',
       hue: 280,
     },
     {
       trigger: '#divider-playground-triptych',
-      triggerStart: 'top 90%',
-      triggerEnd: 'bottom 10%',
-      cardShape: { w: 160, h: 160, radius: '32px', scale: 0.9 },
+      nextSection: '#triptychSection',
       hue: 190,
     },
     {
       trigger: '#divider-cascade-energy',
-      triggerStart: 'top 85%',
-      triggerEnd: 'bottom 15%',
-      cardShape: { w: 100, h: 100, radius: '50%', scale: 1.1 },
+      nextSection: '#energySection',
       hue: 310,
     },
   ];
 
-  handoffs.forEach(({ trigger, triggerStart, triggerEnd, cardShape, hue }) => {
-    const el = document.querySelector(trigger);
-    if (!el) return;
+  // Hide the old veil entirely — we use per-section effects instead
+  const oldVeil = document.getElementById('sectionVeil');
+  if (oldVeil) oldVeil.style.display = 'none';
 
+  portals.forEach(({ trigger, nextSection, hue }) => {
+    const divider = document.querySelector(trigger);
+    const next = document.querySelector(nextSection);
+    if (!divider) return;
+
+    // Divider glow pulse during scroll-through
     ScrollTrigger.create({
-      trigger: el,
-      start: triggerStart,
-      end: triggerEnd,
-      scrub: 0.3,
+      trigger: divider,
+      start: 'top 95%',
+      end: 'bottom 5%',
+      scrub: 0.2,
       onUpdate: (self) => {
         const p = self.progress;
-        // Bell curve: peak opacity at midpoint, zero at edges
         const bell = Math.sin(p * Math.PI);
-        const intensity = bell * bell; // sharper bell
+        const intensity = bell * bell;
 
-        // Veil background opacity
-        veil.style.opacity = intensity * 0.85;
+        // SVG path glow via filter
+        const svg = divider.querySelector('svg');
+        if (svg) {
+          svg.style.filter = intensity > 0.05
+            ? `drop-shadow(0 0 ${12 * intensity}px hsla(${hue}, 70%, 55%, ${intensity * 0.4}))`
+            : 'none';
+        }
 
-        // Card morph: grows from small circle to target shape, then shrinks
-        const grow = smoothstep(clamp01(p * 2));       // 0→0.5: grow in
-        const shrink = smoothstep(clamp01((p - 0.5) * 2)); // 0.5→1: shrink out
-        const cardScale = cardShape.scale * (grow * (1 - shrink * 0.6));
-
-        const w = lerp(40, cardShape.w, grow) * (1 - shrink * 0.3);
-        const h = lerp(40, cardShape.h, grow) * (1 - shrink * 0.3);
-        const borderRadius = p < 0.5 ? `${lerp(50, parseFloat(cardShape.radius) || 24, grow)}${cardShape.radius.includes('%') ? '%' : 'px'}` : cardShape.radius;
-
-        gsap.set(veilCard, {
-          width: w,
-          height: h,
-          borderRadius,
-          scale: cardScale,
-          rotation: (p - 0.5) * 30, // subtle rotation through transition
-        });
-
-        // Dynamic glow color based on handoff zone hue
-        const glowAlpha = intensity * 0.2;
-        veilCard.style.boxShadow = `0 0 ${60 * intensity}px hsla(${hue}, 70%, 50%, ${glowAlpha}), inset 0 0 ${30 * intensity}px hsla(${hue + 60}, 60%, 40%, ${glowAlpha * 0.5})`;
-        veilCard.style.borderColor = `hsla(${hue}, 60%, 60%, ${intensity * 0.15})`;
+        // Next section clip-path reveal: grows from center point
+        if (next && intensity > 0.01) {
+          const reveal = smoothstep(clamp01((p - 0.3) / 0.7));
+          if (reveal > 0 && reveal < 1) {
+            next.style.clipPath = `circle(${reveal * 120}% at 50% 0%)`;
+          } else if (reveal >= 1) {
+            next.style.clipPath = '';
+          }
+        }
       },
-      onLeave: () => { veil.style.opacity = 0; },
-      onLeaveBack: () => { veil.style.opacity = 0; },
+      onLeave: () => {
+        if (next) next.style.clipPath = '';
+        const svg = divider.querySelector('svg');
+        if (svg) svg.style.filter = 'none';
+      },
+      onLeaveBack: () => {
+        if (next) next.style.clipPath = '';
+        const svg = divider.querySelector('svg');
+        if (svg) svg.style.filter = 'none';
+      },
     });
+  });
+}
+
+// ─── SCROLL VELOCITY BURST (Event 4) ─────────────────────────
+// Fast scrolling triggers chaos/speed burst on all visible Canvas2D renderers
+
+export function initScrollVelocityBurst(c2d) {
+  let lastScroll = 0;
+  let lastTime = 0;
+  let burstActive = false;
+  let burstCooldown = 0;
+  const VELOCITY_THRESHOLD = 2500; // px/s
+  const BURST_DECAY = 500; // ms
+
+  const tick = () => {
+    const now = performance.now();
+    const scrollY = window.scrollY || window.pageYOffset;
+    const dt = now - lastTime;
+
+    if (dt > 0 && lastTime > 0) {
+      const velocity = Math.abs(scrollY - lastScroll) / (dt / 1000);
+
+      if (velocity > VELOCITY_THRESHOLD && !burstActive && now > burstCooldown) {
+        burstActive = true;
+        burstCooldown = now + BURST_DECAY + 1000;
+        const burstFactor = Math.min(1, velocity / 5000);
+
+        // Apply burst to all Canvas2D renderers
+        const origParams = new Map();
+        for (const [key, inst] of c2d.entries()) {
+          origParams.set(key, {
+            chaos: inst.params.chaos,
+            speed: inst.params.speed,
+            intensity: inst.params.intensity,
+          });
+          inst.setParams({
+            chaos: Math.min(1, inst.params.chaos + burstFactor * 0.4),
+            speed: inst.params.speed * (1 + burstFactor * 1.5),
+            intensity: Math.min(1, inst.params.intensity + burstFactor * 0.2),
+          });
+        }
+
+        // CSS burst
+        document.documentElement.style.setProperty('--burst-intensity', burstFactor.toFixed(2));
+
+        // Decay back
+        setTimeout(() => {
+          for (const [key, orig] of origParams.entries()) {
+            const inst = c2d.get(key);
+            if (inst) inst.setParams(orig);
+          }
+          document.documentElement.style.setProperty('--burst-intensity', '0');
+          burstActive = false;
+        }, BURST_DECAY);
+      }
+    }
+
+    lastScroll = scrollY;
+    lastTime = now;
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+// ─── PHASE SHIFT BRIDGES (Event 6) ─────────────────────────
+// Between triptych→cascade and cascade→energy: slow structure build → snap → chaos settle
+
+export function initPhaseShiftBridges(c2d) {
+  // Bridge 1: Between triptych exit and cascade
+  ScrollTrigger.create({
+    trigger: '#triptychSection',
+    start: '80% top',
+    end: 'bottom top',
+    scrub: 0.3,
+    onUpdate: (self) => {
+      const p = self.progress;
+      // Structure build: triptych visuals crystallize
+      const triL = c2d.get('triLeft');
+      const triR = c2d.get('triRight');
+      if (triL) {
+        triL.setParams({
+          gridDensity: lerp(22, 55, smoothstep(p)),
+          speed: lerp(0.4, 0.08, smoothstep(p)),
+          chaos: lerp(0.15, 0.01, smoothstep(p)),
+          intensity: lerp(0.65, 0.9, smoothstep(p)),
+        });
+      }
+      if (triR) {
+        triR.setParams({
+          gridDensity: lerp(18, 50, smoothstep(p)),
+          speed: lerp(0.5, 0.1, smoothstep(p)),
+          chaos: lerp(0.2, 0.02, smoothstep(p)),
+          intensity: lerp(0.65, 0.85, smoothstep(p)),
+        });
+      }
+    },
+  });
+
+  // Bridge 2: Cascade entrance snap
+  ScrollTrigger.create({
+    trigger: '#cascadeSection',
+    start: 'top 90%',
+    end: 'top 60%',
+    scrub: 0.2,
+    onUpdate: (self) => {
+      const p = self.progress;
+      // Snap: cascade cards get a brief chaos burst at entrance
+      const snap = p > 0.4 && p < 0.7;
+      if (snap) {
+        for (let i = 0; i < 6; i++) {
+          const inst = c2d.get(`cas${i}`);
+          if (inst) {
+            inst.setParams({
+              chaos: 0.6 * (1 - Math.abs(p - 0.55) / 0.15),
+              speed: 2.0 * (1 - Math.abs(p - 0.55) / 0.15),
+            });
+          }
+        }
+      }
+    },
+  });
+}
+
+// ─── SPEED CRESCENDO → SILENCE (Event 14) ─────────────────
+// Pre-CTA: all visible elements accelerate, then instant silence, then gentle CTA fade
+
+export function initSpeedCrescendo(c2d) {
+  ScrollTrigger.create({
+    trigger: '#agentSection',
+    start: '60% top',
+    end: 'bottom top',
+    scrub: 0.4,
+    onUpdate: (self) => {
+      const p = self.progress;
+
+      // Phase A (0-80%): The Build
+      if (p < 0.8) {
+        const build = p / 0.8;
+        const agent = c2d.get('agent');
+        if (agent) {
+          agent.setParams({
+            speed: 0.3 * (1 + build * 4),
+            chaos: 0.2 + build * 0.6,
+            intensity: 0.45 + build * 0.4,
+            gridDensity: 16 + build * 30,
+          });
+        }
+        // Vignette effect via CSS
+        document.documentElement.style.setProperty('--crescendo-vignette', (build * 0.3).toFixed(2));
+      }
+
+      // Phase B (80-88%): THE SILENCE
+      if (p >= 0.8 && p < 0.88) {
+        const agent = c2d.get('agent');
+        if (agent) {
+          agent.setParams({ speed: 0, chaos: 0, intensity: 0.05, gridDensity: 4 });
+        }
+        document.documentElement.style.setProperty('--crescendo-vignette', '0');
+        document.documentElement.style.setProperty('--silence-blackout', '1');
+      }
+
+      // Phase C (88-100%): Gentle rebirth
+      if (p >= 0.88) {
+        const rebirth = (p - 0.88) / 0.12;
+        const agent = c2d.get('agent');
+        if (agent) {
+          agent.setParams({
+            speed: rebirth * 0.2,
+            intensity: rebirth * 0.3,
+            gridDensity: 8 + rebirth * 8,
+            chaos: rebirth * 0.1,
+          });
+        }
+        document.documentElement.style.setProperty('--silence-blackout', (1 - rebirth).toFixed(2));
+      }
+    },
+    onLeave: () => {
+      document.documentElement.style.setProperty('--crescendo-vignette', '0');
+      document.documentElement.style.setProperty('--silence-blackout', '0');
+    },
+    onLeaveBack: () => {
+      document.documentElement.style.setProperty('--crescendo-vignette', '0');
+      document.documentElement.style.setProperty('--silence-blackout', '0');
+    },
   });
 }
 

@@ -40,7 +40,8 @@ import {
   initScrollProgress, initOpening, initHero, initMorph,
   initTriptych, initCascade, initEnergy, initCTA,
   initSectionReveals, initScrollColorTheme, initBlurReveals,
-  initSectionVeils,
+  initSectionVeils, initScrollVelocityBurst, initPhaseShiftBridges,
+  initSpeedCrescendo,
 } from './choreography.js';
 
 // ─── State ────────────────────────────────────────────────────
@@ -120,13 +121,13 @@ function initCanvas2D() {
   c2d.set('triLeft', new Canvas2DRenderer('tri-left-canvas', parallaxParams.left));
   c2d.set('triRight', new Canvas2DRenderer('tri-right-canvas', parallaxParams.right));
 
-  // Cascade cards
+  // Cascade cards — high intensity for vibrant card visuals
   document.querySelectorAll('.cascade-card').forEach((card, i) => {
     c2d.set(`cas${i}`, new Canvas2DRenderer(`cas-${i}`, {
       geometry: parseInt(card.dataset.geo),
       hue: parseInt(card.dataset.hue),
-      gridDensity: 18, speed: 0.6, intensity: 0.75, chaos: 0.15,
-      morphFactor: 0.6, dimension: 3.5,
+      gridDensity: 22, speed: 0.7, intensity: 0.85, chaos: 0.18,
+      morphFactor: 0.8, dimension: 3.4, saturation: 0.9,
     }));
   });
 
@@ -345,6 +346,9 @@ if (typeof gsap !== 'undefined') {
   initSectionVeils();
   initScrollColorTheme();
   initBlurReveals();
+  initScrollVelocityBurst(c2d);
+  initPhaseShiftBridges(c2d);
+  initSpeedCrescendo(c2d);
 }
 
 // Acquire opening canvas immediately (first thing user sees)

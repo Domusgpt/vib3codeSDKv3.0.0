@@ -1051,6 +1051,59 @@
             --scroll-hue: 210;
         }
 
+        /* ═══════════════════════════════════════════
+           SCROLL VELOCITY BURST
+           Global glow pulse on fast scroll
+           ═══════════════════════════════════════════ */
+        :root {
+            --burst-intensity: 0;
+            --crescendo-vignette: 0;
+            --silence-blackout: 0;
+        }
+
+        /* Burst: ambient glow spikes when scrolling fast */
+        .ambient-bg {
+            transition: filter 0.3s ease-out;
+        }
+
+        /* Crescendo vignette: dark edges close in before the CTA silence */
+        body::after {
+            content: '';
+            position: fixed; inset: 0;
+            z-index: 55; pointer-events: none;
+            background: radial-gradient(ellipse at center,
+                transparent 50%,
+                rgba(0,0,0, var(--crescendo-vignette)) 100%);
+            opacity: 1;
+            transition: none;
+        }
+
+        /* Silence blackout: full dark screen before CTA */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            z-index: 56; pointer-events: none;
+            background: var(--bg);
+            opacity: var(--silence-blackout);
+            transition: opacity 0.15s ease-out;
+        }
+
+        /* ═══════════════════════════════════════════
+           QUATERNION-DRIVEN CSS PROPERTIES
+           Set by JS from 4D rotation state, consumed by CSS
+           ═══════════════════════════════════════════ */
+        :root {
+            --q-xw: 0;
+            --q-yw: 0;
+            --q-zw: 0;
+            --q-intensity: 0;
+        }
+
+        /* Divider SVG glow (during portal transitions) */
+        .section-divider svg {
+            transition: filter 0.2s ease-out;
+        }
+
         /* ─── Reduced Motion ─── */
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {

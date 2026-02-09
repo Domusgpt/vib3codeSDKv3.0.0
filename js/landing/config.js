@@ -70,13 +70,13 @@ export const energyCardParams = {
 };
 
 export const energyBgParams = {
-  geometry: 6, hue: 270, gridDensity: 16, speed: 0.3,
-  intensity: 0.2, chaos: 0.05, dimension: 4.0,
+  geometry: 6, hue: 270, gridDensity: 20, speed: 0.4,
+  intensity: 0.55, chaos: 0.12, dimension: 3.6, morphFactor: 0.7, saturation: 0.85,
 };
 
 export const agentBgParams = {
-  geometry: 5, hue: 240, gridDensity: 12, speed: 0.2,
-  intensity: 0.15, chaos: 0.3, dimension: 4.2,
+  geometry: 5, hue: 240, gridDensity: 16, speed: 0.3,
+  intensity: 0.45, chaos: 0.2, dimension: 3.8, morphFactor: 0.6, saturation: 0.8,
 };
 
 export const playgroundDefaults = {
@@ -88,8 +88,8 @@ export const playgroundDefaults = {
 };
 
 export const ctaParams = {
-  geometry: 5, hue: 160, gridDensity: 14, speed: 0.3,
-  intensity: 0.2, chaos: 0.25, dimension: 4.0,
+  geometry: 5, hue: 160, gridDensity: 18, speed: 0.35,
+  intensity: 0.5, chaos: 0.2, dimension: 3.7, morphFactor: 0.5, saturation: 0.85,
 };
 
 // ── Opening Cinematic: VIB3CODE text mask over GPU canvas ──
@@ -101,6 +101,6 @@ export const openingParams = {
 
 // ── Parallax Triptych: two visualizer columns ──
 export const parallaxParams = {
-  left:  { geometry: 2, hue: 195, gridDensity: 18, speed: 0.35, intensity: 0.45, chaos: 0.1, morphFactor: 0.4, dimension: 3.6 },
-  right: { geometry: 4, hue: 310, gridDensity: 14, speed: 0.5,  intensity: 0.45, chaos: 0.15, morphFactor: 0.5, dimension: 3.5 },
+  left:  { geometry: 2, hue: 195, gridDensity: 22, speed: 0.4, intensity: 0.65, chaos: 0.15, morphFactor: 0.6, dimension: 3.5, saturation: 0.85 },
+  right: { geometry: 4, hue: 310, gridDensity: 18, speed: 0.5, intensity: 0.65, chaos: 0.2, morphFactor: 0.7, dimension: 3.4, saturation: 0.9 },
 };
