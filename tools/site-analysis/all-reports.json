@@ -1,0 +1,32 @@
+[
+  {
+    "site": "clickerss",
+    "url": "https://www.clickerss.com/",
+    "error": "page.goto: net::ERR_TUNNEL_CONNECTION_FAILED at https://www.clickerss.com/\nCall log:\n  - navigating to \"https://www.clickerss.com/\", waiting until \"networkidle\"\n"
+  },
+  {
+    "site": "facetad",
+    "url": "https://www.facetad.com/",
+    "error": "page.goto: net::ERR_TUNNEL_CONNECTION_FAILED at https://www.facetad.com/\nCall log:\n  - navigating to \"https://www.facetad.com/\", waiting until \"networkidle\"\n"
+  },
+  {
+    "site": "wix-template-3630",
+    "url": "https://www.wix.com/website-template/view/html/3630",
+    "error": "page.goto: net::ERR_TUNNEL_CONNECTION_FAILED at https://www.wix.com/website-template/view/html/3630\nCall log:\n  - navigating to \"https://www.wix.com/website-template/view/html/3630\", waiting until \"networkidle\"\n"
+  },
+  {
+    "site": "tableside",
+    "url": "https://www.tableside.com.au/",
+    "error": "page.goto: net::ERR_TUNNEL_CONNECTION_FAILED at https://www.tableside.com.au/\nCall log:\n  - navigating to \"https://www.tableside.com.au/\", waiting until \"networkidle\"\n"
+  },
+  {
+    "site": "wix-studio-space",
+    "url": "https://www.wix.com/studio/design/inspiration/space",
+    "error": "page.goto: net::ERR_TUNNEL_CONNECTION_FAILED at https://www.wix.com/studio/design/inspiration/space\nCall log:\n  - navigating to \"https://www.wix.com/studio/design/inspiration/space\", waiting until \"networkidle\"\n"
+  },
+  {
+    "site": "simone-webflow",
+    "url": "https://weare-simone.webflow.io/",
+    "error": "page.goto: net::ERR_TUNNEL_CONNECTION_FAILED at https://weare-simone.webflow.io/\nCall log:\n  - navigating to \"https://weare-simone.webflow.io/\", waiting until \"networkidle\"\n"
+  }
+]
