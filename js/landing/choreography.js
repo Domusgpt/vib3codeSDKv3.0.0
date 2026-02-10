@@ -2051,4 +2051,29 @@ export function initSectionReveals() {
       scrollTrigger: { trigger: footer, start: 'top 92%', once: true },
     });
   }
+
+  // ── Divider glow coordination: scroll progress drives --divider-glow ──
+  document.querySelectorAll('.section-divider[id]').forEach(divider => {
+    ScrollTrigger.create({
+      trigger: divider, start: 'top 90%', end: 'bottom 10%', scrub: 0.2,
+      onUpdate: (self) => {
+        const bell = Math.sin(self.progress * Math.PI);
+        divider.style.setProperty('--divider-glow', (bell * bell * 0.35).toFixed(3));
+      },
+      onLeave: () => divider.style.setProperty('--divider-glow', '0'),
+      onLeaveBack: () => divider.style.setProperty('--divider-glow', '0'),
+    });
+  });
+
+  // ── Canvas wrapper breathing: activate when in viewport ──
+  document.querySelectorAll('.canvas-wrap').forEach(wrap => {
+    ScrollTrigger.create({
+      trigger: wrap, start: 'top bottom', end: 'bottom top',
+      onEnter: () => wrap.classList.add('breathing'),
+      onLeave: () => wrap.classList.remove('breathing'),
+      onEnterBack: () => wrap.classList.add('breathing'),
+      onLeaveBack: () => wrap.classList.remove('breathing'),
+    });
+  });
+
 }

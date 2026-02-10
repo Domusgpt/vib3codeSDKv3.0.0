@@ -43,6 +43,7 @@ import {
   initSectionVeils, initScrollVelocityBurst, initPhaseShiftBridges,
   initSpeedCrescendo,
 } from './choreography.js';
+import { initOverlayChoreography } from './overlay-choreography.js';
 
 // ─── State ────────────────────────────────────────────────────
 
@@ -407,6 +408,12 @@ if (typeof gsap !== 'undefined') {
   initScrollVelocityBurst(c2d);
   initPhaseShiftBridges(pool, c2d);
   initSpeedCrescendo(pool);
+
+  // ── Overlay Choreography: CSS accent layers, mirrors, bridges ──
+  // Adds coordinated CSS effects on top of visualizer canvases:
+  // gradient washes, multi-instance echoes, edge glows, particles,
+  // crossfade bridges, and transition ripples — all without resizing canvases.
+  initOverlayChoreography(pool);
 }
 
 // Acquire opening canvas immediately (first thing user sees)
