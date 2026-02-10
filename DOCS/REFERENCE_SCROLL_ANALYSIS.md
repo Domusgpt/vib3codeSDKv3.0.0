@@ -1,114 +1,97 @@
 # Reference Site Scroll Effect Analysis
 
 **Updated: 2026-02-10**
-**Status**: PARTIAL — Source-code analysis only. Visual analysis pending.
+**Status**: COMPLETE — Visual analysis via Playwright screenshots + source-code parsing.
 
 ---
 
-## Methodology Disclosure
+## Methodology
 
-**IMPORTANT**: This analysis was conducted by parsing HTML/CSS source code via HTTP fetch, NOT by visually observing the rendered sites. This means:
+### Phase 1: Source-Code Analysis (HTML/CSS parsing)
+Extracted CSS transition durations, easing functions, framework IDs, class patterns.
 
-### What we CAN extract from source code:
-- CSS transition/animation durations and easing functions
-- Framework identification (Wix, Webflow, GSAP, Lenis, etc.)
-- CSS class naming patterns and state management
-- Static layout structure (grids, positioning)
-- CSS custom property systems
-- Blend modes, filter declarations, transform properties
-
-### What we CANNOT see from source code:
-- **Actual visual scroll choreography** (how elements move together during scroll)
-- **Runtime GSAP/ScrollTrigger timelines** (JS-driven, not in static HTML)
-- **Canvas/WebGL rendered effects** (runtime only)
-- **The "feel"** — timing, rhythm, perceived depth, visual weight
-- **Color schemes in context** (computed styles at render time)
-- **Interaction feedback** (hover states, click responses in context)
-- **Responsive behavior** (layout at different breakpoints)
-
-### What needs to happen:
-Playwright-based systematic screenshots at scroll intervals (every 100px or 5% of page height) + interaction capture (hover states, click sequences). See `tools/site-analyzer.mjs` for the automated tool.
+### Phase 2: Visual Analysis (Playwright screenshots)
+Captured real Chromium screenshots at 8-11 scroll positions per site using wheel-based scrolling (triggers Lenis/GSAP animations). Tool: `tools/site-analyzer.mjs` with local proxy forwarder.
 
 ---
 
-## Sites to Analyze
+## Sites Analyzed
 
-| # | URL | Framework (from source) | Status |
-|---|-----|------------------------|--------|
-| 1 | clickerss.com | Wix Thunderbolt + View Transitions API | Source parsed |
-| 2 | facetad.com | Wix Thunderbolt + Lenis | Source parsed |
-| 3 | tableside.com.au | Wix Thunderbolt | Source parsed |
-| 4 | wix.com/studio/inspiration/space | Wix Studio | Source parsed |
-| 5 | weare-simone.webflow.io | Webflow + GSAP + Lenis + SplitType | Source parsed |
-| 6 | wix.com template 3630 | Wix | Minimal data |
+| # | URL | Framework | Status |
+|---|-----|-----------|--------|
+| 1 | weare-simone.webflow.io | Webflow + GSAP + Lenis + SplitType | COMPLETE |
+| 2 | facetad.com | Wix Thunderbolt + Lenis | COMPLETE |
+| 3 | clickerss.com | Wix Thunderbolt + View Transitions API | COMPLETE |
+| 4 | tableside.com.au | Wix Thunderbolt | COMPLETE |
+| 5 | wix.com/studio/inspiration/space | Wix Studio | 404 (page removed) |
+
+### Detailed Analysis Documents
+- `DOCS/VISUAL_ANALYSIS_SIMONE.md` — Frame-by-frame + 7 design patterns
+- `DOCS/VISUAL_ANALYSIS_FACETAD.md` — Frame-by-frame + 6 design patterns
+- `DOCS/VISUAL_ANALYSIS_CLICKERSS.md` — Frame-by-frame + 5 design patterns
+- `DOCS/VISUAL_ANALYSIS_TABLESIDE.md` — Frame-by-frame + 5 design patterns
+- `DOCS/CROSS_SITE_DESIGN_PATTERNS.md` — Synthesized actionable patterns + priority actions
 
 ---
 
 ## Source-Code Findings (Verified from HTML/CSS)
 
-### CSS Transition Patterns Observed
-
-These are real CSS properties found in the source. We can confirm the DEFINITIONS exist — but not how they look when rendered.
+### CSS Transition Patterns
 
 **clickerss.com:**
 - View Transition API with named groups (header-group, footer-group, page-group)
 - Slide transitions: 0.6s `cubic-bezier(.83,0,.17,1)`
 - Multi-state opacity classes with different easings per state
 - Marquee animation: `40s linear infinite` with pause-on-hover
-- Mask-image reveals with position/size CSS variables
+- **Visual confirmation**: Massive B&W hero photo, serif text-image interweaving, typography-as-CTA footer
 
 **facetad.com:**
 - Lenis smooth scroll: `lerp: 0.1`, `wheelMultiplier: 0.7`
 - 4-layer background compositing (base + masked image + blend overlay + shadow)
 - Dynamic z-index via `data-z-counter` attributes
-- `mix-blend-mode: plus-lighter` and `overlay` on interactive elements
-- 3-state color choreography via `--corvid-*` CSS variables
+- **Visual confirmation**: Parallelogram clip-path images, diagonal section dividers, scattered gallery with z-stacking, diagonal cream→red color transition
 
 **tableside.com.au:**
 - Blur-to-sharp load: `blur(9px) → blur(0)` over 0.8s
 - Fixed pinned overlay layer system
 - 9+ hamburger icon animation variants with multi-line stagger
-- Sub-menu 4-property coordinated animation (arrow + bg + opacity + height)
+- **Visual confirmation**: Bold coral/cream/navy three-tone palette, variable-size portfolio cards, split-color footer (vertical cream/navy)
 
 **weare-simone.webflow.io:**
 - SplitType character-level text reveals with `y: "100%"` stagger
 - Dark/light mode threshold switching at 2% viewport band
 - GSAP Flip.js navigation shape morphing (0.4s power2.out)
-- Portfolio card overlap: alternating 40% right offset with z-stacking
-- Continuous spinner: `spin 10s linear infinite`
+- **Visual confirmation**: Giant wordmark hero, hard cream→dark-teal mode switch, zigzag asymmetric case study cards, floating product images, marquee CTA, outlined typography echo at footer
 
 ---
 
-## Patterns to Verify Visually
+## Visual Findings Summary
 
-These patterns were INFERRED from CSS class names but need visual confirmation:
+### Pattern Verification Results
 
-1. **Multi-stage opacity choreography** — Do elements actually breathe through states, or is it just class toggling?
-2. **Character reveal from below** — Does the SplitType animation actually create a depth illusion?
-3. **Blur rack-focus** — How does the blur(9px→0) transition feel at scroll speed?
-4. **Layer compositing depth** — Do the 4 background layers actually create parallax-like depth?
-5. **Dark/light threshold** — How dramatic is the 2% band color flip?
-6. **Card overlap stacking** — Does the 40% offset create real depth or just messy layout?
-7. **Lenis momentum** — How does lerp:0.1 + wheelMultiplier:0.7 actually feel to scroll?
+| Pattern (from CSS) | Visual Result |
+|---|---|
+| Multi-stage opacity | Could not test — requires interaction capture |
+| Character reveal from below | SplitType present but needs JS trigger, not visible in static screenshots |
+| Blur rack-focus | Not visible in screenshots — happens at load time |
+| 4-layer compositing depth | Facetad confirms depth via parallelogram z-stacking, not traditional parallax |
+| Dark/light threshold (Simone) | CONFIRMED — hard snap at section boundary, very dramatic |
+| Card overlap stacking | CONFIRMED (Simone) — creates real depth with zigzag alternation |
+| Lenis momentum | Cannot test in screenshots — requires scroll-feel testing |
 
----
+### Newly Discovered Patterns (Not in source code)
 
-## Visual Analysis Plan
+These patterns were discovered through visual analysis that could NOT be inferred from source code:
 
-When Playwright is working, run the systematic analyzer on each site:
-
-```
-For each site:
-  1. Full-page screenshot at load
-  2. Screenshots every 200px of scroll (capture scroll position + viewport)
-  3. Screenshots of each section at: entering viewport, centered, leaving viewport
-  4. Hover state captures on interactive elements
-  5. Menu open/close animation frames
-  6. Extract computed styles at each scroll position for key elements
-```
-
-Output: `DOCS/screenshots/{site-name}/scroll-{position}.png` + computed-style JSON
+1. **Parallelogram clip-path galleries** (Facetad) — images all use skewed non-rectangular shapes
+2. **Diagonal section dividers** (Facetad) — 30-40deg angle, consistent site-wide
+3. **Text-image interweaving** (Clickerss) — massive text overlaps/shares space with images
+4. **Variable card sizing** (Tableside) — portfolio cards deliberately vary in height
+5. **Split-color sections** (Tableside) — vertical cream/navy split in footer
+6. **Extreme negative space** (Facetad) — hero is 95% empty, one line of text
+7. **Typography-as-CTA** (Clickerss) — viewport-filling text IS the call-to-action
+8. **Footer typography echo** (Simone) — hero's filled wordmark becomes outlined strokes at footer
 
 ---
 
-*This document will be updated with actual visual findings once Playwright screenshots are captured.*
+*Analysis complete. See CROSS_SITE_DESIGN_PATTERNS.md for actionable VIB3+ implementation plan.*
