@@ -481,8 +481,10 @@
         .triptych-divider.right { left: var(--tri-split-right, 66%); }
 
         /* ═══════════════════════════════════════════
-           SECTION 5: CASCADE — Morphing Cards
-           Cards scale, glow leaks out, density inverts
+           SECTION 5: CASCADE — Geometry Cards
+           Full-width cards, 3D tilt, geometric clip-path morphing,
+           fractal drop-shadow echoes, negative-space layering.
+           NO SCALE — ever. Size illusion via clip-path window.
            ═══════════════════════════════════════════ */
         .cascade {
             position: relative; min-height: 400vh;
@@ -504,45 +506,51 @@
             font-size: 13px; color: var(--text-muted); letter-spacing: 1px;
         }
         .cascade-track {
-            display: flex; gap: 32px; will-change: transform;
-            padding: 0 calc(50vw - 190px);
+            display: flex; gap: 0; will-change: transform;
+            padding: 0 10vw;
         }
         .cascade-card {
-            flex-shrink: 0; width: min(360px, 80vw); height: 480px;
-            border-radius: 24px; overflow: visible; position: relative;
-            border: 1px solid rgba(255,255,255,0.05);
-            box-shadow: 0 12px 48px rgba(0,0,0,0.5);
-            opacity: 0; transform: translateY(40px) scale(0.9);
-            will-change: transform, opacity, box-shadow;
-            transition: border-color 0.5s cubic-bezier(0.23, 1, 0.32, 1),
-                        box-shadow 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+            flex-shrink: 0; width: 80vw; height: 72vh;
+            position: relative; overflow: visible;
+            background: transparent;
+            border: none; border-radius: 0;
+            opacity: 0; transform: translateY(60px);
+            will-change: transform, opacity, filter;
+            transform-style: preserve-3d;
+            --card-hue: 200;
         }
         .cascade-card .canvas-wrap {
             width: 100%; height: 100%;
-            border-radius: 24px; overflow: hidden;
+            overflow: hidden;
+            clip-path: var(--card-shape, inset(0% round 16px));
         }
-        /* Glow leak pseudo-element */
+        /* Negative-space frame — decorative border around the clip-path window */
+        .cascade-card .card-frame {
+            position: absolute; inset: 0; z-index: 2;
+            pointer-events: none;
+            border: var(--frame-border, 1px solid rgba(255,255,255,0.04));
+            border-radius: 16px;
+            box-shadow: inset 0 0 var(--frame-glow-size, 0px) hsla(var(--card-hue), 60%, 50%, var(--frame-glow-alpha, 0));
+            clip-path: var(--card-shape, inset(0% round 16px));
+        }
+        /* Glow aura — follows clip-path via drop-shadow on parent */
         .cascade-card::after {
             content: '';
-            position: absolute; inset: -30px;
-            border-radius: 36px;
+            position: absolute; inset: -50px;
+            border-radius: 30px;
             background: radial-gradient(ellipse at center,
-                var(--card-glow, rgba(0,240,255,0.12)), transparent 65%);
-            filter: blur(25px);
+                hsla(var(--card-hue), 80%, 55%, 0.18), transparent 65%);
+            filter: blur(35px);
             opacity: 0; z-index: -1;
-            transition: opacity 0.7s cubic-bezier(0.23, 1, 0.32, 1);
             pointer-events: none;
+            transition: opacity 0.4s;
         }
-        .cascade-card.leaking {
-            border-color: rgba(255,255,255,0.15);
-        }
-        .cascade-card.leaking::after {
-            opacity: 1;
-        }
+        .cascade-card.leaking::after { opacity: 1; }
         .cascade-overlay {
             position: absolute; bottom: 0; left: 0; right: 0; z-index: 5;
-            padding: 28px; border-radius: 0 0 24px 24px;
-            background: linear-gradient(transparent, rgba(3,7,18,0.92));
+            padding: 28px 28px 24px; border-radius: 0;
+            background: linear-gradient(transparent 0%, rgba(3,7,18,0.88) 60%);
+            clip-path: var(--card-shape, inset(0% round 16px));
         }
         .cascade-overlay h4 { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 4px; }
         .cascade-overlay .cascade-sys {
@@ -1164,15 +1172,15 @@
             .triptych-center-canvas { margin-bottom: -100vh; height: 100vh; }
             .triptych-content { position: sticky; top: 50%; transform: translateY(-50%); }
             .triptych-divider { display: none; }
-            .cascade-track { gap: 20px; }
-            .cascade-card { width: min(340px, 85vw); height: 520px; }
+            .cascade-track { gap: 0; padding: 0 5vw; }
+            .cascade-card { width: 88vw; height: 65vh; }
             .agent-grid { grid-template-columns: 1fr 1fr; }
         }
         @media (max-width: 480px) {
             .agent-grid { grid-template-columns: 1fr; }
             .ctrl-row-3 { grid-template-columns: 1fr; }
             .triptych-stats { flex-direction: column; gap: 16px; }
-            .cascade-card { width: 90vw; height: 480px; }
+            .cascade-card { width: 94vw; height: 60vh; }
         }
         /* ═══════════════════════════════════════════════════════════
            DEPTH ILLUSION ENGINE — CSS Depth Helpers v3
@@ -1745,26 +1753,32 @@
             <div class="cascade-track" id="cascadeTrack">
                 <div class="cascade-card tilt-card tilt-holo" data-geo="0" data-hue="190">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-0"></canvas></div>
+                    <div class="card-frame"></div>
                     <div class="cascade-overlay"><h4>Tetrahedron</h4><span class="cascade-sys">Base Core</span></div>
                 </div>
                 <div class="cascade-card tilt-card tilt-holo" data-geo="11" data-hue="300">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-1"></canvas></div>
+                    <div class="card-frame"></div>
                     <div class="cascade-overlay"><h4>Hypersphere Torus</h4><span class="cascade-sys">Hypersphere Core</span></div>
                 </div>
                 <div class="cascade-card tilt-card tilt-holo" data-geo="16" data-hue="35">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-2"></canvas></div>
+                    <div class="card-frame"></div>
                     <div class="cascade-overlay"><h4>Hypertetra Simplex</h4><span class="cascade-sys">Hypertetra Core</span></div>
                 </div>
                 <div class="cascade-card tilt-card tilt-holo" data-geo="5" data-hue="130">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-3"></canvas></div>
+                    <div class="card-frame"></div>
                     <div class="cascade-overlay"><h4>Fractal</h4><span class="cascade-sys">Base Core</span></div>
                 </div>
                 <div class="cascade-card tilt-card tilt-holo" data-geo="12" data-hue="260">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-4"></canvas></div>
+                    <div class="card-frame"></div>
                     <div class="cascade-overlay"><h4>Hypersphere Klein</h4><span class="cascade-sys">Hypersphere Core</span></div>
                 </div>
                 <div class="cascade-card tilt-card tilt-holo" data-geo="7" data-hue="60">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-5"></canvas></div>
+                    <div class="card-frame"></div>
                     <div class="cascade-overlay"><h4>Crystal</h4><span class="cascade-sys">Base Core</span></div>
                 </div>
             </div>

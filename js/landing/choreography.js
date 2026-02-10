@@ -1021,12 +1021,42 @@ export function initCascade(pool, c2d) {
     onLeaveBack: () => { pool.release('casGpuL'); pool.release('casGpuR'); },
   });
 
-  // Stagger entrance
+  // ═══ 8-point polygon shapes for geometric morphing ═══
+  // All shapes have exactly 8 vertices so CSS can interpolate between them.
+  const SHAPES = {
+    // Nearly-full rectangle (rounded feel via vertex placement)
+    rect:    [[2,2],[50,0],[98,2],[100,50],[98,98],[50,100],[2,98],[0,50]],
+    // Hexagonal window
+    hex:     [[25,2],[75,2],[98,25],[98,75],[75,98],[25,98],[2,75],[2,25]],
+    // Diamond / rhombus
+    diamond: [[50,2],[80,20],[98,50],[80,80],[50,98],[20,80],[2,50],[20,20]],
+    // Octagon
+    oct:     [[28,2],[72,2],[98,28],[98,72],[72,98],[28,98],[2,72],[2,28]],
+    // Narrow slit — card appears small through this window
+    narrow:  [[15,12],[50,8],[85,12],[92,50],[85,88],[50,92],[15,88],[8,50]],
+  };
+
+  // Interpolate between two 8-point polygon shapes
+  function lerpShape(a, b, t) {
+    return 'polygon(' + a.map((pt, i) =>
+      `${pt[0] + (b[i][0] - pt[0]) * t}% ${pt[1] + (b[i][1] - pt[1]) * t}%`
+    ).join(', ') + ')';
+  }
+
+  // Shape sequence for the active card as it scrolls through
+  const shapeSeq = [SHAPES.rect, SHAPES.hex, SHAPES.diamond, SHAPES.oct, SHAPES.rect];
+
+  // Initialize card hue custom properties + frame elements
+  cascadeCards.forEach((card) => {
+    card.style.setProperty('--card-hue', card.dataset.hue);
+  });
+
+  // Stagger entrance — NO SCALE, just opacity + translateY
   ScrollTrigger.create({
     trigger: '#cascadeSection', start: 'top 75%', once: true,
     onEnter: () => {
       gsap.to('.cascade-card', {
-        opacity: 1, y: 0, scale: 1,
+        opacity: 1, y: 0,
         duration: 0.9, stagger: 0.15,
         ease: 'power3.out',
       });
@@ -1065,8 +1095,6 @@ export function initCascade(pool, c2d) {
   });
 
   if (cascadeTrack && cascadeCards.length > 0) {
-    const cardW = 360 + 32;
-    const totalScroll = (cascadeCards.length - 1) * cardW;
     const N = cascadeCards.length;
 
     ScrollTrigger.create({
@@ -1074,6 +1102,11 @@ export function initCascade(pool, c2d) {
       pin: '#cascadePinned', scrub: 0.5,
       onUpdate: (self) => {
         const p = self.progress;
+
+        // Cards are 80vw wide, end-to-end (no gap)
+        const vw = window.innerWidth / 100;
+        const cardW = 80 * vw;
+        const totalScroll = (N - 1) * cardW;
         cascadeTrack.style.transform = `translateX(${-p * totalScroll}px)`;
 
         const activeIdx = Math.min(Math.floor(p * N), N - 1);
@@ -1092,21 +1125,17 @@ export function initCascade(pool, c2d) {
         const aCard = cascadeCards[activeIdx];
         const aGeo = parseInt(aCard?.dataset.geo || '0');
         const aHue = parseInt(aCard?.dataset.hue || '200');
-
-        // When active card has LOW density (close), bg goes HIGH density (far)
-        // This creates a strong background-recedes-when-card-approaches illusion
-        const cardApproach = pulse; // 0→1→0 per card
+        const cardApproach = pulse;
 
         if (gpuL) {
           gpuL.setParams({
-            geometry: aGeo,
-            hue: aHue,
+            geometry: aGeo, hue: aHue,
             rot4dXW: sharedXW,
             rot4dYW: Math.sin(p * Math.PI * 2) * 1.5,
-            gridDensity: lerp(14, 45, cardApproach), // recedes when card is close
-            intensity: lerp(0.55, 0.25, cardApproach), // dims when card is foreground
-            chaos: 0.1 + pulse * 0.2,
-            speed: 0.4 + pulse * 0.6,
+            gridDensity: lerp(14, 50, cardApproach),
+            intensity: lerp(0.55, 0.2, cardApproach),
+            chaos: 0.1 + pulse * 0.25,
+            speed: 0.4 + pulse * 0.8,
             morphFactor: 0.5 + localP * 0.6,
           });
         }
@@ -1116,90 +1145,139 @@ export function initCascade(pool, c2d) {
             hue: (aHue + 180) % 360,
             rot4dXW: -sharedXW * 0.7,
             rot4dYW: Math.cos(p * Math.PI * 2) * 1.2,
-            gridDensity: lerp(18, 48, cardApproach),
-            intensity: lerp(0.45, 0.2, cardApproach),
-            chaos: 0.12 + (1 - pulse) * 0.18,
-            speed: 0.3 + (1 - pulse) * 0.5,
+            gridDensity: lerp(18, 52, cardApproach),
+            intensity: lerp(0.45, 0.18, cardApproach),
+            chaos: 0.12 + (1 - pulse) * 0.2,
+            speed: 0.3 + (1 - pulse) * 0.6,
             morphFactor: 0.7 - localP * 0.3,
           });
         }
 
-        // Split line follows active card + glow seam between backgrounds
-        const splitPct = 30 + activeIdx / Math.max(1, cascadeCards.length - 1) * 40;
+        // Split line follows active card
+        const splitPct = 30 + activeIdx / Math.max(1, N - 1) * 40;
         if (gpuLeftWrap) gpuLeftWrap.style.clipPath = `inset(0 ${100 - splitPct}% 0 0)`;
         if (gpuRightWrap) gpuRightWrap.style.clipPath = `inset(0 0 0 ${splitPct}%)`;
-
-        // Glow seam between GPU backgrounds
         updateGlowSeam(casSeam, gpuL, gpuR);
         if (casSeam) casSeam.style.left = `${splitPct}%`;
+        if (casVignette) updateVignette(casVignette, gpuL?.params?.gridDensity || 20);
 
-        // Vignette tightens when bg goes distant
-        if (casVignette) {
-          const bgDensity = gpuL?.params?.gridDensity || 20;
-          updateVignette(casVignette, bgDensity);
-        }
-
+        // ═══ PER-CARD: 3D TILT + GEOMETRIC MORPHING + FRACTAL ECHOES ═══
         cascadeCards.forEach((card, i) => {
           const inst = c2d.get(`cas${i}`);
           if (!inst) return;
           const hue = parseInt(card.dataset.hue);
           const dist = Math.abs(i - activeIdx);
-
-          // ═══ RIPPLE: distance-based falloff from active card ═══
-          const ripple = Math.max(0, 1 - dist * 0.25) * pulse;
+          const ripple = Math.max(0, 1 - dist * 0.3) * pulse;
           const phaseOffset = dist * Math.PI / 3;
+          const isActive = (i === activeIdx);
 
-          if (i === activeIdx) {
-            // ── ACTIVE: DRAMATICALLY BIGGER, full energy ──
-            const scaleVal = 1 + pulse * 0.25;
-            card.style.transform = `scale(${scaleVal})`;
-            card.style.zIndex = '10';
-            card.style.opacity = '1';
+          // ═══ 3D TILT — NO SCALE EVER ═══
+          // Active card tilts toward face-on (flat). Neighbors fan outward.
+          let tiltY, tiltX, tiltZ;
+          if (isActive) {
+            // Face-on when fully active, slight tilt during transition
+            tiltY = (1 - pulse) * (localP < 0.5 ? -15 : 15);
+            tiltX = -pulse * 3;
+            tiltZ = (1 - pulse) * (localP < 0.5 ? -2 : 2);
+          } else {
+            // Fan outward: cards to left tilt right, cards to right tilt left
+            const dir = i < activeIdx ? 1 : -1;
+            const tiltStrength = Math.min(dist * 18, 50);
+            tiltY = dir * tiltStrength;
+            tiltX = dist * 3;
+            tiltZ = dir * dist * 1.5;
+          }
+
+          card.style.transform = `perspective(1200px) rotateY(${tiltY}deg) rotateX(${tiltX}deg) rotateZ(${tiltZ}deg)`;
+          card.style.zIndex = isActive ? '10' : `${Math.max(1, 7 - dist)}`;
+          card.style.opacity = isActive ? '1' : `${Math.max(0.35, 1 - dist * 0.13)}`;
+
+          // ═══ GEOMETRIC MORPHING via clip-path on canvas-wrap ═══
+          // Active: morph through shape sequence. Inactive: narrow window.
+          const wrap = card.querySelector('.canvas-wrap');
+          const overlay = card.querySelector('.cascade-overlay');
+          const frame = card.querySelector('.card-frame');
+          let clipVal;
+
+          if (isActive) {
+            // Cycle through 4 shape transitions based on localP (0→1)
+            const phase = localP * (shapeSeq.length - 1);
+            const segIdx = Math.min(Math.floor(phase), shapeSeq.length - 2);
+            const segT = phase - segIdx;
+            clipVal = lerpShape(shapeSeq[segIdx], shapeSeq[segIdx + 1], segT);
+          } else {
+            // Narrower window the further away — controls perceived size
+            const inset = Math.min(3 + dist * 6, 22);
+            const r = 14 + dist * 3;
+            clipVal = `inset(${inset}% ${inset * 0.6}% ${inset}% ${inset * 0.6}% round ${r}px)`;
+          }
+
+          if (wrap) wrap.style.clipPath = clipVal;
+          if (overlay) overlay.style.clipPath = clipVal;
+          if (frame) frame.style.clipPath = clipVal;
+
+          // ═══ FRACTAL ECHOES via filter: drop-shadow ═══
+          // Active card gets offset drop-shadows that follow the geometric clip-path.
+          // This creates the illusion of the card duplicating/fracturing outward.
+          if (isActive) {
+            const echoOff = 5 + pulse * 16;
+            const a1 = (0.18 + pulse * 0.14).toFixed(2);
+            const a2 = (0.10 + pulse * 0.08).toFixed(2);
+            const a3 = (0.05 + pulse * 0.04).toFixed(2);
+            card.style.filter = [
+              `drop-shadow(${echoOff}px ${echoOff * 0.8}px 0px hsla(${hue}, 70%, 50%, ${a1}))`,
+              `drop-shadow(${echoOff * 2.2}px ${echoOff * 1.2}px 1px hsla(${hue}, 65%, 45%, ${a2}))`,
+              `drop-shadow(${-echoOff * 0.8}px ${echoOff * 1.5}px 0px hsla(${hue}, 60%, 40%, ${a3}))`,
+              `drop-shadow(${echoOff * 1.4}px ${-echoOff * 0.6}px 0px hsla(${hue}, 60%, 40%, ${a3}))`,
+            ].join(' ');
             card.classList.add('leaking');
-            card.style.setProperty('--card-glow', `hsla(${hue}, 80%, 55%, ${0.3 + pulse * 0.25})`);
-            card.style.boxShadow = `0 20px 60px rgba(0,0,0,0.6), 0 0 ${40 + pulse * 60}px hsla(${hue}, 70%, 40%, ${0.15 + pulse * 0.15})`;
+            // Frame glow
+            card.style.setProperty('--frame-glow-size', `${18 + pulse * 35}px`);
+            card.style.setProperty('--frame-glow-alpha', `${0.12 + pulse * 0.18}`);
+            card.style.setProperty('--frame-border', `1px solid rgba(255,255,255,${0.06 + pulse * 0.12})`);
+          } else {
+            // Neighbors: subtle single echo if close, none if far
+            if (ripple > 0.08) {
+              const rOff = 3 + ripple * 10;
+              card.style.filter = `drop-shadow(${rOff}px ${rOff * 0.6}px 0px hsla(${hue}, 60%, 45%, ${(ripple * 0.12).toFixed(2)}))`;
+            } else {
+              card.style.filter = 'none';
+            }
+            card.classList.toggle('leaking', ripple > 0.15);
+            card.style.setProperty('--frame-glow-size', '0px');
+            card.style.setProperty('--frame-glow-alpha', '0');
+            card.style.setProperty('--frame-border', `1px solid rgba(255,255,255,${0.03 + ripple * 0.04})`);
+          }
 
+          // ═══ VISUALIZATION PARAMETERS ═══
+          // Active: low density (close/dramatic), high chaos/speed
+          // Inactive: high density (receded/ambient), low chaos
+          if (isActive) {
             inst.setParams({
               rot4dXW: sharedXW + localP * Math.PI * 2,
               rot4dYW: Math.sin(localP * Math.PI) * 1.8,
               rot4dZW: sharedXW * 0.4 + localP * 0.8,
-              intensity: 0.9 + pulse * 0.1,
-              morphFactor: 0.8 + localP * 1.0,
-              gridDensity: Math.max(6, 24 - pulse * 16),
-              speed: 0.8 + pulse * 1.5,
-              chaos: 0.2 + pulse * 0.45,
+              intensity: 0.85 + pulse * 0.15,
+              gridDensity: Math.max(6, 22 - pulse * 14),
+              speed: 1.0 + pulse * 1.8,
+              chaos: 0.25 + pulse * 0.5,
               hue: hue + pulse * 40,
+              morphFactor: 0.5 + localP * 1.2,
               saturation: 0.95,
             });
           } else {
-            // ── NEIGHBORS: shrink, dim, but still alive ──
-            const dimFactor = Math.max(0.3, 1 - dist * 0.15);
-            const shrinkScale = 0.85 + ripple * 0.1;
-            card.style.transform = `scale(${shrinkScale})`;
-            card.style.zIndex = '1';
-            card.style.opacity = `${dimFactor}`;
-            card.classList.toggle('leaking', ripple > 0.15);
-            if (ripple > 0.15) {
-              card.style.setProperty('--card-glow',
-                `hsla(${hue}, 65%, 45%, ${ripple * 0.2})`);
-            } else {
-              card.classList.remove('leaking');
-            }
-            card.style.boxShadow = `0 12px 48px rgba(0,0,0,0.5)`;
-
             const hueBleed = ripple * 0.5;
             const echoWave = Math.sin(localP * Math.PI + phaseOffset);
             const echo = Math.max(0, echoWave) * ripple;
-
             inst.setParams({
               hue: hue + (activeHue - hue) * hueBleed,
-              intensity: 0.4 + ripple * 0.35,
-              gridDensity: 22 - ripple * 10 + echo * 6,
-              speed: 0.4 + echo * 0.8,
-              chaos: 0.08 + echo * 0.25,
+              intensity: 0.45 + ripple * 0.3,
+              gridDensity: 24 - ripple * 8 + echo * 5,
+              speed: 0.5 + echo * 0.7,
+              chaos: 0.1 + echo * 0.2,
               morphFactor: 0.4 + echo * 0.5,
               rot4dXW: sharedXW + phaseOffset * 0.4,
-              rot4dYW: Math.sin(sharedXW + phaseOffset) * 0.7 * ripple,
+              rot4dYW: Math.sin(sharedXW + phaseOffset) * 0.6 * ripple,
               saturation: 0.75 + ripple * 0.15,
             });
           }
