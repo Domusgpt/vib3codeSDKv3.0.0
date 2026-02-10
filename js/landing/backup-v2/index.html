@@ -1174,152 +1174,6 @@
             .triptych-stats { flex-direction: column; gap: 16px; }
             .cascade-card { width: 90vw; height: 480px; }
         }
-        /* ═══════════════════════════════════════════════════════════
-           DEPTH ILLUSION ENGINE — CSS Depth Helpers v3
-           Faux shadows, vignettes, glow seams, chromatic borders,
-           particle overlays, scan-line dividers
-           ═══════════════════════════════════════════════════════════ */
-
-        /* ── Faux Shadow (below visualizer containers) ── */
-        .viz-depth-shadow {
-            position: absolute;
-            bottom: -18px;
-            left: 10%;
-            width: 80%;
-            height: 30px;
-            background: radial-gradient(ellipse, rgba(0,0,0,0.4) 0%, transparent 70%);
-            transform: scaleX(var(--shadow-sx, 1)) scaleY(var(--shadow-sy, 1));
-            filter: blur(var(--shadow-blur, 8px));
-            opacity: var(--shadow-opacity, 0.5);
-            pointer-events: none;
-            transition: transform 0.25s ease-out, filter 0.25s ease-out, opacity 0.25s ease-out;
-            z-index: 1;
-        }
-
-        /* ── Vignette Depth Frame (darkens edges for tunnel focus) ── */
-        .viz-vignette {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            background: radial-gradient(
-                ellipse at center,
-                transparent var(--vignette-inner, 40%),
-                rgba(0, 0, 0, var(--vignette-strength, 0.3)) 100%
-            );
-            z-index: 2;
-            transition: --vignette-strength 0.3s ease-out;
-        }
-
-        /* ── Chromatic Aberration Border ── */
-        .viz-chromatic-border { position: relative; }
-        .viz-chromatic-border::before,
-        .viz-chromatic-border::after {
-            content: '';
-            position: absolute;
-            inset: -2px;
-            border: 2px solid transparent;
-            border-radius: inherit;
-            pointer-events: none;
-            transition: transform 0.15s ease-out, border-color 0.15s ease-out;
-        }
-        .viz-chromatic-border::before {
-            border-color: hsla(var(--chroma-hue-a, 190), 80%, 60%, 0.35);
-            transform: translate(var(--chroma-offset, 1px), calc(var(--chroma-offset, 1px) * -1));
-        }
-        .viz-chromatic-border::after {
-            border-color: hsla(var(--chroma-hue-b, 310), 80%, 60%, 0.35);
-            transform: translate(calc(var(--chroma-offset, 1px) * -1), var(--chroma-offset, 1px));
-        }
-
-        /* ── Glow Seam (between split-screen visualizers) ── */
-        .viz-seam {
-            position: absolute;
-            width: 4px;
-            height: 100%;
-            left: 50%;
-            top: 0;
-            transform: translateX(-50%);
-            background: linear-gradient(
-                180deg,
-                transparent 0%,
-                hsla(var(--seam-hue, 220), 80%, 60%, var(--seam-intensity, 0)) 25%,
-                hsla(var(--seam-hue, 220), 80%, 70%, var(--seam-intensity, 0)) 50%,
-                hsla(var(--seam-hue, 220), 80%, 60%, var(--seam-intensity, 0)) 75%,
-                transparent 100%
-            );
-            filter: blur(var(--seam-blur, 6px));
-            pointer-events: none;
-            z-index: 15;
-            transition: filter 0.2s ease-out;
-        }
-
-        /* ── Particle Trail Overlay ── */
-        @keyframes particle-drift {
-            0% { transform: translate(0, 0) scale(1); opacity: 0.6; }
-            50% { opacity: 0.4; }
-            100% { transform: translate(var(--dx, 30px), var(--dy, -60px)) scale(0); opacity: 0; }
-        }
-        .particle-overlay {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            overflow: hidden;
-            z-index: 3;
-        }
-        .particle-overlay span {
-            position: absolute;
-            width: 3px; height: 3px;
-            border-radius: 50%;
-            background: hsla(var(--particle-hue, 200), 70%, 70%, 0.7);
-            animation: particle-drift var(--particle-dur, 4s) linear infinite;
-            animation-delay: var(--particle-delay, 0s);
-        }
-
-        /* ── Scan-Line Divider Bars ── */
-        .viz-scanlines {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            z-index: 4;
-            overflow: hidden;
-        }
-        .viz-scanlines .scanline {
-            position: absolute;
-            width: 100%;
-            height: 1px;
-            background: linear-gradient(90deg,
-                transparent 0%,
-                hsla(var(--scan-hue, 200), 70%, 55%, 0.2) 20%,
-                hsla(var(--scan-hue, 200), 70%, 55%, 0.35) 50%,
-                hsla(var(--scan-hue, 200), 70%, 55%, 0.2) 80%,
-                transparent 100%);
-            top: var(--scan-y, 0%);
-            transition: top 0.5s ease-out;
-        }
-
-        /* ── Depth container modifier (for depth-aware sections) ── */
-        .depth-container {
-            position: relative;
-            transition: transform 0.2s ease-out, filter 0.2s ease-out, box-shadow 0.2s ease-out;
-            will-change: transform, filter;
-        }
-
-        /* ── Speed crescendo / silence overlays ── */
-        .crescendo-vignette-overlay {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0, var(--crescendo-vignette, 0)) 100%);
-            z-index: 50;
-        }
-        .silence-blackout-overlay {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            background: rgba(0,0,0, var(--silence-blackout, 0));
-            z-index: 51;
-        }
-
     </style>
 </head>
 <body>
@@ -1335,10 +1189,6 @@
     <div class="mouse-glow-overlay" id="mouseGlow" aria-hidden="true"></div>
     <div class="scroll-progress" id="scrollProgress"></div>
 
-    <!-- ── Crescendo / Silence fullscreen overlays ── -->
-    <div class="crescendo-vignette-overlay" aria-hidden="true"></div>
-    <div class="silence-blackout-overlay" aria-hidden="true"></div>
-
     <!-- ─── Section Transition Veil (reusable fixed overlay) ─── -->
     <div class="section-veil" id="sectionVeil">
         <div class="section-veil-bg"></div>
@@ -1353,14 +1203,8 @@
          ═══════════════════════════════════════════════════ -->
     <section class="opening" id="openingSection">
         <div class="opening-pinned" id="openingPinned">
-            <div class="opening-canvas-wrap canvas-wrap depth-container" id="openingCanvasWrap" style="width:100%;height:100%;">
+            <div class="opening-canvas-wrap canvas-wrap" style="width:100%;height:100%;">
                 <canvas class="vib3-canvas" id="opening-canvas"></canvas>
-                <div class="viz-vignette" id="openingVignette"></div>
-                <div class="viz-scanlines" id="openingScanlines">
-                    <div class="scanline" style="--scan-y:20%"></div>
-                    <div class="scanline" style="--scan-y:45%"></div>
-                    <div class="scanline" style="--scan-y:70%"></div>
-                </div>
             </div>
 
             <!-- SVG text mask: dark overlay with VIB3CODE cutout -->
@@ -1455,9 +1299,8 @@
             <div class="morph-flash" id="morphFlash"></div>
 
             <!-- Central morphing glassmorphic card -->
-            <div class="morph-card viz-chromatic-border depth-container" id="morphCard">
+            <div class="morph-card" id="morphCard">
                 <div class="morph-card-glow" id="morphGlow"></div>
-                <div class="viz-depth-shadow" id="morphShadow"></div>
             </div>
 
             <!-- Three voice labels (stage 3) -->
@@ -1660,24 +1503,18 @@
     <section class="triptych" id="triptychSection">
         <div class="triptych-divider left"></div>
         <div class="triptych-divider right"></div>
-        <!-- Glow seams between the 3 visualizer columns -->
-        <div class="viz-seam" id="triSeamLeft" style="left:var(--tri-split-left, 33.33%)"></div>
-        <div class="viz-seam" id="triSeamRight" style="left:var(--tri-split-right, 66.66%)"></div>
         <div class="triptych-inner">
-            <div class="triptych-col triptych-viz-col depth-container" id="triptychLeft">
+            <div class="triptych-col triptych-viz-col" id="triptychLeft">
                 <div class="canvas-wrap triptych-canvas-wrap">
                     <canvas class="vib3-canvas" id="tri-left-canvas"></canvas>
-                    <div class="viz-vignette" id="triVignetteLeft"></div>
                 </div>
-                <div class="viz-depth-shadow" id="triShadowLeft"></div>
                 <div class="triptych-tag-wrap">
                     <span class="triptych-tag sys-quantum">Quantum Engine</span>
                 </div>
             </div>
-            <div class="triptych-col triptych-center-col depth-container" id="triptychCenter">
+            <div class="triptych-col triptych-center-col" id="triptychCenter">
                 <div class="canvas-wrap triptych-canvas-wrap triptych-center-canvas">
                     <canvas class="vib3-canvas" id="tri-center-canvas"></canvas>
-                    <div class="viz-vignette" id="triVignetteCenter"></div>
                 </div>
                 <div class="triptych-content">
                     <h2 class="triptych-title section-reveal" data-animate>Three Systems.<br>One Heartbeat.</h2>
@@ -1701,12 +1538,10 @@
                     <span class="triptych-tag sys-holographic">Holographic Engine</span>
                 </div>
             </div>
-            <div class="triptych-col triptych-viz-col depth-container" id="triptychRight">
+            <div class="triptych-col triptych-viz-col" id="triptychRight">
                 <div class="canvas-wrap triptych-canvas-wrap">
                     <canvas class="vib3-canvas" id="tri-right-canvas"></canvas>
-                    <div class="viz-vignette" id="triVignetteRight"></div>
                 </div>
-                <div class="viz-depth-shadow" id="triShadowRight"></div>
                 <div class="triptych-tag-wrap">
                     <span class="triptych-tag sys-faceted">Faceted Engine</span>
                 </div>
@@ -1727,7 +1562,7 @@
          ═══════════════════════════════════════════════════ -->
     <section class="cascade" id="cascadeSection">
         <div class="cascade-pinned" id="cascadePinned">
-            <!-- Dual GPU background: Quantum left, Holographic right + glow seam -->
+            <!-- Dual GPU background: Quantum left, Holographic right -->
             <div class="cascade-gpu-bg" id="cascadeGpuBg" style="position:absolute;inset:0;z-index:0;overflow:hidden;">
                 <div class="canvas-wrap" style="position:absolute;inset:0;clip-path:inset(0 50% 0 0);" id="cascadeGpuLeft">
                     <canvas class="vib3-canvas" id="cascade-gpu-left"></canvas>
@@ -1735,8 +1570,6 @@
                 <div class="canvas-wrap" style="position:absolute;inset:0;clip-path:inset(0 0 0 50%);" id="cascadeGpuRight">
                     <canvas class="vib3-canvas" id="cascade-gpu-right"></canvas>
                 </div>
-                <div class="viz-seam" id="cascadeSeam"></div>
-                <div class="viz-vignette" id="cascadeVignette"></div>
             </div>
             <div class="cascade-header section-reveal" data-animate>
                 <h2>Geometry Cascade</h2>
@@ -1784,17 +1617,15 @@
          ═══════════════════════════════════════════════════ -->
     <section class="energy" id="energySection">
         <div class="energy-pinned" id="energyPinned">
-            <div class="energy-bg depth-container" id="energyBgWrap">
+            <div class="energy-bg">
                 <div class="canvas-wrap" style="width:100%;height:100%;">
                     <canvas class="vib3-canvas" id="energy-bg-canvas"></canvas>
-                    <div class="viz-vignette" id="energyBgVignette"></div>
                 </div>
             </div>
-            <div class="energy-card tilt-card perspective-wrap viz-chromatic-border depth-container" id="energyCard">
+            <div class="energy-card tilt-card perspective-wrap" id="energyCard">
                 <div class="energy-card-canvas">
                     <canvas class="vib3-canvas" id="energy-card-canvas"></canvas>
                 </div>
-                <div class="viz-depth-shadow" id="energyCardShadow"></div>
                 <h3>Energy Transfer</h3>
                 <p>Click to drain the card shader into the background.
                    Watch color, density, and geometry morph between elements.</p>
@@ -1880,14 +1711,12 @@
          ═══════════════════════════════════════════════════ -->
     <section class="cta-section" id="ctaSection">
         <div class="cta-bg" style="overflow:hidden;">
-            <div class="canvas-wrap depth-container" style="position:absolute;inset:0;clip-path:polygon(0 0, 100% 0, 0 100%);" id="ctaGpuLeft">
+            <div class="canvas-wrap" style="position:absolute;inset:0;clip-path:polygon(0 0, 100% 0, 0 100%);" id="ctaGpuLeft">
                 <canvas class="vib3-canvas" id="cta-canvas-left"></canvas>
             </div>
-            <div class="canvas-wrap depth-container" style="position:absolute;inset:0;clip-path:polygon(100% 0, 100% 100%, 0 100%);" id="ctaGpuRight">
+            <div class="canvas-wrap" style="position:absolute;inset:0;clip-path:polygon(100% 0, 100% 100%, 0 100%);" id="ctaGpuRight">
                 <canvas class="vib3-canvas" id="cta-canvas-right"></canvas>
             </div>
-            <div class="viz-seam" id="ctaSeam" style="transform:rotate(var(--cta-seam-angle, -45deg));transform-origin:center;width:200%;left:-50%;"></div>
-            <div class="viz-vignette" id="ctaVignette"></div>
         </div>
         <div class="cta-content section-reveal" data-animate>
             <h2 class="text-shimmer">Start Building</h2>

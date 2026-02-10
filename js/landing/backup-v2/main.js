@@ -346,12 +346,7 @@ function feedMouseToRenderers() {
 
   // Feed to visible GPU adapters — mouse interaction (non-additive)
   if (mouseState.active) {
-    const gpuKeys = [
-      'hero', 'opening', 'playground', 'energyCard', 'energyBg',
-      'triLeft', 'triCenter', 'triRight',
-      'casGpuL', 'casGpuR',
-      'ctaL', 'ctaR', 'agent',
-    ];
+    const gpuKeys = ['hero', 'opening', 'playground', 'energyCard'];
     for (const key of gpuKeys) {
       const adapter = pool.get(key);
       if (!adapter || !adapter.engine) continue;

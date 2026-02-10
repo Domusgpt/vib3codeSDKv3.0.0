@@ -1,18 +1,21 @@
 /**
- * GSAP Scroll Choreography — v3: Depth Illusion Engine
+ * GSAP Scroll Choreography — Premium Edition v2
  *
  * Architecture:
- *   Opening (800vh) → Hero → Morph (1200vh) → Playground → Triptych →
- *   Cascade → Energy → Agent → CTA
+ *   Opening (800vh) → Hero → Morph (1200vh) → Playground → Triptych → Cascade → Energy → Agent → CTA
  *
- * NEW in v3:
- *   - Depth Illusion Engine: density-as-distance, faux shadows, push-pull
- *   - 6 Coordination Modes: opposition, convergence, call-response,
- *     heartbeat, energy-conservation, crossfade
- *   - Mathematical Intertwining: Lissajous rotation, sine interference,
- *     complementary hue breathing, exponential crescendo
- *   - Accent effects: glow seams, vignettes, chromatic borders, scanlines
- *   - Per-section depth plane choreography with CSS scale/blur/shadow
+ * Parameter coordination philosophy:
+ *   - Density DROPS as visual elements expand (inverse relationship)
+ *   - Speed and chaos RISE during dramatic moments, SETTLE in calm phases
+ *   - Rotations accumulate continuously across stages for organic motion
+ *   - Hue shifts follow emotional arcs (cool→warm→spectral→calm)
+ *
+ * Scrub hierarchy:
+ *   0.1  — progress bar (instant feedback)
+ *   0.3  — hero exit (responsive)
+ *   0.5  — cascade, energy card (fluid)
+ *   0.6  — morph experience (dramatic but not laggy)
+ *   1.0  — CTA, ambient (natural parallax)
  */
 
 import { QuantumAdapter, HolographicAdapter, FacetedAdapter } from './adapters.js';
@@ -24,170 +27,10 @@ let morphCurrent = -1;
 let morphSwapLock = false;
 let morphLastStage = -1;
 
-// ─── Core Math Helpers ───────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────
 function smoothstep(p) { return p * p * (3 - 2 * p); }
 function lerp(a, b, t) { return a + (b - a) * t; }
 function clamp01(v) { return Math.max(0, Math.min(1, v)); }
-
-// ═══════════════════════════════════════════════════════════════
-//  DEPTH ILLUSION ENGINE
-// ═══════════════════════════════════════════════════════════════
-
-/** Faux shadow: driven by depth factor (0=far, 1=close) */
-function updateDepthShadow(el, depthFactor) {
-  if (!el) return;
-  el.style.setProperty('--shadow-sx', lerp(1.4, 0.7, depthFactor).toFixed(2));
-  el.style.setProperty('--shadow-sy', lerp(0.3, 1.1, depthFactor).toFixed(2));
-  el.style.setProperty('--shadow-blur', lerp(18, 4, depthFactor) + 'px');
-  el.style.setProperty('--shadow-opacity', lerp(0.15, 0.55, depthFactor).toFixed(2));
-}
-
-/** Vignette tightens as element approaches */
-function updateVignette(el, density) {
-  if (!el) return;
-  const d = clamp01(1 - (density - 4) / 52);
-  el.style.setProperty('--vignette-strength', lerp(0.08, 0.45, d).toFixed(2));
-  el.style.setProperty('--vignette-inner', lerp(55, 30, d) + '%');
-}
-
-/** Chromatic aberration border driven by rotation speed */
-function updateChroma(container, adapter) {
-  if (!container || !adapter?.params) return;
-  const rotSpd = Math.abs(adapter.params.rot4dXW || 0) + Math.abs(adapter.params.rot4dYW || 0);
-  const off = Math.min(4, rotSpd * 0.4);
-  const h = adapter.params.hue || 200;
-  container.style.setProperty('--chroma-offset', off + 'px');
-  container.style.setProperty('--chroma-hue-a', Math.round(h - 30));
-  container.style.setProperty('--chroma-hue-b', Math.round(h + 30));
-}
-
-/** Glow seam between two visualizers: chaos × chaos → seam brightness */
-function updateGlowSeam(seamEl, a, b) {
-  if (!seamEl) return;
-  const cA = a?.params?.chaos || 0, cB = b?.params?.chaos || 0;
-  const energy = (cA + cB) * 3 + cA * cB * 10;
-  const intensity = Math.min(0.9, energy);
-  const hue = ((a?.params?.hue || 200) + (b?.params?.hue || 200)) / 2;
-  seamEl.style.setProperty('--seam-intensity', intensity.toFixed(2));
-  seamEl.style.setProperty('--seam-hue', Math.round(hue));
-  seamEl.style.setProperty('--seam-blur', lerp(8, 2, intensity) + 'px');
-}
-
-/** Scanlines drift with scroll */
-function updateScanlines(container, p) {
-  if (!container) return;
-  container.querySelectorAll('.scanline').forEach((line, i) => {
-    const y = ((p * 2 + i / 3) % 1) * 100;
-    line.style.setProperty('--scan-y', y + '%');
-    line.style.setProperty('--scan-hue', Math.round(200 + p * 160));
-  });
-}
-
-/** Depth approach: density-as-distance with CSS depth illusion */
-function depthApproach(progress, adapter, container, shadowEl) {
-  const p = smoothstep(progress);
-  adapter.setParams({
-    gridDensity: lerp(55, 8, p),
-    intensity: lerp(0.25, 0.9, p),
-    speed: lerp(0.15, 1.2, p),
-    dimension: lerp(4.2, 3.0, p),
-  });
-  if (container) {
-    container.style.transform = `scale(${lerp(0.65, 1.25, p)})`;
-    container.style.filter = `blur(${lerp(4, 0, p)}px)`;
-    container.style.boxShadow = `0 ${lerp(2, 35, p)}px ${lerp(4, 70, p)}px rgba(0,0,0,${lerp(0.1, 0.5, p)})`;
-  }
-  if (shadowEl) updateDepthShadow(shadowEl, p);
-}
-
-/** Depth retreat: element recedes */
-function depthRetreat(progress, adapter, container, shadowEl) {
-  const p = smoothstep(progress);
-  adapter.setParams({
-    gridDensity: lerp(8, 55, p),
-    intensity: lerp(0.9, 0.15, p),
-    speed: lerp(1.2, 0.05, p),
-    dimension: lerp(3.0, 4.5, p),
-    chaos: lerp(0.35, 0.02, p),
-  });
-  if (container) {
-    container.style.transform = `scale(${lerp(1.25, 0.45, p)})`;
-    container.style.filter = `blur(${lerp(0, 8, p)}px)`;
-    container.style.boxShadow = `0 ${lerp(35, 0, p)}px ${lerp(70, 0, p)}px rgba(0,0,0,${lerp(0.5, 0.05, p)})`;
-  }
-  if (shadowEl) updateDepthShadow(shadowEl, 1 - p);
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  MATHEMATICAL INTERTWINING
-// ═══════════════════════════════════════════════════════════════
-
-/** Lissajous rotation intertwining between two systems */
-function lissajousRotations(t, adA, adB, ratio) {
-  const r = ratio || 1.5;
-  adA.setParam('rot4dXW', Math.sin(t * 2) * Math.PI);
-  adA.setParam('rot4dYW', Math.cos(t * 2) * Math.PI * 0.7);
-  adB.setParam('rot4dXW', Math.sin(t * 2 * r) * Math.PI);
-  adB.setParam('rot4dYW', Math.cos(t * 2 * r + Math.PI / 4) * Math.PI * 0.7);
-}
-
-/** Sine-product interference: beating density patterns */
-function sineInterference(progress, adA, adB) {
-  const wA = Math.sin(progress * Math.PI * 3);
-  const wB = Math.sin(progress * Math.PI * 5);
-  adA.setParam('gridDensity', 10 + wA * wA * 30);
-  adB.setParam('gridDensity', 10 + wB * wB * 30);
-  return (wA * wB + 1) / 2;
-}
-
-/** Complementary hue breathing with chaos collision */
-function complementaryBreathing(time, scrollP, adA, adB) {
-  const rate = 0.5 + scrollP * 2;
-  const breath = Math.sin(time / 1000 * rate * Math.PI * 2);
-  const base = 200 + scrollP * 160;
-  const comp = (base + 180) % 360;
-  const hA = lerp(base, comp, (breath + 1) / 2);
-  const hB = lerp(comp, base, (breath + 1) / 2);
-  adA.setParam('hue', hA);
-  adB.setParam('hue', hB);
-  if (Math.abs(hA - hB) < 15) {
-    const spike = (15 - Math.abs(hA - hB)) / 15 * 0.4;
-    adA.setParam('chaos', Math.min(0.7, (adA.params?.chaos || 0.1) + spike));
-    adB.setParam('chaos', Math.min(0.7, (adB.params?.chaos || 0.1) + spike));
-  }
-}
-
-/** Exponential build: slow start, explosive acceleration */
-function exponentialBuild(progress, adapter) {
-  const e = Math.pow(progress, 3);
-  adapter.setParams({ speed: 0.3 + e * 2.5, chaos: 0.05 + e * 0.65, intensity: 0.4 + e * 0.5, gridDensity: 20 + e * 35 });
-}
-
-/** Logarithmic calm: fast initial relief, slow settle */
-function logarithmicCalm(progress, adapter) {
-  const l = 1 - Math.pow(1 - progress, 3);
-  adapter.setParams({ speed: 2.8 - l * 2.5, chaos: 0.7 - l * 0.65, intensity: 0.9 - l * 0.5, gridDensity: 55 - l * 35 });
-}
-
-/** Opposition: parameter inversion */
-const oppositionRules = {
-  hue: v => (v + 180) % 360,
-  rot4dXW: v => -v,
-  rot4dYW: v => -v * 0.7,
-  gridDensity: v => clamp01((64 - v) / 60) * 56 + 4,
-  intensity: v => Math.max(0.1, 1.0 - v),
-  speed: v => Math.max(0.05, 2.0 - v),
-  chaos: v => Math.max(0, 0.7 - v),
-};
-
-function applyOpposition(primary, secondary, params) {
-  primary.setParams(params);
-  const opp = {};
-  for (const [k, fn] of Object.entries(oppositionRules)) {
-    if (params[k] !== undefined) opp[k] = fn(params[k]);
-  }
-  secondary.setParams(opp);
-}
 
 /**
  * Interpolate between two morph stage parameter sets.
@@ -312,87 +155,22 @@ export function initOpening(pool, createHero) {
       const p = self.progress;
       const adapter = pool.get('opening');
 
-      // ── DEPTH TUNNEL: density-driven approach/retreat through phases ──
-      const vignette = document.getElementById('openingVignette');
-      const scanlines = document.getElementById('openingScanlines');
-      const canvasWrap = document.getElementById('openingCanvasWrap');
-
+      // ── Canvas parameter evolution across all phases ──
       if (adapter) {
         const wave = Math.sin(p * Math.PI * 6);
-
-        // Phase 1 (0-15%): emerge from maximum distance
-        // Phase 2 (15-55%): approach — density drops, intensity rises
-        // Phase 3 (55-75%): hold at medium depth, oscillate
-        // Phase 4 (75-95%): retreat to distance
-        // Phase 5 (95-100%): iris close
-        let density, intensity, speed, dim, chaos;
-        if (p < 0.15) {
-          // DISTANT: high density, dim, slow
-          const t = p / 0.15;
-          density = lerp(60, 45, smoothstep(t));
-          intensity = lerp(0.0, 0.3, smoothstep(t));
-          speed = lerp(0.05, 0.2, t);
-          dim = 4.3;
-          chaos = 0.02;
-        } else if (p < 0.55) {
-          // APPROACH: density drops, scale grows, sharpens
-          const t = (p - 0.15) / 0.4;
-          density = lerp(45, 14, smoothstep(t));
-          intensity = lerp(0.3, 0.75, smoothstep(t));
-          speed = lerp(0.2, 0.9, t);
-          dim = lerp(4.3, 3.3, t);
-          chaos = lerp(0.02, 0.25, smoothstep(t));
-        } else if (p < 0.75) {
-          // HOLD + OSCILLATE: breathing depth
-          const t = (p - 0.55) / 0.2;
-          const breathe = Math.sin(t * Math.PI * 3) * 0.3;
-          density = 14 + breathe * 8;
-          intensity = 0.75 + breathe * 0.1;
-          speed = 0.9 + breathe * 0.3;
-          dim = 3.3 + breathe * 0.2;
-          chaos = 0.25 + Math.abs(breathe) * 0.15;
-        } else if (p < 0.95) {
-          // RETREAT: density rises, dims, slows
-          const t = (p - 0.75) / 0.2;
-          density = lerp(14, 50, smoothstep(t));
-          intensity = lerp(0.75, 0.15, smoothstep(t));
-          speed = lerp(0.9, 0.1, t);
-          dim = lerp(3.3, 4.3, t);
-          chaos = lerp(0.25, 0.02, smoothstep(t));
-        } else {
-          // IRIS CLOSE: maximum distance, nearly invisible
-          const t = (p - 0.95) / 0.05;
-          density = lerp(50, 60, t);
-          intensity = lerp(0.15, 0.0, t);
-          speed = 0.05;
-          dim = 4.5;
-          chaos = 0.0;
-        }
-
         adapter.setParams({
-          intensity,
+          intensity: 0.3 + smoothstep(p) * 0.55 + Math.sin(p * Math.PI) * 0.1,
           rot4dXW: p * Math.PI * 4,
           rot4dYW: Math.sin(p * Math.PI * 2) * 2,
           rot4dZW: p * Math.PI * 0.8,
           hue: 220 + p * 100 + wave * 15,
-          gridDensity: density,
-          chaos,
-          speed,
+          gridDensity: 22 + Math.sin(p * Math.PI * 3) * 10,
+          chaos: 0.05 + smoothstep(clamp01((p - 0.3) / 0.4)) * 0.35,
+          speed: 0.3 + smoothstep(p) * 0.8,
           morphFactor: 0.6 + Math.sin(p * Math.PI * 2) * 0.4,
-          dimension: dim,
+          dimension: 3.8 - p * 0.4,
           geometry: p < 0.2 ? 11 : p < 0.5 ? 3 : p < 0.75 ? 4 : 7,
         });
-
-        // CSS depth container: scale and blur match density
-        if (canvasWrap) {
-          const depthFactor = clamp01(1 - (density - 4) / 52);
-          canvasWrap.style.transform = `scale(${lerp(0.85, 1.1, depthFactor)})`;
-        }
-
-        // Vignette tightens as depth increases
-        updateVignette(vignette, density);
-        // Scanlines drift
-        updateScanlines(scanlines, p);
       }
 
       // ── Phase 2: Text appears letter by letter (12-35%) ──
@@ -646,9 +424,7 @@ export function initMorph(pool, createHero) {
       const adapter = pool.get('morph');
       if (adapter) adapter.setParams(params);
 
-      // ── MORPH CARD DEPTH + CHROMATIC EFFECTS ──
-      const morphShadow = document.getElementById('morphShadow');
-      updateChroma(morphCard, adapter);
+      // ── MORPH CARD CHOREOGRAPHY ──
       // Card shape morphs through stages:
       //   Stage 0: Small circle appears (scale 0→1)
       //   Stage 1: Circle grows to rounded rectangle
@@ -682,7 +458,6 @@ export function initMorph(pool, createHero) {
             x: '-50%', y: '-50%',
           });
           morphCard.classList.add('glowing');
-          updateDepthShadow(morphShadow, smoothstep(localP) * 0.5);
         } else if (stageIdx === 2) {
           // Three Voices: card holds, voice labels appear
           gsap.set(morphCard, {
@@ -733,8 +508,6 @@ export function initMorph(pool, createHero) {
             adapter.setParam('speed', params.speed * lerp(1, 1.5, s));
             adapter.setParam('chaos', params.chaos * lerp(1, 1.3, s));
           }
-          // Card at max foreground depth
-          updateDepthShadow(morphShadow, 0.5 + s * 0.5);
         } else {
           // Resolution: card shrinks back to medium
           const s = smoothstep(localP);
@@ -789,15 +562,8 @@ export function initTriptych(pool) {
     onLeaveBack: releaseAll,
   });
 
-  // ── 3-System Cross-Coordinated Choreography with DEPTH PLANES ──
+  // ── 3-System Cross-Coordinated Choreography ──
   const center = document.getElementById('triptychCenter');
-  const triSeamL = document.getElementById('triSeamLeft');
-  const triSeamR = document.getElementById('triSeamRight');
-  const triVigL = document.getElementById('triVignetteLeft');
-  const triVigC = document.getElementById('triVignetteCenter');
-  const triVigR = document.getElementById('triVignetteRight');
-  const triShadL = document.getElementById('triShadowLeft');
-  const triShadR = document.getElementById('triShadowRight');
 
   ScrollTrigger.create({
     trigger: '#triptychSection', start: 'top bottom', end: 'bottom top',
@@ -805,14 +571,23 @@ export function initTriptych(pool) {
     onUpdate: (self) => {
       const p = self.progress;
 
+      // Parallax rates
+      if (left) left.style.transform = `translateY(${(p - 0.5) * -120}px)`;
+      if (right) right.style.transform = `translateY(${(p - 0.5) * -60}px)`;
+
       // ═══════ CLIP-PATH SPLIT-SCREEN ═══════
+      // All 3 columns are position:absolute overlapping the full width.
+      // Clip-path carves each column's visible territory.
+      // Scroll + mouse drive the split lines so columns fight for space.
       const root = document.documentElement;
       const mouseXPct = parseFloat(root.style.getPropertyValue('--mouse-x') || '50%') || 50;
-      const mouseShift = (mouseXPct / 100 - 0.5) * 6;
+      const mouseShift = (mouseXPct / 100 - 0.5) * 6; // ±3% shift from mouse
 
-      const splitLeft = 34 + (p - 0.5) * 12 + mouseShift;
-      const splitRight = 66 + (p - 0.5) * 12 + mouseShift;
+      // Split lines shift with scroll: left column starts dominant, right takes over
+      const splitLeft = 34 + (p - 0.5) * 12 + mouseShift;  // ~28-40%
+      const splitRight = 66 + (p - 0.5) * 12 + mouseShift;  // ~60-72%
 
+      // Convergence: at midpoint, columns rush toward equal thirds
       const conv = Math.max(0, 1 - Math.abs(p - 0.5) * 4);
       const cSplitLeft = lerp(splitLeft, 33.33, conv * 0.5);
       const cSplitRight = lerp(splitRight, 66.66, conv * 0.5);
@@ -821,105 +596,48 @@ export function initTriptych(pool) {
       if (center) center.style.clipPath = `inset(0 ${100 - cSplitRight}% 0 ${cSplitLeft}%)`;
       if (right) right.style.clipPath = `inset(0 0 0 ${cSplitRight}%)`;
 
+      // Update divider line positions
       root.style.setProperty('--tri-split-left', `${cSplitLeft}%`);
       root.style.setProperty('--tri-split-right', `${cSplitRight}%`);
 
-      // ═══════ DEPTH PLANE SYSTEM ═══════
-      // Phase 1 (0-30%): L=FOREGROUND, C=MID, R=BACK
-      // Phase 2 (30-50%): L retreats, R advances (DEPTH SWAP)
-      // Phase 3 (50-70%): R=FOREGROUND, C=MID, L=BACK (mirror)
-      // Phase 4 (70-85%): All converge to same depth
-      // Phase 5 (85-100%): Crystallization — all retreat together
-      let depthL, depthC, depthR; // 0=far, 1=close
-      if (p < 0.3) {
-        const t = p / 0.3;
-        depthL = lerp(0.9, 0.85, t);
-        depthC = 0.5;
-        depthR = lerp(0.15, 0.2, t);
-      } else if (p < 0.5) {
-        // DEPTH SWAP — dramatic crossing
-        const t = (p - 0.3) / 0.2;
-        const s = smoothstep(t);
-        depthL = lerp(0.85, 0.15, s);
-        depthC = 0.5 + Math.sin(t * Math.PI) * 0.2; // center rises then falls
-        depthR = lerp(0.2, 0.9, s);
-      } else if (p < 0.7) {
-        const t = (p - 0.5) / 0.2;
-        depthL = lerp(0.15, 0.15, t);
-        depthC = 0.5;
-        depthR = lerp(0.9, 0.85, t);
-      } else if (p < 0.85) {
-        // CONVERGENCE: all → same depth
-        const t = (p - 0.7) / 0.15;
-        const s = smoothstep(t);
-        depthL = lerp(0.15, 0.55, s);
-        depthC = lerp(0.5, 0.55, s);
-        depthR = lerp(0.85, 0.55, s);
-      } else {
-        // CRYSTALLIZATION: all retreat together
-        const t = (p - 0.85) / 0.15;
-        const s = smoothstep(t);
-        depthL = depthC = depthR = lerp(0.55, 0.1, s);
-      }
-
-      // Apply depth CSS to containers
-      const applyDepthCSS = (el, depth) => {
-        if (!el) return;
-        const scale = lerp(0.88, 1.12, depth);
-        const blur = lerp(3, 0, depth);
-        // Only apply parallax Y offset, not full depth scale (clip-path handles width)
-        el.style.transform = `translateY(${(p - 0.5) * lerp(-40, -120, depth)}px) scale(${scale})`;
-        el.style.filter = blur > 0.5 ? `blur(${blur}px)` : 'none';
-      };
-      applyDepthCSS(left, depthL);
-      applyDepthCSS(right, depthR);
-
-      // Shadows respond to depth
-      updateDepthShadow(triShadL, depthL);
-      updateDepthShadow(triShadR, depthR);
-
-      // Vignettes tighten for foreground elements
-      const denFromDepth = d => lerp(50, 8, d);
-      updateVignette(triVigL, denFromDepth(depthL));
-      updateVignette(triVigC, denFromDepth(depthC));
-      updateVignette(triVigR, denFromDepth(depthR));
-
       // ═══════ SHARED COORDINATION SIGNALS ═══════
+
+      // Heartbeat — all 3 systems pulse to a shared rhythm
       const heartbeat = Math.sin(p * Math.PI * 2);
       const pulse = Math.sin(p * Math.PI);
-      const convergence = conv;
 
-      // Triadic hue rotation
+      // Convergence — peaks at scroll midpoint, the "One Heartbeat" moment
+      const convergence = Math.max(0, 1 - Math.abs(p - 0.5) * 4);
+
+      // Triadic hue rotation (120° apart, rotating as a harmonic group)
       const baseHue = 200 + p * 160;
       const hueL = baseHue % 360 + convergence * ((baseHue + 120) % 360 - baseHue % 360) * 0.6;
       const hueC = (baseHue + 120) % 360;
       const hueR = (baseHue + 240) % 360 + convergence * ((baseHue + 120) % 360 - (baseHue + 240) % 360) * 0.6;
 
-      // Depth-driven density: close=low density, far=high
-      const denL = denFromDepth(depthL) + heartbeat * 4;
-      const denC = denFromDepth(depthC) + heartbeat * 6;
-      const denR = denFromDepth(depthR) + heartbeat * 4;
+      // Energy conservation: total intensity ≈ 2.0
+      const intL = 0.6 + heartbeat * 0.15 + convergence * 0.15;
+      const intC = 0.5 + pulse * 0.2 + convergence * 0.2;
+      const intR = 0.6 - heartbeat * 0.1 + convergence * 0.15;
 
-      // Depth-driven intensity: close=bright, far=dim
-      const intL = lerp(0.3, 0.85, depthL) + heartbeat * 0.1;
-      const intC = lerp(0.35, 0.8, depthC) + pulse * 0.15;
-      const intR = lerp(0.3, 0.85, depthR) - heartbeat * 0.08;
+      // Density cross-feed: left sweeps up, right sweeps down, center bridges
+      const denL = 10 + p * 40 + heartbeat * 6;
+      const denR = 50 - p * 35 + Math.sin(p * Math.PI * 3 + 1.5) * 5;
+      const denC = (denL + denR) / 2 + heartbeat * 8;
 
-      // Phase-locked 4D with LISSAJOUS intertwining
+      // Phase-locked 4D rotation (120° offsets — coordinated 4D dance)
       const rotBase = p * Math.PI * 4;
-      const t = p * Math.PI;
-      const xwL = Math.sin(t * 2) * Math.PI + rotBase * 0.3;
+      const xwL = rotBase;
       const xwC = rotBase + Math.PI * 2 / 3;
-      const xwR = Math.sin(t * 3) * Math.PI + rotBase * 0.3; // 3:2 ratio with L
+      const xwR = rotBase + Math.PI * 4 / 3;
 
       // Call & response: left chaos → center speed → right morph
-      const chaosL = 0.1 + depthL * 0.3 + convergence * 0.2;
-      const speedC = 0.4 + chaosL * 0.8 + convergence * 0.8;
-      const morphR = 0.6 + speedC * 0.3;
-      const sharedSpeed = 0.4 + pulse * 0.6 + convergence * 1.0;
+      const chaosL = 0.15 + p * 0.25 + convergence * 0.2;
+      const speedC = 0.5 + chaosL * 0.8;
+      const morphR = 0.7 + speedC * 0.3;
 
-      // ═══════ DEPTH SWAP CHAOS SPIKE ═══════
-      const swapChaos = (p > 0.35 && p < 0.5) ? Math.sin((p - 0.35) / 0.15 * Math.PI) * 0.35 : 0;
+      // Shared speed accelerates during convergence
+      const sharedSpeed = 0.4 + pulse * 0.6 + convergence * 1.2;
 
       // ═══════ LEFT: QUANTUM ═══════
       const triL = pool.get('triLeft');
@@ -930,11 +648,11 @@ export function initTriptych(pool) {
           rot4dXW: xwL,
           rot4dYW: Math.sin(p * Math.PI * 2) * 2.0,
           rot4dZW: p * Math.PI * 0.6,
-          gridDensity: Math.max(6, Math.min(55, denL)),
-          intensity: Math.min(0.95, intL),
-          chaos: chaosL + swapChaos,
+          gridDensity: denL,
+          intensity: intL,
+          chaos: chaosL,
           morphFactor: 0.6 + Math.sin(p * Math.PI * 2) * 0.4,
-          speed: sharedSpeed * lerp(0.7, 1.3, depthL),
+          speed: sharedSpeed,
           saturation: 0.85 + pulse * 0.1,
         });
       }
@@ -948,11 +666,11 @@ export function initTriptych(pool) {
           rot4dXW: xwC,
           rot4dYW: Math.cos(p * Math.PI * 2) * 1.5 + heartbeat * 0.5,
           rot4dZW: -p * Math.PI * 0.3 + heartbeat * 0.4,
-          gridDensity: Math.max(6, Math.min(55, denC)),
-          intensity: Math.min(0.95, intC),
-          chaos: 0.1 + convergence * 0.4 + pulse * 0.1 + swapChaos,
+          gridDensity: denC,
+          intensity: intC,
+          chaos: 0.1 + convergence * 0.4 + pulse * 0.1,
           morphFactor: 0.5 + convergence * 0.8 + heartbeat * 0.3,
-          speed: speedC,
+          speed: speedC + convergence * 0.8,
           saturation: 0.75 + convergence * 0.2,
         });
       }
@@ -966,18 +684,14 @@ export function initTriptych(pool) {
           rot4dXW: xwR,
           rot4dYW: Math.cos(p * Math.PI * 2) * 1.8,
           rot4dZW: -p * Math.PI * 0.4,
-          gridDensity: Math.max(6, Math.min(55, denR)),
-          intensity: Math.min(0.95, intR),
-          chaos: 0.15 + depthR * 0.2 - convergence * 0.1 + swapChaos,
+          gridDensity: denR,
+          intensity: intR,
+          chaos: 0.2 + p * 0.2 - convergence * 0.1,
           morphFactor: morphR,
-          speed: sharedSpeed * lerp(0.7, 1.3, depthR) * 0.9,
+          speed: sharedSpeed * 0.9,
           saturation: 0.9 + pulse * 0.08,
         });
       }
-
-      // ═══════ GLOW SEAMS — energy between adjacent systems ═══════
-      updateGlowSeam(triSeamL, triL, triC);
-      updateGlowSeam(triSeamR, triC, triR);
     },
   });
 }
@@ -1084,60 +798,45 @@ export function initCascade(pool, c2d) {
         // ═══ Shared rotation phase — all cards tied to a common 4D rhythm ═══
         const sharedXW = p * Math.PI * 3;
 
-        // ═══ DUAL GPU BACKGROUND: DEPTH RESPONSE to active card ═══
+        // ═══ DUAL GPU BACKGROUND: reacts to active card ═══
         const gpuL = pool.get('casGpuL');
         const gpuR = pool.get('casGpuR');
-        const casSeam = document.getElementById('cascadeSeam');
-        const casVignette = document.getElementById('cascadeVignette');
         const aCard = cascadeCards[activeIdx];
         const aGeo = parseInt(aCard?.dataset.geo || '0');
         const aHue = parseInt(aCard?.dataset.hue || '200');
 
-        // When active card has LOW density (close), bg goes HIGH density (far)
-        // This creates a strong background-recedes-when-card-approaches illusion
-        const cardApproach = pulse; // 0→1→0 per card
-
+        // GPU backgrounds mirror/oppose the active card
         if (gpuL) {
           gpuL.setParams({
             geometry: aGeo,
             hue: aHue,
             rot4dXW: sharedXW,
             rot4dYW: Math.sin(p * Math.PI * 2) * 1.5,
-            gridDensity: lerp(14, 45, cardApproach), // recedes when card is close
-            intensity: lerp(0.55, 0.25, cardApproach), // dims when card is foreground
-            chaos: 0.1 + pulse * 0.2,
-            speed: 0.4 + pulse * 0.6,
+            gridDensity: 16 + pulse * 20,
+            intensity: 0.4 + pulse * 0.3,
+            chaos: 0.1 + pulse * 0.25,
+            speed: 0.4 + pulse * 0.8,
             morphFactor: 0.5 + localP * 0.6,
           });
         }
         if (gpuR) {
+          // Holographic bg plays the opposite
           gpuR.setParams({
             geometry: (aGeo + 16) % 24,
             hue: (aHue + 180) % 360,
             rot4dXW: -sharedXW * 0.7,
             rot4dYW: Math.cos(p * Math.PI * 2) * 1.2,
-            gridDensity: lerp(18, 48, cardApproach),
-            intensity: lerp(0.45, 0.2, cardApproach),
-            chaos: 0.12 + (1 - pulse) * 0.18,
-            speed: 0.3 + (1 - pulse) * 0.5,
+            gridDensity: 24 - pulse * 12,
+            intensity: 0.35 + (1 - pulse) * 0.25,
+            chaos: 0.15 + (1 - pulse) * 0.2,
+            speed: 0.3 + (1 - pulse) * 0.6,
             morphFactor: 0.7 - localP * 0.3,
           });
         }
-
-        // Split line follows active card + glow seam between backgrounds
+        // Split line follows active card position
         const splitPct = 30 + activeIdx / Math.max(1, cascadeCards.length - 1) * 40;
         if (gpuLeftWrap) gpuLeftWrap.style.clipPath = `inset(0 ${100 - splitPct}% 0 0)`;
         if (gpuRightWrap) gpuRightWrap.style.clipPath = `inset(0 0 0 ${splitPct}%)`;
-
-        // Glow seam between GPU backgrounds
-        updateGlowSeam(casSeam, gpuL, gpuR);
-        if (casSeam) casSeam.style.left = `${splitPct}%`;
-
-        // Vignette tightens when bg goes distant
-        if (casVignette) {
-          const bgDensity = gpuL?.params?.gridDensity || 20;
-          updateVignette(casVignette, bgDensity);
-        }
 
         cascadeCards.forEach((card, i) => {
           const inst = c2d.get(`cas${i}`);
@@ -1271,12 +970,9 @@ export function initEnergy(pool) {
     });
   }
 
-  // ★ PUSH-PULL DEPTH DANCE: Scroll-driven depth oscillation
-  // bg and card trade depth positions as the user scrolls
-  const energyBgWrap = document.getElementById('energyBgWrap');
-  const energyCardShadow = document.getElementById('energyCardShadow');
-  const energyBgVignette = document.getElementById('energyBgVignette');
-
+  // Scroll-driven background params with GPU card cross-feeding
+  // Background responds to GPU card state: inverse intensity, shared rotation,
+  // card chaos bleeds to background, creating a living energy exchange.
   ScrollTrigger.create({
     trigger: '#energySection', start: 'top top', end: 'bottom bottom', scrub: 0.5,
     onUpdate: (self) => {
@@ -1286,85 +982,44 @@ export function initEnergy(pool) {
       const card = pool.get('energyCard');
       const pulse = Math.sin(p * Math.PI);
 
-      // ── PUSH-PULL DEPTH: 5 phases ──
-      let cardDepth, bgDepth; // 0=far, 1=close
-      if (p < 0.15) {
-        // Phase 1: card enters from MAX DEPTH, bg at foreground
-        const t = p / 0.15;
-        cardDepth = lerp(0.0, 0.3, smoothstep(t));
-        bgDepth = lerp(0.9, 0.8, t);
-      } else if (p < 0.35) {
-        // Phase 2: card approaches, bg retreats — cross at ~25%
-        const t = (p - 0.15) / 0.2;
-        cardDepth = lerp(0.3, 0.8, smoothstep(t));
-        bgDepth = lerp(0.8, 0.3, smoothstep(t));
-      } else if (p < 0.6) {
-        // Phase 3: HOLD — both moderate, tilt-interactive depth
-        const t = (p - 0.35) / 0.25;
-        const breathe = Math.sin(t * Math.PI * 2) * 0.15;
-        cardDepth = 0.7 + breathe;
-        bgDepth = 0.4 - breathe;
-      } else if (p < 0.8) {
-        // Phase 4: DRAIN — card retreats, bg surges forward
-        const t = (p - 0.6) / 0.2;
-        cardDepth = lerp(0.7, 0.2, smoothstep(t));
-        bgDepth = lerp(0.4, 0.85, smoothstep(t));
-      } else {
-        // Phase 5: EXIT SPIN — card spirals to distance
-        const t = (p - 0.8) / 0.2;
-        cardDepth = lerp(0.2, 0.0, smoothstep(t));
-        bgDepth = lerp(0.85, 0.5, smoothstep(t));
+      // Base scroll-driven params — dramatic for GPU system
+      let bgIntensity = 0.4 + pulse * 0.3;
+      let bgChaos = 0.1 + p * 0.2;
+      let bgHue = 270 + p * 80;
+      let bgDensity = 18 + p * 20;
+      let bgXW = p * Math.PI * 3;
+      let bgSpeed = 0.4 + pulse * 0.6;
+
+      // ★ Cross-feed from GPU card: two systems in energy exchange
+      if (card && card.params) {
+        const cardInt = card.params.intensity || 0.6;
+        const cardChaos = card.params.chaos || 0.1;
+        const cardXW = card.params.rot4dXW || 0;
+        // Inverse intensity: when card dims, background brightens
+        bgIntensity += (1 - cardInt) * 0.3;
+        // Card chaos bleeds to background
+        bgChaos += cardChaos * 0.4;
+        // Counter-rotation: background opposes card
+        bgXW = -cardXW * 0.7 + p * Math.PI * 2;
+        // Hue complementary: bg tracks 180° from card
+        const cardHue = card.params.hue || 200;
+        bgHue = bgHue * 0.5 + ((cardHue + 180) % 360) * 0.5;
+        // Density inverse
+        const cardDen = card.params.gridDensity || 20;
+        bgDensity = bgDensity + (35 - cardDen) * 0.4;
       }
 
-      // ── Apply depth to params ──
-      const bgDensity = lerp(55, 8, bgDepth);
-      const cardDensity = lerp(55, 8, cardDepth);
-
-      // Background params
-      const bgHue = 270 + p * 80;
       bg.setParams({
-        rot4dXW: p * Math.PI * 3 * (bgDepth > cardDepth ? 1 : -0.7),
+        rot4dXW: bgXW,
         rot4dYW: Math.sin(p * Math.PI * 2) * 1.5,
         rot4dZW: p * Math.PI * 0.4,
         hue: bgHue,
-        gridDensity: Math.max(8, Math.min(55, bgDensity)),
-        intensity: lerp(0.2, 0.85, bgDepth),
-        chaos: lerp(0.05, 0.4, bgDepth),
-        speed: lerp(0.1, 1.0, bgDepth),
+        gridDensity: Math.max(8, Math.min(60, bgDensity)),
+        intensity: Math.min(0.9, bgIntensity),
+        chaos: Math.min(0.7, bgChaos),
+        speed: bgSpeed,
         morphFactor: 0.6 + pulse * 0.5,
       });
-
-      // Card cross-feed
-      if (card) {
-        card.setParams({
-          gridDensity: Math.max(6, Math.min(50, cardDensity)),
-          intensity: lerp(0.15, 0.85, cardDepth),
-          speed: lerp(0.1, 1.2, cardDepth),
-          chaos: lerp(0.02, 0.35, cardDepth),
-          rot4dXW: p * Math.PI * 3 * (cardDepth > bgDepth ? 1 : -0.7) + (p > 0.8 ? (p - 0.8) / 0.2 * Math.PI * 4 : 0),
-        });
-        // Chromatic border driven by rotation
-        updateChroma(document.getElementById('energyCard'), card);
-      }
-
-      // CSS depth on bg container
-      if (energyBgWrap) {
-        energyBgWrap.style.transform = `scale(${lerp(0.92, 1.05, bgDepth)})`;
-        energyBgWrap.style.filter = bgDepth < 0.3 ? `blur(${lerp(4, 0, bgDepth / 0.3)}px)` : 'none';
-      }
-
-      // Card shadow responds to its depth
-      updateDepthShadow(energyCardShadow, cardDepth);
-      // Bg vignette
-      updateVignette(energyBgVignette, bgDensity);
-
-      // CROSS-POINT FLASH: when card and bg are at same depth
-      const depthDiff = Math.abs(cardDepth - bgDepth);
-      if (depthDiff < 0.1) {
-        const flash = (0.1 - depthDiff) / 0.1;
-        bg.setParam('chaos', Math.min(0.7, bg.params.chaos + flash * 0.3));
-        if (card) card.setParam('chaos', Math.min(0.7, (card.params.chaos || 0) + flash * 0.3));
-      }
     },
   });
 
@@ -1475,12 +1130,7 @@ export function initCTA(pool) {
     onLeaveBack: () => { pool.release('ctaL'); pool.release('ctaR'); },
   });
 
-  // ★ 3-ACT DEPTH STORY: opposition → crossover → unity
-  const ctaSeam = document.getElementById('ctaSeam');
-  const ctaVignette = document.getElementById('ctaVignette');
-  const ctaLeftWrap = document.getElementById('ctaGpuLeft');
-  const ctaRightWrap = document.getElementById('ctaGpuRight');
-
+  // ★ Dual system choreography: opposition → convergence → unity
   ScrollTrigger.create({
     trigger: '#ctaSection', start: 'top bottom', end: 'bottom bottom', scrub: 1.0,
     onUpdate: (self) => {
@@ -1490,105 +1140,56 @@ export function initCTA(pool) {
       const p = self.progress;
       const pulse = Math.sin(p * Math.PI);
 
-      // ── ACT I (0-40%): MAXIMUM SEPARATION — opposite depth extremes
-      // ── ACT II (40-70%): DEPTH CROSSOVER — systems swap depth positions
-      // ── ACT III (70-100%): UNITY — converge to same params + depth
-      let depthL, depthR;
-      if (p < 0.4) {
-        // L=FOREGROUND, R=BACKGROUND
-        const t = p / 0.4;
-        depthL = lerp(0.9, 0.85, t);
-        depthR = lerp(0.1, 0.15, t);
-      } else if (p < 0.7) {
-        // CROSSOVER: L retreats, R advances
-        const t = (p - 0.4) / 0.3;
-        const s = smoothstep(t);
-        depthL = lerp(0.85, 0.15, s);
-        depthR = lerp(0.15, 0.85, s);
-      } else {
-        // UNITY: both converge to same depth
-        const t = (p - 0.7) / 0.3;
-        const s = smoothstep(t);
-        depthL = lerp(0.15, 0.55, s);
-        depthR = lerp(0.85, 0.55, s);
-      }
-
-      const denL = lerp(50, 8, depthL);
-      const denR = lerp(50, 8, depthR);
-      const conv = smoothstep(clamp01((p - 0.7) / 0.3));
+      // Convergence: systems start opposed, pull together
+      const conv = smoothstep(clamp01((p - 0.6) / 0.4)); // 0 at 60%, 1 at 100%
       const unifiedHue = 220;
       const unifiedGeo = 11;
 
-      // CROSSOVER CHAOS: maximum energy at the crossing point (~55%)
-      const crossoverIntensity = (p > 0.45 && p < 0.65)
-        ? Math.sin((p - 0.45) / 0.2 * Math.PI) * 0.4 : 0;
-
       if (ctaL) {
         const hueL = lerp(200, unifiedHue, conv);
+        const geoL = p < 0.3 ? 5 : p < 0.6 ? 2 : unifiedGeo;
         ctaL.setParams({
-          geometry: p < 0.3 ? 5 : p < 0.6 ? 2 : unifiedGeo,
+          geometry: geoL,
           hue: hueL + pulse * 20 * (1 - conv),
           rot4dXW: p * Math.PI * 3,
           rot4dYW: Math.sin(p * Math.PI * 2) * 1.5 * (1 - conv),
           rot4dZW: p * Math.PI * 0.5,
-          gridDensity: Math.max(6, Math.min(55, denL)),
-          intensity: lerp(0.2, 0.85, depthL),
-          speed: lerp(0.15, 1.0, depthL),
-          chaos: lerp(0.02, 0.3, depthL) + crossoverIntensity,
+          gridDensity: lerp(16, 28, p) + pulse * 8 * (1 - conv),
+          intensity: 0.3 + p * 0.5,
+          speed: 0.3 + pulse * 0.8,
+          chaos: lerp(0.1, 0.05, conv) + pulse * 0.2 * (1 - conv),
           morphFactor: 0.5 + p * 0.6,
           saturation: 0.85 + conv * 0.1,
         });
       }
       if (ctaR) {
         const hueR = lerp(320, unifiedHue, conv);
+        const geoR = p < 0.3 ? 7 : p < 0.6 ? 4 : unifiedGeo;
         ctaR.setParams({
-          geometry: p < 0.3 ? 7 : p < 0.6 ? 4 : unifiedGeo,
+          geometry: geoR,
           hue: hueR - pulse * 20 * (1 - conv),
           rot4dXW: -p * Math.PI * 3 * (1 - conv) + p * Math.PI * 3 * conv,
           rot4dYW: Math.cos(p * Math.PI * 2) * 1.5 * (1 - conv),
           rot4dZW: -p * Math.PI * 0.5 * (1 - conv),
-          gridDensity: Math.max(6, Math.min(55, denR)),
-          intensity: lerp(0.2, 0.85, depthR),
-          speed: lerp(0.15, 1.0, depthR),
-          chaos: lerp(0.02, 0.3, depthR) + crossoverIntensity,
+          gridDensity: lerp(20, 28, p) - pulse * 6 * (1 - conv),
+          intensity: 0.3 + p * 0.5,
+          speed: 0.4 + pulse * 0.6,
+          chaos: lerp(0.12, 0.05, conv) + pulse * 0.15 * (1 - conv),
           morphFactor: 0.6 + p * 0.5,
           saturation: 0.9 + conv * 0.05,
         });
       }
 
-      // CSS depth on containers
-      if (ctaLeftWrap) {
-        ctaLeftWrap.style.filter = depthL < 0.3 ? `blur(${lerp(4, 0, depthL / 0.3)}px)` : 'none';
-      }
-      if (ctaRightWrap) {
-        ctaRightWrap.style.filter = depthR < 0.3 ? `blur(${lerp(4, 0, depthR / 0.3)}px)` : 'none';
-      }
-
-      // Diagonal split morphs toward vertical during convergence
+      // Diagonal split line rotates from diagonal → vertical during convergence
+      const ctaLeftWrap = document.getElementById('ctaGpuLeft');
+      const ctaRightWrap = document.getElementById('ctaGpuRight');
       if (ctaLeftWrap && ctaRightWrap) {
-        const topR = lerp(100, 50, conv);
-        const botL = lerp(0, 50, conv);
+        // Diagonal split morphs toward vertical at convergence
+        const topR = lerp(100, 50, conv);   // top-right x
+        const botL = lerp(0, 50, conv);     // bottom-left x
         ctaLeftWrap.style.clipPath = `polygon(0 0, ${topR}% 0, ${botL}% 100%, 0 100%)`;
         ctaRightWrap.style.clipPath = `polygon(${topR}% 0, 100% 0, 100% 100%, ${botL}% 100%)`;
       }
-
-      // Glow seam: maximum at crossover, fades at unity
-      updateGlowSeam(ctaSeam, ctaL, ctaR);
-
-      // During crossover blend moment: overlap + screen blend
-      if (p > 0.5 && p < 0.6 && ctaLeftWrap && ctaRightWrap) {
-        const blendP = (p - 0.5) / 0.1;
-        const overlap = Math.sin(blendP * Math.PI) * 0.15;
-        ctaLeftWrap.style.opacity = `${1 - overlap}`;
-        ctaRightWrap.style.opacity = `${1 - overlap}`;
-      } else {
-        if (ctaLeftWrap) ctaLeftWrap.style.opacity = '1';
-        if (ctaRightWrap) ctaRightWrap.style.opacity = '1';
-      }
-
-      // Vignette: tightens during maximum depth separation, relaxes at unity
-      const maxDenBoth = Math.max(denL, denR);
-      updateVignette(ctaVignette, maxDenBoth);
     },
   });
 }
@@ -1819,36 +1420,38 @@ export function initSpeedCrescendo(pool) {
     onUpdate: (self) => {
       const p = self.progress;
 
-      // Phase A (0-80%): EXPONENTIAL BUILD — cubic acceleration
+      // Phase A (0-80%): The Build — GPU Holographic accelerates
       if (p < 0.8) {
         const build = p / 0.8;
         const agent = pool.get('agent');
         if (agent) {
-          exponentialBuild(build, agent);
-          // Additional rotation drama on top
-          agent.setParam('rot4dXW', build * Math.PI * 4);
-          agent.setParam('rot4dYW', Math.sin(build * Math.PI * 3) * 2);
+          agent.setParams({
+            speed: 0.4 * (1 + build * 5),
+            chaos: 0.15 + build * 0.6,
+            intensity: 0.5 + build * 0.4,
+            gridDensity: 18 + build * 35,
+            rot4dXW: build * Math.PI * 4,
+            rot4dYW: Math.sin(build * Math.PI * 3) * 2,
+          });
         }
-        document.documentElement.style.setProperty('--crescendo-vignette', (Math.pow(build, 2) * 0.35).toFixed(2));
+        document.documentElement.style.setProperty('--crescendo-vignette', (build * 0.3).toFixed(2));
       }
 
-      // Phase B (80-88%): THE SILENCE — instant death
+      // Phase B (80-88%): THE SILENCE
       if (p >= 0.8 && p < 0.88) {
         const agent = pool.get('agent');
         if (agent) {
-          agent.setParams({ speed: 0, chaos: 0, intensity: 0.02, gridDensity: 4 });
+          agent.setParams({ speed: 0, chaos: 0, intensity: 0.05, gridDensity: 4 });
         }
         document.documentElement.style.setProperty('--crescendo-vignette', '0');
         document.documentElement.style.setProperty('--silence-blackout', '1');
       }
 
-      // Phase C (88-100%): LOGARITHMIC CALM — gentle rebirth
+      // Phase C (88-100%): Gentle rebirth
       if (p >= 0.88) {
         const rebirth = (p - 0.88) / 0.12;
         const agent = pool.get('agent');
         if (agent) {
-          logarithmicCalm(1 - rebirth, agent);
-          // Override to gentler values for rebirth
           agent.setParams({
             speed: rebirth * 0.3,
             intensity: rebirth * 0.35,
@@ -1856,7 +1459,7 @@ export function initSpeedCrescendo(pool) {
             chaos: rebirth * 0.12,
           });
         }
-        document.documentElement.style.setProperty('--silence-blackout', (1 - smoothstep(rebirth)).toFixed(2));
+        document.documentElement.style.setProperty('--silence-blackout', (1 - rebirth).toFixed(2));
       }
     },
     onLeave: () => {
