@@ -5,7 +5,7 @@
  */
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const { chromium } = require('playwright');
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
@@ -642,9 +642,32 @@ async function main() {
   console.log('VIB3+ Site Analyzer — Scroll Effect Documentation');
   console.log('Launching Chromium...');
 
+  // Parse proxy from environment for Chromium
+  const proxyConfig = (() => {
+    const proxyUrl = process.env.HTTP_PROXY || process.env.HTTPS_PROXY;
+    if (!proxyUrl) return {};
+    try {
+      const url = new URL(proxyUrl);
+      return {
+        proxy: {
+          server: `${url.protocol}//${url.hostname}:${url.port}`,
+          username: decodeURIComponent(url.username),
+          password: decodeURIComponent(url.password),
+        },
+      };
+    } catch {
+      return {};
+    }
+  })();
+
+  if (proxyConfig.proxy) {
+    console.log(`Using proxy: ${proxyConfig.proxy.server} (authenticated)`);
+  }
+
   const browser = await chromium.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    ...proxyConfig,
   });
 
   const reports = [];
