@@ -270,6 +270,7 @@ async function analyzeSite(browser, site) {
 
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
+    ignoreHTTPSErrors: true,
     userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   });
 
@@ -310,9 +311,16 @@ async function analyzeSite(browser, site) {
     for (let i = 0; i <= scrollSteps; i++) {
       const scrollTo = Math.min(i * stepSize, totalHeight - viewportH);
 
-      // Smooth scroll to position
-      await page.evaluate((y) => window.scrollTo({ top: y, behavior: 'instant' }), scrollTo);
-      await page.waitForTimeout(400); // Let animations settle
+      // Use wheel events to trigger Lenis/GSAP scroll (window.scrollTo won't trigger them)
+      const currentY = await page.evaluate(() => window.scrollY || window.pageYOffset);
+      const delta = scrollTo - currentY;
+      const wheelSteps = Math.max(1, Math.ceil(Math.abs(delta) / 400));
+      const perStep = delta / wheelSteps;
+      for (let w = 0; w < wheelSteps; w++) {
+        await page.mouse.wheel(0, perStep);
+        await page.waitForTimeout(40);
+      }
+      await page.waitForTimeout(800); // Let Lenis lerp + animations settle
 
       // Capture screenshot
       const screenshotName = `scroll-${String(i).padStart(2, '0')}-${Math.round(scrollTo)}px.png`;
@@ -638,6 +646,56 @@ function summarizeSite(report) {
   return md;
 }
 
+// Local proxy forwarder that handles authenticated upstream proxy
+function startLocalProxy() {
+  return new Promise((resolve) => {
+    const http = require('http');
+    const proxyUrl = process.env.HTTP_PROXY || process.env.HTTPS_PROXY;
+    if (!proxyUrl) { resolve({ port: 0, close() {} }); return; }
+    const url = new URL(proxyUrl);
+    const AUTH = 'Basic ' + Buffer.from(
+      decodeURIComponent(url.username) + ':' + decodeURIComponent(url.password)
+    ).toString('base64');
+
+    const server = http.createServer((req, res) => {
+      const opts = {
+        host: url.hostname, port: parseInt(url.port),
+        method: req.method, path: req.url,
+        headers: { ...req.headers, 'Proxy-Authorization': AUTH },
+      };
+      const upstream = http.request(opts, (upRes) => {
+        res.writeHead(upRes.statusCode, upRes.headers);
+        upRes.pipe(res);
+      });
+      upstream.on('error', (e) => res.end('Error: ' + e.message));
+      req.pipe(upstream);
+    });
+
+    server.on('connect', (req, cltSocket, head) => {
+      const connectReq = http.request({
+        host: url.hostname, port: parseInt(url.port),
+        method: 'CONNECT', path: req.url,
+        headers: { 'Host': req.url, 'Proxy-Authorization': AUTH },
+      });
+      connectReq.on('connect', (res, srvSocket) => {
+        cltSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+        srvSocket.write(head);
+        srvSocket.pipe(cltSocket);
+        cltSocket.pipe(srvSocket);
+      });
+      connectReq.on('error', () => {
+        cltSocket.write('HTTP/1.1 502 Bad Gateway\r\n\r\n');
+        cltSocket.end();
+      });
+      connectReq.end();
+    });
+
+    server.listen(0, '127.0.0.1', () => {
+      resolve({ port: server.address().port, close() { server.close(); } });
+    });
+  });
+}
+
 async function main() {
   console.log('VIB3+ Site Analyzer — Scroll Effect Documentation');
   console.log('Launching Chromium...');
@@ -664,10 +722,18 @@ async function main() {
     console.log(`Using proxy: ${proxyConfig.proxy.server} (authenticated)`);
   }
 
+  // Start a local proxy forwarder to handle auth (Chromium can't do long JWT auth)
+  const localProxy = await startLocalProxy();
+  console.log(`Local proxy forwarder on port ${localProxy.port}`);
+
   const browser = await chromium.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    ...proxyConfig,
+    executablePath: '/root/.cache/ms-playwright/chromium-1194/chrome-linux/chrome',
+    args: [
+      '--no-sandbox', '--disable-setuid-sandbox', '--ignore-certificate-errors',
+      '--disable-gpu', '--disable-dev-shm-usage', '--single-process',
+    ],
+    proxy: { server: `http://127.0.0.1:${localProxy.port}` },
   });
 
   const reports = [];
@@ -683,6 +749,7 @@ async function main() {
   }
 
   await browser.close();
+  localProxy.close();
 
   // Generate combined markdown report
   let combinedMd = '# Reference Site Scroll Analysis\n\n';
