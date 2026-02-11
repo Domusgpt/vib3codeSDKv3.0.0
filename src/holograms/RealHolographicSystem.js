@@ -19,6 +19,11 @@ export class RealHolographicSystem {
         /** @type {HTMLCanvasElement|null} */
         this.canvasOverride = options.canvas || null;
 
+        // Multi-canvas override: { background, shadow, content, highlight, accent }
+        // Enables 5-layer mode without DOM ID lookup (for landing page / multi-instance)
+        /** @type {Object<string, HTMLCanvasElement>|null} */
+        this.canvasSet = options.canvases || null;
+
         // Bridge rendering state
         /** @type {MultiCanvasBridge|null} */
         this._multiCanvasBridge = null;
@@ -84,6 +89,39 @@ export class RealHolographicSystem {
             } catch (error) {
                 console.warn('Failed to create holographic single-canvas visualizer:', error);
             }
+            return;
+        }
+
+        // Multi-canvas override: 5-layer mode with provided canvas elements
+        // Used by landing page adapters to create multiple independent 5-layer instances
+        if (this.canvasSet) {
+            const layerDefs = [
+                { key: 'background', role: 'background', reactivity: 0.5 },
+                { key: 'shadow',     role: 'shadow',     reactivity: 0.7 },
+                { key: 'content',    role: 'content',    reactivity: 0.9 },
+                { key: 'highlight',  role: 'highlight',  reactivity: 1.1 },
+                { key: 'accent',     role: 'accent',     reactivity: 1.5 },
+            ];
+
+            let successfulLayers = 0;
+            layerDefs.forEach(layer => {
+                const canvas = this.canvasSet[layer.key];
+                if (!canvas) return;
+                try {
+                    const visualizer = new HolographicVisualizer(
+                        canvas, layer.role, layer.reactivity, this.currentVariant
+                    );
+                    if (visualizer.gl) {
+                        this.visualizers.push(visualizer);
+                        successfulLayers++;
+                        console.log(`✅ Created holographic layer (canvasSet): ${layer.role}`);
+                    }
+                } catch (error) {
+                    console.warn(`Failed to create holographic layer ${layer.role}:`, error);
+                }
+            });
+
+            console.log(`✅ Created ${successfulLayers} holographic visualizers via canvasSet`);
             return;
         }
 

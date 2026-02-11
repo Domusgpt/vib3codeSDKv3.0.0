@@ -4,8 +4,12 @@
  * Manages a limited number of WebGL contexts to stay within browser limits.
  * Handles acquire/release lifecycle with automatic eviction and canvas reset.
  *
+ * Supports both single-canvas and 5-layer adapters. For 5-layer adapters
+ * (Quantum, Holographic), the adapter's dispose() handles layer canvas cleanup.
+ * The pool manages the placeholder canvas lifecycle.
+ *
  * @example
- *   const pool = new ContextPool(2);
+ *   const pool = new ContextPool(3);
  *   const viz = pool.acquire('hero', 'hero-canvas', QuantumAdapter, opts);
  *   pool.release('hero');
  */
@@ -45,7 +49,10 @@ export class ContextPool {
   release(key) {
     const entry = this.slots.get(key);
     if (!entry) return;
+    // Adapter.dispose() handles 5-layer cleanup (destroyLayerCanvases)
+    // and single-canvas WebGL context loss
     try { entry.adapter.dispose(); } catch (_) { /* ignore */ }
+    // For single-canvas adapters, also force-lose the main canvas context
     this._loseContext(entry.canvasId);
     this.slots.delete(key);
   }
@@ -69,16 +76,36 @@ export class ContextPool {
   _resetCanvas(canvasId) {
     const old = document.getElementById(canvasId);
     if (!old) return;
+
+    // If a previous 5-layer setup left layer canvases, clean them up
+    const parent = old.parentElement;
+    if (parent && parent._vib3Layers) {
+      parent._vib3Layers.forEach(el => {
+        try {
+          const gl = el.getContext('webgl2') || el.getContext('webgl');
+          if (gl && !gl.isContextLost()) {
+            const ext = gl.getExtension('WEBGL_lose_context');
+            if (ext) ext.loseContext();
+          }
+        } catch (_) { /* ignore */ }
+        el.remove();
+      });
+      parent._vib3Layers = null;
+    }
+
+    // Restore placeholder visibility (may have been hidden by 5-layer setup)
+    old.style.display = '';
+
     this._loseContext(canvasId);
     const fresh = document.createElement('canvas');
     fresh.id = canvasId;
     fresh.className = old.className;
     if (old.style.cssText) fresh.style.cssText = old.style.cssText;
-    const parent = old.parentElement;
-    if (parent) {
+    const parentEl = old.parentElement;
+    if (parentEl) {
       const dpr = Math.min(devicePixelRatio || 1, 2);
-      fresh.width = parent.clientWidth * dpr;
-      fresh.height = parent.clientHeight * dpr;
+      fresh.width = parentEl.clientWidth * dpr;
+      fresh.height = parentEl.clientHeight * dpr;
     }
     old.parentNode.replaceChild(fresh, old);
   }
