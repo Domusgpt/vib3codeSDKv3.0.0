@@ -409,20 +409,19 @@ export class QuantumEngine {
                 this.updateEnhancedQuantumParameters(mouseX, mouseY);
             });
             
-            // Touch movement -> same enhanced parameters  
+            // Touch movement -> same enhanced parameters
             canvas.addEventListener('touchmove', (e) => {
                 if (!this.isActive) return;
-                e.preventDefault();
-                
+
                 if (e.touches.length > 0) {
                     const touch = e.touches[0];
                     const rect = canvas.getBoundingClientRect();
                     const touchX = (touch.clientX - rect.left) / rect.width;
                     const touchY = (touch.clientY - rect.top) / rect.height;
-                    
+
                     this.updateEnhancedQuantumParameters(touchX, touchY);
                 }
-            }, { passive: false });
+            }, { passive: true });
             
             // Click -> quantum flash effect
             canvas.addEventListener('click', (e) => {
@@ -439,9 +438,8 @@ export class QuantumEngine {
             // Wheel -> quantum morphing scroll effect
             canvas.addEventListener('wheel', (e) => {
                 if (!this.isActive) return;
-                e.preventDefault();
                 this.updateQuantumScroll(e.deltaY);
-            }, { passive: false });
+            }, { passive: true });
         });
         
         // Start smooth animation loops
@@ -524,7 +522,11 @@ export class QuantumEngine {
         this.lastMousePosition.x = x;
         this.lastMousePosition.y = y;
         
-        console.log(`🌌 Quantum EXPERIMENTAL: X=${x.toFixed(2)}→Rot=${rotationAngle.toFixed(2)}, Y=${y.toFixed(2)}→Density=${Math.round(gridDensity)}, Dist=${normalizedDistance.toFixed(2)}→Hue=${Math.round(hue)}, Hemisphere=${leftHemisphere ? 'L' : 'R'}${topHemisphere ? 'T' : 'B'}`);
+        // Debug logging (throttled to avoid console spam)
+        if (!this._lastLogTime || performance.now() - this._lastLogTime > 2000) {
+            this._lastLogTime = performance.now();
+            console.log(`Quantum: Rot=${rotationAngle.toFixed(2)}, Density=${Math.round(gridDensity)}, Hue=${Math.round(hue)}`);
+        }
     }
     
     triggerQuantumClick() {
@@ -536,7 +538,7 @@ export class QuantumEngine {
         this.quantumSpeedWave = 2.0; // Speed wave effect  
         this.quantumHueShift = 60; // Color explosion shift
         
-        console.log('💥 Quantum energy burst: flash + chaos + speed + hue explosion');
+        // Quantum energy burst triggered
     }
     
     updateQuantumScroll(deltaY) {
@@ -552,81 +554,60 @@ export class QuantumEngine {
             window.updateParameter('morphFactor', this.scrollMorph.toFixed(2));
         }
         
-        console.log(`🌀 Quantum scroll morph: ${this.scrollMorph.toFixed(2)}`);
+        // Quantum scroll morph updated
     }
     
     startQuantumEffectLoops() {
+        this._effectsLoopActive = true;
         const quantumEffects = () => {
-            let hasActiveEffects = false;
-            
+            if (!this._effectsLoopActive) return;
+
             // QUANTUM FLASH EFFECT (saturation + morph)
             if (this.clickFlashIntensity > 0.01) {
-                hasActiveEffects = true;
-                
-                // Flash affects saturation - quantum shimmer effect
-                const flashSaturation = 0.9 + (this.clickFlashIntensity * 0.1); // 0.9-1.0 boost
-                const flashMorph = this.scrollMorph + (this.clickFlashIntensity * 0.5); // Morph boost
-                
+                const flashSaturation = 0.9 + (this.clickFlashIntensity * 0.1);
+                const flashMorph = this.scrollMorph + (this.clickFlashIntensity * 0.5);
+
                 if (window.updateParameter) {
                     window.updateParameter('saturation', flashSaturation.toFixed(2));
                     window.updateParameter('morphFactor', flashMorph.toFixed(2));
                 }
-                
-                // Smooth decay
                 this.clickFlashIntensity *= 0.91;
             }
-            
+
             // DRAMATIC CHAOS BLAST EFFECT (fluid decay)
             if (this.quantumChaosBlast > 0.01) {
-                hasActiveEffects = true;
-                
-                const baseChaos = 0.3; // Quantum default chaos
+                const baseChaos = 0.3;
                 const currentChaos = baseChaos + this.quantumChaosBlast;
-                
                 if (window.updateParameter) {
                     window.updateParameter('chaos', Math.min(1.0, currentChaos).toFixed(2));
                 }
-                
-                // Smooth decay
-                this.quantumChaosBlast *= 0.88; // Slightly faster than faceted for quantum energy feel
+                this.quantumChaosBlast *= 0.88;
             }
-            
-            // DRAMATIC SPEED WAVE EFFECT (fluid decay)  
+
+            // DRAMATIC SPEED WAVE EFFECT (fluid decay)
             if (this.quantumSpeedWave > 0.01) {
-                hasActiveEffects = true;
-                
-                const baseSpeed = 1.0; // Quantum default speed
+                const baseSpeed = 1.0;
                 const currentSpeed = baseSpeed + this.quantumSpeedWave;
-                
                 if (window.updateParameter) {
                     window.updateParameter('speed', Math.min(3.0, currentSpeed).toFixed(2));
                 }
-                
-                // Smooth wave decay
                 this.quantumSpeedWave *= 0.89;
             }
-            
+
             // QUANTUM HUE EXPLOSION EFFECT (fluid decay)
             if (this.quantumHueShift > 1) {
-                hasActiveEffects = true;
-                
-                const baseHue = 280; // Quantum purple-blue
+                const baseHue = 280;
                 const currentHue = (baseHue + this.quantumHueShift) % 360;
-                
                 if (window.updateParameter) {
                     window.updateParameter('hue', Math.round(currentHue));
                 }
-                
-                // Smooth color return
                 this.quantumHueShift *= 0.90;
             }
-            
-            if (this.isActive) {
-                requestAnimationFrame(quantumEffects);
-            }
+
+            this._effectsRafId = requestAnimationFrame(quantumEffects);
         };
-        
-        quantumEffects();
+
+        this._effectsRafId = requestAnimationFrame(quantumEffects);
     }
     
     async enableAudio() {
@@ -732,16 +713,17 @@ export class QuantumEngine {
         if (window.mobileDebug) {
             window.mobileDebug.log(`🎬 Quantum Engine: Starting render loop with ${this.visualizers?.length} visualizers, isActive=${this.isActive}`);
         }
-        
+
+        this._renderLoopActive = true;
         const render = () => {
+            if (!this._renderLoopActive) return;
             this.renderFrame();
-            
-            requestAnimationFrame(render);
+            this._renderRafId = requestAnimationFrame(render);
         };
-        
-        render();
+
+        this._renderRafId = requestAnimationFrame(render);
         console.log('🎬 Quantum render loop started');
-        
+
         if (window.mobileDebug) {
             window.mobileDebug.log(`✅ Quantum Engine: Render loop started, will render when isActive=true`);
         }
@@ -817,6 +799,20 @@ export class QuantumEngine {
      */
     destroy() {
         this.isActive = false;
+
+        // Cancel render loop
+        this._renderLoopActive = false;
+        if (this._renderRafId) {
+            cancelAnimationFrame(this._renderRafId);
+            this._renderRafId = null;
+        }
+
+        // Cancel effects loop
+        this._effectsLoopActive = false;
+        if (this._effectsRafId) {
+            cancelAnimationFrame(this._effectsRafId);
+            this._effectsRafId = null;
+        }
 
         // Disconnect from universal reactivity
         if (window.universalReactivity) {

@@ -739,7 +739,7 @@ export class RealHolographicSystem {
             window.updateParameter('morphFactor', depthMorph.toFixed(2));
         }
         
-        console.log(`✨ Holographic shimmer: angle=(${angleX.toFixed(2)}, ${angleY.toFixed(2)}) → Hue=${Math.round(shimmerHue)}, Intensity=${shimmerIntensity.toFixed(2)}`);
+        // Holographic shimmer updated
     }
     
     triggerHolographicColorBurst(x, y) {
@@ -761,11 +761,13 @@ export class RealHolographicSystem {
         this.burstChaosEffect = 0.6; // Chaos/morph burst effect
         this.burstSpeedBoost = 1.8; // Animation speed burst
         
-        console.log(`🌈💥 HOLOGRAPHIC COLOR BURST: position=(${x.toFixed(2)}, ${y.toFixed(2)}), distance=${distanceFromCenter.toFixed(3)}`);
+        // Holographic color burst triggered
     }
-    
+
     startHolographicColorBurstLoop() {
+        this._burstLoopActive = true;
         const burstAnimation = () => {
+            if (!this._burstLoopActive) return;
             // DRAMATIC HOLOGRAPHIC COLOR BURST ANIMATION (like Quantum's multi-parameter effects)
             let hasActiveEffects = false;
             
@@ -835,16 +837,16 @@ export class RealHolographicSystem {
                 this.colorBurstIntensity *= 0.94;
             }
             
-            if (this.isActive) {
-                requestAnimationFrame(burstAnimation);
-            }
+            this._burstRafId = requestAnimationFrame(burstAnimation);
         };
-        
-        burstAnimation();
+
+        this._burstRafId = requestAnimationFrame(burstAnimation);
     }
     
     startRenderLoop() {
+        this._renderLoopActive = true;
         const render = () => {
+            if (!this._renderLoopActive) return;
             if (this.isActive) {
                 // Update audio reactivity
                 this.updateAudio();
@@ -859,11 +861,11 @@ export class RealHolographicSystem {
                 }
             }
 
-            requestAnimationFrame(render);
+            this._renderRafId = requestAnimationFrame(render);
         };
 
-        render();
-        console.log(`🎬 REAL Holographic render loop started (${this._renderMode} mode)`);
+        this._renderRafId = requestAnimationFrame(render);
+        console.log(`REAL Holographic render loop started (${this._renderMode} mode)`);
     }
     
     getVariantName(variant = this.currentVariant) {
@@ -871,6 +873,22 @@ export class RealHolographicSystem {
     }
     
     destroy() {
+        this.isActive = false;
+
+        // Cancel render loop
+        this._renderLoopActive = false;
+        if (this._renderRafId) {
+            cancelAnimationFrame(this._renderRafId);
+            this._renderRafId = null;
+        }
+
+        // Cancel burst effect loop
+        this._burstLoopActive = false;
+        if (this._burstRafId) {
+            cancelAnimationFrame(this._burstRafId);
+            this._burstRafId = null;
+        }
+
         // Dispose bridge if active
         if (this._multiCanvasBridge) {
             this._multiCanvasBridge.dispose();
@@ -889,7 +907,7 @@ export class RealHolographicSystem {
             this.audioContext.close();
         }
 
-        console.log('🧹 REAL Holographic System destroyed');
+        console.log('REAL Holographic System destroyed');
     }
 
     // ============================================

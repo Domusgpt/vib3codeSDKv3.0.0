@@ -7,9 +7,29 @@
     <meta name="description" content="VIB3+ is a 4D visualization SDK with 24 geometry variants, 6D rotation, and three rendering systems. WebGL + WebGPU.">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="stylesheet" href="./styles/overlay-accents.css">
-    <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script>
+    // Load CDN scripts dynamically with timeout fallback.
+    // This prevents page load from blocking if CDN is unreachable.
+    // Exposes window.__cdnReady promise for module scripts to await.
+    window.__cdnReady = new Promise(function(resolve) {
+      var scripts = [
+        'https://unpkg.com/lenis@1.1.13/dist/lenis.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js'
+      ];
+      var loaded = 0;
+      var timer = setTimeout(function() { resolve(false); }, 5000);
+      function loadNext() {
+        if (loaded >= scripts.length) { clearTimeout(timer); resolve(true); return; }
+        var s = document.createElement('script');
+        s.src = scripts[loaded];
+        s.onload = function() { loaded++; loadNext(); };
+        s.onerror = function() { loaded++; loadNext(); };
+        document.head.appendChild(s);
+      }
+      loadNext();
+    });
+    </script>
     <style>
         /* ─── Custom Properties ─── */
         :root {

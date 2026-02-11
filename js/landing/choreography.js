@@ -224,11 +224,15 @@ function swapMorphSystem(pool, newIdx) {
   morphSwapLock = true;
   const flash = document.getElementById('morphFlash');
 
+  // Safety timeout: release lock after 1s even if GSAP fails
+  const safetyTimer = setTimeout(() => { morphSwapLock = false; }, 1000);
+
   gsap.to(flash, { opacity: 0.85, duration: 0.08, ease: 'power2.in', onComplete: () => {
     createMorphSystem(pool, newIdx);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         gsap.to(flash, { opacity: 0, duration: 0.2, ease: 'power2.out', onComplete: () => {
+          clearTimeout(safetyTimer);
           morphSwapLock = false;
         }});
       });
