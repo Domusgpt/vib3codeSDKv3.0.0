@@ -388,6 +388,9 @@ npm test -- tests/agent/AgentCLI.test.js
 | Document | Description |
 |----------|-------------|
 | [`DOCS/SYSTEM_INVENTORY.md`](DOCS/SYSTEM_INVENTORY.md) | Complete technical reference (v2.0.0) |
+| [`DOCS/PRODUCT_STRATEGY.md`](DOCS/PRODUCT_STRATEGY.md) | Product strategy: personas, use-cases, differentiation, and metrics |
+| [`DOCS/ROADMAP.md`](DOCS/ROADMAP.md) | Strategy goals mapped to technical epics and module ownership |
+| [`DOCS/README.md`](DOCS/README.md) | Documentation index and navigation hub |
 | [`DOCS/SYSTEM_AUDIT_2026-01-30.md`](DOCS/SYSTEM_AUDIT_2026-01-30.md) | Full system audit (v2.0.0) |
 | [`DOCS/CLI_ONBOARDING.md`](DOCS/CLI_ONBOARDING.md) | Agent CLI setup guide |
 | [`DOCS/CONTROL_REFERENCE.md`](DOCS/CONTROL_REFERENCE.md) | UI parameter reference |
