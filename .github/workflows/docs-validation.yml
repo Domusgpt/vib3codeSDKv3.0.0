@@ -1,0 +1,206 @@
+name: Docs Validation
+
+on:
+  pull_request:
+    paths:
+      - 'DOCS/**'
+      - '.github/workflows/docs-validation.yml'
+
+jobs:
+  validate-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate docs links, required canon docs, and metadata freshness
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import re
+          import sys
+          from datetime import date, datetime, timedelta
+          from pathlib import Path
+          from urllib.parse import unquote
+
+          ROOT = Path('.').resolve()
+          DOCS_DIR = ROOT / 'DOCS'
+          ARCHIVE_DIR = DOCS_DIR / 'archive'
+          STALE_AFTER_DAYS = 180
+
+          REQUIRED_DOCS = [
+              DOCS_DIR / 'README.md',
+              DOCS_DIR / 'ARCHITECTURE.md',
+              DOCS_DIR / 'PRODUCT_STRATEGY.md',
+              DOCS_DIR / 'ROADMAP.md',
+          ]
+
+          LINK_RE = re.compile(r'\[[^\]]+\]\(([^)]+)\)')
+          HEADING_RE = re.compile(r'^\s{0,3}#{1,6}\s+(.*?)\s*#*\s*$')
+          LAST_REVIEWED_RE = re.compile(
+              r'^\s*(?:[-*]\s*)?(?:\*\*)?Last\s+reviewed(?:\*\*)?\s*:\s*(.+?)\s*$',
+              re.IGNORECASE,
+          )
+
+
+          def is_archived(path: Path) -> bool:
+              try:
+                  path.relative_to(ARCHIVE_DIR)
+                  return True
+              except ValueError:
+                  return False
+
+
+          def slugify_heading(text: str) -> str:
+              text = text.strip().lower()
+              text = re.sub(r'[\`*_~\[\](){}<>"\'.,!?/:;+|\\]', '', text)
+              text = re.sub(r'\s+', '-', text)
+              text = re.sub(r'-+', '-', text)
+              return text.strip('-')
+
+
+          def get_heading_anchors(path: Path) -> set[str]:
+              anchors: set[str] = set()
+              try:
+                  lines = path.read_text(encoding='utf-8').splitlines()
+              except Exception:
+                  return anchors
+
+              counts: dict[str, int] = {}
+              for line in lines:
+                  match = HEADING_RE.match(line)
+                  if not match:
+                      continue
+                  base = slugify_heading(match.group(1))
+                  if not base:
+                      continue
+                  if base in counts:
+                      counts[base] += 1
+                      anchor = f"{base}-{counts[base]}"
+                  else:
+                      counts[base] = 0
+                      anchor = base
+                  anchors.add(anchor)
+              return anchors
+
+
+          def parse_review_date(value: str) -> date | None:
+              cleaned = value.strip().strip('`').strip('*').strip()
+              cleaned = cleaned.split('|', 1)[0].strip()
+              cleaned = cleaned.split('(', 1)[0].strip()
+              for fmt in ('%Y-%m-%d', '%Y/%m/%d', '%Y.%m.%d', '%b %d, %Y', '%B %d, %Y'):
+                  try:
+                      return datetime.strptime(cleaned, fmt).date()
+                  except ValueError:
+                      continue
+              return None
+
+
+          md_files = sorted(DOCS_DIR.rglob('*.md'))
+          if not md_files:
+              print('::error::No markdown files found in DOCS/.')
+              sys.exit(1)
+
+          hard_failures: list[str] = []
+          warnings: list[str] = []
+
+          # Required canonical docs presence check.
+          for req in REQUIRED_DOCS:
+              rel = req.relative_to(ROOT)
+              if not req.exists():
+                  hard_failures.append(f"Missing canonical doc: {rel}")
+
+          heading_cache: dict[Path, set[str]] = {}
+
+          for md_file in md_files:
+              rel_file = md_file.relative_to(ROOT)
+              archived = is_archived(md_file)
+              text = md_file.read_text(encoding='utf-8')
+
+              # Last reviewed metadata check.
+              reviewed_date: date | None = None
+              has_review_field = False
+              for line in text.splitlines()[:120]:
+                  m = LAST_REVIEWED_RE.match(line)
+                  if not m:
+                      continue
+                  has_review_field = True
+                  reviewed_date = parse_review_date(m.group(1))
+                  break
+
+              if not has_review_field:
+                  msg = f"{rel_file}: missing 'Last reviewed' metadata field"
+                  (warnings if archived else hard_failures).append(msg)
+              elif reviewed_date is None:
+                  msg = f"{rel_file}: could not parse 'Last reviewed' value"
+                  (warnings if archived else hard_failures).append(msg)
+              else:
+                  age_days = (date.today() - reviewed_date).days
+                  if age_days > STALE_AFTER_DAYS:
+                      msg = (
+                          f"{rel_file}: stale 'Last reviewed' date ({reviewed_date.isoformat()}, "
+                          f"{age_days} days old; threshold={STALE_AFTER_DAYS})"
+                      )
+                      (warnings if archived else hard_failures).append(msg)
+
+              # Link check (internal links at minimum).
+              for raw_target in LINK_RE.findall(text):
+                  target = raw_target.strip().split()[0].strip('<>')
+                  if not target:
+                      continue
+                  lowered = target.lower()
+                  if lowered.startswith(('http://', 'https://', 'mailto:', 'tel:')):
+                      continue
+
+                  target_path = md_file
+                  fragment = ''
+
+                  if target.startswith('#'):
+                      fragment = unquote(target[1:])
+                  else:
+                      part, frag = (target.split('#', 1) + [''])[:2]
+                      fragment = unquote(frag)
+                      decoded_part = unquote(part)
+                      candidate_rel = (md_file.parent / decoded_part).resolve()
+                      candidate_root = (ROOT / decoded_part).resolve()
+                      target_path = candidate_rel if candidate_rel.exists() else candidate_root
+
+                  if not target_path.exists():
+                      msg = f"{rel_file}: broken internal link target '{target}'"
+                      (warnings if archived else hard_failures).append(msg)
+                      continue
+
+                  if fragment:
+                      anchors = heading_cache.setdefault(target_path, get_heading_anchors(target_path))
+                      desired = slugify_heading(fragment)
+                      if desired not in anchors:
+                          target_rel = target_path.relative_to(ROOT)
+                          msg = (
+                              f"{rel_file}: missing anchor '#{fragment}' in {target_rel} "
+                              f"(from '{target}')"
+                          )
+                          (warnings if archived else hard_failures).append(msg)
+
+          for w in warnings:
+              print(f"::warning::{w}")
+
+          if hard_failures:
+              for failure in hard_failures:
+                  print(f"::error::{failure}")
+              print(
+                  f"Validation failed with {len(hard_failures)} error(s) and "
+                  f"{len(warnings)} warning(s)."
+              )
+              sys.exit(1)
+
+          print(f"Docs validation passed with {len(warnings)} warning(s).")
+          PY

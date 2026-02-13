@@ -39,8 +39,10 @@ const report = {
     sections: {},
 };
 
-function ss(page, name) {
-    return page.screenshot({ path: join(SCREENSHOTS, `${name}.png`), fullPage: false });
+async function ss(page, name) {
+    try {
+        await page.screenshot({ path: join(SCREENSHOTS, `${name}.png`), fullPage: false, timeout: 5000 });
+    } catch (_) { /* screenshot skipped in sandboxed env */ }
 }
 
 // ───────────────────────────────────────────────
@@ -48,7 +50,7 @@ function ss(page, name) {
 // ───────────────────────────────────────────────
 test.describe('1 — Server & Page Load', () => {
     test('1.01 root index.html loads', async ({ page }) => {
-        const res = await page.goto(`${BASE}/`);
+        const res = await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
         expect(res.status()).toBeLessThan(400);
         await ss(page, '01-01-root-index');
     });

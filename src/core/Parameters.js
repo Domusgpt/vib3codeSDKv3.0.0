@@ -272,7 +272,7 @@ export class ParameterManager {
     exportConfiguration() {
         return {
             type: 'vib34d-integrated-config',
-            version: '2.0.1',
+            version: '2.0.3',
             timestamp: new Date().toISOString(),
             name: `VIB34D Config ${new Date().toLocaleDateString()}`,
             parameters: { ...this.params }

@@ -99,7 +99,9 @@ export class VIB3Engine {
     }
 
     _startGlobalLoop() {
+        this._globalLoopActive = true;
         const loop = () => {
+            if (!this._globalLoopActive) return;
             if (this.initialized) {
                 // Update breath cycle
                 const breath = this.vitality.update();
@@ -109,9 +111,9 @@ export class VIB3Engine {
                     this.activeSystem.updateParameters({ breath });
                 }
             }
-            requestAnimationFrame(loop);
+            this._globalRafId = requestAnimationFrame(loop);
         };
-        requestAnimationFrame(loop);
+        this._globalRafId = requestAnimationFrame(loop);
     }
 
     /**
@@ -560,7 +562,7 @@ export class VIB3Engine {
             spatialActive: this.spatialInput.enabled,
             backend: this.getActiveBackendType(),
             timestamp: new Date().toISOString(),
-            version: '2.0.1'
+            version: '2.0.3'
         };
     }
 
@@ -634,6 +636,13 @@ export class VIB3Engine {
      * Destroy engine and clean up
      */
     destroy() {
+        // Cancel global breath loop
+        this._globalLoopActive = false;
+        if (this._globalRafId) {
+            cancelAnimationFrame(this._globalRafId);
+            this._globalRafId = null;
+        }
+
         this.vitality.stop();
 
         // Stop and destroy spatial input

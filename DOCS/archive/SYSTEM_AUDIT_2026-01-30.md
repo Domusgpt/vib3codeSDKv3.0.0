@@ -1,5 +1,8 @@
 # VIB3+ CORE System Audit
 
+> **Archived document:** This file is retained for historical reference in `DOCS/archive/` and is not part of the active docs set.
+
+
 **Date**: January 30, 2026
 **Version**: 2.0.0 (`@vib3code/sdk`)
 **Branch**: `claude/phase-5-hardening-a4Wzn`

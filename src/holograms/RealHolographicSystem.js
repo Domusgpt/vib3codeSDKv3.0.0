@@ -19,6 +19,11 @@ export class RealHolographicSystem {
         /** @type {HTMLCanvasElement|null} */
         this.canvasOverride = options.canvas || null;
 
+        // Multi-canvas override: { background, shadow, content, highlight, accent }
+        // Enables 5-layer mode without DOM ID lookup (for landing page / multi-instance)
+        /** @type {Object<string, HTMLCanvasElement>|null} */
+        this.canvasSet = options.canvases || null;
+
         // Bridge rendering state
         /** @type {MultiCanvasBridge|null} */
         this._multiCanvasBridge = null;
@@ -84,6 +89,39 @@ export class RealHolographicSystem {
             } catch (error) {
                 console.warn('Failed to create holographic single-canvas visualizer:', error);
             }
+            return;
+        }
+
+        // Multi-canvas override: 5-layer mode with provided canvas elements
+        // Used by landing page adapters to create multiple independent 5-layer instances
+        if (this.canvasSet) {
+            const layerDefs = [
+                { key: 'background', role: 'background', reactivity: 0.5 },
+                { key: 'shadow',     role: 'shadow',     reactivity: 0.7 },
+                { key: 'content',    role: 'content',    reactivity: 0.9 },
+                { key: 'highlight',  role: 'highlight',  reactivity: 1.1 },
+                { key: 'accent',     role: 'accent',     reactivity: 1.5 },
+            ];
+
+            let successfulLayers = 0;
+            layerDefs.forEach(layer => {
+                const canvas = this.canvasSet[layer.key];
+                if (!canvas) return;
+                try {
+                    const visualizer = new HolographicVisualizer(
+                        canvas, layer.role, layer.reactivity, this.currentVariant
+                    );
+                    if (visualizer.gl) {
+                        this.visualizers.push(visualizer);
+                        successfulLayers++;
+                        console.log(`✅ Created holographic layer (canvasSet): ${layer.role}`);
+                    }
+                } catch (error) {
+                    console.warn(`Failed to create holographic layer ${layer.role}:`, error);
+                }
+            });
+
+            console.log(`✅ Created ${successfulLayers} holographic visualizers via canvasSet`);
             return;
         }
 
@@ -701,7 +739,7 @@ export class RealHolographicSystem {
             window.updateParameter('morphFactor', depthMorph.toFixed(2));
         }
         
-        console.log(`✨ Holographic shimmer: angle=(${angleX.toFixed(2)}, ${angleY.toFixed(2)}) → Hue=${Math.round(shimmerHue)}, Intensity=${shimmerIntensity.toFixed(2)}`);
+        // Holographic shimmer updated
     }
     
     triggerHolographicColorBurst(x, y) {
@@ -723,11 +761,13 @@ export class RealHolographicSystem {
         this.burstChaosEffect = 0.6; // Chaos/morph burst effect
         this.burstSpeedBoost = 1.8; // Animation speed burst
         
-        console.log(`🌈💥 HOLOGRAPHIC COLOR BURST: position=(${x.toFixed(2)}, ${y.toFixed(2)}), distance=${distanceFromCenter.toFixed(3)}`);
+        // Holographic color burst triggered
     }
-    
+
     startHolographicColorBurstLoop() {
+        this._burstLoopActive = true;
         const burstAnimation = () => {
+            if (!this._burstLoopActive) return;
             // DRAMATIC HOLOGRAPHIC COLOR BURST ANIMATION (like Quantum's multi-parameter effects)
             let hasActiveEffects = false;
             
@@ -797,16 +837,16 @@ export class RealHolographicSystem {
                 this.colorBurstIntensity *= 0.94;
             }
             
-            if (this.isActive) {
-                requestAnimationFrame(burstAnimation);
-            }
+            this._burstRafId = requestAnimationFrame(burstAnimation);
         };
-        
-        burstAnimation();
+
+        this._burstRafId = requestAnimationFrame(burstAnimation);
     }
     
     startRenderLoop() {
+        this._renderLoopActive = true;
         const render = () => {
+            if (!this._renderLoopActive) return;
             if (this.isActive) {
                 // Update audio reactivity
                 this.updateAudio();
@@ -821,11 +861,11 @@ export class RealHolographicSystem {
                 }
             }
 
-            requestAnimationFrame(render);
+            this._renderRafId = requestAnimationFrame(render);
         };
 
-        render();
-        console.log(`🎬 REAL Holographic render loop started (${this._renderMode} mode)`);
+        this._renderRafId = requestAnimationFrame(render);
+        console.log(`REAL Holographic render loop started (${this._renderMode} mode)`);
     }
     
     getVariantName(variant = this.currentVariant) {
@@ -833,6 +873,22 @@ export class RealHolographicSystem {
     }
     
     destroy() {
+        this.isActive = false;
+
+        // Cancel render loop
+        this._renderLoopActive = false;
+        if (this._renderRafId) {
+            cancelAnimationFrame(this._renderRafId);
+            this._renderRafId = null;
+        }
+
+        // Cancel burst effect loop
+        this._burstLoopActive = false;
+        if (this._burstRafId) {
+            cancelAnimationFrame(this._burstRafId);
+            this._burstRafId = null;
+        }
+
         // Dispose bridge if active
         if (this._multiCanvasBridge) {
             this._multiCanvasBridge.dispose();
@@ -851,7 +907,7 @@ export class RealHolographicSystem {
             this.audioContext.close();
         }
 
-        console.log('🧹 REAL Holographic System destroyed');
+        console.log('REAL Holographic System destroyed');
     }
 
     // ============================================

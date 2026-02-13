@@ -2,6 +2,7 @@ import Flutter
 import UIKit
 import Metal
 import MetalKit
+import CoreVideo
 
 /// VIB3 Flutter Plugin for iOS
 public class Vib3FlutterPlugin: NSObject, FlutterPlugin {
@@ -161,7 +162,10 @@ public class Vib3FlutterPlugin: NSObject, FlutterPlugin {
     }
 
     private func handleStartRendering(result: @escaping FlutterResult) {
-        renderer?.startRendering()
+        renderer?.startRendering { [weak self] in
+            guard let self = self, let textureId = self.textureId else { return }
+            self.textureRegistry?.textureFrameAvailable(textureId)
+        }
         result(nil)
     }
 
@@ -179,6 +183,49 @@ public class Vib3FlutterPlugin: NSObject, FlutterPlugin {
     }
 }
 
+/// 6-component rotation struct (replaces invalid simd_float6)
+struct Rotation6D {
+    var xy: Float = 0
+    var xz: Float = 0
+    var yz: Float = 0
+    var xw: Float = 0
+    var yw: Float = 0
+    var zw: Float = 0
+
+    subscript(index: Int) -> Float {
+        get {
+            switch index {
+            case 0: return xy
+            case 1: return xz
+            case 2: return yz
+            case 3: return xw
+            case 4: return yw
+            case 5: return zw
+            default: return 0
+            }
+        }
+        set {
+            switch index {
+            case 0: xy = newValue
+            case 1: xz = newValue
+            case 2: yz = newValue
+            case 3: xw = newValue
+            case 4: yw = newValue
+            case 5: zw = newValue
+            default: break
+            }
+        }
+    }
+
+    mutating func reset() {
+        xy = 0; xz = 0; yz = 0; xw = 0; yw = 0; zw = 0
+    }
+
+    func toArray() -> [Float] {
+        return [xy, xz, yz, xw, yw, zw]
+    }
+}
+
 /// Metal Renderer for VIB3 4D Visualization
 class Vib3MetalRenderer: NSObject, FlutterTexture {
     private var device: MTLDevice?
@@ -192,12 +239,17 @@ class Vib3MetalRenderer: NSObject, FlutterTexture {
 
     private var displayLink: CADisplayLink?
     private var isRendering = false
+    private var frameCallback: (() -> Void)?
+
+    // CVPixelBuffer for Flutter texture bridge
+    private var pixelBuffer: CVPixelBuffer?
+    private var textureCache: CVMetalTextureCache?
 
     // State
     private var currentSystem = "quantum"
     private var currentGeometry = 0
     private var gridDensity = 32
-    private var rotation = simd_float6(0, 0, 0, 0, 0, 0)
+    private var rotation = Rotation6D()
     private var visualParams: [String: Float] = [
         "morphFactor": 0.5,
         "chaos": 0.0,
@@ -209,6 +261,16 @@ class Vib3MetalRenderer: NSObject, FlutterTexture {
 
     private let textureWidth = 1024
     private let textureHeight = 1024
+    private var startTime: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
+
+    // Uniform buffer layout (must match shader)
+    struct Uniforms {
+        var projection: simd_float4x4
+        var view: simd_float4x4
+        var rotationAngles: SIMD4<Float>  // xy, xz, yz, xw
+        var rotationAngles2: SIMD4<Float> // yw, zw, projDist, _pad
+        var colorParams: SIMD4<Float>     // hue, intensity, saturation, morphFactor
+    }
 
     override init() {
         super.init()
@@ -224,15 +286,29 @@ class Vib3MetalRenderer: NSObject, FlutterTexture {
 
         commandQueue = device.makeCommandQueue()
 
-        // Create texture for Flutter
-        let textureDescriptor = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .bgra8Unorm,
-            width: textureWidth,
-            height: textureHeight,
-            mipmapped: false
-        )
-        textureDescriptor.usage = [.renderTarget, .shaderRead]
-        texture = device.makeTexture(descriptor: textureDescriptor)
+        // Create CVMetalTextureCache for Flutter texture bridge
+        var cache: CVMetalTextureCache?
+        CVMetalTextureCacheCreate(nil, nil, device, nil, &cache)
+        textureCache = cache
+
+        // Create CVPixelBuffer
+        let attrs: [String: Any] = [
+            kCVPixelBufferMetalCompatibilityKey as String: true,
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:]
+        ]
+        CVPixelBufferCreate(nil, textureWidth, textureHeight,
+                           kCVPixelFormatType_32BGRA, attrs as CFDictionary, &pixelBuffer)
+
+        // Create Metal texture from CVPixelBuffer
+        if let pixelBuffer = pixelBuffer, let textureCache = textureCache {
+            var cvTexture: CVMetalTexture?
+            CVMetalTextureCacheCreateTextureFromImage(
+                nil, textureCache, pixelBuffer, nil,
+                .bgra8Unorm, textureWidth, textureHeight, 0, &cvTexture)
+            if let cvTexture = cvTexture {
+                texture = CVMetalTextureGetTexture(cvTexture)
+            }
+        }
 
         // Create depth texture
         let depthDescriptor = MTLTextureDescriptor.texture2DDescriptor(
@@ -245,6 +321,9 @@ class Vib3MetalRenderer: NSObject, FlutterTexture {
         depthDescriptor.storageMode = .private
         depthTexture = device.makeTexture(descriptor: depthDescriptor)
 
+        // Create uniform buffer
+        uniformBuffer = device.makeBuffer(length: MemoryLayout<Uniforms>.stride, options: [])
+
         // Setup render pipeline
         setupPipeline()
 
@@ -255,10 +334,18 @@ class Vib3MetalRenderer: NSObject, FlutterTexture {
     private func setupPipeline() {
         guard let device = device else { return }
 
-        // Shader source
         let shaderSource = """
         #include <metal_stdlib>
         using namespace metal;
+
+        // Uniforms struct
+        struct Uniforms {
+            float4x4 projection;
+            float4x4 view;
+            float4 rotationAngles;   // xy, xz, yz, xw
+            float4 rotationAngles2;  // yw, zw, projDist, _pad
+            float4 colorParams;      // hue, intensity, saturation, morphFactor
+        };
 
         // 4D rotation matrices
         float4x4 rotationXY(float angle) {
@@ -321,18 +408,6 @@ class Vib3MetalRenderer: NSObject, FlutterTexture {
             );
         }
 
-        // Uniforms
-        struct Uniforms {
-            float4x4 projection;
-            float4x4 view;
-            float6 rotation;
-            float projectionDistance;
-            float hue;
-            float intensity;
-            float saturation;
-            float morphFactor;
-        };
-
         struct VertexIn {
             float4 position [[attribute(0)]];
             float4 color [[attribute(1)]];
@@ -361,17 +436,20 @@ class Vib3MetalRenderer: NSObject, FlutterTexture {
             VertexIn in [[stage_in]],
             constant Uniforms& uniforms [[buffer(1)]]
         ) {
-            // Apply 6D rotation
+            // Apply 6D rotation using individual angles from uniform vectors
             float4 rotated = in.position;
-            rotated = rotationXY(uniforms.rotation[0]) * rotated;
-            rotated = rotationXZ(uniforms.rotation[1]) * rotated;
-            rotated = rotationYZ(uniforms.rotation[2]) * rotated;
-            rotated = rotationXW(uniforms.rotation[3]) * rotated;
-            rotated = rotationYW(uniforms.rotation[4]) * rotated;
-            rotated = rotationZW(uniforms.rotation[5]) * rotated;
+            rotated = rotationXY(uniforms.rotationAngles.x) * rotated;
+            rotated = rotationXZ(uniforms.rotationAngles.y) * rotated;
+            rotated = rotationYZ(uniforms.rotationAngles.z) * rotated;
+            rotated = rotationXW(uniforms.rotationAngles.w) * rotated;
+            rotated = rotationYW(uniforms.rotationAngles2.x) * rotated;
+            rotated = rotationZW(uniforms.rotationAngles2.y) * rotated;
+
+            float projDist = uniforms.rotationAngles2.z;
+            if (projDist < 1.5) projDist = 2.0;
 
             // Project 4D to 3D
-            float3 projected = project4Dto3D(rotated, uniforms.projectionDistance);
+            float3 projected = project4Dto3D(rotated, projDist);
 
             // Apply view/projection
             float4 viewPos = uniforms.view * float4(projected, 1.0);
@@ -379,8 +457,8 @@ class Vib3MetalRenderer: NSObject, FlutterTexture {
 
             // W-based coloring
             float wNorm = (rotated.w + 1.0) * 0.5;
-            float hue = uniforms.hue / 360.0 + wNorm * 0.3;
-            float3 rgb = hsv2rgb(float3(hue, uniforms.saturation, uniforms.intensity));
+            float hue = uniforms.colorParams.x / 360.0 + wNorm * 0.3;
+            float3 rgb = hsv2rgb(float3(hue, uniforms.colorParams.z, uniforms.colorParams.y));
 
             VertexOut out;
             out.position = clipPos;
@@ -426,11 +504,7 @@ class Vib3MetalRenderer: NSObject, FlutterTexture {
     }
 
     private func generateGeometry() {
-        // Generate geometry based on current settings
-        // This would call into the native VIB3 library
-        // For now, generate a simple tesseract (4D hypercube)
-
-        // 16 vertices of a tesseract
+        // Generate tesseract (4D hypercube) as default geometry
         var vertices: [Float] = []
         for i in 0..<16 {
             let x: Float = (i & 1) == 0 ? -1 : 1
@@ -440,7 +514,7 @@ class Vib3MetalRenderer: NSObject, FlutterTexture {
 
             // Position (x, y, z, w)
             vertices.append(contentsOf: [x, y, z, w])
-            // Color (will be computed in shader)
+            // Color (computed in shader)
             vertices.append(contentsOf: [1, 1, 1, 1])
         }
 
@@ -467,9 +541,6 @@ class Vib3MetalRenderer: NSObject, FlutterTexture {
             length: indices.count * MemoryLayout<UInt16>.size,
             options: []
         )
-
-        // Create uniform buffer
-        uniformBuffer = device?.makeBuffer(length: 256, options: [])
     }
 
     func setSystem(_ system: String) {
@@ -489,32 +560,34 @@ class Vib3MetalRenderer: NSObject, FlutterTexture {
 
     func rotate(plane: String, angle: Float) {
         switch plane.lowercased() {
-        case "xy": rotation[0] = angle
-        case "xz": rotation[1] = angle
-        case "yz": rotation[2] = angle
-        case "xw": rotation[3] = angle
-        case "yw": rotation[4] = angle
-        case "zw": rotation[5] = angle
+        case "xy": rotation.xy = angle
+        case "xz": rotation.xz = angle
+        case "yz": rotation.yz = angle
+        case "xw": rotation.xw = angle
+        case "yw": rotation.yw = angle
+        case "zw": rotation.zw = angle
         default: break
         }
     }
 
     func setRotation(xy: Float, xz: Float, yz: Float, xw: Float, yw: Float, zw: Float) {
-        rotation = simd_float6(xy, xz, yz, xw, yw, zw)
+        rotation = Rotation6D(xy: xy, xz: xz, yz: yz, xw: xw, yw: yw, zw: zw)
     }
 
     func resetRotation() {
-        rotation = simd_float6(0, 0, 0, 0, 0, 0)
+        rotation.reset()
     }
 
     func setVisualParam(_ name: String, value: Float) {
         visualParams[name] = value
     }
 
-    func startRendering() {
+    func startRendering(onFrame: @escaping () -> Void) {
         guard !isRendering else { return }
         isRendering = true
-        displayLink = CADisplayLink(target: self, selector: #selector(render))
+        frameCallback = onFrame
+        startTime = CFAbsoluteTimeGetCurrent()
+        displayLink = CADisplayLink(target: self, selector: #selector(renderFrame))
         displayLink?.add(to: .main, forMode: .common)
     }
 
@@ -522,13 +595,22 @@ class Vib3MetalRenderer: NSObject, FlutterTexture {
         isRendering = false
         displayLink?.invalidate()
         displayLink = nil
+        frameCallback = nil
     }
 
-    @objc private func render() {
+    @objc private func renderFrame() {
+        render()
+        frameCallback?()
+    }
+
+    private func render() {
         guard let commandBuffer = commandQueue?.makeCommandBuffer(),
               let texture = texture,
               let depthTexture = depthTexture,
               let pipelineState = pipelineState else { return }
+
+        // Update uniforms
+        updateUniforms()
 
         // Render pass descriptor
         let renderPassDescriptor = MTLRenderPassDescriptor()
@@ -547,14 +629,11 @@ class Vib3MetalRenderer: NSObject, FlutterTexture {
         encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
         encoder.setVertexBuffer(uniformBuffer, offset: 0, index: 1)
 
-        // Update uniforms
-        updateUniforms()
-
         // Draw
         if let indexBuffer = indexBuffer {
             encoder.drawIndexedPrimitives(
                 type: .line,
-                indexCount: 64, // 32 edges * 2 vertices
+                indexCount: 64,
                 indexType: .uint16,
                 indexBuffer: indexBuffer,
                 indexBufferOffset: 0
@@ -566,8 +645,43 @@ class Vib3MetalRenderer: NSObject, FlutterTexture {
     }
 
     private func updateUniforms() {
-        // Update uniform buffer with current state
-        // This would copy rotation, visual params, projection matrices
+        guard let uniformBuffer = uniformBuffer else { return }
+
+        // Build projection matrix (perspective)
+        let aspect: Float = Float(textureWidth) / Float(textureHeight)
+        let fov: Float = Float.pi / 4.0
+        let near: Float = 0.1
+        let far: Float = 100.0
+        let tanHalf = tan(fov / 2.0)
+
+        var projection = simd_float4x4(1)
+        projection[0][0] = 1.0 / (aspect * tanHalf)
+        projection[1][1] = 1.0 / tanHalf
+        projection[2][2] = -(far + near) / (far - near)
+        projection[2][3] = -1.0
+        projection[3][2] = -(2.0 * far * near) / (far - near)
+        projection[3][3] = 0.0
+
+        // Build view matrix (lookAt)
+        var view = simd_float4x4(1)
+        view[3][2] = -5.0
+
+        let projDist = visualParams["dimension"] ?? 2.0
+
+        var uniforms = Uniforms(
+            projection: projection,
+            view: view,
+            rotationAngles: SIMD4<Float>(rotation.xy, rotation.xz, rotation.yz, rotation.xw),
+            rotationAngles2: SIMD4<Float>(rotation.yw, rotation.zw, projDist, 0),
+            colorParams: SIMD4<Float>(
+                visualParams["hue"] ?? 200,
+                visualParams["intensity"] ?? 0.8,
+                visualParams["saturation"] ?? 0.7,
+                visualParams["morphFactor"] ?? 0.5
+            )
+        )
+
+        memcpy(uniformBuffer.contents(), &uniforms, MemoryLayout<Uniforms>.stride)
     }
 
     func captureFrame() -> Data? {
@@ -601,16 +715,14 @@ class Vib3MetalRenderer: NSObject, FlutterTexture {
         uniformBuffer = nil
         pipelineState = nil
         commandQueue = nil
+        pixelBuffer = nil
+        textureCache = nil
         device = nil
     }
 
-    // FlutterTexture protocol
+    // FlutterTexture protocol — returns CVPixelBuffer backed by Metal texture
     func copyPixelBuffer() -> Unmanaged<CVPixelBuffer>? {
-        // For production, implement proper CVPixelBuffer creation
-        // This is a placeholder
-        return nil
+        guard let pixelBuffer = pixelBuffer else { return nil }
+        return Unmanaged.passRetained(pixelBuffer)
     }
 }
-
-// Helper for simd_float6 (not built-in)
-typealias simd_float6 = (Float, Float, Float, Float, Float, Float)

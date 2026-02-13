@@ -2,9 +2,15 @@
 
 **General-purpose 4D rotation visualization SDK** for plugins, extensions, wearables, and agentic AI integration.
 
-[![Tests](https://img.shields.io/badge/tests-693%2B%20passing-brightgreen)](#testing)
-[![Version](https://img.shields.io/badge/version-2.0.0-blue)](#)
+[![Tests](https://img.shields.io/badge/tests-CI%20tracked-brightgreen)](DOCS/STATUS.md#test-status)
+[![Version](https://img.shields.io/badge/version-2.0.3-blue)](DOCS/STATUS.md#vib3-sdk-status)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+---
+
+## Documentation
+
+The main documentation entrypoint is [`DOCS/README.md`](./DOCS/README.md), which includes canonical docs, persona-based reading paths, taxonomy, and source-of-truth ownership.
 
 ---
 
@@ -29,7 +35,7 @@
 - **Agentic Integration:** MCP server with 14 tools for AI agent control
 - **Cross-Platform:** Web, WASM, Flutter support
 
-### New in v2.0.0
+### New in current release (v2.0.x)
 
 - **Universal Spatial Input:** 8 input sources (tilt, gyroscope, gamepad, mouse, MIDI, audio, programmatic, perspective) with 6 built-in profiles (card tilt, wearable, game, VJ, UI, XR)
 - **Creative Tooling:** 22 color presets, 14 easing transitions, 14 post-processing effects, keyframe timeline with BPM sync
@@ -176,7 +182,7 @@ engine.randomizeAll();
 engine.resetAll();
 ```
 
-### Spatial Input API (v2.0.0)
+### Spatial Input API (v2.0.x)
 
 ```javascript
 // Enable spatial input with a profile
@@ -194,7 +200,7 @@ engine.setSpatialDramaticMode(true); // 8x amplification
 //                     vjAudioSpatial, uiElement, immersiveXR
 ```
 
-### Framework Integration (v2.0.0)
+### Framework Integration (v2.0.x)
 
 ```javascript
 // React
@@ -348,17 +354,17 @@ echo 'geometry 10' | node src/cli/index.js
 │   │   ├── cli/              # CLI interface
 │   │   └── telemetry/        # Instrumentation
 │   ├── export/               # Export generators
-│   ├── reactivity/           # Reactivity + SpatialInputSystem (v2.0.0)
-│   ├── creative/             # Color presets, transitions, post-FX, timeline (v2.0.0)
-│   ├── integrations/         # React, Vue, Svelte, Figma, Three.js, TD, OBS (v2.0.0)
-│   └── advanced/             # WebXR, WebGPU compute, MIDI, AI, Worker (v2.0.0)
+│   ├── reactivity/           # Reactivity + SpatialInputSystem (current release series)
+│   ├── creative/             # Color presets, transitions, post-FX, timeline (current release series)
+│   ├── integrations/         # React, Vue, Svelte, Figma, Three.js, TD, OBS (current release series)
+│   └── advanced/             # WebXR, WebGPU compute, MIDI, AI, Worker (current release series)
 ├── tools/                    # Tooling (+ shader-sync-verify.js)
 ├── cpp/                      # C++ math core (WASM)
 ├── js/                       # Client-side integration
-├── tests/                    # Test suite (693+ tests)
+├── tests/                    # Test suite (CI-tracked status)
 ├── DOCS/                     # Documentation
 │   ├── SYSTEM_INVENTORY.md   # Complete system reference
-│   ├── SYSTEM_AUDIT_2026-01-30.md  # Full system audit
+│   ├── archive/SYSTEM_AUDIT_2026-01-30.md  # Full system audit (archived)
 │   ├── CLI_ONBOARDING.md     # Agent CLI setup
 │   └── CONTROL_REFERENCE.md  # UI parameters
 └── types/                    # TypeScript definitions
@@ -379,7 +385,7 @@ npm test -- --coverage
 npm test -- tests/agent/AgentCLI.test.js
 ```
 
-**Current Status:** 693+ tests passing
+**Current Status:** See [`DOCS/STATUS.md`](DOCS/STATUS.md) for release and CI-linked test status.
 
 ---
 
@@ -387,13 +393,20 @@ npm test -- tests/agent/AgentCLI.test.js
 
 | Document | Description |
 |----------|-------------|
+| [`DOCS/STATUS.md`](DOCS/STATUS.md) | Canonical release status (version, date, platforms, CI test status) |
+| [`DOCS/SYSTEM_INVENTORY.md`](DOCS/SYSTEM_INVENTORY.md) | Complete technical reference |
+| [`DOCS/SYSTEM_AUDIT_2026-01-30.md`](DOCS/SYSTEM_AUDIT_2026-01-30.md) | Full system audit |
 | [`DOCS/SYSTEM_INVENTORY.md`](DOCS/SYSTEM_INVENTORY.md) | Complete technical reference (v2.0.0) |
+| [`DOCS/PRODUCT_STRATEGY.md`](DOCS/PRODUCT_STRATEGY.md) | Product strategy: personas, use-cases, differentiation, and metrics |
+| [`DOCS/ROADMAP.md`](DOCS/ROADMAP.md) | Strategy goals mapped to technical epics and module ownership |
+| [`DOCS/README.md`](DOCS/README.md) | Documentation index and navigation hub |
 | [`DOCS/SYSTEM_AUDIT_2026-01-30.md`](DOCS/SYSTEM_AUDIT_2026-01-30.md) | Full system audit (v2.0.0) |
+| [`DOCS/archive/SYSTEM_AUDIT_2026-01-30.md`](DOCS/archive/SYSTEM_AUDIT_2026-01-30.md) | Full system audit (v2.0.0, archived) |
 | [`DOCS/CLI_ONBOARDING.md`](DOCS/CLI_ONBOARDING.md) | Agent CLI setup guide |
 | [`DOCS/CONTROL_REFERENCE.md`](DOCS/CONTROL_REFERENCE.md) | UI parameter reference |
 | [`24-GEOMETRY-6D-ROTATION-SUMMARY.md`](24-GEOMETRY-6D-ROTATION-SUMMARY.md) | Geometry encoding details |
 | [`DOCS/GPU_DISPOSAL_GUIDE.md`](DOCS/GPU_DISPOSAL_GUIDE.md) | Resource management |
-| [`CLAUDE.md`](CLAUDE.md) | AI/Developer technical reference (v2.0.0) |
+| [`CLAUDE.md`](CLAUDE.md) | AI/Developer technical reference |
 
 ---
 

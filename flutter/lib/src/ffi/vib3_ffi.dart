@@ -18,15 +18,15 @@ import 'package:ffi/ffi.dart' as pkg_ffi;
 /// Load the native VIB3 library based on platform
 DynamicLibrary _loadLibrary() {
   if (Platform.isAndroid) {
-    return DynamicLibrary.open('libvib3_core.so');
+    return DynamicLibrary.open('libvib3_flutter.so');
   } else if (Platform.isIOS) {
     return DynamicLibrary.process();
   } else if (Platform.isMacOS) {
-    return DynamicLibrary.open('libvib3_core.dylib');
+    return DynamicLibrary.process();
   } else if (Platform.isWindows) {
-    return DynamicLibrary.open('vib3_core.dll');
+    return DynamicLibrary.open('vib3_flutter.dll');
   } else if (Platform.isLinux) {
-    return DynamicLibrary.open('libvib3_core.so');
+    return DynamicLibrary.open('libvib3_flutter.so');
   }
   throw UnsupportedError('Unsupported platform: ${Platform.operatingSystem}');
 }
@@ -38,7 +38,7 @@ final DynamicLibrary _nativeLib = _loadLibrary();
 // Native Structs
 // ============================================================================
 
-/// Native Vec4 structure (16-byte aligned)
+/// Native Vec4 structure
 final class NativeVec4 extends Struct {
   @Float()
   external double x;
@@ -56,46 +56,34 @@ final class NativeVec4 extends Struct {
 /// Native Rotor4D structure (8 components)
 final class NativeRotor4D extends Struct {
   @Float()
-  external double s;    // Scalar
+  external double s;
 
   @Float()
-  external double xy;   // Bivector XY
+  external double xy;
 
   @Float()
-  external double xz;   // Bivector XZ
+  external double xz;
 
   @Float()
-  external double yz;   // Bivector YZ
+  external double yz;
 
   @Float()
-  external double xw;   // Bivector XW
+  external double xw;
 
   @Float()
-  external double yw;   // Bivector YW
+  external double yw;
 
   @Float()
-  external double zw;   // Bivector ZW
+  external double zw;
 
   @Float()
-  external double xyzw; // Pseudoscalar
+  external double xyzw;
 }
 
 /// Native 4x4 Matrix (column-major, 64 bytes)
 final class NativeMat4x4 extends Struct {
   @Array(16)
   external Array<Float> data;
-}
-
-/// Command batch header
-final class CommandBatchHeader extends Struct {
-  @Uint32()
-  external int commandCount;
-
-  @Uint32()
-  external int totalSize;
-
-  @Uint64()
-  external int timestamp;
 }
 
 // ============================================================================
@@ -109,13 +97,28 @@ typedef _Vec4Create = Pointer<NativeVec4> Function(double x, double y, double z,
 typedef _Vec4DotNative = Float Function(Pointer<NativeVec4> a, Pointer<NativeVec4> b);
 typedef _Vec4Dot = double Function(Pointer<NativeVec4> a, Pointer<NativeVec4> b);
 
+typedef _Vec4LengthNative = Float Function(Pointer<NativeVec4> v);
+typedef _Vec4Length = double Function(Pointer<NativeVec4> v);
+
 typedef _Vec4NormalizeNative = Void Function(Pointer<NativeVec4> v);
 typedef _Vec4Normalize = void Function(Pointer<NativeVec4> v);
 
 typedef _Vec4FreeNative = Void Function(Pointer<NativeVec4> v);
 typedef _Vec4Free = void Function(Pointer<NativeVec4> v);
 
+typedef _Vec4BinaryNative = Pointer<NativeVec4> Function(Pointer<NativeVec4> a, Pointer<NativeVec4> b);
+typedef _Vec4Binary = Pointer<NativeVec4> Function(Pointer<NativeVec4> a, Pointer<NativeVec4> b);
+
+typedef _Vec4ScaleNative = Pointer<NativeVec4> Function(Pointer<NativeVec4> v, Float s);
+typedef _Vec4Scale = Pointer<NativeVec4> Function(Pointer<NativeVec4> v, double s);
+
+typedef _Vec4LerpNative = Pointer<NativeVec4> Function(Pointer<NativeVec4> a, Pointer<NativeVec4> b, Float t);
+typedef _Vec4Lerp = Pointer<NativeVec4> Function(Pointer<NativeVec4> a, Pointer<NativeVec4> b, double t);
+
 // Rotor4D operations
+typedef _Rotor4DIdentityNative = Pointer<NativeRotor4D> Function();
+typedef _Rotor4DIdentity = Pointer<NativeRotor4D> Function();
+
 typedef _Rotor4DFromPlaneAngleNative = Pointer<NativeRotor4D> Function(Int32 plane, Float angle);
 typedef _Rotor4DFromPlaneAngle = Pointer<NativeRotor4D> Function(int plane, double angle);
 
@@ -150,12 +153,31 @@ typedef _Rotor4DSlerp = Pointer<NativeRotor4D> Function(
 typedef _Rotor4DFreeNative = Void Function(Pointer<NativeRotor4D> r);
 typedef _Rotor4DFree = void Function(Pointer<NativeRotor4D> r);
 
+typedef _Rotor4DNormalizeNative = Void Function(Pointer<NativeRotor4D> r);
+typedef _Rotor4DNormalize = void Function(Pointer<NativeRotor4D> r);
+
+typedef _Rotor4DToMatrixNative = Pointer<NativeMat4x4> Function(Pointer<NativeRotor4D> r);
+typedef _Rotor4DToMatrix = Pointer<NativeMat4x4> Function(Pointer<NativeRotor4D> r);
+
 // Mat4x4 operations
+typedef _Mat4x4IdentityNative = Pointer<NativeMat4x4> Function();
+typedef _Mat4x4Identity = Pointer<NativeMat4x4> Function();
+
+typedef _Mat4x4RotationSingleNative = Pointer<NativeMat4x4> Function(Float angle);
+typedef _Mat4x4RotationSingle = Pointer<NativeMat4x4> Function(double angle);
+
 typedef _Mat4x4RotationFromAnglesNative = Pointer<NativeMat4x4> Function(
   Float xy, Float xz, Float yz, Float xw, Float yw, Float zw
 );
 typedef _Mat4x4RotationFromAngles = Pointer<NativeMat4x4> Function(
   double xy, double xz, double yz, double xw, double yw, double zw
+);
+
+typedef _Mat4x4MultiplyNative = Pointer<NativeMat4x4> Function(
+  Pointer<NativeMat4x4> a, Pointer<NativeMat4x4> b
+);
+typedef _Mat4x4Multiply = Pointer<NativeMat4x4> Function(
+  Pointer<NativeMat4x4> a, Pointer<NativeMat4x4> b
 );
 
 typedef _Mat4x4MultiplyVec4Native = Pointer<NativeVec4> Function(
@@ -179,6 +201,9 @@ typedef _ProjectPerspective = Pointer<NativeVec4> Function(
 typedef _ProjectStereographicNative = Pointer<NativeVec4> Function(Pointer<NativeVec4> v);
 typedef _ProjectStereographic = Pointer<NativeVec4> Function(Pointer<NativeVec4> v);
 
+typedef _ProjectOrthographicNative = Pointer<NativeVec4> Function(Pointer<NativeVec4> v);
+typedef _ProjectOrthographic = Pointer<NativeVec4> Function(Pointer<NativeVec4> v);
+
 // Batch operations
 typedef _ProcessCommandBatchNative = Int32 Function(
   Pointer<Uint8> commands, Uint32 size, Pointer<Uint8> results
@@ -187,6 +212,16 @@ typedef _ProcessCommandBatch = int Function(
   Pointer<Uint8> commands, int size, Pointer<Uint8> results
 );
 
+// Utility
+typedef _VersionNative = Pointer<pkg_ffi.Utf8> Function();
+typedef _Version = Pointer<pkg_ffi.Utf8> Function();
+
+typedef _GeometryNameNative = Pointer<pkg_ffi.Utf8> Function(Int32 index);
+typedef _GeometryName = Pointer<pkg_ffi.Utf8> Function(int index);
+
+typedef _HasSimdNative = Bool Function();
+typedef _HasSimd = bool Function();
+
 // ============================================================================
 // Native Function Bindings
 // ============================================================================
@@ -194,28 +229,50 @@ typedef _ProcessCommandBatch = int Function(
 // Vec4
 final _vec4Create = _nativeLib.lookupFunction<_Vec4CreateNative, _Vec4Create>('vib3_vec4_create');
 final _vec4Dot = _nativeLib.lookupFunction<_Vec4DotNative, _Vec4Dot>('vib3_vec4_dot');
+final _vec4Length = _nativeLib.lookupFunction<_Vec4LengthNative, _Vec4Length>('vib3_vec4_length');
 final _vec4Normalize = _nativeLib.lookupFunction<_Vec4NormalizeNative, _Vec4Normalize>('vib3_vec4_normalize');
 final _vec4Free = _nativeLib.lookupFunction<_Vec4FreeNative, _Vec4Free>('vib3_vec4_free');
+final _vec4Add = _nativeLib.lookupFunction<_Vec4BinaryNative, _Vec4Binary>('vib3_vec4_add');
+final _vec4Sub = _nativeLib.lookupFunction<_Vec4BinaryNative, _Vec4Binary>('vib3_vec4_sub');
+final _vec4Scale = _nativeLib.lookupFunction<_Vec4ScaleNative, _Vec4Scale>('vib3_vec4_scale');
+final _vec4Lerp = _nativeLib.lookupFunction<_Vec4LerpNative, _Vec4Lerp>('vib3_vec4_lerp');
 
 // Rotor4D
+final _rotor4DIdentity = _nativeLib.lookupFunction<_Rotor4DIdentityNative, _Rotor4DIdentity>('vib3_rotor4d_identity');
 final _rotor4DFromPlaneAngle = _nativeLib.lookupFunction<_Rotor4DFromPlaneAngleNative, _Rotor4DFromPlaneAngle>('vib3_rotor4d_from_plane_angle');
 final _rotor4DFromEuler6 = _nativeLib.lookupFunction<_Rotor4DFromEuler6Native, _Rotor4DFromEuler6>('vib3_rotor4d_from_euler6');
 final _rotor4DMultiply = _nativeLib.lookupFunction<_Rotor4DMultiplyNative, _Rotor4DMultiply>('vib3_rotor4d_multiply');
 final _rotor4DRotate = _nativeLib.lookupFunction<_Rotor4DRotateNative, _Rotor4DRotate>('vib3_rotor4d_rotate');
 final _rotor4DSlerp = _nativeLib.lookupFunction<_Rotor4DSlerpNative, _Rotor4DSlerp>('vib3_rotor4d_slerp');
 final _rotor4DFree = _nativeLib.lookupFunction<_Rotor4DFreeNative, _Rotor4DFree>('vib3_rotor4d_free');
+final _rotor4DNormalize = _nativeLib.lookupFunction<_Rotor4DNormalizeNative, _Rotor4DNormalize>('vib3_rotor4d_normalize');
+final _rotor4DToMatrix = _nativeLib.lookupFunction<_Rotor4DToMatrixNative, _Rotor4DToMatrix>('vib3_rotor4d_to_matrix');
 
 // Mat4x4
+final _mat4x4Identity = _nativeLib.lookupFunction<_Mat4x4IdentityNative, _Mat4x4Identity>('vib3_mat4x4_identity');
+final _mat4x4RotationXY = _nativeLib.lookupFunction<_Mat4x4RotationSingleNative, _Mat4x4RotationSingle>('vib3_mat4x4_rotation_xy');
+final _mat4x4RotationXZ = _nativeLib.lookupFunction<_Mat4x4RotationSingleNative, _Mat4x4RotationSingle>('vib3_mat4x4_rotation_xz');
+final _mat4x4RotationYZ = _nativeLib.lookupFunction<_Mat4x4RotationSingleNative, _Mat4x4RotationSingle>('vib3_mat4x4_rotation_yz');
+final _mat4x4RotationXW = _nativeLib.lookupFunction<_Mat4x4RotationSingleNative, _Mat4x4RotationSingle>('vib3_mat4x4_rotation_xw');
+final _mat4x4RotationYW = _nativeLib.lookupFunction<_Mat4x4RotationSingleNative, _Mat4x4RotationSingle>('vib3_mat4x4_rotation_yw');
+final _mat4x4RotationZW = _nativeLib.lookupFunction<_Mat4x4RotationSingleNative, _Mat4x4RotationSingle>('vib3_mat4x4_rotation_zw');
 final _mat4x4RotationFromAngles = _nativeLib.lookupFunction<_Mat4x4RotationFromAnglesNative, _Mat4x4RotationFromAngles>('vib3_mat4x4_rotation_from_angles');
+final _mat4x4Multiply = _nativeLib.lookupFunction<_Mat4x4MultiplyNative, _Mat4x4Multiply>('vib3_mat4x4_multiply');
 final _mat4x4MultiplyVec4 = _nativeLib.lookupFunction<_Mat4x4MultiplyVec4Native, _Mat4x4MultiplyVec4>('vib3_mat4x4_multiply_vec4');
 final _mat4x4Free = _nativeLib.lookupFunction<_Mat4x4FreeNative, _Mat4x4Free>('vib3_mat4x4_free');
 
 // Projection
 final _projectPerspective = _nativeLib.lookupFunction<_ProjectPerspectiveNative, _ProjectPerspective>('vib3_project_perspective');
 final _projectStereographic = _nativeLib.lookupFunction<_ProjectStereographicNative, _ProjectStereographic>('vib3_project_stereographic');
+final _projectOrthographic = _nativeLib.lookupFunction<_ProjectOrthographicNative, _ProjectOrthographic>('vib3_project_orthographic');
 
 // Batch
 final _processCommandBatch = _nativeLib.lookupFunction<_ProcessCommandBatchNative, _ProcessCommandBatch>('vib3_process_command_batch');
+
+// Utility
+final _version = _nativeLib.lookupFunction<_VersionNative, _Version>('vib3_version');
+final _geometryName = _nativeLib.lookupFunction<_GeometryNameNative, _GeometryName>('vib3_geometry_name');
+final _hasSimd = _nativeLib.lookupFunction<_HasSimdNative, _HasSimd>('vib3_has_simd');
 
 // ============================================================================
 // Dart Wrapper Classes
@@ -258,6 +315,11 @@ class Vec4 {
     return _vec4Dot(_ptr, other._ptr);
   }
 
+  double get length {
+    _checkDisposed();
+    return _vec4Length(_ptr);
+  }
+
   void normalize() {
     _checkDisposed();
     _vec4Normalize(_ptr);
@@ -270,9 +332,24 @@ class Vec4 {
     return result;
   }
 
-  double get length => _length();
-  double _length() {
-    return math.sqrt(x * x + y * y + z * z + w * w);
+  Vec4 operator +(Vec4 other) {
+    _checkDisposed();
+    return Vec4._fromPointer(_vec4Add(_ptr, other._ptr));
+  }
+
+  Vec4 operator -(Vec4 other) {
+    _checkDisposed();
+    return Vec4._fromPointer(_vec4Sub(_ptr, other._ptr));
+  }
+
+  Vec4 operator *(double scalar) {
+    _checkDisposed();
+    return Vec4._fromPointer(_vec4Scale(_ptr, scalar));
+  }
+
+  Vec4 lerp(Vec4 other, double t) {
+    _checkDisposed();
+    return Vec4._fromPointer(_vec4Lerp(_ptr, other._ptr, t));
   }
 
   Float32List toFloat32List() => Float32List.fromList([x, y, z, w]);
@@ -299,6 +376,11 @@ class Rotor4D {
 
   Rotor4D._fromPointer(this._ptr);
 
+  /// Create identity rotor (no rotation)
+  factory Rotor4D.identity() {
+    return Rotor4D._fromPointer(_rotor4DIdentity());
+  }
+
   /// Create rotor for single-plane rotation
   factory Rotor4D.fromPlaneAngle(RotationPlane plane, double angle) {
     return Rotor4D._fromPointer(_rotor4DFromPlaneAngle(plane.value, angle));
@@ -314,11 +396,6 @@ class Rotor4D {
     double zw = 0,
   }) {
     return Rotor4D._fromPointer(_rotor4DFromEuler6(xy, xz, yz, xw, yw, zw));
-  }
-
-  /// Identity rotor (no rotation)
-  factory Rotor4D.identity() {
-    return Rotor4D.fromEuler6();
   }
 
   double get s => _ptr.ref.s;
@@ -348,6 +425,18 @@ class Rotor4D {
     return Rotor4D._fromPointer(_rotor4DSlerp(_ptr, other._ptr, t));
   }
 
+  /// Normalize this rotor
+  void normalize() {
+    _checkDisposed();
+    _rotor4DNormalize(_ptr);
+  }
+
+  /// Convert to 4x4 rotation matrix
+  Mat4x4 toMatrix() {
+    _checkDisposed();
+    return Mat4x4._fromPointer(_rotor4DToMatrix(_ptr));
+  }
+
   void _checkDisposed() {
     if (_disposed) throw StateError('Rotor4D has been disposed');
   }
@@ -370,6 +459,19 @@ class Mat4x4 {
 
   Mat4x4._fromPointer(this._ptr);
 
+  /// Create identity matrix
+  factory Mat4x4.identity() {
+    return Mat4x4._fromPointer(_mat4x4Identity());
+  }
+
+  /// Create rotation matrix for a single plane
+  factory Mat4x4.rotationXY(double angle) => Mat4x4._fromPointer(_mat4x4RotationXY(angle));
+  factory Mat4x4.rotationXZ(double angle) => Mat4x4._fromPointer(_mat4x4RotationXZ(angle));
+  factory Mat4x4.rotationYZ(double angle) => Mat4x4._fromPointer(_mat4x4RotationYZ(angle));
+  factory Mat4x4.rotationXW(double angle) => Mat4x4._fromPointer(_mat4x4RotationXW(angle));
+  factory Mat4x4.rotationYW(double angle) => Mat4x4._fromPointer(_mat4x4RotationYW(angle));
+  factory Mat4x4.rotationZW(double angle) => Mat4x4._fromPointer(_mat4x4RotationZW(angle));
+
   /// Create rotation matrix from 6 angles
   factory Mat4x4.rotationFromAngles({
     double xy = 0,
@@ -380,6 +482,12 @@ class Mat4x4 {
     double zw = 0,
   }) {
     return Mat4x4._fromPointer(_mat4x4RotationFromAngles(xy, xz, yz, xw, yw, zw));
+  }
+
+  /// Multiply matrices
+  Mat4x4 multiply(Mat4x4 other) {
+    _checkDisposed();
+    return Mat4x4._fromPointer(_mat4x4Multiply(_ptr, other._ptr));
   }
 
   /// Transform a vector
@@ -412,15 +520,32 @@ class Mat4x4 {
 
 /// Projection utilities
 class Projection {
-  /// Perspective projection (4D → 3D)
+  /// Perspective projection (4D -> 3D)
   static Vec4 perspective(Vec4 v, double distance) {
     return Vec4._fromPointer(_projectPerspective(v._ptr, distance));
   }
 
-  /// Stereographic projection (4D → 3D)
+  /// Stereographic projection (4D -> 3D)
   static Vec4 stereographic(Vec4 v) {
     return Vec4._fromPointer(_projectStereographic(v._ptr));
   }
+
+  /// Orthographic projection (4D -> 3D)
+  static Vec4 orthographic(Vec4 v) {
+    return Vec4._fromPointer(_projectOrthographic(v._ptr));
+  }
+}
+
+/// VIB3 utility functions
+class Vib3Utils {
+  /// Get the native library version
+  static String get version => _version().cast<pkg_ffi.Utf8>().toDartString();
+
+  /// Get geometry name by index (0-23)
+  static String geometryName(int index) => _geometryName(index).cast<pkg_ffi.Utf8>().toDartString();
+
+  /// Whether SIMD is available on this platform
+  static bool get hasSimd => _hasSimd();
 }
 
 // ============================================================================
@@ -446,7 +571,6 @@ class CommandBatch {
   final BytesBuilder _builder = BytesBuilder();
   int _commandCount = 0;
 
-  /// Add a set parameter command
   void setParameter(int paramId, double value) {
     _builder.addByte(CommandType.setParameter.value);
     _builder.add(_encodeUint32(paramId));
@@ -454,14 +578,12 @@ class CommandBatch {
     _commandCount++;
   }
 
-  /// Add a set geometry command
   void setGeometry(int geometryIndex) {
     _builder.addByte(CommandType.setGeometry.value);
     _builder.add(_encodeUint32(geometryIndex));
     _commandCount++;
   }
 
-  /// Add a rotation command
   void rotate(RotationPlane plane, double angle) {
     _builder.addByte(CommandType.rotate.value);
     _builder.addByte(plane.value);
@@ -469,49 +591,40 @@ class CommandBatch {
     _commandCount++;
   }
 
-  /// Add a reset rotation command
   void resetRotation() {
     _builder.addByte(CommandType.resetRotation.value);
     _commandCount++;
   }
 
-  /// Add a render command
   void render() {
     _builder.addByte(CommandType.render.value);
     _commandCount++;
   }
 
-  /// Get command count
   int get commandCount => _commandCount;
 
-  /// Build and execute the batch
   Uint8List execute() {
     final commands = _builder.toBytes();
-    final resultsPtr = calloc<Uint8>(commands.length * 2); // Allocate result buffer
+    final resultsPtr = calloc<Uint8>(commands.length * 2);
     final commandsPtr = calloc<Uint8>(commands.length);
 
-    // Copy commands to native memory
     for (int i = 0; i < commands.length; i++) {
       commandsPtr[i] = commands[i];
     }
 
-    // Execute batch
     final resultSize = _processCommandBatch(commandsPtr, commands.length, resultsPtr);
 
-    // Copy results
     final results = Uint8List(resultSize);
     for (int i = 0; i < resultSize; i++) {
       results[i] = resultsPtr[i];
     }
 
-    // Free native memory
     calloc.free(commandsPtr);
     calloc.free(resultsPtr);
 
     return results;
   }
 
-  /// Clear the batch
   void clear() {
     _builder.clear();
     _commandCount = 0;
