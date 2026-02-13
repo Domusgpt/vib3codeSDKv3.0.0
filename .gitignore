@@ -34,3 +34,5 @@ test-results/
 # Environment
 .env
 .env.local
+build_verify_full/
+build_verify_partial/

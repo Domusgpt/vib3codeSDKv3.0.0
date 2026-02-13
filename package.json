@@ -344,7 +344,8 @@
     "DOCS/",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "cpp/"
   ],
   "dependencies": {
     "ajv": "^8.17.1",
