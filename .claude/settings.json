@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "PreCommit": [
+      {
+        "matcher": "**/*.glsl",
+        "command": "npm run verify:shaders"
+      },
+      {
+        "matcher": "**/*.wgsl",
+        "command": "npm run verify:shaders"
+      }
+    ]
+  }
+}

@@ -163,6 +163,28 @@ export class MCPServer {
                 case 'list_behavior_presets':
                     result = this.listBehaviorPresets();
                     break;
+                // Agent-power tools (Phase 7)
+                case 'describe_visual_state':
+                    result = this.describeVisualState();
+                    break;
+                case 'batch_set_parameters':
+                    result = await this.batchSetParameters(args);
+                    break;
+                case 'create_timeline':
+                    result = this.createTimeline(args);
+                    break;
+                case 'play_transition':
+                    result = this.playTransition(args);
+                    break;
+                case 'apply_color_preset':
+                    result = this.applyColorPreset(args);
+                    break;
+                case 'set_post_processing':
+                    result = this.setPostProcessing(args);
+                    break;
+                case 'create_choreography':
+                    result = this.createChoreography(args);
+                    break;
                 default:
                     throw new Error(`Unknown tool: ${toolName}`);
             }
@@ -941,6 +963,368 @@ export class MCPServer {
                 description: value.description
             })),
             suggested_next_actions: ['apply_behavior_preset']
+        };
+    }
+
+    // ===== AGENT-POWER TOOLS (Phase 7 — Agent Harness) =====
+
+    /**
+     * Generate a natural-language description of the current visual state.
+     * Enables text-only agents to "see" what the visualization looks like.
+     */
+    describeVisualState() {
+        const state = this.getState();
+        const params = state.visual || {};
+        const rotation = state.rotation_state || {};
+        const geometry = state.geometry || {};
+
+        // Color description from hue
+        const hue = params.hue || 0;
+        const colorName = hue < 15 ? 'red' : hue < 45 ? 'orange' : hue < 75 ? 'yellow' :
+            hue < 150 ? 'green' : hue < 195 ? 'cyan' : hue < 255 ? 'blue' :
+            hue < 285 ? 'purple' : hue < 330 ? 'magenta' : 'red';
+        const satDesc = (params.saturation || 0.8) > 0.7 ? 'vivid' :
+            (params.saturation || 0.8) > 0.4 ? 'moderate' : 'desaturated';
+        const intensityDesc = (params.intensity || 0.5) > 0.7 ? 'bright' :
+            (params.intensity || 0.5) > 0.3 ? 'medium brightness' : 'dim';
+
+        // Motion description
+        const speed = params.speed || 1.0;
+        const speedDesc = speed > 2.0 ? 'rapidly' : speed > 1.0 ? 'moderately' :
+            speed > 0.4 ? 'slowly' : 'very slowly';
+        const chaos = params.chaos || 0;
+        const chaosDesc = chaos > 0.7 ? 'highly turbulent' : chaos > 0.3 ? 'somewhat organic' :
+            chaos > 0.05 ? 'subtly alive' : 'perfectly still';
+
+        // 4D rotation activity
+        const has4D = Math.abs(rotation.XW || 0) > 0.1 ||
+            Math.abs(rotation.YW || 0) > 0.1 ||
+            Math.abs(rotation.ZW || 0) > 0.1;
+        const rotDesc = has4D ? 'with visible 4D hyperspace rotation (inside-out morphing)' :
+            'in standard 3D orientation';
+
+        // Density/complexity
+        const density = params.gridDensity || 10;
+        const densityDesc = density > 50 ? 'extremely intricate' : density > 25 ? 'detailed' :
+            density > 12 ? 'moderate detail' : 'bold and sparse';
+
+        // Projection
+        const dim = params.dimension || 3.8;
+        const projDesc = dim < 3.3 ? 'dramatic fish-eye distortion' :
+            dim < 3.8 ? 'moderate perspective depth' : 'subtle, flattened perspective';
+
+        const description = [
+            `A ${satDesc} ${colorName} ${geometry.core_type || 'base'} ${geometry.base_type || 'tetrahedron'}`,
+            `rendered in the ${state.system || 'quantum'} system.`,
+            `The pattern is ${densityDesc} and ${chaosDesc},`,
+            `animating ${speedDesc} ${rotDesc}.`,
+            `Color is ${intensityDesc} with ${projDesc}.`,
+            params.morphFactor > 0.5 ? `Shape is morphing between geometries (factor: ${params.morphFactor}).` : ''
+        ].filter(Boolean).join(' ');
+
+        return {
+            description,
+            mood: this._assessMood(params),
+            complexity: density > 40 ? 'high' : density > 15 ? 'medium' : 'low',
+            motion_level: speed > 1.5 ? 'high' : speed > 0.5 ? 'medium' : 'low',
+            has_4d_rotation: has4D,
+            color_family: colorName,
+            suggested_next_actions: ['set_visual_parameters', 'set_rotation', 'batch_set_parameters']
+        };
+    }
+
+    /**
+     * Assess the emotional mood of the current visual state
+     */
+    _assessMood(params) {
+        const hue = params.hue || 0;
+        const speed = params.speed || 1.0;
+        const chaos = params.chaos || 0;
+        const intensity = params.intensity || 0.5;
+
+        if (speed < 0.3 && chaos < 0.1) return 'serene';
+        if (speed > 2.0 && chaos > 0.6) return 'chaotic';
+        if (hue > 180 && hue < 260 && intensity < 0.5) return 'mysterious';
+        if (hue > 0 && hue < 60 && intensity > 0.6) return 'warm';
+        if (hue > 150 && hue < 200 && speed < 0.8) return 'tranquil';
+        if (chaos > 0.5 && speed > 1.5) return 'energetic';
+        if (intensity > 0.8) return 'vibrant';
+        return 'balanced';
+    }
+
+    /**
+     * Atomically set multiple parameter categories in one call
+     */
+    async batchSetParameters(args) {
+        const { system, geometry, rotation, visual, preset } = args;
+
+        // Switch system first if requested
+        if (system && this.engine) {
+            await this.engine.switchSystem(system);
+        }
+
+        // Set geometry
+        if (geometry !== undefined && this.engine) {
+            this.engine.setParameter('geometry', geometry);
+        }
+
+        // Set rotation
+        if (rotation) {
+            const rotMap = { XY: 'rot4dXY', XZ: 'rot4dXZ', YZ: 'rot4dYZ',
+                            XW: 'rot4dXW', YW: 'rot4dYW', ZW: 'rot4dZW' };
+            for (const [key, value] of Object.entries(rotation)) {
+                if (value !== undefined && this.engine) {
+                    this.engine.setParameter(rotMap[key], value);
+                }
+            }
+        }
+
+        // Set visual parameters
+        if (visual && this.engine) {
+            for (const [key, value] of Object.entries(visual)) {
+                this.engine.setParameter(key, value);
+            }
+        }
+
+        // Apply preset last (overrides relevant params)
+        if (preset) {
+            this.applyBehaviorPreset({ preset });
+        }
+
+        telemetry.recordEvent(EventType.PARAMETER_BATCH_CHANGE, {
+            count: (rotation ? Object.keys(rotation).length : 0) +
+                   (visual ? Object.keys(visual).length : 0) +
+                   (system ? 1 : 0) + (geometry !== undefined ? 1 : 0)
+        });
+
+        return {
+            ...this.getState(),
+            batch_applied: true,
+            suggested_next_actions: ['describe_visual_state', 'save_to_gallery', 'create_timeline']
+        };
+    }
+
+    /**
+     * Create a ParameterTimeline from agent specification
+     */
+    createTimeline(args) {
+        const { name, duration_ms, bpm, loop_mode = 'once', tracks } = args;
+
+        const timelineId = generateId('timeline');
+
+        // Validate tracks have properly sorted keyframes
+        const validatedTracks = {};
+        for (const [param, keyframes] of Object.entries(tracks)) {
+            validatedTracks[param] = keyframes
+                .map(kf => ({
+                    time: Math.max(0, Math.min(kf.time, duration_ms)),
+                    value: kf.value,
+                    easing: kf.easing || 'easeInOut'
+                }))
+                .sort((a, b) => a.time - b.time);
+        }
+
+        // Build timeline data for ParameterTimeline consumption
+        const timelineData = {
+            id: timelineId,
+            name: name || `Timeline ${timelineId}`,
+            duration: duration_ms,
+            bpm: bpm || null,
+            loopMode: loop_mode,
+            tracks: validatedTracks
+        };
+
+        // If engine is available, create and start the timeline
+        if (this.engine) {
+            // Store for later retrieval
+            if (!this._timelines) this._timelines = new Map();
+            this._timelines.set(timelineId, timelineData);
+        }
+
+        return {
+            timeline_id: timelineId,
+            name: timelineData.name,
+            duration_ms,
+            bpm: bpm || null,
+            loop_mode,
+            track_count: Object.keys(validatedTracks).length,
+            tracks_summary: Object.entries(validatedTracks).map(([param, kfs]) => ({
+                parameter: param,
+                keyframe_count: kfs.length,
+                value_range: [
+                    Math.min(...kfs.map(k => k.value)),
+                    Math.max(...kfs.map(k => k.value))
+                ]
+            })),
+            load_code: `const tl = new ParameterTimeline((n, v) => engine.setParameter(n, v));\ntl.importTimeline(${JSON.stringify(timelineData)});\ntl.play();`,
+            suggested_next_actions: ['play_transition', 'describe_visual_state', 'save_to_gallery']
+        };
+    }
+
+    /**
+     * Play a smooth transition sequence
+     */
+    playTransition(args) {
+        const { sequence } = args;
+
+        const transitionId = generateId('transition');
+
+        // Validate and normalize the sequence
+        const normalizedSequence = sequence.map((step, i) => ({
+            params: step.params,
+            duration: step.duration || 1000,
+            easing: step.easing || 'easeInOut',
+            delay: step.delay || 0
+        }));
+
+        const totalDuration = normalizedSequence.reduce(
+            (sum, step) => sum + step.duration + step.delay, 0
+        );
+
+        return {
+            transition_id: transitionId,
+            step_count: normalizedSequence.length,
+            total_duration_ms: totalDuration,
+            steps: normalizedSequence.map((step, i) => ({
+                index: i,
+                params: Object.keys(step.params),
+                duration: step.duration,
+                easing: step.easing,
+                delay: step.delay
+            })),
+            load_code: `const animator = new TransitionAnimator(\n  (n, v) => engine.setParameter(n, v),\n  (n) => engine.getParameter(n)\n);\nanimator.sequence(${JSON.stringify(normalizedSequence)});`,
+            suggested_next_actions: ['describe_visual_state', 'create_timeline', 'save_to_gallery']
+        };
+    }
+
+    /**
+     * Apply a named color preset
+     */
+    applyColorPreset(args) {
+        const { preset } = args;
+
+        // Color preset hue/saturation mappings (subset — full list in ColorPresetsSystem)
+        const COLOR_PRESETS = {
+            Ocean: { hue: 200, saturation: 0.8, intensity: 0.6 },
+            Lava: { hue: 15, saturation: 0.9, intensity: 0.8 },
+            Neon: { hue: 300, saturation: 1.0, intensity: 0.9 },
+            Monochrome: { hue: 0, saturation: 0.0, intensity: 0.6 },
+            Sunset: { hue: 30, saturation: 0.85, intensity: 0.7 },
+            Aurora: { hue: 140, saturation: 0.7, intensity: 0.6 },
+            Cyberpunk: { hue: 280, saturation: 0.9, intensity: 0.8 },
+            Forest: { hue: 120, saturation: 0.6, intensity: 0.5 },
+            Desert: { hue: 40, saturation: 0.5, intensity: 0.7 },
+            Galaxy: { hue: 260, saturation: 0.8, intensity: 0.4 },
+            Ice: { hue: 190, saturation: 0.5, intensity: 0.8 },
+            Fire: { hue: 10, saturation: 1.0, intensity: 0.9 },
+            Toxic: { hue: 100, saturation: 0.9, intensity: 0.7 },
+            Royal: { hue: 270, saturation: 0.7, intensity: 0.5 },
+            Pastel: { hue: 330, saturation: 0.3, intensity: 0.8 },
+            Retro: { hue: 50, saturation: 0.7, intensity: 0.6 },
+            Midnight: { hue: 240, saturation: 0.6, intensity: 0.3 },
+            Tropical: { hue: 160, saturation: 0.8, intensity: 0.7 },
+            Ethereal: { hue: 220, saturation: 0.4, intensity: 0.7 },
+            Volcanic: { hue: 5, saturation: 0.95, intensity: 0.6 },
+            Holographic: { hue: 180, saturation: 0.6, intensity: 0.8 },
+            Vaporwave: { hue: 310, saturation: 0.7, intensity: 0.7 }
+        };
+
+        const presetData = COLOR_PRESETS[preset];
+        if (!presetData) {
+            return {
+                error: {
+                    type: 'ValidationError',
+                    code: 'INVALID_COLOR_PRESET',
+                    message: `Unknown color preset: ${preset}`,
+                    valid_options: Object.keys(COLOR_PRESETS)
+                }
+            };
+        }
+
+        if (this.engine) {
+            this.engine.setParameter('hue', presetData.hue);
+            this.engine.setParameter('saturation', presetData.saturation);
+            this.engine.setParameter('intensity', presetData.intensity);
+        }
+
+        return {
+            preset,
+            applied: presetData,
+            suggested_next_actions: ['set_post_processing', 'describe_visual_state', 'set_visual_parameters']
+        };
+    }
+
+    /**
+     * Configure post-processing effects pipeline
+     */
+    setPostProcessing(args) {
+        const { effects, chain_preset, clear_first = true } = args;
+
+        return {
+            applied: true,
+            effects: effects || [],
+            chain_preset: chain_preset || null,
+            cleared_previous: clear_first,
+            load_code: effects ?
+                `const pipeline = new PostProcessingPipeline(gl, canvas);\n${effects.map(e => `pipeline.addEffect('${e.name}', { intensity: ${e.intensity || 0.5} });`).join('\n')}` :
+                `pipeline.applyChain('${chain_preset}');`,
+            suggested_next_actions: ['describe_visual_state', 'apply_color_preset', 'create_choreography']
+        };
+    }
+
+    /**
+     * Create a multi-scene choreography — the most powerful agent composition tool
+     */
+    createChoreography(args) {
+        const { name, duration_ms, bpm, scenes } = args;
+
+        const choreographyId = generateId('choreo');
+
+        // Validate scene time ranges don't exceed duration
+        const validatedScenes = scenes.map((scene, i) => ({
+            index: i,
+            time_start: Math.max(0, scene.time_start),
+            time_end: Math.min(scene.time_end, duration_ms),
+            system: scene.system,
+            geometry: scene.geometry ?? 0,
+            transition_in: scene.transition_in || { type: 'cut', duration: 0 },
+            tracks: scene.tracks || {},
+            color_preset: scene.color_preset || null,
+            post_processing: scene.post_processing || [],
+            audio: scene.audio || null
+        }));
+
+        const choreography = {
+            id: choreographyId,
+            name: name || `Choreography ${choreographyId}`,
+            duration_ms,
+            bpm: bpm || null,
+            scene_count: validatedScenes.length,
+            scenes: validatedScenes
+        };
+
+        // Store for later retrieval
+        if (!this._choreographies) this._choreographies = new Map();
+        this._choreographies.set(choreographyId, choreography);
+
+        return {
+            choreography_id: choreographyId,
+            name: choreography.name,
+            duration_ms,
+            bpm: bpm || null,
+            scene_count: validatedScenes.length,
+            scenes_summary: validatedScenes.map(s => ({
+                index: s.index,
+                time: `${s.time_start}ms → ${s.time_end}ms`,
+                system: s.system,
+                geometry: s.geometry,
+                transition: s.transition_in.type,
+                track_count: Object.keys(s.tracks).length,
+                color_preset: s.color_preset,
+                effects: s.post_processing
+            })),
+            choreography_json: JSON.stringify(choreography, null, 2),
+            suggested_next_actions: ['describe_visual_state', 'export_package']
         };
     }
 }

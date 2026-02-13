@@ -395,6 +395,256 @@ export const toolDefinitions = {
             type: 'object',
             properties: {}
         }
+    },
+
+    // ===== AGENT-POWER TOOLS (Phase 7 — Agent Harness) =====
+
+    describe_visual_state: {
+        name: 'describe_visual_state',
+        description: 'Returns a structured natural-language description of the current visualization state. Useful for multimodal agents to understand what the visualization looks like without a screenshot. Includes system, geometry, color mood, motion character, and complexity assessment.',
+        inputSchema: {
+            type: 'object',
+            properties: {}
+        }
+    },
+
+    batch_set_parameters: {
+        name: 'batch_set_parameters',
+        description: 'Atomically sets multiple parameters including rotation, visual, and system in one call. Prevents intermediate render states. More efficient than calling set_rotation + set_visual_parameters separately.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                system: {
+                    type: 'string',
+                    enum: ['quantum', 'faceted', 'holographic'],
+                    description: 'Optional: switch system first'
+                },
+                geometry: {
+                    type: 'integer',
+                    minimum: 0,
+                    maximum: 23,
+                    description: 'Geometry index'
+                },
+                rotation: {
+                    type: 'object',
+                    description: '6D rotation angles (all optional)',
+                    properties: {
+                        XY: { type: 'number', minimum: -6.28, maximum: 6.28 },
+                        XZ: { type: 'number', minimum: -6.28, maximum: 6.28 },
+                        YZ: { type: 'number', minimum: -6.28, maximum: 6.28 },
+                        XW: { type: 'number', minimum: -6.28, maximum: 6.28 },
+                        YW: { type: 'number', minimum: -6.28, maximum: 6.28 },
+                        ZW: { type: 'number', minimum: -6.28, maximum: 6.28 }
+                    }
+                },
+                visual: {
+                    type: 'object',
+                    description: 'Visual parameters (all optional)',
+                    properties: {
+                        hue: { type: 'integer', minimum: 0, maximum: 360 },
+                        saturation: { type: 'number', minimum: 0, maximum: 1 },
+                        intensity: { type: 'number', minimum: 0, maximum: 1 },
+                        speed: { type: 'number', minimum: 0.1, maximum: 3 },
+                        chaos: { type: 'number', minimum: 0, maximum: 1 },
+                        morphFactor: { type: 'number', minimum: 0, maximum: 2 },
+                        gridDensity: { type: 'number', minimum: 4, maximum: 100 },
+                        dimension: { type: 'number', minimum: 3.0, maximum: 4.5 }
+                    }
+                },
+                preset: {
+                    type: 'string',
+                    enum: ['ambient', 'reactive', 'immersive', 'energetic', 'calm', 'cinematic'],
+                    description: 'Optional: apply behavior preset after setting params'
+                }
+            }
+        }
+    },
+
+    create_timeline: {
+        name: 'create_timeline',
+        description: 'Creates a ParameterTimeline animation from a track specification. Supports multi-parameter keyframe animation with per-keyframe easing, BPM sync, and loop modes. Returns timeline ID for playback control.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                name: { type: 'string', description: 'Timeline name' },
+                duration_ms: { type: 'integer', minimum: 100, maximum: 600000, description: 'Total duration in milliseconds' },
+                bpm: { type: 'number', minimum: 20, maximum: 300, description: 'Optional BPM for beat-sync quantization' },
+                loop_mode: {
+                    type: 'string',
+                    enum: ['loop', 'bounce', 'once'],
+                    default: 'once',
+                    description: 'Playback loop mode'
+                },
+                tracks: {
+                    type: 'object',
+                    description: 'Parameter tracks. Each key is a parameter name, value is array of keyframes [{time, value, easing}]',
+                    additionalProperties: {
+                        type: 'array',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                time: { type: 'number', description: 'Time in ms from start' },
+                                value: { type: 'number', description: 'Parameter value at this keyframe' },
+                                easing: {
+                                    type: 'string',
+                                    enum: ['linear', 'easeIn', 'easeOut', 'easeInOut', 'quadIn', 'quadOut', 'cubicIn', 'cubicOut', 'elastic', 'bounce', 'spring', 'overshoot', 'sine', 'exponential'],
+                                    default: 'easeInOut',
+                                    description: 'Easing function for interpolation TO this keyframe'
+                                }
+                            },
+                            required: ['time', 'value']
+                        }
+                    }
+                }
+            },
+            required: ['duration_ms', 'tracks']
+        }
+    },
+
+    play_transition: {
+        name: 'play_transition',
+        description: 'Plays a smooth animated transition from current parameter values to target values, or a sequence of transitions. Uses the TransitionAnimator system with configurable easing.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                sequence: {
+                    type: 'array',
+                    description: 'Array of transition steps. Each step smoothly animates to target params.',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            params: {
+                                type: 'object',
+                                description: 'Target parameter values (any VIB3+ parameter)',
+                                additionalProperties: { type: 'number' }
+                            },
+                            duration: { type: 'integer', minimum: 50, maximum: 30000, default: 1000, description: 'Step duration in ms' },
+                            easing: {
+                                type: 'string',
+                                enum: ['linear', 'easeIn', 'easeOut', 'easeInOut', 'quadIn', 'quadOut', 'cubicIn', 'cubicOut', 'elastic', 'bounce', 'spring', 'overshoot', 'sine', 'exponential'],
+                                default: 'easeInOut'
+                            },
+                            delay: { type: 'integer', minimum: 0, default: 0, description: 'Delay before this step starts (ms)' }
+                        },
+                        required: ['params']
+                    }
+                }
+            },
+            required: ['sequence']
+        }
+    },
+
+    apply_color_preset: {
+        name: 'apply_color_preset',
+        description: 'Applies one of 22 themed color presets that set hue, saturation, intensity, and optionally post-processing to create a cohesive visual theme.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                preset: {
+                    type: 'string',
+                    enum: ['Ocean', 'Lava', 'Neon', 'Monochrome', 'Sunset', 'Aurora', 'Cyberpunk', 'Forest', 'Desert', 'Galaxy', 'Ice', 'Fire', 'Toxic', 'Royal', 'Pastel', 'Retro', 'Midnight', 'Tropical', 'Ethereal', 'Volcanic', 'Holographic', 'Vaporwave'],
+                    description: 'Color preset name'
+                }
+            },
+            required: ['preset']
+        }
+    },
+
+    set_post_processing: {
+        name: 'set_post_processing',
+        description: 'Configures post-processing effects pipeline. Supports 14 composable effects and 7 preset chains. Effects are applied in order.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                effects: {
+                    type: 'array',
+                    description: 'Ordered list of effects to apply',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            name: {
+                                type: 'string',
+                                enum: ['bloom', 'chromaticAberration', 'vignette', 'filmGrain', 'scanlines', 'pixelate', 'blur', 'sharpen', 'colorGrade', 'noise', 'distort', 'glitch', 'rgbShift', 'feedback'],
+                                description: 'Effect name'
+                            },
+                            intensity: { type: 'number', minimum: 0, maximum: 1, default: 0.5, description: 'Effect strength' },
+                            enabled: { type: 'boolean', default: true }
+                        },
+                        required: ['name']
+                    }
+                },
+                chain_preset: {
+                    type: 'string',
+                    description: 'Alternative: apply a named preset chain instead of individual effects'
+                },
+                clear_first: {
+                    type: 'boolean',
+                    default: true,
+                    description: 'Clear existing effects before applying new ones'
+                }
+            }
+        }
+    },
+
+    create_choreography: {
+        name: 'create_choreography',
+        description: 'Creates a multi-scene choreography specification with system transitions, timelines, audio config, and post-processing per scene. This is the most powerful agent tool — it allows designing complete synchronized visual performances that would be extremely difficult to create manually.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                name: { type: 'string', description: 'Choreography name' },
+                duration_ms: { type: 'integer', minimum: 1000, description: 'Total choreography duration' },
+                bpm: { type: 'number', minimum: 20, maximum: 300, description: 'Optional BPM for beat sync' },
+                scenes: {
+                    type: 'array',
+                    description: 'Ordered scene definitions. Each scene has a time range, system/geometry, and parameter timeline.',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            time_start: { type: 'integer', minimum: 0, description: 'Scene start time (ms)' },
+                            time_end: { type: 'integer', description: 'Scene end time (ms)' },
+                            system: { type: 'string', enum: ['quantum', 'faceted', 'holographic'] },
+                            geometry: { type: 'integer', minimum: 0, maximum: 23 },
+                            transition_in: {
+                                type: 'object',
+                                description: 'How this scene enters (crossfade, cut, etc.)',
+                                properties: {
+                                    type: { type: 'string', enum: ['cut', 'crossfade', 'wipe', 'dissolve', 'zoom'] },
+                                    duration: { type: 'integer', minimum: 0 }
+                                }
+                            },
+                            tracks: {
+                                type: 'object',
+                                description: 'Parameter timeline tracks for this scene (same format as create_timeline)',
+                                additionalProperties: {
+                                    type: 'array',
+                                    items: {
+                                        type: 'object',
+                                        properties: {
+                                            time: { type: 'number' },
+                                            value: { type: 'number' },
+                                            easing: { type: 'string' }
+                                        }
+                                    }
+                                }
+                            },
+                            color_preset: { type: 'string', description: 'Color preset for this scene' },
+                            post_processing: {
+                                type: 'array',
+                                items: { type: 'string' },
+                                description: 'Post-processing effects active during this scene'
+                            },
+                            audio: {
+                                type: 'object',
+                                description: 'Audio reactivity config for this scene'
+                            }
+                        },
+                        required: ['time_start', 'time_end', 'system']
+                    }
+                }
+            },
+            required: ['name', 'duration_ms', 'scenes']
+        }
     }
 };
 
