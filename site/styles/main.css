@@ -398,10 +398,20 @@
         .triptych-viz-col {
             overflow: hidden;
         }
-        /* Default: all 3 columns overlay the full width, clip-path carves visible area */
-        .triptych-col:nth-child(1) { left: 0; right: 0; z-index: 1; clip-path: inset(0 66% 0 0); }
-        .triptych-col:nth-child(2) { left: 0; right: 0; z-index: 2; clip-path: inset(0 33% 0 33%); }
-        .triptych-col:nth-child(3) { left: 0; right: 0; z-index: 1; clip-path: inset(0 0 0 66%); }
+        /* Asymmetric columns: 28% / 38% / 34% instead of equal thirds.
+           Organic edges via polygon clip-paths with slight diagonal cuts. */
+        .triptych-col:nth-child(1) {
+            left: 0; right: 0; z-index: 1;
+            clip-path: polygon(0 0, 28% 0, 30% 35%, 27% 65%, 29% 100%, 0 100%);
+        }
+        .triptych-col:nth-child(2) {
+            left: 0; right: 0; z-index: 2;
+            clip-path: polygon(28% 0, 66% 0, 68% 30%, 65% 55%, 67% 100%, 29% 100%, 27% 65%, 30% 35%);
+        }
+        .triptych-col:nth-child(3) {
+            left: 0; right: 0; z-index: 1;
+            clip-path: polygon(66% 0, 100% 0, 100% 100%, 67% 100%, 65% 55%, 68% 30%);
+        }
         .triptych-canvas-wrap {
             position: sticky; top: 0;
             width: 100%; height: 100vh;
@@ -419,8 +429,8 @@
         }
         .triptych-content {
             position: sticky; top: 50%; transform: translateY(-50%);
-            padding: 48px 32px;
-            text-align: center;
+            padding: 48px 32px 48px 24px;
+            text-align: left;
             z-index: 2;
             text-shadow: 0 2px 16px rgba(0,0,0,0.7);
         }
@@ -431,10 +441,10 @@
         }
         .triptych-desc {
             font-size: 14px; color: var(--text-muted);
-            line-height: 1.8; max-width: 320px; margin: 0 auto 32px;
+            line-height: 1.8; max-width: 320px; margin: 0 0 32px;
         }
         .triptych-stats {
-            display: flex; gap: 24px; justify-content: center;
+            display: flex; gap: 24px; justify-content: flex-start;
         }
         .triptych-stat {
             display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -465,8 +475,8 @@
             filter: blur(0.5px);
             transition: left 0.15s ease-out;
         }
-        .triptych-divider.left { left: var(--tri-split-left, 34%); }
-        .triptych-divider.right { left: var(--tri-split-right, 66%); }
+        .triptych-divider.left { left: var(--tri-split-left, 29%); }
+        .triptych-divider.right { left: var(--tri-split-right, 67%); }
 
         /* ═══════════════════════════════════════════
            SECTION 5: CASCADE — Geometry Cards
@@ -512,6 +522,37 @@
             overflow: hidden;
             clip-path: var(--card-shape, inset(0% round 16px));
         }
+        /* Organic card shapes: each card gets a unique silhouette */
+        .cascade-card:nth-child(1) .canvas-wrap,
+        .cascade-card:nth-child(1) .card-frame,
+        .cascade-card:nth-child(1) .cascade-overlay {
+            --card-shape: polygon(4% 0%, 96% 2%, 100% 8%, 98% 92%, 94% 100%, 6% 98%, 0% 90%, 2% 6%);
+        }
+        .cascade-card:nth-child(2) .canvas-wrap,
+        .cascade-card:nth-child(2) .card-frame,
+        .cascade-card:nth-child(2) .cascade-overlay {
+            --card-shape: ellipse(48% 49% at 50% 50%);
+        }
+        .cascade-card:nth-child(3) .canvas-wrap,
+        .cascade-card:nth-child(3) .card-frame,
+        .cascade-card:nth-child(3) .cascade-overlay {
+            --card-shape: polygon(50% 0%, 98% 25%, 98% 75%, 50% 100%, 2% 75%, 2% 25%);
+        }
+        .cascade-card:nth-child(4) .canvas-wrap,
+        .cascade-card:nth-child(4) .card-frame,
+        .cascade-card:nth-child(4) .cascade-overlay {
+            --card-shape: polygon(8% 0%, 92% 0%, 100% 12%, 100% 88%, 92% 100%, 8% 100%, 0% 88%, 0% 12%);
+        }
+        .cascade-card:nth-child(5) .canvas-wrap,
+        .cascade-card:nth-child(5) .card-frame,
+        .cascade-card:nth-child(5) .cascade-overlay {
+            --card-shape: polygon(50% 3%, 100% 50%, 50% 97%, 0% 50%);
+        }
+        .cascade-card:nth-child(6) .canvas-wrap,
+        .cascade-card:nth-child(6) .card-frame,
+        .cascade-card:nth-child(6) .cascade-overlay {
+            --card-shape: polygon(2% 5%, 45% 0%, 98% 3%, 100% 48%, 96% 95%, 52% 100%, 4% 97%, 0% 52%);
+        }
         /* Negative-space frame — decorative border around the clip-path window */
         .cascade-card .card-frame {
             position: absolute; inset: 0; z-index: 2;
@@ -540,7 +581,7 @@
             background: linear-gradient(transparent 0%, rgba(3,7,18,0.88) 60%);
             clip-path: var(--card-shape, inset(0% round 16px));
         }
-        .cascade-overlay h4 { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+        .cascade-overlay h3 { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 4px; }
         .cascade-overlay .cascade-sys {
             font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
             padding: 3px 10px; border-radius: 100px; display: inline-block;
@@ -569,6 +610,13 @@
             border-radius: 24px; text-align: center;
             box-shadow: 0 24px 80px rgba(0,0,0,0.5);
             transform: translateY(60px); opacity: 0;
+            /* Organic blob boundary — slightly irregular edges */
+            clip-path: polygon(
+                4% 6%, 22% 0%, 45% 2%, 72% 0%, 96% 5%,
+                100% 28%, 98% 55%, 100% 78%, 96% 96%,
+                74% 100%, 48% 98%, 24% 100%, 4% 95%,
+                0% 72%, 2% 45%, 0% 22%
+            );
         }
         .energy-card-canvas {
             position: absolute; inset: 0; border-radius: 24px; overflow: hidden;
@@ -653,7 +701,7 @@
             filter: grayscale(0.3); transition: filter 0.3s;
         }
         .agent-card:hover .agent-card-icon { filter: grayscale(0); }
-        .agent-card h4 {
+        .agent-card h3 {
             font-size: 15px; font-weight: 700; color: var(--text);
             margin-bottom: 6px;
         }
@@ -1143,32 +1191,67 @@
 
         /* ─── Mobile ─── */
         @media (max-width: 768px) {
+            /* Reduce scroll heights significantly on mobile */
+            .opening { min-height: 400vh; }
+            .morph { min-height: 600vh; }
+            .triptych { min-height: 200vh; }
+            .triptych-inner { min-height: 200vh; }
+            .cascade { min-height: 300vh; }
+            .energy { min-height: 150vh; }
+
             .morph-dots { display: none; }
             .morph-voices { gap: 12px; flex-wrap: wrap; }
             .morph-voice { padding: 8px 14px; }
             .playground-layout { grid-template-columns: 1fr; }
             .playground-canvas { min-height: 280px; }
-            .triptych { min-height: 300vh; }
-            .triptych-inner { min-height: 300vh; }
-            /* Mobile: stack columns vertically instead of overlapping */
+
+            /* Mobile: stack triptych columns vertically */
             .triptych-col {
                 position: relative !important; clip-path: none !important;
-                width: 100%; min-height: 100vh;
+                width: 100%; min-height: 80vh;
             }
-            .triptych-canvas-wrap { height: 100vh; }
-            .triptych-center-col { min-height: 100vh; padding: 0; }
-            .triptych-center-canvas { margin-bottom: -100vh; height: 100vh; }
-            .triptych-content { position: sticky; top: 50%; transform: translateY(-50%); }
+            .triptych-canvas-wrap { height: 80vh; }
+            .triptych-center-col { min-height: 80vh; padding: 0; }
+            .triptych-center-canvas { margin-bottom: -80vh; height: 80vh; }
+            .triptych-content {
+                position: sticky; top: 50%; transform: translateY(-50%);
+                text-align: center; padding: 32px 20px;
+            }
+            .triptych-desc { margin: 0 auto 24px; }
+            .triptych-stats { justify-content: center; }
             .triptych-divider { display: none; }
-            .cascade-track { gap: 0; padding: 0 5vw; }
-            .cascade-card { width: 88vw; height: 65vh; }
+
+            /* Cascade: vertical stack instead of horizontal scroll */
+            .cascade-track {
+                flex-direction: column;
+                gap: 24px; padding: 80px 5vw 40px;
+                align-items: center;
+            }
+            .cascade-card {
+                width: 90vw; height: 55vh; flex-shrink: 0;
+            }
+            /* Reset organic clip-paths on mobile for readability */
+            .cascade-card .canvas-wrap,
+            .cascade-card .card-frame,
+            .cascade-card .cascade-overlay {
+                --card-shape: inset(0% round 16px) !important;
+            }
+            /* Energy card: reset blob shape on mobile */
+            .energy-card { clip-path: none; }
+
             .agent-grid { grid-template-columns: 1fr 1fr; }
+
+            /* Reduce decorative overlay complexity */
+            .parallax-field { display: none; }
+            .mouse-glow-overlay { display: none; }
         }
         @media (max-width: 480px) {
             .agent-grid { grid-template-columns: 1fr; }
             .ctrl-row-3 { grid-template-columns: 1fr; }
             .triptych-stats { flex-direction: column; gap: 16px; }
-            .cascade-card { width: 94vw; height: 60vh; }
+            .cascade-card { width: 94vw; height: 50vh; }
+            .energy-card { padding: 32px 24px; }
+            .hero-badge { font-size: 9px; letter-spacing: 1px; }
         }
         /* ═══════════════════════════════════════════════════════════
            DEPTH ILLUSION ENGINE — CSS Depth Helpers v3
@@ -1299,6 +1382,42 @@
             transition: transform 0.2s ease-out, filter 0.2s ease-out, box-shadow 0.2s ease-out;
             will-change: transform, filter;
         }
+
+        /* ═══════════════════════════════════════════
+           SECTION-SPECIFIC ACCENT DIFFERENTIATION
+           Each section gets a unique visual treatment.
+           Not every section needs every effect.
+           ═══════════════════════════════════════════ */
+
+        /* Opening: stark, minimal — let the text mask do the work */
+        .opening .viz-vignette { --vignette-strength: 0.15; --vignette-inner: 50%; }
+
+        /* Hero: subtle vignette only — clean showcase */
+        .hero .viz-vignette { display: none; }
+
+        /* Morph: dramatic chromatic + deep vignette (it's the narrative section) */
+        .morph .viz-vignette { --vignette-strength: 0.4; --vignette-inner: 25%; }
+        .morph-card { --chroma-offset: 3px; }
+
+        /* Playground: no vignette, no effects — pure parameter control */
+        .playground .viz-vignette { display: none; }
+        .playground .viz-depth-shadow { display: none; }
+
+        /* Triptych: glow seams visible, minimal per-column treatment */
+        .triptych .viz-vignette { --vignette-strength: 0.12; --vignette-inner: 45%; }
+
+        /* Cascade: cards get unique glow colors per geometry type */
+        .cascade .viz-vignette { --vignette-strength: 0.25; }
+
+        /* Energy: strong vignette on bg, none on card (card has blob shape) */
+        .energy .energy-bg .viz-vignette { --vignette-strength: 0.5; --vignette-inner: 20%; }
+        .energy .energy-card .viz-depth-shadow { display: none; }
+
+        /* Agent: clean, professional — no dramatic effects */
+        .agent-section .viz-vignette { display: none; }
+
+        /* CTA: moderate vignette, seam gets extra glow */
+        .cta-section .viz-vignette { --vignette-strength: 0.2; }
 
         /* ── Speed crescendo / silence overlays ── */
         .crescendo-vignette-overlay {
