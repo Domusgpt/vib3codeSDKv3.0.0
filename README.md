@@ -8,6 +8,12 @@
 
 ---
 
+## Documentation
+
+The main documentation entrypoint is [`DOCS/README.md`](./DOCS/README.md), which includes canonical docs, persona-based reading paths, taxonomy, and source-of-truth ownership.
+
+---
+
 ## Quick Reference
 
 | Metric | Value |
