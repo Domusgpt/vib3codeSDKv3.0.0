@@ -1,8 +1,10 @@
 # VIB3+ SDK System Inventory
 
-**Document Version:** 2.0.0
-**Last Updated:** 2026-01-30
+**Document Version:** See `DOCS/STATUS.md`
+**Last Updated:** See `DOCS/STATUS.md`
 **Purpose:** Complete technical inventory for developers and AI agents
+
+> For canonical release metadata (version/date/platforms/test status), use [`DOCS/STATUS.md`](./STATUS.md) as the single source of release status.
 
 ---
 
@@ -22,7 +24,7 @@ The SDK provides 3 active visualization systems with shared 6D rotation mathemat
 
 | Metric | Value |
 |--------|-------|
-| **SDK Version** | 2.0.0 |
+| **SDK Version** | See `DOCS/STATUS.md` |
 | **Visualization Systems** | 3 active (Quantum, Faceted, Holographic) + 1 archived (Polychora - TBD) |
 | **Rotation Planes** | 6 (XY, XZ, YZ for 3D; XW, YW, ZW for 4D) |
 | **Base Geometries** | 8 per system |
@@ -35,7 +37,7 @@ The SDK provides 3 active visualization systems with shared 6D rotation mathemat
 | **Creative Effects** | 14 post-processing effects, 22 color presets, 14 easing functions |
 | **Platform Integrations** | 7 (React, Vue, Svelte, Figma, Three.js, TouchDesigner, OBS) |
 | **Advanced Modules** | 5 (WebXR, WebGPU Compute, MIDI, AI Presets, OffscreenWorker) |
-| **Test Coverage** | 694+ tests passing |
+| **Test Coverage** | CI-tracked status (see `DOCS/STATUS.md`) |
 
 ---
 
@@ -123,17 +125,17 @@ The SDK provides 3 active visualization systems with shared 6D rotation mathemat
 |----------|-------|
 | Canvas IDs | `background-canvas`, `shadow-canvas`, `content-canvas`, `highlight-canvas`, `accent-canvas` |
 | Geometries | 24 (8 base × 3 cores) |
-| Audio Reactive | Yes (bass/mid/high uniforms — wired in v2.0.0) |
-| Color Control | Full HSL (hue + saturation via `hsl2rgb()` — wired in v2.0.0) |
+| Audio Reactive | Yes (bass/mid/high uniforms — wired in current release series |
+| Color Control | Full HSL (hue + saturation via `hsl2rgb()` — wired in current release series |
 | Physics | No |
 
 **Core Features:**
 - Single WebGL context on `content-canvas`
 - Geometry functions in fragment shader
 - Core warp applied via `applyCoreWarp()` shader function
-- Full `hsl2rgb()` color pipeline with saturation control (v2.0.0)
-- Audio-reactive density/morph/hue shift (v2.0.0)
-- Click intensity boost (v2.0.0)
+- Full `hsl2rgb()` color pipeline with saturation control (current release series)
+- Audio-reactive density/morph/hue shift (current release series)
+- Click intensity boost (current release series)
 
 ### 3. Holographic System
 **File:** `src/holograms/RealHolographicSystem.js` (652 LOC)
@@ -341,10 +343,10 @@ class ResourceManagerContract {
 │   ├── agent/                    # MCP/CLI/Telemetry
 │   ├── export/                   # Export generators
 │   ├── wasm/                     # WASM loader
-│   ├── reactivity/               # Reactivity + SpatialInputSystem (v2.0.0)
-│   ├── creative/                 # Creative tooling (v2.0.0)
-│   ├── integrations/             # Platform integrations (v2.0.0)
-│   └── advanced/                 # Advanced features (v2.0.0)
+│   ├── reactivity/               # Reactivity + SpatialInputSystem (current release series)
+│   ├── creative/                 # Creative tooling (current release series)
+│   ├── integrations/             # Platform integrations (current release series)
+│   └── advanced/                 # Advanced features (current release series)
 ├── tools/                        # Tooling (+ shader-sync-verify.js)
 ├── cpp/                          # C++ math core (1,783 LOC)
 ├── js/                           # Client-side integration
@@ -394,14 +396,14 @@ Expected: `change_geometry`
 
 ## Current Development Status
 
-### Phase Status (as of v2.0.0, 2026-01-30)
+### Phase Status (historical baseline; current release status lives in `DOCS/STATUS.md`)
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Phase 1: Foundation | ✅ Complete | Math, geometry, parameters |
 | Phase 2: Rendering | ✅ Mostly Complete | Contracts exist, adapters implemented |
 | Phase 3: Agentic | ✅ Complete | MCP, CLI, Telemetry working |
 | Phase 4: WebGPU | 🔄 In Progress | Scaffold exists, needs shader pipeline |
-| Phase 5: Hardening | ✅ Complete | 694 tests passing, XSS prevention, input validation |
+| Phase 5: Hardening | ✅ Complete | Security/input hardening completed; see `DOCS/STATUS.md` + CI for current test state |
 | **Phase A: Parity & Polish** | **✅ Complete** | Quantum color, Faceted saturation/audio, clickIntensity fix, shader sync tool |
 | **Phase B: Creative Tooling** | **✅ Complete** | Color presets, transitions, post-processing, timeline |
 | **Phase C: Platform Integrations** | **✅ Complete** | React, Vue, Svelte, Figma, Three.js, TouchDesigner, OBS |
@@ -417,7 +419,7 @@ Expected: `change_geometry`
 ### Remaining Gaps
 1. WebGPU backend needs full shader pipeline
 2. Some systems don't fully implement RendererContract
-3. New v2.0.0 modules need test coverage
+3. New current release-series modules need test coverage
 
 ---
 
@@ -429,18 +431,18 @@ Expected: `change_geometry`
 | WASM | ✅ Working | cpp/ → Emscripten → vib3.wasm |
 | Flutter | 🔄 Scaffold | src/platforms/flutter/ |
 | Node.js CLI | ✅ Working | src/agent/cli/ |
-| React | ✅ Component (v2.0.0) | src/integrations/frameworks/Vib3React.js |
-| Vue 3 | ✅ Component (v2.0.0) | src/integrations/frameworks/Vib3Vue.js |
-| Svelte | ✅ Component (v2.0.0) | src/integrations/frameworks/Vib3Svelte.js |
-| Three.js | ✅ ShaderMaterial (v2.0.0) | src/integrations/ThreeJsPackage.js |
-| Figma | ✅ Plugin (v2.0.0) | src/integrations/FigmaPlugin.js |
-| TouchDesigner | ✅ GLSL Export (v2.0.0) | src/integrations/TouchDesignerExport.js |
-| OBS Studio | ✅ Browser Source (v2.0.0) | src/integrations/OBSMode.js |
-| WebXR (VR/AR) | ✅ Renderer (v2.0.0) | src/advanced/WebXRRenderer.js |
+| React | ✅ Component (current release series) | src/integrations/frameworks/Vib3React.js |
+| Vue 3 | ✅ Component (current release series) | src/integrations/frameworks/Vib3Vue.js |
+| Svelte | ✅ Component (current release series) | src/integrations/frameworks/Vib3Svelte.js |
+| Three.js | ✅ ShaderMaterial (current release series) | src/integrations/ThreeJsPackage.js |
+| Figma | ✅ Plugin (current release series) | src/integrations/FigmaPlugin.js |
+| TouchDesigner | ✅ GLSL Export (current release series) | src/integrations/TouchDesignerExport.js |
+| OBS Studio | ✅ Browser Source (current release series) | src/integrations/OBSMode.js |
+| WebXR (VR/AR) | ✅ Renderer (current release series) | src/advanced/WebXRRenderer.js |
 
 ---
 
-## v2.0.0 New Systems
+## New Systems (current release series)
 
 ### SpatialInputSystem (`src/reactivity/SpatialInputSystem.js` — 1,783 lines)
 Universal spatial input that decouples "card tilting" from physical device orientation. Any input source maps through a normalized spatial state (pitch/yaw/roll/x/y/z/intensity/velocity) to any visualization parameter.
@@ -487,10 +489,10 @@ Verifies inline shaders match external shader files. Parses GLSL uniforms and WG
 ## Next Steps for Development
 
 ### Immediate Priorities
-1. Add test coverage for v2.0.0 modules (creative, integrations, advanced, SpatialInput)
+1. Add test coverage for current release-series modules (creative, integrations, advanced, SpatialInput)
 2. Complete WebGPU shader pipeline
 3. Production-harden platform integration wrappers
-4. Publish @vib3code/sdk v2.0.0 to NPM
+4. Publish current package version (see `DOCS/STATUS.md`) to NPM
 
 ### Consolidation Tasks
 - [ ] Audit RendererContract compliance for all 3 active systems
@@ -505,16 +507,17 @@ Verifies inline shaders match external shader files. Parses GLSL uniforms and WG
 
 | Document | Purpose |
 |----------|---------|
-| `CLAUDE.md` | Development instructions (v2.0.0 updated) |
+| `CLAUDE.md` | Development instructions |
 | `DEV_TRACK.md` | Session-by-session progress |
 | `DOCS/CLI_ONBOARDING.md` | Agent CLI setup |
 | `DOCS/CONTROL_REFERENCE.md` | UI control parameters |
 | `DOCS/RENDERER_LIFECYCLE.md` | Renderer architecture |
 | `DOCS/GPU_DISPOSAL_GUIDE.md` | Memory management |
+| `DOCS/SYSTEM_AUDIT_2026-01-30.md` | Full system audit |
 | `DOCS/archive/SYSTEM_AUDIT_2026-01-30.md` | Full system audit (v2.0.0 updated, archived) |
 | `24-GEOMETRY-6D-ROTATION-SUMMARY.md` | Geometry encoding |
 
 ---
 
 *This document is the canonical system inventory. Update after significant changes.*
-*Last major update: v2.0.0 — 2026-01-30*
+*Last major inventory update: 2026-01-30. For current release metadata, see `DOCS/STATUS.md`.*
