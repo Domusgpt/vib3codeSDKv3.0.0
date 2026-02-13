@@ -123,7 +123,7 @@ Implements proper JSON-RPC 2.0 over stdio per the Model Context Protocol spec:
 | `agent-config/claude-agent-context.md` | **NEW** — Claude context pack |
 | `agent-config/openai-agent-context.md` | **NEW** — OpenAI context pack |
 | `index-v2.html` | **NEW** — Enhanced landing page (2100+ lines) |
-| `DOCS/DEV_TRACK_SESSION_2026-02-06.md` | Updated with Phase C |
+| `DOCS/dev-tracks/DEV_TRACK_SESSION_2026-02-06.md` | Updated with Phase C |
 
 ---
 
