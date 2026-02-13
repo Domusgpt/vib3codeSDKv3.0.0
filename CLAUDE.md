@@ -1,669 +1,223 @@
-# CLAUDE.md - VIB3+ CORE Technical Reference
+# CLAUDE.md — VIB3+ SDK Project Brief
 
-**VIB3+ Unified 4D Visualization Engine — current release status in `DOCS/STATUS.md`**
+## What is VIB3+?
 
----
+VIB3+ is a **programmable 4D visualization SDK** that renders interactive, audio-reactive geometric scenes in the browser. It lets creative developers, product teams, and AI agents create, control, and embed high-fidelity visualizations of four-dimensional geometry — projected into 3D and rendered on-screen in real time.
 
-## Overview
+Think of it as a **visual engine for the fourth dimension**: you pick a geometry (tesseract, Klein bottle, fractal, torus, etc.), apply rotations across six independent planes (three spatial + three hyperspace), and the engine projects and renders the result through one of three distinct visual systems — each with its own aesthetic and rendering approach.
 
-VIB3+ is a **4D visualization engine** with three rendering systems (Quantum, Faceted, Holographic), each supporting **24 geometry variants** through a unified **6D rotation system**. The architecture combines:
-
-- **C++ WASM Core** - Mathematically rigorous 4D geometric algebra
-- **WebGL/WebGPU Shaders** - GPU-accelerated rendering
-- **MCP Protocol** - Agentic/programmatic control
-- **SpatialInputSystem** - Universal spatial input (tilt, gyroscope, gamepad, perspective, MIDI, audio)
-- **Creative Tooling** - Color presets, transitions, post-processing, parameter timeline
-- **Platform Integrations** - React, Vue, Svelte, Figma, Three.js, TouchDesigner, OBS
-- **Advanced Features** - WebXR, WebGPU compute, MIDI controller, AI presets, OffscreenCanvas worker
-
-**Active Systems**: Quantum, Faceted, Holographic
-**Polychora**: TBD placeholder (not production ready)
+**Owner**: Clear Seas Solutions LLC (Paul Phillips)
+**Package**: `@vib3code/sdk` v2.0.3
+**License**: MIT (open-core model — see `DOCS/LICENSING_TIERS.md`)
+**Stack**: ES Modules, Vite, pnpm, Vitest, Playwright, C++ WASM (Emscripten)
 
 ---
 
-## Shader System Architecture
+## Who is it for?
 
-### Layer Overview
+| Persona | What they do with VIB3+ |
+|---|---|
+| **Creative developers** | Ship differentiated visual experiences — landing pages, dashboards, interactive art |
+| **Technical artists / VJs** | Drive visuals via presets, timelines, audio reactivity, and MIDI for live performance |
+| **Product teams** | Embed performant, controllable visualizations into production apps |
+| **AI/agent builders** | Automate scene generation, tuning, and operation via MCP tools and CLI |
+| **XR teams** | Extend 4D visuals into VR/AR and spatial interfaces |
 
-```
-┌────────────────────────────────────────────────────────────────┐
-│                    APPLICATION LAYER                            │
-│  index.html → VIB3Engine.js → System Visualizers               │
-└───────────────────────────┬────────────────────────────────────┘
-                            │
-┌───────────────────────────▼────────────────────────────────────┐
-│                    SHADER ABSTRACTION                           │
-│  ShaderProgram.js (uniforms, attributes, caching)              │
-└───────────────────────────┬────────────────────────────────────┘
-                            │
-           ┌────────────────┴────────────────┐
-           │                                 │
-┌──────────▼──────────┐          ┌───────────▼───────────┐
-│    WebGL Backend    │          │    WebGPU Backend     │
-│    (GLSL shaders)   │          │    (WGSL shaders)     │
-└──────────┬──────────┘          └───────────┬───────────┘
-           │                                 │
-           └────────────────┬────────────────┘
-                            │
-┌───────────────────────────▼────────────────────────────────────┐
-│                    C++ WASM CORE                                │
-│  Rotor4D (Clifford algebra) | Mat4x4 | Vec4 | Projections      │
-└────────────────────────────────────────────────────────────────┘
-```
+See `DOCS/PRODUCT_STRATEGY.md` for full persona definitions and success metrics.
 
 ---
 
-## C++ WASM Core (`cpp/`)
+## The Three Visualization Systems
 
-The mathematical foundation using Clifford algebra Cl(4,0).
+VIB3+ has three active rendering systems. Each one takes the same 24 geometries and 6D rotation math but renders them with a completely different visual approach:
 
-### Key Files
+### Quantum (`src/quantum/`)
+**The dense, complex one.** Renders quantum-inspired lattice patterns — think crystalline interference, energy fields, particle grids. Uses a single procedural fragment shader that generates complex visual structures entirely on the GPU. Best for abstract, high-density visualizations with a scientific/mathematical feel.
 
-| File | Purpose |
-|------|---------|
-| `vib3_ffi.h/cpp` | C Foreign Function Interface |
-| `Rotor4D.hpp/cpp` | 4D rotation via geometric algebra |
-| `Mat4x4.hpp/cpp` | Traditional 4x4 matrix operations |
-| `embind.cpp` | JavaScript bindings via Emscripten |
+### Faceted (`src/faceted/`)
+**The clean, geometric one.** Renders precise 2D geometric patterns projected from 4D rotation. Think kaleidoscopic symmetry, tiled sacred geometry, clean wireframe aesthetics. Uses HSL color with full hue + saturation control. Best for polished UI elements, design-forward applications, and situations where clarity matters more than complexity.
 
-### Core Types
+### Holographic (`src/holograms/`)
+**The layered, atmospheric one.** Renders through a 5-layer glassmorphic canvas stack (background → shadow → content → highlight → accent), each with its own shader instance and opacity. Native microphone input for audio reactivity with beat/melody detection. Best for immersive holographic effects, live music visuals, and ambient backgrounds.
 
-```cpp
-// 4-component vector
-struct Vib3Vec4 { float x, y, z, w; };
-
-// 8-component rotor (scalar + 6 bivectors + pseudoscalar)
-struct Vib3Rotor4D {
-    float s;                    // Scalar
-    float xy, xz, yz;           // 3D rotation bivectors
-    float xw, yw, zw;           // 4D rotation bivectors
-    float xyzw;                 // Pseudoscalar (4D volume)
-};
-
-// Column-major 4x4 matrix
-struct Vib3Mat4x4 { float m[16]; };
-```
-
-### Rotor Rotation (Sandwich Product)
-
-```cpp
-// Proper 4D rotation: v' = R * v * R†
-Vib3Vec4 vib3_rotor4d_rotate(Vib3Rotor4D r, Vib3Vec4 v);
-
-// Create rotor from 6 plane angles
-Vib3Rotor4D vib3_rotor4d_from_euler6(
-    float xy, float xz, float yz,  // 3D rotations
-    float xw, float yw, float zw   // 4D rotations
-);
-```
-
-### Projection Functions
-
-```cpp
-// 4D → 3D projections
-Vib3Vec4 vib3_project_perspective(Vib3Vec4 v, float distance);
-// P = v.xyz / (distance - v.w)
-
-Vib3Vec4 vib3_project_stereographic(Vib3Vec4 v);
-// P = v.xyz / (1 - v.w)  [conformal]
-
-Vib3Vec4 vib3_project_orthographic(Vib3Vec4 v);
-// P = v.xyz  [parallel, drops W]
-```
-
-### Using WASM from JavaScript
-
-```javascript
-// After WASM loads, available on window.Vib3Core
-const rotor = Vib3Core.vib3_rotor4d_from_euler6(
-    0.5, 0.3, 0.2,  // XY, XZ, YZ
-    0.1, 0.4, 0.6   // XW, YW, ZW
-);
-const rotated = Vib3Core.vib3_rotor4d_rotate(rotor, { x: 1, y: 0, z: 0, w: 0 });
-```
+> **Polychora** is a planned fourth system for true 4D polytope rendering. It is archived and not production-ready — files live in `archive/polychora/`. Do not build against it.
 
 ---
 
-## WebGL Shaders (Primary Renderer)
+## Core Concepts
 
-### Shader Locations
-
-| System | File | Shader Type |
-|--------|------|-------------|
-| Quantum | `src/quantum/QuantumVisualizer.js` | Fragment (procedural) |
-| Faceted | `src/faceted/FacetedSystem.js` | Fragment (procedural) |
-| Holographic | `src/holograms/HolographicVisualizer.js` | Fragment (5-layer) |
-
-### Standard Uniforms (All Systems)
-
-```glsl
-// Time & Resolution
-uniform float u_time;
-uniform vec2 u_resolution;
-
-// Geometry Selection (0-23)
-uniform float u_geometry;
-
-// 6D Rotation (radians, 0 to 2π)
-uniform float u_rot4dXY;  // 3D: rotation around Z axis
-uniform float u_rot4dXZ;  // 3D: rotation around Y axis
-uniform float u_rot4dYZ;  // 3D: rotation around X axis
-uniform float u_rot4dXW;  // 4D: XW plane
-uniform float u_rot4dYW;  // 4D: YW plane
-uniform float u_rot4dZW;  // 4D: ZW plane
-
-// Visual Parameters
-uniform float u_gridDensity;   // 4-100
-uniform float u_morphFactor;   // 0-2
-uniform float u_chaos;         // 0-1
-uniform float u_speed;         // 0.1-3
-uniform float u_hue;           // 0-360
-uniform float u_intensity;     // 0-1
-uniform float u_saturation;    // 0-1
-uniform float u_dimension;     // 3.0-4.5 (projection distance)
-
-// Reactivity
-uniform float u_mouseIntensity;
-uniform float u_clickIntensity;
-uniform float u_bass, u_mid, u_high;  // Audio
+### 24 Geometries
+Every system renders 24 geometry variants, encoded as:
 ```
-
-### 6D Rotation in GLSL
-
-```glsl
-// Individual rotation matrices
-mat4 rotateXY(float angle) {
-    float c = cos(angle), s = sin(angle);
-    return mat4(
-        c, -s, 0, 0,
-        s,  c, 0, 0,
-        0,  0, 1, 0,
-        0,  0, 0, 1
-    );
-}
-// Similar for XZ, YZ, XW, YW, ZW...
-
-// Combined 6D rotation (order matters!)
-mat4 rotate4D(float xy, float xz, float yz, float xw, float yw, float zw) {
-    return rotateXY(xy) * rotateXZ(xz) * rotateYZ(yz) *
-           rotateXW(xw) * rotateYW(yw) * rotateZW(zw);
-}
-
-// Usage in fragment shader
-vec4 p = vec4(uv * 2.0 - 1.0, 0.0, 0.0);
-vec4 rotated = rotate4D(u_rot4dXY, u_rot4dXZ, u_rot4dYZ,
-                        u_rot4dXW, u_rot4dYW, u_rot4dZW) * p;
-vec3 projected = rotated.xyz / (u_dimension - rotated.w);
+index = coreType * 8 + baseGeometry
 ```
+- **8 base geometries** (0-7): Tetrahedron, Hypercube, Sphere, Torus, Klein Bottle, Fractal, Wave, Crystal
+- **3 core warps** (0-2): Base (no warp), Hypersphere (S³ projection), Hypertetrahedron (pentatope warp)
+- Total: 8 bases × 3 warps = 24 variants per system
 
-### 4D Projection in Shaders
+### 6D Rotation
+Objects exist in 4D space (X, Y, Z, W). Rotation happens in six independent planes:
+- **3D planes**: XY, XZ, YZ — familiar 3D rotations
+- **4D planes**: XW, YW, ZW — hyperspace rotations that reveal the fourth dimension
 
-```glsl
-// Perspective (most common)
-float projFactor = 1.0 / (u_dimension - position.w);
-vec3 projected = position.xyz * projFactor;
+Application order is always XY → XZ → YZ → XW → YW → ZW. This is implemented three ways (WASM rotors, GLSL matrices, WGSL matrices) and all must agree.
 
-// Stereographic (conformal, preserves angles)
-vec3 projected = position.xyz / (1.0 - position.w);
+### 5-Layer Canvas Architecture
+Each system renders to five stacked canvases: background, shadow, content, highlight, accent. The Holographic system uses all five with per-layer shaders; Quantum and Faceted primarily use the content layer.
 
-// Orthographic (parallel projection)
-vec3 projected = position.xyz;
-```
+### Projection
+4D geometry is projected to 3D for display:
+- **Perspective** (default): `xyz / (distance - w)` — most intuitive
+- **Stereographic**: `xyz / (1 - w)` — conformal, preserves angles
+- **Orthographic**: `xyz` — parallel, drops W
 
 ---
 
-## WebGPU Backend (`src/render/backends/WebGPUBackend.js`)
+## Development Setup
 
-Modern GPU API with WGSL shaders.
-
-### WGSL Uniforms Structure
-
-```wgsl
-struct Uniforms {
-    modelMatrix: mat4x4<f32>,
-    viewMatrix: mat4x4<f32>,
-    projectionMatrix: mat4x4<f32>,
-    time: f32,
-    dimension: f32,
-    _padding: vec2<f32>,
-};
-
-@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+```bash
+pnpm install          # NOT npm — pnpm is canonical (pnpm-lock.yaml)
+pnpm run dev          # Vite dev server with hot reload
+pnpm test             # Vitest unit tests
+pnpm run test:e2e     # Playwright browser tests
+pnpm run verify:shaders  # Check inline/external shader sync
 ```
 
-### Pipeline Setup
-
-```javascript
-// WebGPU initialization
-const device = await adapter.requestDevice();
-const pipeline = device.createRenderPipeline({
-    vertex: { module: vertexShader, entryPoint: 'main' },
-    fragment: { module: fragmentShader, entryPoint: 'main' },
-    primitive: { topology: 'triangle-list' }
-});
-```
+Build WASM core (requires Emscripten): `cd cpp && ./build.sh`
 
 ---
 
-## Visualization Systems
+## Current Priorities & Status
 
-### 1. Quantum System (`src/quantum/`)
+**Engine status**: Complete. 95,000+ lines across 570+ files. All three systems working.
 
-**Purpose**: Complex lattice visualizations with quantum-inspired patterns
+**What's shipping now** (Q1 2026):
+- Stabilizing core rendering + lifecycle contracts
+- MCP/agent integration hardening
+- Export + packaging regression fixes (done)
 
-**Key Files**:
-- `QuantumEngine.js` - System manager
-- `QuantumVisualizer.js` - WebGL renderer
+**What's next** (Q2 2026):
+- Advanced visualization subsystem parity (WebGPU, XR)
+- Cross-platform integration SDK examples refresh
+- Observability + telemetry baseline
 
-**Characteristics**:
-- Procedural fragment shader
-- 24 geometry variants
-- Full 6D rotation support
-- Audio reactivity (bass/mid/high → parameters)
+**Key gaps**:
+- TypeScript types incomplete (many v2.0 modules missing `.d.ts`)
+- WebGPU backend needs full shader pipeline
+- Some systems don't fully implement RendererContract
+- New modules (creative, integrations, advanced) need more test coverage
 
-### 2. Faceted System (`src/faceted/`)
-
-**Purpose**: Clean 2D geometric patterns with 4D rotation projection
-
-**Key Files**:
-- `FacetedSystem.js` - Complete system with shader
-
-**Characteristics**:
-- Precise geometric patterns
-- 24 geometry variants
-- Clean visual aesthetic with HSL color (hue + saturation)
-- Audio reactivity (bass/mid/high uniforms)
-- Mouse/touch/click interaction
-
-### 3. Holographic System (`src/holograms/`)
-
-**Purpose**: 5-layer glassmorphic audio-reactive effects
-
-**Key Files**:
-- `RealHolographicSystem.js` - System manager
-- `HolographicVisualizer.js` - Per-layer renderer
-
-**Layer Architecture**:
-```
-background-canvas  ← Base layer, lowest opacity
-shadow-canvas      ← Depth/shadow effects
-content-canvas     ← Primary visual content
-highlight-canvas   ← Bright accents
-accent-canvas      ← Top layer effects
-```
-
-**Layer-Specific Uniforms**:
-```glsl
-uniform float u_layerScale;
-uniform float u_layerOpacity;
-uniform vec3 u_layerColor;
-uniform float u_densityMult;
-uniform float u_speedMult;
-```
+See `DOCS/ROADMAP.md` for the full quarterly plan and `DOCS/STATUS.md` for release metadata.
 
 ---
 
-## 24 Geometry System
+## Documentation Map
 
-### Encoding Formula
+Don't dig through source code when there's already a doc for it. The `DOCS/` directory is well-organized:
 
-```
-geometry_index = core_type * 8 + base_geometry
+| What you need | Where to find it |
+|---|---|
+| **Full architecture & module inventory** | `DOCS/SYSTEM_INVENTORY.md` — the canonical technical reference |
+| **Product strategy & personas** | `DOCS/PRODUCT_STRATEGY.md` |
+| **Quarterly roadmap & milestones** | `DOCS/ROADMAP.md` |
+| **Licensing & commercial model** | `DOCS/LICENSING_TIERS.md` |
+| **Master plan (what's done, what's not)** | `DOCS/MASTER_PLAN_2026-01-31.md` |
+| **All parameter details & UI controls** | `DOCS/CONTROL_REFERENCE.md` |
+| **Project setup from scratch** | `DOCS/PROJECT_SETUP.md` + `DOCS/ENV_SETUP.md` |
+| **CI/CD & testing** | `DOCS/CI_TESTING.md` |
+| **Renderer lifecycle & contracts** | `DOCS/RENDERER_LIFECYCLE.md` |
+| **GPU resource disposal** | `DOCS/GPU_DISPOSAL_GUIDE.md` |
+| **WebGPU backend status** | `DOCS/WEBGPU_STATUS.md` |
+| **XR performance benchmarks** | `DOCS/XR_BENCHMARKS.md` |
+| **Export formats (SVG, Lottie, etc.)** | `DOCS/EXPORT_FORMATS.md` |
+| **Agent CLI onboarding** | `DOCS/CLI_ONBOARDING.md` |
+| **Full docs index + reading paths** | `DOCS/README.md` |
 
-Where:
-  core_type: 0=Base, 1=Hypersphere, 2=Hypertetrahedron
-  base_geometry: 0-7
-```
-
-### Base Geometries (0-7)
-
-| Index | Name | Description |
-|-------|------|-------------|
-| 0 | Tetrahedron | 4-vertex simplex lattice |
-| 1 | Hypercube | 4D cube projection (tesseract) |
-| 2 | Sphere | Radial harmonic sphere |
-| 3 | Torus | Toroidal field structure |
-| 4 | Klein Bottle | Non-orientable surface |
-| 5 | Fractal | Recursive subdivision |
-| 6 | Wave | Sinusoidal interference |
-| 7 | Crystal | Octahedral structure |
-
-### Core Type Warps
-
-| Core | Index Range | Warp Function |
-|------|-------------|---------------|
-| Base | 0-7 | None (pure geometry) |
-| Hypersphere | 8-15 | `warpHypersphereCore()` |
-| Hypertetrahedron | 16-23 | `warpHypertetraCore()` |
-
-### Warp Functions (`src/geometry/`)
-
-**HypersphereCore.js**:
-```javascript
-// Project onto 3-sphere (S³)
-projectToHypersphere(point4D, radius)
-
-// Inverse stereographic projection
-stereographicToHypersphere(point3D)
-
-// Creates toroidal structures
-hopfFibration(point4D)
-```
-
-**HypertetraCore.js**:
-```javascript
-// 5 vertices of regular 5-cell (pentatope)
-getPentatopeVertices()
-
-// Map points based on proximity to pentatope
-warpTetrahedral(point4D)
-
-// Project onto pentatope edges
-warpToEdges(point4D)
-```
+Recent dev session logs live in `DOCS/dev-tracks/`. Archived docs in `DOCS/archive/`.
 
 ---
 
-## 6D Rotation System
+## Key Architecture Files
 
-### Rotation Planes
-
-| Plane | Type | Effect |
-|-------|------|--------|
-| XY | 3D | Rotation around Z axis |
-| XZ | 3D | Rotation around Y axis |
-| YZ | 3D | Rotation around X axis |
-| XW | 4D | Hyperspace rotation |
-| YW | 4D | Hyperspace rotation |
-| ZW | 4D | Hyperspace rotation |
-
-### Application Order (Critical)
-
-```
-Combined = Rxy × Rxz × Ryz × Rxw × Ryw × Rzw
-```
-
-### Three Implementations
-
-1. **WASM Rotor** (C++): Clifford algebra, mathematically exact
-2. **GLSL Matrices** (WebGL): GPU-accelerated, per-pixel
-3. **WGSL Matrices** (WebGPU): Modern GPU path
+| File | Role |
+|---|---|
+| `src/core/VIB3Engine.js` | Main orchestrator — system switching, parameter management, canvas orchestration, spatial input |
+| `src/core/CanvasManager.js` | Canvas lifecycle — `createSystemCanvases()` / `registerContext()` / `destroy()` |
+| `src/core/Parameters.js` | Parameter definitions and validation |
+| `src/quantum/QuantumEngine.js` | Quantum system manager |
+| `src/faceted/FacetedSystem.js` | Faceted system (complete — shader + rendering in one file) |
+| `src/holograms/RealHolographicSystem.js` | Holographic system manager (note: class is `RealHolographicSystem`, not `HolographicSystem`) |
+| `src/holograms/HolographicVisualizer.js` | Per-layer holographic renderer |
+| `src/agent/mcp/tools.js` | MCP tool definitions (12 tools) |
+| `src/reactivity/SpatialInputSystem.js` | Universal spatial input (8 sources, 6 profiles) |
+| `cpp/Rotor4D.cpp` | WASM 4D rotation math (Clifford algebra) |
 
 ---
 
-## MCP Agentic Control (`src/agent/mcp/`)
+## Common Gotchas
 
-### Available Tools
-
-```javascript
-// System control
-set_parameter(name, value)      // Set any parameter
-get_parameter(name)             // Get current value
-set_system(system)              // Switch visualization system
-randomize_all()                 // Randomize all parameters
-
-// Gallery
-save_to_gallery(name)           // Save current state
-load_from_gallery(id)           // Load saved state
-
-// Export
-export_trading_card()           // Generate trading card
-export_package()                // Full VIB3Package export
-```
-
-### Programmatic Usage
-
-```javascript
-// Via MCP protocol
-const result = await mcpClient.callTool('set_parameter', {
-    name: 'geometry',
-    value: 16  // Hypertetrahedron + Tetrahedron
-});
-```
-
----
-
-## Project Structure
-
-```
-Vib3-CORE-Documented01-/
-├── cpp/                          # C++ WASM core
-│   ├── vib3_ffi.cpp/h           # FFI interface
-│   ├── Rotor4D.cpp/hpp          # 4D rotation math
-│   ├── Mat4x4.cpp/hpp           # Matrix operations
-│   └── embind.cpp               # JS bindings
-│
-├── src/
-│   ├── core/                    # Engine core
-│   │   ├── VIB3Engine.js        # Main VIB3+ engine (+ SpatialInputSystem integration)
-│   │   ├── CanvasManager.js     # Canvas lifecycle
-│   │   ├── ParameterMapper.js   # Parameter mapping
-│   │   ├── Parameters.js        # Parameter definitions
-│   │   └── UnifiedResourceManager.js  # Resource management
-│   │
-│   ├── quantum/                 # Quantum system
-│   │   ├── QuantumEngine.js
-│   │   └── QuantumVisualizer.js
-│   │
-│   ├── faceted/                 # Faceted system (with audio + saturation)
-│   │   └── FacetedSystem.js
-│   │
-│   ├── holograms/               # Holographic system
-│   │   ├── RealHolographicSystem.js
-│   │   └── HolographicVisualizer.js
-│   │
-│   ├── geometry/                # Geometry library
-│   │   ├── GeometryLibrary.js
-│   │   ├── HypersphereCore.js
-│   │   └── HypertetraCore.js
-│   │
-│   ├── render/                  # Render backends
-│   │   ├── ShaderProgram.js
-│   │   └── backends/
-│   │       ├── WebGLBackend.js
-│   │       └── WebGPUBackend.js
-│   │
-│   ├── reactivity/              # Reactivity & spatial input
-│   │   ├── ReactivityConfig.js
-│   │   ├── ReactivityManager.js
-│   │   └── SpatialInputSystem.js  # Universal spatial input (current release series)
-│   │
-│   ├── creative/                # Creative tooling (current release series)
-│   │   ├── ColorPresetsSystem.js  # 22 themed color presets
-│   │   ├── TransitionAnimator.js  # 14 easing functions, sequencing
-│   │   ├── PostProcessingPipeline.js  # 14 effects, 7 preset chains
-│   │   └── ParameterTimeline.js   # Keyframe animation with BPM sync
-│   │
-│   ├── integrations/            # Platform integrations (current release series)
-│   │   ├── frameworks/
-│   │   │   ├── Vib3React.js     # React component + useVib3() hook
-│   │   │   ├── Vib3Vue.js       # Vue 3 component + composable
-│   │   │   └── Vib3Svelte.js    # Svelte component + store
-│   │   ├── FigmaPlugin.js       # Figma plugin manifest + code
-│   │   ├── ThreeJsPackage.js    # Three.js ShaderMaterial
-│   │   ├── TouchDesignerExport.js  # GLSL TOP export
-│   │   └── OBSMode.js           # Transparent background + browser source
-│   │
-│   ├── advanced/                # Advanced features (current release series)
-│   │   ├── WebXRRenderer.js     # WebXR VR/AR with 6DOF
-│   │   ├── WebGPUCompute.js     # WGSL particle + FFT compute
-│   │   ├── MIDIController.js    # Web MIDI with learn mode
-│   │   ├── AIPresetGenerator.js # Text-to-preset + mutation
-│   │   └── OffscreenWorker.js   # Worker rendering + SharedArrayBuffer
-│   │
-│   ├── export/                  # Export system
-│   │   ├── VIB3PackageExporter.js
-│   │   └── TradingCardGenerator.js
-│   │
-│   └── agent/mcp/               # MCP agentic interface
-│       ├── MCPServer.js
-│       └── tools.js
-│
-├── tools/                        # Tooling
-│   └── shader-sync-verify.js    # Shader sync verification (current release series)
-│
-├── js/                          # UI layer
-│   ├── core/app.js
-│   ├── controls/
-│   └── gallery/
-│
-├── tests/                       # Test suite
-│   ├── sdk-browser.spec.js
-│   └── e2e/
-│
-└── index.html                   # Main entry point
-```
+1. **pnpm, not npm** — `pnpm-lock.yaml` is the canonical lockfile. Using npm will create conflicts.
+2. **`RealHolographicSystem`** — The actual class name. Don't look for `HolographicSystem`.
+3. **Version strings in 4 places** — `package.json`, `VIB3Engine.exportState()`, `Parameters.exportConfiguration()`, `ErrorReporter`. Keep them in sync.
+4. **Inline vs external shaders can drift** — Visualizer `.js` files contain inline GLSL. External shader files in `src/shaders/` can desync. Run `pnpm run verify:shaders` to check.
+5. **6D rotation order matters** — Always XY → XZ → YZ → XW → YW → ZW. Changing order produces different results.
+6. **ViewerInputHandler vs ReactivityManager** — `src/viewer/ViewerInputHandler.js` (renamed from ReactivityManager) is a *different file* from `src/reactivity/ReactivityManager.js`.
+7. **WASM is optional** — Engine falls back to JS math if `.wasm` isn't available.
+8. **WebGPU is optional** — Falls back to WebGL.
 
 ---
 
 ## Quick Reference
 
-### Run Development Server
-```bash
-npm install
-npm run dev
-```
-
-### Run Tests
-```bash
-npm test              # All tests
-npm run test:e2e      # E2E browser tests
-```
-
-### Build WASM Core
-```bash
-cd cpp && ./build.sh
-```
-
 ### Parameter Ranges
 
-| Parameter | Range | Description |
-|-----------|-------|-------------|
-| geometry | 0-23 | Geometry variant |
-| rot4dXY/XZ/YZ | 0-2π | 3D rotation |
-| rot4dXW/YW/ZW | 0-2π | 4D rotation |
-| gridDensity | 4-100 | Pattern density |
-| morphFactor | 0-2 | Shape interpolation |
-| chaos | 0-1 | Randomness |
-| speed | 0.1-3 | Animation speed |
-| hue | 0-360 | Color hue |
-| intensity | 0-1 | Brightness |
-| dimension | 3.0-4.5 | Projection distance |
+| Parameter | Range | What it does |
+|---|---|---|
+| `geometry` | 0-23 | Which of the 24 geometry variants to render |
+| `rot4dXY/XZ/YZ` | 0-2π | 3D rotation angles (radians) |
+| `rot4dXW/YW/ZW` | 0-2π | 4D hyperspace rotation angles (radians) |
+| `gridDensity` | 4-100 | Pattern density / complexity |
+| `morphFactor` | 0-2 | Interpolation between geometry states |
+| `chaos` | 0-1 | Randomness / noise amount |
+| `speed` | 0.1-3 | Animation speed multiplier |
+| `hue` | 0-360 | Base color hue |
+| `saturation` | 0-1 | Color saturation |
+| `intensity` | 0-1 | Brightness / glow |
+| `dimension` | 3.0-4.5 | 4D→3D projection distance |
 
 ### Keyboard Shortcuts
 
 | Key | Action |
-|-----|--------|
-| 1 | Switch to Faceted |
-| 2 | Switch to Quantum |
-| 3 | Switch to Holographic |
-| A | Toggle audio |
-| T | Toggle device tilt |
+|---|---|
+| 1 / 2 / 3 | Switch to Faceted / Quantum / Holographic |
+| Alt+1/2/3 | Core type: Base / Hypersphere / Hypertetra |
+| A | Toggle audio reactivity |
+| T | Toggle device tilt input |
 | I | Toggle interactivity |
 | F | Toggle fullscreen |
 | Ctrl+S | Save to gallery |
 | Ctrl+G | Open gallery |
-| Alt+1/2/3 | Core type (Base/Hypersphere/Hypertetra) |
 
 ---
 
-## SpatialInputSystem (`src/reactivity/SpatialInputSystem.js`)
+## MCP Agent Tools (12)
 
-Universal spatial input mapping that decouples "card tilting" from physical device orientation. Any input source maps to a normalized spatial state, which then maps to any visualization parameter.
+For AI agents controlling VIB3+ programmatically. Full definitions in `src/agent/mcp/tools.js`.
 
-### Input Sources (8 types)
-| Source | Description |
-|--------|-------------|
-| `deviceTilt` | Physical device orientation (DeviceOrientationEvent) |
-| `mousePosition` | Mouse X/Y → pitch/yaw |
-| `gyroscope` | GyroscopeSensor API |
-| `gamepad` | GamepadAPI analog sticks |
-| `perspective` | Wearable/XR viewing angle |
-| `programmatic` | API-driven spatial data |
-| `audio` | Audio-reactive spatial simulation |
-| `midi` | MIDI CC → spatial axes |
-
-### Built-in Profiles (6)
-| Profile | Use Case |
-|---------|----------|
-| `cardTilt` | Traditional card tilting (default) |
-| `wearablePerspective` | User perspective/viewing angle on wearables |
-| `gameAsset` | Character holding position in games |
-| `vjAudioSpatial` | Audio-reactive spatial movement for VJ/music |
-| `uiElement` | UI element spatial behavior without physical bending |
-| `immersiveXR` | Full 6DOF WebXR spatial tracking |
-
-### Engine Integration
-```javascript
-const engine = new VIB3Engine({ spatialProfile: 'cardTilt' });
-engine.enableSpatialInput('vjAudioSpatial');
-engine.feedSpatialInput({ pitch: 0.5, yaw: -0.3, roll: 0.1 });
-engine.setSpatialSensitivity(2.0);
-engine.setSpatialDramaticMode(true); // 8x amplification
-```
+| Tool | What it does |
+|---|---|
+| `create_4d_visualization` | Create a new visualization scene |
+| `set_rotation` | Set 6D rotation values |
+| `set_visual_parameters` | Set any visual property |
+| `switch_system` | Change between Quantum/Faceted/Holographic |
+| `change_geometry` | Set geometry by index or base+core type |
+| `get_state` | Read current engine state |
+| `randomize_parameters` | Randomize everything |
+| `reset_parameters` | Reset to defaults |
+| `save_to_gallery` / `load_from_gallery` | Gallery persistence |
+| `search_geometries` | Query available geometries |
+| `get_parameter_schema` | Get parameter validation schema |
 
 ---
 
-## Creative Tooling (`src/creative/`)
-
-### ColorPresetsSystem (980 lines)
-22 themed color presets (Ocean, Lava, Neon, Monochrome, etc.) with group parameter application.
-
-### TransitionAnimator (683 lines)
-14 easing functions with smooth interpolation between states, sequencing support.
-
-### PostProcessingPipeline (1,113 lines)
-14 composable effects (bloom, chromatic aberration, vignette, film grain, etc.) with 7 preset chains.
-
-### ParameterTimeline (1,061 lines)
-Keyframe-based parameter animation with BPM sync for music-driven sequences.
-
----
-
-## Platform Integrations (`src/integrations/`)
-
-| Module | Lines | Purpose |
-|--------|-------|---------|
-| `frameworks/Vib3React.js` | 591 | `<Vib3Canvas>` React component + `useVib3()` hook |
-| `frameworks/Vib3Vue.js` | 628 | Vue 3 component + composable |
-| `frameworks/Vib3Svelte.js` | 654 | Svelte component + store |
-| `FigmaPlugin.js` | 854 | Figma plugin manifest, code, and UI generator |
-| `ThreeJsPackage.js` | 660 | Three.js ShaderMaterial with 4D rotation uniforms |
-| `TouchDesignerExport.js` | 552 | GLSL TOP export for TouchDesigner |
-| `OBSMode.js` | 754 | Transparent background + OBS browser source mode |
-
----
-
-## Advanced Features (`src/advanced/`)
-
-| Module | Lines | Purpose |
-|--------|-------|---------|
-| `WebXRRenderer.js` | 680 | WebXR VR/AR with 6DOF spatial extraction |
-| `WebGPUCompute.js` | 1,051 | WGSL particle simulation + audio FFT compute shaders |
-| `MIDIController.js` | 703 | Web MIDI API with learn mode and CC mapping |
-| `AIPresetGenerator.js` | 777 | Text-to-preset via LLM + mutation/crossbreeding |
-| `OffscreenWorker.js` | 1,051 | OffscreenCanvas worker rendering + SharedArrayBuffer |
-
----
-
-## Shader Sync Verification (`tools/shader-sync-verify.js`)
-
-937-line tool that verifies inline shaders in visualizer JS files match external shader files. Parses GLSL uniforms and WGSL struct fields, compares across all 3 systems, and produces color-coded console reports.
-
-```bash
-npm run verify:shaders
-```
-
----
-
-## Important Notes
-
-1. **Polychora is TBD** - Not production ready, disabled in UI
-2. **Three active systems only** - Quantum, Faceted, Holographic
-3. **6D rotation order matters** - Always XY→XZ→YZ→XW→YW→ZW
-4. **WASM optional** - Falls back to JS math if unavailable
-5. **WebGPU optional** - Falls back to WebGL
-
----
-
-**VIB3+ CORE - Clear Seas Solutions LLC**
+**VIB3+ SDK — Clear Seas Solutions LLC**
