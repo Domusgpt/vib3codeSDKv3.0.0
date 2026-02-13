@@ -1,0 +1,400 @@
+/* ═══════════════════════════════════════════════════════════════
+   REVEAL LAYER SYSTEM — Multi-Layer Parallax Choreography
+
+   Architecture: Solid/glass overlay layers on top of visualizer
+   canvases create negative-space windows. Scroll drives layer
+   movement, revealing different visualizer regions through
+   various patterns (bars, iris, checker, columns, glass panels).
+
+   Layer stack (bottom to top):
+     z-0:   Visualizer canvases (existing)
+     z-10:  Parallax depth layer (subtle geometric field)
+     z-20:  Reveal transition layers (section-specific)
+     z-30:  Glassmorphic accent panels
+     z-40:  Text/UI content (existing)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Base layer classes ── */
+.reveal-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+    will-change: transform, clip-path, opacity;
+}
+
+.reveal-layer--absolute {
+    position: absolute;
+}
+
+/* ── Parallax Depth Field ──
+   Persistent subtle geometric overlay creating depth.
+   Moves at ~0.3x scroll speed. */
+.parallax-field {
+    z-index: 8;
+    background:
+        radial-gradient(circle 1px at 20% 30%, rgba(0,240,255,0.08) 0%, transparent 100%),
+        radial-gradient(circle 1px at 60% 70%, rgba(168,85,247,0.06) 0%, transparent 100%),
+        radial-gradient(circle 1px at 80% 20%, rgba(244,63,94,0.05) 0%, transparent 100%);
+    opacity: 0.6;
+    mix-blend-mode: screen;
+}
+
+/* ── Diagonal Bar System ──
+   Bars sweep from screen edges at angles, creating
+   negative-space slits revealing visualizers beneath. */
+.reveal-bars {
+    z-index: 20;
+    overflow: hidden;
+}
+
+.reveal-bar {
+    position: absolute;
+    background: var(--bg);
+    will-change: transform;
+}
+
+/* Horizontal bars from left/right bezels */
+.reveal-bar--h {
+    height: calc(100% / var(--bar-count, 8));
+    width: 120%;
+    left: -10%;
+}
+.reveal-bar--h:nth-child(even) { transform: translateX(100%); }
+.reveal-bar--h:nth-child(odd) { transform: translateX(-100%); }
+
+/* Vertical bars from top/bottom bezels */
+.reveal-bar--v {
+    width: calc(100% / var(--bar-count, 8));
+    height: 120%;
+    top: -10%;
+}
+.reveal-bar--v:nth-child(even) { transform: translateY(100%); }
+.reveal-bar--v:nth-child(odd) { transform: translateY(-100%); }
+
+/* Diagonal bars */
+.reveal-bar--diag {
+    width: 150%;
+    height: calc(100% / var(--bar-count, 6));
+    left: -25%;
+    transform-origin: center;
+    transform: rotate(var(--bar-angle, -15deg)) translateX(var(--bar-tx, 100%));
+}
+
+/* ── Iris Aperture ──
+   Concentric circles that open/close, revealing through center. */
+.reveal-iris {
+    z-index: 20;
+    background: var(--bg);
+    clip-path: circle(var(--iris-radius, 0%) at var(--iris-x, 50%) var(--iris-y, 50%));
+    /* INVERTED: the bg layer gets clipped AWAY to reveal */
+}
+.reveal-iris--invert {
+    /* Solid bg with circular hole */
+    -webkit-mask-image: radial-gradient(
+        circle var(--iris-radius, 0px) at var(--iris-x, 50%) var(--iris-y, 50%),
+        transparent 98%, black 100%
+    );
+    mask-image: radial-gradient(
+        circle var(--iris-radius, 0px) at var(--iris-x, 50%) var(--iris-y, 50%),
+        transparent 98%, black 100%
+    );
+    background: var(--bg);
+}
+
+/* Multiple concentric rings */
+.iris-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid rgba(0,240,255,0.1);
+    transform: scale(var(--ring-scale, 0));
+    opacity: var(--ring-opacity, 0);
+    will-change: transform, opacity;
+}
+
+/* ── Checkerboard Reveal ──
+   Grid of solid tiles that stagger-animate away. */
+.reveal-checker {
+    z-index: 20;
+    display: grid;
+    grid-template-columns: repeat(var(--checker-cols, 8), 1fr);
+    grid-template-rows: repeat(var(--checker-rows, 6), 1fr);
+    gap: 0;
+}
+
+.checker-tile {
+    background: var(--bg);
+    will-change: transform, opacity;
+    transform-origin: center;
+}
+
+/* ── Column Split ──
+   Vertical columns that parallax aside to reveal content. */
+.reveal-columns {
+    z-index: 20;
+    display: flex;
+    overflow: hidden;
+}
+
+.reveal-col {
+    flex: 1;
+    background: var(--bg);
+    will-change: transform;
+    position: relative;
+}
+
+/* Alternate columns slide opposite directions */
+.reveal-col:nth-child(even) { --col-dir: 1; }
+.reveal-col:nth-child(odd) { --col-dir: -1; }
+
+/* Glass-tinted columns */
+.reveal-col--glass {
+    background: rgba(3,7,18,0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-left: 1px solid rgba(255,255,255,0.04);
+    border-right: 1px solid rgba(255,255,255,0.04);
+}
+
+/* ── Glassmorphic Panels ──
+   Frosted glass shapes that slide/morph to create windows. */
+.reveal-glass-panel {
+    position: absolute;
+    background: rgba(3,7,18,0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.06);
+    will-change: transform, clip-path;
+    z-index: 30;
+    pointer-events: none;
+}
+
+.reveal-glass-panel--top {
+    top: 0; left: 0; right: 0;
+    height: 40%;
+    transform-origin: top center;
+}
+
+.reveal-glass-panel--bottom {
+    bottom: 0; left: 0; right: 0;
+    height: 40%;
+    transform-origin: bottom center;
+}
+
+.reveal-glass-panel--left {
+    top: 0; left: 0; bottom: 0;
+    width: 35%;
+    transform-origin: left center;
+}
+
+.reveal-glass-panel--right {
+    top: 0; right: 0; bottom: 0;
+    width: 35%;
+    transform-origin: right center;
+}
+
+/* Diamond/rhombus cutout in glass */
+.reveal-glass-panel--diamond {
+    inset: 0;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='50,5 95,50 50,95 5,50' fill='black'/%3E%3C/svg%3E");
+    -webkit-mask-size: var(--diamond-size, 20%) var(--diamond-size, 20%);
+    -webkit-mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-composite: destination-out;
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='50,5 95,50 50,95 5,50' fill='black'/%3E%3C/svg%3E");
+    mask-size: var(--diamond-size, 20%) var(--diamond-size, 20%);
+    mask-position: center;
+    mask-repeat: no-repeat;
+    mask-composite: subtract;
+}
+
+/* ── Bezel Bars ──
+   Bars that enter from all 4 screen edges, criss-cross to
+   form patterns. Each bar has a direction and timing offset. */
+.bezel-bar {
+    position: absolute;
+    background: var(--bg);
+    will-change: transform;
+    z-index: 20;
+    pointer-events: none;
+}
+
+.bezel-bar--from-top {
+    top: 0; height: 100%;
+    width: var(--bezel-bar-w, 8vw);
+    transform: translateY(-100%);
+}
+.bezel-bar--from-bottom {
+    bottom: 0; height: 100%;
+    width: var(--bezel-bar-w, 8vw);
+    transform: translateY(100%);
+}
+.bezel-bar--from-left {
+    left: 0; width: 100%;
+    height: var(--bezel-bar-h, 8vh);
+    transform: translateX(-100%);
+}
+.bezel-bar--from-right {
+    right: 0; width: 100%;
+    height: var(--bezel-bar-h, 8vh);
+    transform: translateX(100%);
+}
+
+/* ── Section Reveal Containers ──
+   Each section transition gets its own reveal container. */
+.section-reveal-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+/* ── Animated Geometric Shapes ──
+   Solid shapes that occlude/reveal as they move. */
+.geo-shape {
+    position: absolute;
+    background: var(--bg);
+    will-change: transform, opacity;
+    pointer-events: none;
+}
+
+.geo-shape--circle {
+    border-radius: 50%;
+}
+
+.geo-shape--diamond {
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+
+.geo-shape--hexagon {
+    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+}
+
+/* ── Glow Line Accents ──
+   Thin luminous lines at layer edges. Replace ugly seam borders. */
+.glow-line {
+    position: absolute;
+    pointer-events: none;
+    z-index: 25;
+}
+
+.glow-line--h {
+    left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+        transparent,
+        var(--glow-color, rgba(0,240,255,0.3)) 20%,
+        var(--glow-color, rgba(0,240,255,0.6)) 50%,
+        var(--glow-color, rgba(0,240,255,0.3)) 80%,
+        transparent
+    );
+    box-shadow: 0 0 12px 2px var(--glow-color, rgba(0,240,255,0.15));
+}
+
+.glow-line--v {
+    top: 0; bottom: 0;
+    width: 1px;
+    background: linear-gradient(180deg,
+        transparent,
+        var(--glow-color, rgba(0,240,255,0.3)) 20%,
+        var(--glow-color, rgba(0,240,255,0.6)) 50%,
+        var(--glow-color, rgba(0,240,255,0.3)) 80%,
+        transparent
+    );
+    box-shadow: 0 0 12px 2px var(--glow-color, rgba(0,240,255,0.15));
+}
+
+.glow-line--diag {
+    width: 200%;
+    height: 1px;
+    left: -50%;
+    background: linear-gradient(90deg,
+        transparent 10%,
+        var(--glow-color, rgba(0,240,255,0.4)) 50%,
+        transparent 90%
+    );
+    box-shadow: 0 0 16px 3px var(--glow-color, rgba(0,240,255,0.12));
+    transform-origin: center;
+    transform: rotate(var(--diag-angle, -30deg));
+}
+
+/* ── Quality Fixes ── */
+
+/* Ensure energy button has backdrop blur for glass effect */
+.energy-btn {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+/* Section dividers replaced by glow lines — hide old SVG dividers */
+.section-divider {
+    display: none !important;
+}
+
+/* Fix: Canvas seam edges — soft blending at section boundaries */
+section {
+    position: relative;
+}
+
+section::before,
+section::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 80px;
+    pointer-events: none;
+    z-index: 15;
+}
+
+section::before {
+    top: 0;
+    background: linear-gradient(to bottom, var(--bg), transparent);
+}
+
+section::after {
+    bottom: 0;
+    background: linear-gradient(to top, var(--bg), transparent);
+}
+
+/* Don't add edge blending to opening section (full-bleed) */
+.opening::before,
+.opening::after,
+.hero::before,
+footer::before,
+footer::after { display: none; }
+
+/* Morph section edge blending - subtle since it's pinned */
+.morph::before { height: 40px; }
+.morph::after { height: 40px; }
+
+/* ── Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+    .reveal-layer,
+    .reveal-bar,
+    .checker-tile,
+    .reveal-col,
+    .bezel-bar,
+    .geo-shape,
+    .reveal-glass-panel {
+        transition: none !important;
+        animation: none !important;
+    }
+}
+
+/* ── Mobile adjustments ── */
+@media (max-width: 768px) {
+    .reveal-checker {
+        --checker-cols: 4;
+        --checker-rows: 4;
+    }
+    .reveal-columns {
+        /* Fewer columns on mobile */
+    }
+    section::before,
+    section::after {
+        height: 40px;
+    }
+}
