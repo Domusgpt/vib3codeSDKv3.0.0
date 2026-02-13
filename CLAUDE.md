@@ -1,6 +1,6 @@
 # CLAUDE.md - VIB3+ CORE Technical Reference
 
-**VIB3+ Unified 4D Visualization Engine — v2.0.0**
+**VIB3+ Unified 4D Visualization Engine — current release status in `DOCS/STATUS.md`**
 
 ---
 
@@ -466,15 +466,15 @@ Vib3-CORE-Documented01-/
 │   ├── reactivity/              # Reactivity & spatial input
 │   │   ├── ReactivityConfig.js
 │   │   ├── ReactivityManager.js
-│   │   └── SpatialInputSystem.js  # Universal spatial input (v2.0.0)
+│   │   └── SpatialInputSystem.js  # Universal spatial input (current release series)
 │   │
-│   ├── creative/                # Creative tooling (v2.0.0)
+│   ├── creative/                # Creative tooling (current release series)
 │   │   ├── ColorPresetsSystem.js  # 22 themed color presets
 │   │   ├── TransitionAnimator.js  # 14 easing functions, sequencing
 │   │   ├── PostProcessingPipeline.js  # 14 effects, 7 preset chains
 │   │   └── ParameterTimeline.js   # Keyframe animation with BPM sync
 │   │
-│   ├── integrations/            # Platform integrations (v2.0.0)
+│   ├── integrations/            # Platform integrations (current release series)
 │   │   ├── frameworks/
 │   │   │   ├── Vib3React.js     # React component + useVib3() hook
 │   │   │   ├── Vib3Vue.js       # Vue 3 component + composable
@@ -484,7 +484,7 @@ Vib3-CORE-Documented01-/
 │   │   ├── TouchDesignerExport.js  # GLSL TOP export
 │   │   └── OBSMode.js           # Transparent background + browser source
 │   │
-│   ├── advanced/                # Advanced features (v2.0.0)
+│   ├── advanced/                # Advanced features (current release series)
 │   │   ├── WebXRRenderer.js     # WebXR VR/AR with 6DOF
 │   │   ├── WebGPUCompute.js     # WGSL particle + FFT compute
 │   │   ├── MIDIController.js    # Web MIDI with learn mode
@@ -500,7 +500,7 @@ Vib3-CORE-Documented01-/
 │       └── tools.js
 │
 ├── tools/                        # Tooling
-│   └── shader-sync-verify.js    # Shader sync verification (v2.0.0)
+│   └── shader-sync-verify.js    # Shader sync verification (current release series)
 │
 ├── js/                          # UI layer
 │   ├── core/app.js

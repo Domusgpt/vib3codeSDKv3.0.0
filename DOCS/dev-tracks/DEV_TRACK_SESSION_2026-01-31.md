@@ -87,7 +87,7 @@
 | File | Purpose |
 |------|---------|
 | `DOCS/MASTER_PLAN_2026-01-31.md` | Master plan with 43 items |
-| `DOCS/DEV_TRACK_SESSION_2026-01-31.md` | This session log |
+| `DOCS/dev-tracks/DEV_TRACK_SESSION_2026-01-31.md` | This session log |
 | `DOCS/OBS_SETUP_GUIDE.md` | OBS integration guide |
 | `LICENSE` | MIT License |
 | `CHANGELOG.md` | v1.0.0 + v2.0.0 release notes |

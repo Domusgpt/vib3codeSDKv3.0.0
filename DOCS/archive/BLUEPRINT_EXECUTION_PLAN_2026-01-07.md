@@ -1,6 +1,6 @@
 # Blueprint execution plan (2026-01-07)
 
-This execution plan operationalizes the strategic blueprint and defines what each session should deliver. Each session should update `DOCS/SESSION_LOG_2026-01-07.md` with timestamped progress and keep the checklist current.
+This execution plan operationalizes the strategic blueprint and defines what each session should deliver. Each session should update `DOCS/archive/SESSION_LOG_2026-01-07.md` with timestamped progress and keep the checklist current.
 
 ## Session cadence
 - **Start of session**: review this plan and the strategic blueprint.
