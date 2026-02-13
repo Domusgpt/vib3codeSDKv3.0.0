@@ -43,6 +43,7 @@ import {
   initSectionVeils, initScrollVelocityBurst, initPhaseShiftBridges,
   initSpeedCrescendo,
 } from './choreography.js';
+import { initOverlayChoreography } from './overlay-choreography.js';
 
 // ─── State ────────────────────────────────────────────────────
 
@@ -346,7 +347,12 @@ function feedMouseToRenderers() {
 
   // Feed to visible GPU adapters — mouse interaction (non-additive)
   if (mouseState.active) {
-    const gpuKeys = ['hero', 'opening', 'playground', 'energyCard'];
+    const gpuKeys = [
+      'hero', 'opening', 'playground', 'energyCard', 'energyBg',
+      'triLeft', 'triCenter', 'triRight',
+      'casGpuL', 'casGpuR',
+      'ctaL', 'ctaR', 'agent',
+    ];
     for (const key of gpuKeys) {
       const adapter = pool.get(key);
       if (!adapter || !adapter.engine) continue;
@@ -366,73 +372,19 @@ function renderLoop(ts) {
 
 // ─── Boot ─────────────────────────────────────────────────────
 
-if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
-  gsap.registerPlugin(ScrollTrigger);
-} else {
-  console.warn('GSAP not loaded — scroll choreography disabled');
-}
-
-// ─── Lenis Smooth Scroll ──────────────────────────────────────
-
-if (typeof Lenis !== 'undefined' && typeof gsap !== 'undefined') {
-  const lenis = new Lenis();
-  lenis.on('scroll', ScrollTrigger.update);
-  gsap.ticker.add((time) => lenis.raf(time * 1000));
-  gsap.ticker.lagSmoothing(0);
-}
-
-// Initialize everything
+// Start non-GSAP systems immediately (no CDN dependency)
 initAmbientCanvases();
-
-if (typeof gsap !== 'undefined') {
-  // Opening cinematic (acquires its own GPU context)
-  initOpening(pool, createHero);
-  initScrollProgress();
-  initHero(pool);
-  initMorph(pool, createHero);
-  initTriptych(pool);       // 3 GPU: Q + H + F split-screen
-  initCascade(pool, c2d);   // 2 GPU bg (Q + H) + Canvas2D cards
-  initEnergy(pool);         // 2 GPU: Q bg + F card
-  initAgent(pool);          // 1 GPU: H background
-  initCTA(pool);            // 2 GPU: Q + F dueling finale
-  initSectionReveals();
-  initSectionVeils();
-  initScrollColorTheme();
-  initBlurReveals();
-  initScrollVelocityBurst(c2d);
-  initPhaseShiftBridges(pool, c2d);
-  initSpeedCrescendo(pool);
-}
-
-// Acquire opening canvas immediately (first thing user sees)
 pool.acquire('opening', 'opening-canvas', QuantumAdapter, openingParams);
-
 initPlayground();
 initTiltSystem();
 initGlobalMouseReactivity();
 requestAnimationFrame(renderLoop);
-
-// ─── Energy Card GPU Lifecycle → Tilt Adapter ─────────────────
-// When the energy GPU context is acquired/released, update the tilt system adapter
-
-if (typeof ScrollTrigger !== 'undefined') {
-  ScrollTrigger.create({
-    trigger: '#energySection', start: 'top 80%', end: 'bottom top',
-    onEnter: () => {
-      const adapter = pool.get('energyCard');
-      if (tiltSystem && adapter) {
-        tiltSystem.setAdapter(document.getElementById('energyCard'), adapter);
-      }
-    },
-  });
-}
 
 // Clean up on page hide (mobile tab switching) — re-acquire on return
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     pool.releaseAll();
   } else {
-    // Re-acquire opening or hero context depending on scroll position
     const openingSection = document.getElementById('openingSection');
     if (openingSection) {
       const rect = openingSection.getBoundingClientRect();
@@ -442,7 +394,6 @@ document.addEventListener('visibilitychange', () => {
         createHero();
       }
     }
-    // Re-acquire playground if visible
     const pgSection = document.getElementById('playgroundSection');
     if (pgSection) {
       const rect = pgSection.getBoundingClientRect();
@@ -455,3 +406,58 @@ document.addEventListener('visibilitychange', () => {
     }
   }
 });
+
+// ─── GSAP Choreography (loads after CDN scripts) ─────────────
+// Waits for CDN scripts (GSAP, ScrollTrigger, Lenis) with 5s timeout.
+// If CDN is unreachable, gracefully degrades to static visuals.
+
+if (window.__cdnReady) {
+  window.__cdnReady.then(() => {
+    if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
+      gsap.registerPlugin(ScrollTrigger);
+    } else {
+      console.warn('GSAP not loaded — scroll choreography disabled');
+      return;
+    }
+
+    // Lenis smooth scroll
+    if (typeof Lenis !== 'undefined') {
+      const lenis = new Lenis();
+      lenis.on('scroll', ScrollTrigger.update);
+      gsap.ticker.add((time) => lenis.raf(time * 1000));
+      gsap.ticker.lagSmoothing(0);
+    }
+
+    // Full scroll choreography
+    initOpening(pool, createHero);
+    initScrollProgress();
+    initHero(pool);
+    initMorph(pool, createHero);
+    initTriptych(pool);
+    initCascade(pool, c2d);
+    initEnergy(pool);
+    initAgent(pool);
+    initCTA(pool);
+    initSectionReveals();
+    initSectionVeils();
+    initScrollColorTheme();
+    initBlurReveals();
+    initScrollVelocityBurst(c2d);
+    initPhaseShiftBridges(pool, c2d);
+    initSpeedCrescendo(pool);
+    initOverlayChoreography(pool);
+
+    // Energy card tilt adapter lifecycle
+    ScrollTrigger.create({
+      trigger: '#energySection', start: 'top 80%', end: 'bottom top',
+      onEnter: () => {
+        const adapter = pool.get('energyCard');
+        if (tiltSystem && adapter) {
+          tiltSystem.setAdapter(document.getElementById('energyCard'), adapter);
+        }
+      },
+    });
+  });
+} else {
+  console.warn('CDN loader not available — scroll choreography disabled');
+}

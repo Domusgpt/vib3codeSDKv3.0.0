@@ -1,5 +1,8 @@
 # Dev track analysis and next steps
 
+> **Archived document:** This file is retained for historical reference in `DOCS/archive/` and is not part of the active docs set.
+
+
 This document summarizes the current development track status, highlights gaps, and proposes the
 next execution steps. It should be updated after each multi-system delivery.
 

@@ -134,7 +134,7 @@ Use the following format to stamp each session. Update the status, notes, and bl
 **Stamp:** 2026-01-22 01:22 UTC
 - **Focus:** Analyze current progress and define next steps for Phase 4.
 - **Status:** COMPLETE
-- **Notes:** Documented current status, gaps, and a recommended Phase 4+ execution plan in `DOCS/DEV_TRACK_ANALYSIS.md`.
+- **Notes:** Documented current status, gaps, and a recommended Phase 4+ execution plan in `DOCS/archive/DEV_TRACK_ANALYSIS.md`.
 - **Blockers:** None.
 
 ### Session 009 — WebGPU prototype

@@ -24,13 +24,13 @@ test.describe('VIB3+ SDK Tests', () => {
         console.log('TEST 1: Page Load');
         console.log('========================================');
 
-        const response = await page.goto(`http://localhost:${PORT}/`);
+        const response = await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'domcontentloaded' });
 
         console.log(`HTTP Status: ${response.status()}`);
         expect(response.ok()).toBeTruthy();
 
         try {
-            await page.screenshot({ path: `${RESULTS_DIR}/01-page-load.png` });
+            await page.screenshot({ path: `${RESULTS_DIR}/01-page-load.png`, timeout: 5000 });
             console.log('Screenshot saved: test-results/01-page-load.png');
         } catch (e) {
             console.log('Screenshot skipped (env limitation)');
@@ -59,7 +59,7 @@ test.describe('VIB3+ SDK Tests', () => {
             console.log(`[PAGE ERROR] ${err.message}`);
         });
 
-        await page.goto(`http://localhost:${PORT}/`);
+        await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'domcontentloaded' });
 
         // Wait for WASM to initialize by polling for window.Vib3Core
         // Using waitForFunction instead of fixed timeout to avoid browser crashes
@@ -99,7 +99,7 @@ test.describe('VIB3+ SDK Tests', () => {
         errors.forEach(e => console.log(`  - ${e}`));
 
         try {
-            await page.screenshot({ path: `${RESULTS_DIR}/02-wasm-init.png` });
+            await page.screenshot({ path: `${RESULTS_DIR}/02-wasm-init.png`, timeout: 5000 }).catch(() => {});
             console.log('Screenshot saved: test-results/02-wasm-init.png');
         } catch (e) {
             console.log('Screenshot skipped (env limitation)');
@@ -115,7 +115,7 @@ test.describe('VIB3+ SDK Tests', () => {
         console.log('TEST 3: Canvas and WebGL');
         console.log('========================================');
 
-        await page.goto(`http://localhost:${PORT}/`);
+        await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'domcontentloaded' });
 
         // Wait for canvases to be created
         await page.waitForFunction(
@@ -149,7 +149,7 @@ test.describe('VIB3+ SDK Tests', () => {
         expect(canvasInfo.length).toBeGreaterThan(0);
 
         try {
-            await page.screenshot({ path: `${RESULTS_DIR}/03-canvas-webgl.png` });
+            await page.screenshot({ path: `${RESULTS_DIR}/03-canvas-webgl.png`, timeout: 5000 }).catch(() => {});
             console.log('Screenshot saved: test-results/03-canvas-webgl.png');
         } catch (e) {
             console.log('Screenshot skipped (env limitation)');
@@ -161,7 +161,7 @@ test.describe('VIB3+ SDK Tests', () => {
         console.log('TEST 4: UI Controls');
         console.log('========================================');
 
-        await page.goto(`http://localhost:${PORT}/`);
+        await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'domcontentloaded' });
 
         // Wait for UI to initialize
         await page.waitForFunction(
@@ -191,7 +191,7 @@ test.describe('VIB3+ SDK Tests', () => {
         controls.selects.forEach(s => console.log(`  - #${s}`));
 
         try {
-            await page.screenshot({ path: `${RESULTS_DIR}/04-ui-controls.png` });
+            await page.screenshot({ path: `${RESULTS_DIR}/04-ui-controls.png`, timeout: 5000 }).catch(() => {});
             console.log('Screenshot saved: test-results/04-ui-controls.png');
         } catch (e) {
             console.log('Screenshot skipped (env limitation)');

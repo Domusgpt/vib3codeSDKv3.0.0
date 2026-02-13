@@ -50,3 +50,9 @@ See [CLAUDE.md](CLAUDE.md) for full technical reference. Key directories:
 ## Reporting Issues
 
 Use GitHub Issues with the provided templates (Bug Report or Feature Request).
+
+## Release Checklist
+
+- [ ] If `package.json` version changed, update [`DOCS/STATUS.md`](DOCS/STATUS.md).
+- [ ] Keep `DOCS/STATUS.md` test status linked to CI (no hardcoded pass-count claims).
+- [ ] Ensure release date/release-state in `DOCS/STATUS.md` matches changelog/release state.

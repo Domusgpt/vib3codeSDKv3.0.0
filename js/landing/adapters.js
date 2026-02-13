@@ -1,10 +1,14 @@
 /**
- * VIB3+ System Adapters
+ * VIB3+ System Adapters — 5-Layer Architecture
  *
- * Thin wrappers around each SDK visualization system, providing a uniform
- * interface: constructor(canvasId, opts), setParam/setParams, render, dispose.
+ * Each GPU adapter (Quantum, Holographic) creates a full 5-layer canvas stack:
+ *   background → shadow → content → highlight → accent
  *
- * Shows how to instantiate each system for standalone canvas usage.
+ * This matches the REAL VIB3+ visualization architecture with per-layer
+ * role params (density, speed, color shift, reactivity multipliers).
+ *
+ * Faceted uses single-canvas mode (its shader is a unified fragment program).
+ * AmbientLattice is a lightweight Canvas2D accent — NOT a visualization system.
  */
 
 import { QuantumEngine } from '../../src/quantum/QuantumEngine.js';
@@ -17,6 +21,93 @@ const DEFAULT_PARAMS = {
   rot4dXW: 0, rot4dYW: 0, rot4dZW: 0, rot4dXY: 0, rot4dXZ: 0, rot4dYZ: 0,
   dimension: 3.5,
 };
+
+// 5-layer roles with CSS compositing properties
+const LAYER_ROLES = [
+  { role: 'background', zIndex: 1, opacity: 0.35 },
+  { role: 'shadow',     zIndex: 2, opacity: 0.25 },
+  { role: 'content',    zIndex: 3, opacity: 0.95 },
+  { role: 'highlight',  zIndex: 4, opacity: 0.6  },
+  { role: 'accent',     zIndex: 5, opacity: 0.5  },
+];
+
+/**
+ * Create 5 stacked canvases inside a parent container.
+ * Returns an object mapping role name → HTMLCanvasElement.
+ * Also stores references on the parent element for cleanup.
+ */
+function createLayerCanvases(parentCanvasId) {
+  const placeholder = document.getElementById(parentCanvasId);
+  if (!placeholder) return null;
+
+  const parent = placeholder.parentElement;
+  if (!parent) return null;
+
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const w = parent.clientWidth * dpr;
+  const h = parent.clientHeight * dpr;
+
+  // Hide the original single canvas — we replace it with 5 layers
+  placeholder.style.display = 'none';
+
+  const canvases = {};
+  const createdEls = [];
+
+  LAYER_ROLES.forEach(({ role, zIndex, opacity }) => {
+    const canvas = document.createElement('canvas');
+    canvas.className = 'vib3-canvas vib3-layer';
+    canvas.dataset.role = role;
+    canvas.dataset.parentId = parentCanvasId;
+    canvas.width = w;
+    canvas.height = h;
+    canvas.style.cssText = `
+      display: block; position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: ${zIndex};
+      opacity: ${opacity};
+      pointer-events: ${role === 'content' ? 'auto' : 'none'};
+    `;
+    parent.appendChild(canvas);
+    canvases[role] = canvas;
+    createdEls.push(canvas);
+  });
+
+  // Store refs for cleanup
+  parent._vib3Layers = createdEls;
+  parent._vib3Placeholder = placeholder;
+
+  return canvases;
+}
+
+/**
+ * Remove 5-layer canvases and restore the original placeholder canvas.
+ */
+function destroyLayerCanvases(parentCanvasId) {
+  const placeholder = document.getElementById(parentCanvasId);
+  if (!placeholder) return;
+
+  const parent = placeholder.parentElement;
+  if (!parent) return;
+
+  // Remove created layer canvases
+  if (parent._vib3Layers) {
+    parent._vib3Layers.forEach(el => {
+      // Force-lose WebGL context before removing
+      try {
+        const gl = el.getContext('webgl2') || el.getContext('webgl');
+        if (gl && !gl.isContextLost()) {
+          const ext = gl.getExtension('WEBGL_lose_context');
+          if (ext) ext.loseContext();
+        }
+      } catch (_) { /* ignore */ }
+      el.remove();
+    });
+    parent._vib3Layers = null;
+  }
+
+  // Restore placeholder visibility
+  placeholder.style.display = '';
+}
 
 /** Wire mouse/touch interaction to a callback */
 function wireInteraction(canvas, onMove, onLeave) {
@@ -44,8 +135,8 @@ function unwireInteraction(canvas, handlers) {
   canvas.removeEventListener('mouseleave', handlers.leave);
 }
 
-function observeResize(canvas, onResize) {
-  const parent = canvas.parentElement;
+function observeResize(el, onResize) {
+  const parent = el.parentElement || el;
   if (!parent) return null;
   const obs = new ResizeObserver(() => {
     onResize(parent.clientWidth, parent.clientHeight, Math.min(devicePixelRatio || 1, 2));
@@ -54,31 +145,49 @@ function observeResize(canvas, onResize) {
   return obs;
 }
 
-// ─── Quantum Adapter ───────────────────────────────────────────
+// ─── Quantum Adapter (5-Layer) ───────────────────────────────────
 
 export class QuantumAdapter {
   constructor(canvasId, opts = {}) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) { this.active = false; return; }
-    this.canvas = canvas;
+    this.canvasId = canvasId;
     this.active = true;
     this.params = { ...DEFAULT_PARAMS, ...opts };
 
-    try {
-      this.engine = new QuantumEngine({ canvas, autoStart: true });
-      this.engine.setActive(true);
-      this.engine.updateParameters(this.params);
-    } catch (e) {
-      console.warn('Quantum init failed', e);
+    // Create 5-layer canvas stack
+    const canvases = createLayerCanvases(canvasId);
+    if (!canvases) {
       this.active = false;
       return;
     }
+    this._layerCanvases = canvases;
 
-    this._handlers = wireInteraction(canvas,
+    // Content layer is the interaction target
+    this.canvas = canvases.content;
+
+    try {
+      // Pass 5 canvases → engine creates 5 visualizers with proper roles
+      this.engine = new QuantumEngine({ canvases, autoStart: true });
+      this.engine.setActive(true);
+      this.engine.updateParameters(this.params);
+    } catch (e) {
+      console.warn('Quantum 5-layer init failed', e);
+      this.active = false;
+      destroyLayerCanvases(canvasId);
+      return;
+    }
+
+    this._handlers = wireInteraction(this.canvas,
       (x, y, i) => this.engine.updateInteraction(x, y, i),
       () => this.engine.updateInteraction(0.5, 0.5, 0),
     );
-    this._resizeObs = observeResize(canvas, (w, h, dpr) => this.engine.resize(w, h, dpr));
+    this._resizeObs = observeResize(this.canvas, (w, h, dpr) => {
+      this.engine.resize(w, h, dpr);
+      // Also resize all layer canvases
+      Object.values(this._layerCanvases).forEach(c => {
+        c.width = w * dpr;
+        c.height = h * dpr;
+      });
+    });
   }
 
   setParam(k, v) { this.params[k] = v; this.engine?.updateParameter(k, v); }
@@ -89,33 +198,49 @@ export class QuantumAdapter {
     unwireInteraction(this.canvas, this._handlers);
     this._resizeObs?.disconnect();
     try { this.engine?.dispose(); } catch (_) { /* ignore */ }
+    destroyLayerCanvases(this.canvasId);
   }
 }
 
-// ─── Holographic Adapter ───────────────────────────────────────
+// ─── Holographic Adapter (5-Layer) ───────────────────────────────
 
 export class HolographicAdapter {
   constructor(canvasId, opts = {}) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) { this.active = false; return; }
-    this.canvas = canvas;
+    this.canvasId = canvasId;
     this.active = true;
     this.params = { ...DEFAULT_PARAMS, ...opts };
 
+    // Create 5-layer canvas stack
+    const canvases = createLayerCanvases(canvasId);
+    if (!canvases) {
+      this.active = false;
+      return;
+    }
+    this._layerCanvases = canvases;
+    this.canvas = canvases.content;
+
     try {
-      this.system = new RealHolographicSystem({ canvas });
+      // Pass 5 canvases → system creates 5 visualizers with proper roles
+      this.system = new RealHolographicSystem({ canvases });
       this.system.setActive(true);
       for (const [k, v] of Object.entries(this.params)) {
         this.system.updateParameter(k, v);
       }
     } catch (e) {
-      console.warn('Holographic init failed', e);
+      console.warn('Holographic 5-layer init failed', e);
       this.active = false;
+      destroyLayerCanvases(canvasId);
       return;
     }
 
     // Holographic system is audio-reactive, no mouse/touch interaction API
-    this._resizeObs = observeResize(canvas, (w, h, dpr) => this.system.resize(w, h, dpr));
+    this._resizeObs = observeResize(this.canvas, (w, h, dpr) => {
+      this.system.resize(w, h, dpr);
+      Object.values(this._layerCanvases).forEach(c => {
+        c.width = w * dpr;
+        c.height = h * dpr;
+      });
+    });
   }
 
   setParam(k, v) { this.params[k] = v; this.system?.updateParameter(k, v); }
@@ -131,22 +256,22 @@ export class HolographicAdapter {
     this.active = false;
     this._resizeObs?.disconnect();
     try { this.system?.dispose(); } catch (_) { /* ignore */ }
+    destroyLayerCanvases(this.canvasId);
   }
 }
 
-// ─── Faceted Adapter ───────────────────────────────────────────
+// ─── Faceted Adapter (Single Canvas — unified fragment shader) ───
 
 export class FacetedAdapter {
   constructor(canvasId, opts = {}) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) { this.active = false; return; }
     this.canvas = canvas;
+    this.canvasId = canvasId;
     this.params = { ...DEFAULT_PARAMS, ...opts };
 
     try {
       this.faceted = new FacetedSystem();
-      // Synchronous direct WebGL init — matches Quantum/Holographic pattern.
-      // No async bridge, no race conditions, starts render loop immediately.
       const ok = this.faceted.initDirect(canvas);
       if (ok) {
         this.active = true;
@@ -217,16 +342,14 @@ export class AmbientLattice {
     const geo = Math.floor(p.geometry) % 24;
     const base = geo % 8, core = Math.floor(geo / 8);
     const cx = w / 2, cy = h / 2;
-    // DRAMATIC scale: geometry fills the canvas
     const sc = Math.max(w, h) * 0.55;
     const density = Math.max(4, Math.floor(p.gridDensity));
     const dim = p.dimension || 3.5;
     const sat = Math.round((p.saturation ?? 0.8) * 100);
-    // Mouse reactivity (fed externally via setParam('mouseX'/mouseY'))
     const mx = p.mouseX ?? 0.5, my = p.mouseY ?? 0.5;
     const mouseShift = (mx - 0.5) * 0.3;
 
-    // ── Layer 0: Deep background with hue shift ──
+    // ── Layer 0: Deep background ──
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
     const bgR = Math.max(w, h) * 0.85;
@@ -237,7 +360,7 @@ export class AmbientLattice {
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
 
-    // ── Layer 1: BIG nebula clouds — fill the canvas with color ──
+    // ── Layer 1: Nebula clouds ──
     const nebulaAlpha = 0.25 + p.intensity * 0.35;
     for (let n = 0; n < 4; n++) {
       const nAng = t * 0.12 + n * 1.57 + (p.rot4dZW || 0) * 0.5 + mouseShift;
@@ -254,7 +377,7 @@ export class AmbientLattice {
       ctx.fillRect(0, 0, w, h);
     }
 
-    // ── Layer 2: Primary geometry — BOLD filled shapes ──
+    // ── Layer 2: Primary geometry ──
     ctx.globalAlpha = Math.min(1, p.intensity * 1.2);
     const halfDensity = Math.ceil(density / 2);
 
@@ -262,24 +385,18 @@ export class AmbientLattice {
       const f = i / density;
       const ang = f * Math.PI * 2 + t + (p.rot4dXW || 0) + mouseShift * 2;
       const hShift = (p.hue + f * 120 + core * 60) % 360;
-
-      // 4D projection factor
       const w4 = Math.sin(t * 0.5 + f * 3.14 + (p.rot4dYW || 0)) * 0.4;
       const pf = 1.0 / (dim - w4);
-
-      // BOLD stroke + visible fill
       const strokeAlpha = 0.45 + p.chaos * 0.4 + p.intensity * 0.15;
       const fillAlpha = 0.12 + p.chaos * 0.15 + (i < halfDensity ? 0.08 : 0);
       ctx.strokeStyle = `hsla(${hShift}, ${sat}%, 65%, ${strokeAlpha})`;
       ctx.fillStyle = `hsla(${hShift}, ${Math.max(0, sat - 5)}%, 45%, ${fillAlpha})`;
       ctx.lineWidth = 2 + p.morphFactor * 1.5 + (i === 0 ? 1.5 : 0);
-
       ctx.beginPath();
       this._drawGeometry(ctx, base, cx, cy, sc, pf, f, ang, t, w, h, p);
       ctx.fill();
       ctx.stroke();
 
-      // Core warp overlay (Hypersphere / Hypertetra) — BOLD
       if (core > 0 && i % 2 === 0) {
         const warpHue = (hShift + 180) % 360;
         ctx.strokeStyle = `hsla(${warpHue}, ${sat}%, 60%, ${0.25 + p.chaos * 0.25})`;
@@ -302,15 +419,12 @@ export class AmbientLattice {
       }
     }
 
-    // ── Layer 3: Additive glow pass — BIG and BRIGHT ──
+    // ── Layer 3: Additive glow ──
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = Math.min(1, p.intensity * 0.8);
-
-    // Center glow beacon — covers significant canvas area
     const glowR = sc * (0.55 + Math.sin(t * 0.7) * 0.2);
     const glowGrad = ctx.createRadialGradient(
-      cx + (mx - 0.5) * sc * 0.3, cy + (my - 0.5) * sc * 0.3,
-      0, cx, cy, glowR
+      cx + (mx - 0.5) * sc * 0.3, cy + (my - 0.5) * sc * 0.3, 0, cx, cy, glowR
     );
     const glowHue = (p.hue + Math.sin(t * 0.3) * 30) % 360;
     glowGrad.addColorStop(0, `hsla(${glowHue}, ${sat}%, 65%, ${0.3 + p.chaos * 0.2})`);
@@ -319,7 +433,6 @@ export class AmbientLattice {
     ctx.fillStyle = glowGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Glow accent dots — brighter, larger
     const glowCount = Math.min(12, Math.floor(density / 2));
     for (let i = 0; i < glowCount; i++) {
       const f = i / glowCount;
@@ -327,7 +440,6 @@ export class AmbientLattice {
       const w4 = Math.sin(t * 0.5 + f * 3.14 + (p.rot4dYW || 0)) * 0.4;
       const pf = 1.0 / (dim - w4);
       const hShift = (p.hue + f * 120 + core * 60) % 360;
-
       const gx = cx + Math.cos(ang) * sc * (0.2 + f * 0.6) * pf;
       const gy = cy + Math.sin(ang) * sc * (0.2 + f * 0.6) * pf;
       const dotR = 5 + p.morphFactor * 6 + Math.sin(t * 2 + f * 10) * 3;
@@ -339,7 +451,7 @@ export class AmbientLattice {
       ctx.fillRect(gx - dotR * 4, gy - dotR * 4, dotR * 8, dotR * 8);
     }
 
-    // ── Layer 4: Edge highlights — VIVID bright lines ──
+    // ── Layer 4: Edge highlights ──
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = Math.min(1, p.intensity * 0.9);
     const edgeCount = Math.min(density, 16);
@@ -356,14 +468,13 @@ export class AmbientLattice {
       ctx.stroke();
     }
 
-    // ── Cleanup ──
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
   }
 
   _drawGeometry(ctx, base, cx, cy, sc, pf, f, ang, t, w, h, p) {
     switch (base) {
-      case 0: { // Tetrahedron
+      case 0: {
         const sides = 3 + Math.floor(p.morphFactor);
         for (let j = 0; j <= sides; j++) {
           const a = ang + j * (Math.PI * 2 / sides), r = sc * (0.3 + f * 0.7) * pf;
@@ -373,34 +484,33 @@ export class AmbientLattice {
         ctx.closePath();
         break;
       }
-      case 1: { // Hypercube
+      case 1: {
         const s = sc * (0.2 + f * 0.6) * pf;
         const rot = t * 0.3 + f * 0.5 + (p.rot4dXW || 0);
         ctx.save();
         ctx.translate(cx, cy);
         ctx.rotate(rot);
         ctx.rect(-s / 2, -s / 2, s, s);
-        // Inner cube (4D projection of inner face)
         const s2 = s * 0.55;
         const off = Math.sin(t + f * 2) * s * 0.15;
         ctx.rect(-s2 / 2 + off, -s2 / 2 + off, s2, s2);
         ctx.restore();
         break;
       }
-      case 2: { // Sphere
+      case 2: {
         const wobX = Math.sin(t + f * 2) * sc * 0.05;
         const wobY = Math.cos(t + f * 2) * sc * 0.05;
         ctx.arc(cx + wobX, cy + wobY, Math.max(2, sc * f * pf), 0, Math.PI * 2);
         break;
       }
-      case 3: { // Torus
+      case 3: {
         const tr = sc * 0.5 * pf, to = sc * (0.15 + f * 0.15);
         const tx = cx + Math.cos(ang) * tr;
         const ty = cy + Math.sin(ang) * tr;
         ctx.arc(tx, ty, Math.max(2, to * pf), 0, Math.PI * 2);
         break;
       }
-      case 4: // Klein Bottle
+      case 4:
         for (let k = 0; k <= 48; k++) {
           const kt = k / 48 * Math.PI * 2;
           const kr = sc * (0.3 + 0.15 * Math.sin(kt * 2 + t)) * pf;
@@ -411,13 +521,13 @@ export class AmbientLattice {
         }
         ctx.closePath();
         break;
-      case 5: { // Fractal — recursive triangle
+      case 5: {
         const fl = sc * 0.5 * pf, fa = ang + t * 0.2;
         const depth = 1 + Math.floor(p.morphFactor * 2);
         this._fractalTriangle(ctx, cx, cy, fl * (0.3 + f * 0.7), fa, depth);
         break;
       }
-      case 6: // Wave — sinusoidal interference
+      case 6:
         for (let x = 0; x < w; x += 3) {
           const wf = x / w;
           const wave1 = Math.sin(wf * p.gridDensity * 0.5 + t + f * 3);
@@ -426,14 +536,13 @@ export class AmbientLattice {
           x === 0 ? ctx.moveTo(x, wy) : ctx.lineTo(x, wy);
         }
         break;
-      case 7: { // Crystal
+      case 7: {
         const cl = sc * 0.45 * pf, ca = ang + f * 0.5;
         for (let ci = 0; ci < 8; ci++) {
           const a2 = ca + ci * Math.PI / 4;
           const len = cl * (0.4 + f * 0.6) * (ci % 2 === 0 ? 1 : 0.6);
           ctx.moveTo(cx, cy);
           ctx.lineTo(cx + Math.cos(a2) * len, cy + Math.sin(a2) * len);
-          // Cross connections between adjacent spokes
           if (ci > 0) {
             const prevA = ca + (ci - 1) * Math.PI / 4;
             const prevLen = cl * (0.4 + f * 0.6) * ((ci - 1) % 2 === 0 ? 1 : 0.6);
@@ -448,7 +557,6 @@ export class AmbientLattice {
 
   _fractalTriangle(ctx, x, y, size, angle, depth) {
     if (depth <= 0 || size < 3) {
-      // Leaf triangle
       for (let j = 0; j < 3; j++) {
         const a = angle + j * 2.094;
         j === 0 ? ctx.moveTo(x + Math.cos(a) * size, y + Math.sin(a) * size)
@@ -457,7 +565,6 @@ export class AmbientLattice {
       ctx.closePath();
       return;
     }
-    // Draw outer + recurse to 3 sub-triangles
     for (let j = 0; j < 3; j++) {
       const a = angle + j * 2.094;
       j === 0 ? ctx.moveTo(x + Math.cos(a) * size, y + Math.sin(a) * size)

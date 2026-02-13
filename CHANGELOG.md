@@ -2,6 +2,11 @@
 
 All notable changes to VIB3+ CORE (`@vib3code/sdk`) will be documented in this file.
 
+## [2.0.2] — 2026-02-07
+
+### Fixed
+- **Distribution** — Added `cpp/` directory to `package.json` files list to ensure full C++ source tree (including `geometry` and `tests`) is included in the npm package. This resolves native build failures in downstream applications.
+
 ## [2.0.1] — 2026-02-03
 
 ### Added

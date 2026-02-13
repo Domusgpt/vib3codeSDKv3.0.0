@@ -50,6 +50,7 @@ export default defineConfig(({ mode }) => {
             rollupOptions: {
                 input: {
                     main: resolve(__dirname, 'index.html'),
+                    site: resolve(__dirname, 'site/index.html'),
                     gallery: resolve(__dirname, 'docs/index.html'),
                     testHub: resolve(__dirname, 'docs/test-hub.html'),
                 },
