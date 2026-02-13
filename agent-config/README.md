@@ -29,29 +29,58 @@ Or if installed globally via npm:
 }
 ```
 
-### Available MCP Tools (19)
+### Available MCP Tools (26)
+
+**Onboarding & Query:**
 
 | Tool | Description |
 |------|-------------|
 | `get_sdk_context` | Get full SDK context for onboarding (call this first) |
 | `verify_knowledge` | Quiz to verify agent understands the SDK |
+| `search_geometries` | Browse all 24 geometry variants |
+| `get_parameter_schema` | Get JSON schema for all parameters |
+| `get_state` | Get current engine state |
+| `describe_visual_state` | Natural-language description of what the visualization looks like |
+
+**Scene & Parameter Control:**
+
+| Tool | Description |
+|------|-------------|
 | `create_4d_visualization` | Create a visualization with system + geometry |
 | `set_rotation` | Set 6D rotation (XY, XZ, YZ, XW, YW, ZW) |
 | `set_visual_parameters` | Set hue, speed, chaos, intensity, etc. |
+| `batch_set_parameters` | Atomically set system + geometry + rotation + visual + preset in one call |
 | `switch_system` | Switch between quantum/faceted/holographic |
 | `change_geometry` | Change geometry (0-23 index or name+core) |
-| `get_state` | Get current engine state |
 | `randomize_parameters` | Randomize for creative exploration |
 | `reset_parameters` | Reset to defaults |
-| `save_to_gallery` | Save current state to gallery slot |
-| `load_from_gallery` | Load from gallery slot |
-| `search_geometries` | Browse all 24 geometry variants |
-| `get_parameter_schema` | Get JSON schema for all parameters |
+
+**Creative Design:**
+
+| Tool | Description |
+|------|-------------|
+| `apply_color_preset` | Apply one of 22 themed color presets (Ocean, Neon, Cyberpunk, etc.) |
+| `set_post_processing` | Configure 14 composable post-processing effects |
+| `create_timeline` | Create multi-track keyframe animation with BPM sync |
+| `play_transition` | Smooth animated transitions between visual states |
+| `create_choreography` | Multi-scene coordinated performance with transitions |
+
+**Reactivity & Audio:**
+
+| Tool | Description |
+|------|-------------|
 | `set_reactivity_config` | Configure audio/tilt/interaction |
 | `get_reactivity_config` | Get current reactivity config |
 | `configure_audio_band` | Configure bass/mid/high audio bands |
-| `export_package` | Export as VIB3Package |
 | `apply_behavior_preset` | Apply preset (ambient/reactive/immersive/energetic/calm/cinematic) |
+
+**Gallery & Export:**
+
+| Tool | Description |
+|------|-------------|
+| `save_to_gallery` | Save current state to gallery slot |
+| `load_from_gallery` | Load from gallery slot |
+| `export_package` | Export as VIB3Package |
 
 ### Available MCP Resources
 
@@ -61,6 +90,19 @@ Or if installed globally via npm:
 | `vib3://docs/geometry-summary` | 24 geometry + 6D rotation reference |
 | `vib3://docs/control-reference` | Parameter ranges and controls |
 | `vib3://state/current` | Live engine state |
+
+## Claude Code Skills
+
+Two Claude Code skills are available in `.claude/commands/`:
+
+| Skill | Command | Purpose |
+|-------|---------|---------|
+| VIB3+ Design | `/vib3-design` | Design visualizations, choreograph timelines, create presets, build scroll animations |
+| VIB3+ Dev | `/vib3-dev` | Extend the codebase — add geometries, shaders, MCP tools, tests, integrations |
+
+### Usage
+
+In Claude Code, type `/vib3-design` or `/vib3-dev` to activate the skill context. The design skill supports both live MCP control and artifact generation modes.
 
 ## Agent Packs
 
