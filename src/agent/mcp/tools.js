@@ -645,6 +645,123 @@ export const toolDefinitions = {
             },
             required: ['name', 'duration_ms', 'scenes']
         }
+    },
+
+    // ===== VISUAL FEEDBACK TOOLS (Phase 7.1 — Agent Harness) =====
+
+    capture_screenshot: {
+        name: 'capture_screenshot',
+        description: 'Captures the current visualization as a base64-encoded PNG image by compositing all 5 canvas layers. Only works in browser context. Returns image data that multimodal agents can analyze for visual feedback.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                width: { type: 'integer', minimum: 64, maximum: 2048, default: 512, description: 'Output image width' },
+                height: { type: 'integer', minimum: 64, maximum: 2048, default: 512, description: 'Output image height' },
+                format: {
+                    type: 'string',
+                    enum: ['png', 'jpeg', 'webp'],
+                    default: 'png',
+                    description: 'Image format'
+                },
+                quality: { type: 'number', minimum: 0.1, maximum: 1.0, default: 0.92, description: 'JPEG/WebP quality' }
+            }
+        }
+    },
+
+    design_from_description: {
+        name: 'design_from_description',
+        description: 'Maps a natural-language aesthetic description to VIB3+ parameters. Understands emotions (serene, energetic, mysterious), styles (minimal, intricate, organic), colors (ocean, neon, cyberpunk), motion (flowing, pulsing, hypnotic), depth (deep, flat), and geometry (spherical, fractal, crystal). Combine multiple words for precise targeting.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                description: {
+                    type: 'string',
+                    description: 'Space-separated aesthetic descriptors. Examples: "serene ocean deep minimal", "energetic neon geometric", "mysterious galaxy intricate hypnotic"'
+                },
+                apply: {
+                    type: 'boolean',
+                    default: false,
+                    description: 'If true, immediately apply the resolved parameters to the engine'
+                }
+            },
+            required: ['description']
+        }
+    },
+
+    get_aesthetic_vocabulary: {
+        name: 'get_aesthetic_vocabulary',
+        description: 'Returns the full vocabulary of aesthetic descriptor words organized by category (emotions, styles, colors, motion, depth, geometry). Use this to discover what descriptions the system understands.',
+        inputSchema: {
+            type: 'object',
+            properties: {}
+        }
+    },
+
+    play_choreography: {
+        name: 'play_choreography',
+        description: 'Loads and plays a choreography specification on the engine. Requires a choreography spec (from create_choreography) or a stored choreography ID. Controls: play, pause, stop, seek.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                choreography: {
+                    type: 'object',
+                    description: 'Full choreography spec (from create_choreography output). Provide this OR choreography_id.'
+                },
+                choreography_id: {
+                    type: 'string',
+                    description: 'ID of a previously created choreography (from create_choreography)'
+                },
+                action: {
+                    type: 'string',
+                    enum: ['play', 'pause', 'stop', 'seek'],
+                    default: 'play',
+                    description: 'Playback action'
+                },
+                seek_percent: {
+                    type: 'number',
+                    minimum: 0,
+                    maximum: 1,
+                    description: 'For seek action: position as 0-1 percentage'
+                },
+                loop: {
+                    type: 'boolean',
+                    default: false,
+                    description: 'Loop the choreography'
+                }
+            }
+        }
+    },
+
+    control_timeline: {
+        name: 'control_timeline',
+        description: 'Controls playback of a previously created timeline (from create_timeline). Actions: play, pause, stop, seek, set_speed.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                timeline_id: {
+                    type: 'string',
+                    description: 'ID of the timeline to control'
+                },
+                action: {
+                    type: 'string',
+                    enum: ['play', 'pause', 'stop', 'seek', 'set_speed'],
+                    description: 'Playback control action'
+                },
+                seek_percent: {
+                    type: 'number',
+                    minimum: 0,
+                    maximum: 1,
+                    description: 'For seek: position as 0-1 percentage'
+                },
+                speed: {
+                    type: 'number',
+                    minimum: 0.1,
+                    maximum: 10,
+                    description: 'For set_speed: playback speed multiplier'
+                }
+            },
+            required: ['timeline_id', 'action']
+        }
     }
 };
 

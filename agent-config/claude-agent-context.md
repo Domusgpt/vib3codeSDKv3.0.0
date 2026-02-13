@@ -1,7 +1,7 @@
 # VIB3+ SDK — Agent Context Pack (Claude)
 
 > Precompiled context for Claude Code, Claude Desktop, and Claude API agents.
-> Version: 2.0.1 | Systems: 3 | Geometries: 24 | Rotation planes: 6
+> Version: 2.0.3 | Systems: 3 | Geometries: 24 | Rotation planes: 6 | MCP Tools: 31
 
 ## Core Concepts (5 facts)
 
@@ -11,8 +11,9 @@
 4. **5 canvas layers** per system: background, shadow, content, highlight, accent.
 5. **Vitality System**: Global breath cycle (6s period, 0-1 sine wave) modulating all systems.
 
-## MCP Tool Workflow
+## MCP Tool Workflows
 
+**Basic flow** (6 steps):
 ```
 1. get_sdk_context          → Understand the system
 2. create_4d_visualization  → Create with system + geometry
@@ -20,6 +21,23 @@
 4. set_visual_parameters    → Tune hue, speed, chaos, intensity
 5. apply_behavior_preset    → Apply preset (ambient/reactive/immersive)
 6. export_package           → Export as portable package
+```
+
+**Power flow** (design → animate → feedback):
+```
+1. design_from_description  → "serene ocean deep" → auto-mapped params
+2. batch_set_parameters     → Apply everything atomically
+3. describe_visual_state    → "See" result as text description
+4. create_timeline          → Design keyframe animation
+5. control_timeline         → Play/pause/seek the animation
+6. capture_screenshot       → Get actual pixel feedback (browser only)
+```
+
+**Choreography flow** (multi-scene performance):
+```
+1. create_choreography      → Define scenes with systems, transitions, timelines
+2. play_choreography        → Load and play the full performance
+3. describe_visual_state    → Monitor what's happening
 ```
 
 ## Parameter Quick Reference
@@ -48,12 +66,37 @@
 | calm | 0.2 | 0.05 | off | gentle | Meditation |
 | cinematic | 0.5 | 0.2 | off | off | Video/recording |
 
-## Example: Create a hypersphere torus with warm colors
+## Examples
 
+**Create a hypersphere torus with warm colors:**
 ```json
 {"tool": "create_4d_visualization", "args": {"system": "quantum", "geometry_index": 11}}
 {"tool": "set_rotation", "args": {"XW": 0.5, "YW": 0.3, "ZW": 0.8}}
 {"tool": "set_visual_parameters", "args": {"hue": 30, "speed": 0.6, "intensity": 0.8, "chaos": 0.15}}
 ```
-
 Geometry 11 = hypersphere(1) * 8 + torus(3) = index 11.
+
+**Design from natural language:**
+```json
+{"tool": "design_from_description", "args": {"description": "serene ocean deep organic", "apply": true}}
+```
+
+**Batch everything atomically:**
+```json
+{"tool": "batch_set_parameters", "args": {"system": "holographic", "geometry": 14, "rotation": {"XW": 1.0, "ZW": 0.5}, "visual": {"hue": 280, "chaos": 0.3, "speed": 0.8}, "preset": "cinematic"}}
+```
+
+**Animated timeline with BPM sync:**
+```json
+{"tool": "create_timeline", "args": {"duration_ms": 8000, "bpm": 120, "loop_mode": "loop", "tracks": {"hue": [{"time": 0, "value": 0}, {"time": 4000, "value": 180, "easing": "easeInOut"}, {"time": 8000, "value": 360}], "rot4dXW": [{"time": 0, "value": 0}, {"time": 8000, "value": 6.28, "easing": "linear"}]}}}
+{"tool": "control_timeline", "args": {"timeline_id": "<id>", "action": "play"}}
+```
+
+## Aesthetic Vocabulary (for design_from_description)
+
+**Emotions**: serene, calm, peaceful, energetic, chaotic, mysterious, joyful, melancholic, angry, dreamy
+**Styles**: minimal, intricate, organic, geometric, abstract, crystalline, glitchy, cinematic
+**Colors**: ocean, fire, ice, neon, sunset, forest, galaxy, cyberpunk, monochrome, warm, cool
+**Motion**: slow, fast, flowing, pulsing, breathing, spinning, hypnotic, turbulent, frozen
+**Depth**: deep, flat, immersive, distant, close
+**Geometry**: spherical, cubic, toroidal, fractal, wavy, crystal, simplex, twisted

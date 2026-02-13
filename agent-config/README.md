@@ -29,7 +29,7 @@ Or if installed globally via npm:
 }
 ```
 
-### Available MCP Tools (26)
+### Available MCP Tools (31)
 
 **Onboarding & Query:**
 
@@ -41,6 +41,7 @@ Or if installed globally via npm:
 | `get_parameter_schema` | Get JSON schema for all parameters |
 | `get_state` | Get current engine state |
 | `describe_visual_state` | Natural-language description of what the visualization looks like |
+| `get_aesthetic_vocabulary` | List all aesthetic descriptor words by category |
 
 **Scene & Parameter Control:**
 
@@ -62,8 +63,17 @@ Or if installed globally via npm:
 | `apply_color_preset` | Apply one of 22 themed color presets (Ocean, Neon, Cyberpunk, etc.) |
 | `set_post_processing` | Configure 14 composable post-processing effects |
 | `create_timeline` | Create multi-track keyframe animation with BPM sync |
+| `control_timeline` | Play/pause/stop/seek/speed control for created timelines |
 | `play_transition` | Smooth animated transitions between visual states |
 | `create_choreography` | Multi-scene coordinated performance with transitions |
+| `play_choreography` | Load and play choreography specs with play/pause/stop/seek |
+| `design_from_description` | Map natural-language description to VIB3+ parameters |
+
+**Visual Feedback:**
+
+| Tool | Description |
+|------|-------------|
+| `capture_screenshot` | Capture visualization as base64 PNG (browser context only) |
 
 **Reactivity & Audio:**
 
