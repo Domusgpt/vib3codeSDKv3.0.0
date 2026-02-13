@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIB3+ SDK Demo</title>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #07070f;
+            color: #c8c8d4;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            display: grid;
+            grid-template-rows: auto 1fr;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ── Toolbar ── */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 20px;
+            background: rgba(255,255,255,0.03);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            flex-wrap: wrap;
+        }
+        .toolbar h1 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e2e8f0;
+            letter-spacing: 0.5px;
+            margin-right: 8px;
+        }
+        .toolbar .sep {
+            width: 1px;
+            height: 20px;
+            background: rgba(255,255,255,0.1);
+        }
+        .toolbar label {
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(200,200,212,0.6);
+        }
+        .toolbar select, .toolbar input[type="range"] {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #e2e8f0;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-family: inherit;
+            font-size: 12px;
+        }
+        .toolbar select { cursor: pointer; }
+        .toolbar input[type="range"] {
+            width: 80px;
+            accent-color: #00f0ff;
+        }
+        .toolbar .val {
+            display: inline-block;
+            min-width: 28px;
+            text-align: right;
+            color: #00f0ff;
+            font-size: 11px;
+        }
+        .toolbar .links {
+            margin-left: auto;
+            display: flex;
+            gap: 12px;
+        }
+        .toolbar .links a {
+            font-size: 11px;
+            color: rgba(200,200,212,0.5);
+            text-decoration: none;
+        }
+        .toolbar .links a:hover { color: #00f0ff; }
+
+        /* ── Canvas ── */
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <h1>VIB3+ SDK</h1>
+        <div class="sep"></div>
+        <label>System
+            <select id="system">
+                <option value="quantum">Quantum</option>
+                <option value="faceted">Faceted</option>
+                <option value="holographic">Holographic</option>
+            </select>
+        </label>
+        <label>Geometry
+            <select id="geometry">
+                <optgroup label="Base">
+                    <option value="0">Tetrahedron</option>
+                    <option value="1">Hypercube</option>
+                    <option value="2">Sphere</option>
+                    <option value="3" selected>Torus</option>
+                    <option value="4">Klein Bottle</option>
+                    <option value="5">Fractal</option>
+                    <option value="6">Wave</option>
+                    <option value="7">Crystal</option>
+                </optgroup>
+                <optgroup label="Hypersphere">
+                    <option value="8">HS Tetrahedron</option>
+                    <option value="9">HS Hypercube</option>
+                    <option value="10">HS Sphere</option>
+                    <option value="11">HS Torus</option>
+                    <option value="12">HS Klein</option>
+                    <option value="13">HS Fractal</option>
+                    <option value="14">HS Wave</option>
+                    <option value="15">HS Crystal</option>
+                </optgroup>
+                <optgroup label="Hypertetrahedron">
+                    <option value="16">HT Tetrahedron</option>
+                    <option value="17">HT Hypercube</option>
+                    <option value="18">HT Sphere</option>
+                    <option value="19">HT Torus</option>
+                    <option value="20">HT Klein</option>
+                    <option value="21">HT Fractal</option>
+                    <option value="22">HT Wave</option>
+                    <option value="23">HT Crystal</option>
+                </optgroup>
+            </select>
+        </label>
+        <div class="sep"></div>
+        <label>Hue <input type="range" id="hue" min="0" max="360" value="200"><span class="val" id="hue-val">200</span></label>
+        <label>Density <input type="range" id="gridDensity" min="4" max="100" value="24"><span class="val" id="gridDensity-val">24</span></label>
+        <label>Speed <input type="range" id="speed" min="0.1" max="3" step="0.1" value="1"><span class="val" id="speed-val">1</span></label>
+        <label>Chaos <input type="range" id="chaos" min="0" max="1" step="0.01" value="0.2"><span class="val" id="chaos-val">0.2</span></label>
+        <label>Morph <input type="range" id="morphFactor" min="0" max="2" step="0.01" value="0.5"><span class="val" id="morphFactor-val">0.5</span></label>
+        <label>4D XW <input type="range" id="rot4dXW" min="0" max="6.28" step="0.01" value="0"><span class="val" id="rot4dXW-val">0</span></label>
+        <label>4D YW <input type="range" id="rot4dYW" min="0" max="6.28" step="0.01" value="0"><span class="val" id="rot4dYW-val">0</span></label>
+        <label>4D ZW <input type="range" id="rot4dZW" min="0" max="6.28" step="0.01" value="0"><span class="val" id="rot4dZW-val">0</span></label>
+        <div class="links">
+            <a href="../site/index.html">Landing Page</a>
+            <a href="../docs/index.html">Gallery</a>
+            <a href="https://github.com/Domusgpt/vib34d-xr-quaternion-sdk">GitHub</a>
+        </div>
+    </div>
+    <div id="canvas-container"></div>
+
+    <script type="module">
+        // SDK Demo — shows the clean import pattern
+        // In a real project: import { VIB3Engine } from '@vib3code/sdk';
+        import { VIB3Engine } from '../src/core/VIB3Engine.js';
+
+        const container = document.getElementById('canvas-container');
+        const engine = new VIB3Engine({ container });
+        await engine.initialize();
+        await engine.switchSystem('quantum');
+
+        // System switcher
+        document.getElementById('system').addEventListener('change', (e) => {
+            engine.switchSystem(e.target.value);
+        });
+
+        // Geometry selector
+        document.getElementById('geometry').addEventListener('change', (e) => {
+            engine.setParameter('geometry', parseInt(e.target.value));
+        });
+
+        // Parameter sliders
+        const sliders = ['hue', 'gridDensity', 'speed', 'chaos', 'morphFactor', 'rot4dXW', 'rot4dYW', 'rot4dZW'];
+        for (const name of sliders) {
+            const el = document.getElementById(name);
+            const valEl = document.getElementById(`${name}-val`);
+            if (!el) continue;
+            el.addEventListener('input', () => {
+                const val = parseFloat(el.value);
+                engine.setParameter(name, val);
+                if (valEl) valEl.textContent = val;
+            });
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '1') { engine.switchSystem('faceted'); document.getElementById('system').value = 'faceted'; }
+            if (e.key === '2') { engine.switchSystem('quantum'); document.getElementById('system').value = 'quantum'; }
+            if (e.key === '3') { engine.switchSystem('holographic'); document.getElementById('system').value = 'holographic'; }
+            if (e.key === 'r' || e.key === 'R') {
+                engine.setParameter('geometry', Math.floor(Math.random() * 24));
+                engine.setParameter('hue', Math.random() * 360);
+                engine.setParameter('chaos', Math.random());
+                engine.setParameter('gridDensity', 4 + Math.random() * 96);
+                engine.setParameter('speed', 0.1 + Math.random() * 2.9);
+            }
+        });
+    </script>
+</body>
+</html>
