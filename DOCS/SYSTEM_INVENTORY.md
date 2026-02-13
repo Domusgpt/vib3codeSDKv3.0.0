@@ -511,7 +511,7 @@ Verifies inline shaders match external shader files. Parses GLSL uniforms and WG
 | `DOCS/CONTROL_REFERENCE.md` | UI control parameters |
 | `DOCS/RENDERER_LIFECYCLE.md` | Renderer architecture |
 | `DOCS/GPU_DISPOSAL_GUIDE.md` | Memory management |
-| `DOCS/SYSTEM_AUDIT_2026-01-30.md` | Full system audit (v2.0.0 updated) |
+| `DOCS/archive/SYSTEM_AUDIT_2026-01-30.md` | Full system audit (v2.0.0 updated, archived) |
 | `24-GEOMETRY-6D-ROTATION-SUMMARY.md` | Geometry encoding |
 
 ---

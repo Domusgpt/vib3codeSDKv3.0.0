@@ -11,7 +11,7 @@ This guide aligns the current CLI surface (package scripts and telemetry helpers
 - Optional: renderer lifecycle overview for system orchestration is in [`DOCS/RENDERER_LIFECYCLE.md`](DOCS/RENDERER_LIFECYCLE.md).
 - Optional: GCP + Firebase provisioning steps live in [`DOCS/PROJECT_SETUP.md`](DOCS/PROJECT_SETUP.md).
 - Optional: repository directory manifest is in [`DOCS/REPO_MANIFEST.md`](DOCS/REPO_MANIFEST.md).
-- Optional: development track analysis is in [`DOCS/DEV_TRACK_ANALYSIS.md`](DOCS/DEV_TRACK_ANALYSIS.md).
+- Optional: development track analysis is in [`DOCS/archive/DEV_TRACK_ANALYSIS.md`](DOCS/archive/DEV_TRACK_ANALYSIS.md).
 - Optional: WebGPU status/testing notes are in [`DOCS/WEBGPU_STATUS.md`](DOCS/WEBGPU_STATUS.md).
 
 ## Baseline setup
