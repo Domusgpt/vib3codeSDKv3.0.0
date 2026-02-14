@@ -7,16 +7,20 @@ export class QuantumRendererAdapter extends RendererContract {
         this.system = system;
     }
 
-    init() {
-        return true;
+    init(context = {}) {
+        return this.system.init ? this.system.init(context) : true;
     }
 
-    resize() {
-        // Canvas sizing is handled by visualizers.
+    resize(width, height, pixelRatio = 1) {
+        if (this.system.resize) {
+            this.system.resize(width, height, pixelRatio);
+        }
     }
 
-    render() {
-        this.system.renderFrame();
+    render(frameState) {
+        if (this.system.render) {
+            this.system.render(frameState);
+        }
     }
 
     setActive(active) {
@@ -24,6 +28,6 @@ export class QuantumRendererAdapter extends RendererContract {
     }
 
     dispose() {
-        this.system.setActive(false);
+        this.system.dispose();
     }
 }

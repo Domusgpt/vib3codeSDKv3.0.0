@@ -634,15 +634,19 @@ export class FacetedSystem {
         return false;
     }
 
-    async initialize() {
+    async initialize(options = {}) {
         if (this.initialized) return true;
-        const canvas = document.getElementById('faceted-content-canvas') ||
+        const canvas = options.canvas ||
+                      document.getElementById('faceted-content-canvas') ||
                       document.getElementById('content-canvas');
         if (!canvas) {
             console.warn("FacetedSystem: No canvas found for initialize()");
             return false;
         }
-        return this.initWithBridge(canvas, { preferWebGPU: false });
+        return this.initWithBridge(canvas, {
+            preferWebGPU: options.preferWebGPU !== undefined ? options.preferWebGPU : true,
+            debug: options.debug || false
+        });
     }
 
     // ─── Parameters ───
@@ -775,7 +779,7 @@ export class FacetedSystem {
         if (layer) layer.style.display = active ? 'block' : 'none';
     }
 
-    init(context) { return this.initialize(); }
+    init(context = {}) { return this.initialize(context); }
 
     resize(width, height, pixelRatio = 1) {
         const w = Math.floor(width * pixelRatio);

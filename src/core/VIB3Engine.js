@@ -167,7 +167,7 @@ export class VIB3Engine {
                         }
                     }
 
-                    const facetedSuccess = system.initialize();
+                    const facetedSuccess = await system.initialize();
                     if (!facetedSuccess) {
                         throw new Error('Faceted system initialization failed');
                     }

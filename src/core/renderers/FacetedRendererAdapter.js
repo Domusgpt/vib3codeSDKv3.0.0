@@ -8,18 +8,19 @@ export class FacetedRendererAdapter extends RendererContract {
     }
 
     init(context = {}) {
-        const initialized = this.system.initialize(context.canvas ?? null);
-        if (!initialized) {
-            throw new Error('Faceted renderer failed to initialize.');
+        return this.system.init ? this.system.init(context) : true;
+    }
+
+    resize(width, height, pixelRatio = 1) {
+        if (this.system.resize) {
+            this.system.resize(width, height, pixelRatio);
         }
     }
 
-    resize() {
-        this.system.setupCanvasSize();
-    }
-
-    render() {
-        this.system.renderFrame();
+    render(frameState) {
+        if (this.system.render) {
+            this.system.render(frameState);
+        }
     }
 
     setActive(active) {
@@ -27,6 +28,6 @@ export class FacetedRendererAdapter extends RendererContract {
     }
 
     dispose() {
-        this.system.stop();
+        this.system.dispose();
     }
 }

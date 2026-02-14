@@ -750,6 +750,23 @@ export class GalleryUI extends EventEmitter {
     }
 
     /**
+     * Handle search input
+     */
+    _onSearch(event) {
+        this.searchQuery = event.target.value;
+        this._applyFilters();
+        this.render();
+    }
+
+    /**
+     * Handle page change
+     */
+    _onPageChange(page) {
+        this.currentPage = page;
+        this.render();
+    }
+
+    /**
      * Handle variation hover
      */
     _onVariationHover(variation) {
