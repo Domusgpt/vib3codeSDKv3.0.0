@@ -66,8 +66,8 @@
         <div class="opening-pinned" id="openingPinned">
             <div class="opening-canvas-wrap canvas-wrap depth-container" id="openingCanvasWrap" style="width:100%;height:100%;">
                 <canvas class="vib3-canvas" id="opening-canvas"></canvas>
-                <div class="viz-vignette" id="openingVignette"></div>
-                <div class="viz-scanlines" id="openingScanlines">
+                <div class="viz-vignette" id="openingVignette" aria-hidden="true"></div>
+                <div class="viz-scanlines" id="openingScanlines" aria-hidden="true">
                     <div class="scanline" style="--scan-y:20%"></div>
                     <div class="scanline" style="--scan-y:45%"></div>
                     <div class="scanline" style="--scan-y:70%"></div>
@@ -75,7 +75,7 @@
             </div>
 
             <!-- SVG text mask: dark overlay with VIB3CODE cutout -->
-            <div class="opening-overlay" id="openingOverlay">
+            <div class="opening-overlay" id="openingOverlay" aria-hidden="true">
                 <svg width="100%" height="100%" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
                     <defs>
                         <mask id="textCutout">
@@ -90,9 +90,9 @@
             </div>
 
             <!-- Geometric lattice parallax layers -->
-            <div class="lattice-layer lattice-1" id="lattice1"></div>
-            <div class="lattice-layer lattice-2" id="lattice2"></div>
-            <div class="lattice-layer lattice-3" id="lattice3"></div>
+            <div class="lattice-layer lattice-1" id="lattice1" aria-hidden="true"></div>
+            <div class="lattice-layer lattice-2" id="lattice2" aria-hidden="true"></div>
+            <div class="lattice-layer lattice-3" id="lattice3" aria-hidden="true"></div>
 
             <!-- Large title text (appears during scroll) -->
             <div class="opening-title" id="openingTitle">
@@ -164,12 +164,12 @@
             <div class="canvas-wrap" style="width:100%;height:100%;">
                 <canvas class="vib3-canvas" id="morph-canvas"></canvas>
             </div>
-            <div class="morph-flash" id="morphFlash"></div>
+            <div class="morph-flash" id="morphFlash" aria-hidden="true"></div>
 
             <!-- Central morphing glassmorphic card -->
             <div class="morph-card viz-chromatic-border depth-container" id="morphCard">
                 <div class="morph-card-glow" id="morphGlow"></div>
-                <div class="viz-depth-shadow" id="morphShadow"></div>
+                <div class="viz-depth-shadow" aria-hidden="true" id="morphShadow"></div>
             </div>
 
             <!-- Three voice labels (stage 3) -->
@@ -372,18 +372,18 @@
          Right: Faceted GPU — cross-system coordination + convergence
          ═══════════════════════════════════════════════════ -->
     <section class="triptych" id="triptychSection">
-        <div class="triptych-divider left"></div>
-        <div class="triptych-divider right"></div>
+        <div class="triptych-divider left" aria-hidden="true"></div>
+        <div class="triptych-divider right" aria-hidden="true"></div>
         <!-- Glow seams between the 3 visualizer columns -->
-        <div class="viz-seam" id="triSeamLeft" style="left:var(--tri-split-left, 33.33%)"></div>
-        <div class="viz-seam" id="triSeamRight" style="left:var(--tri-split-right, 66.66%)"></div>
+        <div class="viz-seam" id="triSeamLeft" style="left:var(--tri-split-left, 29%)" aria-hidden="true"></div>
+        <div class="viz-seam" id="triSeamRight" style="left:var(--tri-split-right, 67%)" aria-hidden="true"></div>
         <div class="triptych-inner">
             <div class="triptych-col triptych-viz-col depth-container" id="triptychLeft">
                 <div class="canvas-wrap triptych-canvas-wrap">
                     <canvas class="vib3-canvas" id="tri-left-canvas"></canvas>
-                    <div class="viz-vignette" id="triVignetteLeft"></div>
+                    <div class="viz-vignette" id="triVignetteLeft" aria-hidden="true"></div>
                 </div>
-                <div class="viz-depth-shadow" id="triShadowLeft"></div>
+                <div class="viz-depth-shadow" aria-hidden="true" id="triShadowLeft"></div>
                 <div class="triptych-tag-wrap">
                     <span class="triptych-tag sys-quantum">Quantum Engine</span>
                 </div>
@@ -391,7 +391,7 @@
             <div class="triptych-col triptych-center-col depth-container" id="triptychCenter">
                 <div class="canvas-wrap triptych-canvas-wrap triptych-center-canvas">
                     <canvas class="vib3-canvas" id="tri-center-canvas"></canvas>
-                    <div class="viz-vignette" id="triVignetteCenter"></div>
+                    <div class="viz-vignette" id="triVignetteCenter" aria-hidden="true"></div>
                 </div>
                 <div class="triptych-content">
                     <h2 class="triptych-title section-reveal" data-animate>Three Systems.<br>One C++ Core.</h2>
@@ -422,9 +422,9 @@
             <div class="triptych-col triptych-viz-col depth-container" id="triptychRight">
                 <div class="canvas-wrap triptych-canvas-wrap">
                     <canvas class="vib3-canvas" id="tri-right-canvas"></canvas>
-                    <div class="viz-vignette" id="triVignetteRight"></div>
+                    <div class="viz-vignette" id="triVignetteRight" aria-hidden="true"></div>
                 </div>
-                <div class="viz-depth-shadow" id="triShadowRight"></div>
+                <div class="viz-depth-shadow" aria-hidden="true" id="triShadowRight"></div>
                 <div class="triptych-tag-wrap">
                     <span class="triptych-tag sys-faceted">Faceted Engine</span>
                 </div>
@@ -453,8 +453,8 @@
                 <div class="canvas-wrap" style="position:absolute;inset:0;clip-path:inset(0 0 0 50%);" id="cascadeGpuRight">
                     <canvas class="vib3-canvas" id="cascade-gpu-right"></canvas>
                 </div>
-                <div class="viz-seam" id="cascadeSeam"></div>
-                <div class="viz-vignette" id="cascadeVignette"></div>
+                <div class="viz-seam" id="cascadeSeam" aria-hidden="true"></div>
+                <div class="viz-vignette" id="cascadeVignette" aria-hidden="true"></div>
             </div>
             <div class="cascade-header section-reveal" data-animate>
                 <h2>Geometry Cascade</h2>
@@ -464,32 +464,32 @@
                 <div class="cascade-card tilt-card tilt-holo" data-geo="0" data-hue="190">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-0"></canvas></div>
                     <div class="card-frame"></div>
-                    <div class="cascade-overlay"><h4>Tetrahedron</h4><span class="cascade-sys">Base Core</span></div>
+                    <div class="cascade-overlay"><h3>Tetrahedron</h3><span class="cascade-sys">Base Core</span></div>
                 </div>
                 <div class="cascade-card tilt-card tilt-holo" data-geo="11" data-hue="300">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-1"></canvas></div>
                     <div class="card-frame"></div>
-                    <div class="cascade-overlay"><h4>Hypersphere Torus</h4><span class="cascade-sys">Hypersphere Core</span></div>
+                    <div class="cascade-overlay"><h3>Hypersphere Torus</h3><span class="cascade-sys">Hypersphere Core</span></div>
                 </div>
                 <div class="cascade-card tilt-card tilt-holo" data-geo="16" data-hue="35">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-2"></canvas></div>
                     <div class="card-frame"></div>
-                    <div class="cascade-overlay"><h4>Hypertetra Simplex</h4><span class="cascade-sys">Hypertetra Core</span></div>
+                    <div class="cascade-overlay"><h3>Hypertetra Simplex</h3><span class="cascade-sys">Hypertetra Core</span></div>
                 </div>
                 <div class="cascade-card tilt-card tilt-holo" data-geo="5" data-hue="130">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-3"></canvas></div>
                     <div class="card-frame"></div>
-                    <div class="cascade-overlay"><h4>Fractal</h4><span class="cascade-sys">Base Core</span></div>
+                    <div class="cascade-overlay"><h3>Fractal</h3><span class="cascade-sys">Base Core</span></div>
                 </div>
                 <div class="cascade-card tilt-card tilt-holo" data-geo="12" data-hue="260">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-4"></canvas></div>
                     <div class="card-frame"></div>
-                    <div class="cascade-overlay"><h4>Hypersphere Klein</h4><span class="cascade-sys">Hypersphere Core</span></div>
+                    <div class="cascade-overlay"><h3>Hypersphere Klein</h3><span class="cascade-sys">Hypersphere Core</span></div>
                 </div>
                 <div class="cascade-card tilt-card tilt-holo" data-geo="7" data-hue="60">
                     <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-5"></canvas></div>
                     <div class="card-frame"></div>
-                    <div class="cascade-overlay"><h4>Crystal</h4><span class="cascade-sys">Base Core</span></div>
+                    <div class="cascade-overlay"><h3>Crystal</h3><span class="cascade-sys">Base Core</span></div>
                 </div>
             </div>
         </div>
@@ -512,14 +512,14 @@
             <div class="energy-bg depth-container" id="energyBgWrap">
                 <div class="canvas-wrap" style="width:100%;height:100%;">
                     <canvas class="vib3-canvas" id="energy-bg-canvas"></canvas>
-                    <div class="viz-vignette" id="energyBgVignette"></div>
+                    <div class="viz-vignette" id="energyBgVignette" aria-hidden="true"></div>
                 </div>
             </div>
             <div class="energy-card tilt-card perspective-wrap viz-chromatic-border depth-container" id="energyCard">
                 <div class="energy-card-canvas">
                     <canvas class="vib3-canvas" id="energy-card-canvas"></canvas>
                 </div>
-                <div class="viz-depth-shadow" id="energyCardShadow"></div>
+                <div class="viz-depth-shadow" aria-hidden="true" id="energyCardShadow"></div>
                 <h3>Energy Transfer</h3>
                 <p>Click to drain the card shader into the background.
                    Watch color, density, and geometry morph between elements.</p>
@@ -557,26 +557,26 @@
             </div>
             <div class="agent-grid section-reveal" data-animate>
                 <a class="agent-card" href="agent-config/mcp-config.json" download>
-                    <span class="agent-card-icon">&#x1f517;</span>
-                    <h4>MCP Config</h4>
+                    <span class="agent-card-icon" aria-hidden="true">&#x1f517;</span>
+                    <h3>MCP Config</h3>
                     <p>Model Context Protocol server configuration. Connect any MCP-compatible agent.</p>
                     <span class="dl-badge">Download JSON</span>
                 </a>
                 <a class="agent-card" href="agent-config/claude-agent-context.md" download>
-                    <span class="agent-card-icon">&#x1f9e0;</span>
-                    <h4>Claude Context</h4>
+                    <span class="agent-card-icon" aria-hidden="true">&#x1f9e0;</span>
+                    <h3>Claude Context</h3>
                     <p>Full SDK context pack for Claude. Drop into CLAUDE.md or system prompts.</p>
                     <span class="dl-badge">Download MD</span>
                 </a>
                 <a class="agent-card" href="agent-config/openai-agent-context.md" download>
-                    <span class="agent-card-icon">&#x2699;</span>
-                    <h4>OpenAI Context</h4>
+                    <span class="agent-card-icon" aria-hidden="true">&#x2699;</span>
+                    <h3>OpenAI Context</h3>
                     <p>SDK context formatted for OpenAI assistants and custom GPTs.</p>
                     <span class="dl-badge">Download MD</span>
                 </a>
-                <a class="agent-card" href="CLAUDE.md" download="VIB3-CLAUDE.md">
-                    <span class="agent-card-icon">&#x1f4d6;</span>
-                    <h4>Full Technical Ref</h4>
+                <a class="agent-card" href="../CLAUDE.md" download="VIB3-CLAUDE.md">
+                    <span class="agent-card-icon" aria-hidden="true">&#x1f4d6;</span>
+                    <h3>Full Technical Ref</h3>
                     <p>Complete CLAUDE.md technical reference. All APIs, shader uniforms, architecture.</p>
                     <span class="dl-badge">Download MD</span>
                 </a>
@@ -605,14 +605,14 @@
          ═══════════════════════════════════════════════════ -->
     <section class="cta-section" id="ctaSection">
         <div class="cta-bg" style="overflow:hidden;">
-            <div class="canvas-wrap depth-container" style="position:absolute;inset:0;clip-path:polygon(0 0, 100% 0, 0 100%);" id="ctaGpuLeft">
+            <div class="canvas-wrap depth-container" style="position:absolute;inset:0;clip-path:polygon(0 0, 100% 0, 65% 40%, 35% 100%, 0 100%);" id="ctaGpuLeft">
                 <canvas class="vib3-canvas" id="cta-canvas-left"></canvas>
             </div>
-            <div class="canvas-wrap depth-container" style="position:absolute;inset:0;clip-path:polygon(100% 0, 100% 100%, 0 100%);" id="ctaGpuRight">
+            <div class="canvas-wrap depth-container" style="position:absolute;inset:0;clip-path:polygon(100% 0, 100% 100%, 35% 100%, 65% 40%);" id="ctaGpuRight">
                 <canvas class="vib3-canvas" id="cta-canvas-right"></canvas>
             </div>
-            <div class="viz-seam" id="ctaSeam" style="transform:rotate(var(--cta-seam-angle, -45deg));transform-origin:center;width:200%;left:-50%;"></div>
-            <div class="viz-vignette" id="ctaVignette"></div>
+            <div class="viz-seam" id="ctaSeam" style="transform:rotate(var(--cta-seam-angle, -45deg));transform-origin:center;width:200%;left:-50%;" aria-hidden="true"></div>
+            <div class="viz-vignette" id="ctaVignette" aria-hidden="true"></div>
         </div>
         <div class="cta-content section-reveal" data-animate>
             <h2 class="text-shimmer">Start Building</h2>
