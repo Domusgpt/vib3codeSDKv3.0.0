@@ -192,7 +192,8 @@ function initTiltSystem() {
 
 // ─── Parameters Playground (GPU-backed, full 6D) ─────────────
 
-function initPlayground() {
+// Wire slider/button controls only (no GPU context needed)
+function initPlaygroundControls() {
   const sliderParams = [
     'hue', 'gridDensity', 'speed', 'chaos',
     'morphFactor', 'intensity', 'dimension', 'saturation',
@@ -287,21 +288,19 @@ function initPlayground() {
     const pg = getPlayground();
     if (pg) pg.setParam('geometry', 3);
   });
+}
 
-  // Scroll-triggered GPU lifecycle
-  if (typeof ScrollTrigger !== 'undefined') {
-    ScrollTrigger.create({
-      trigger: '#playgroundSection',
-      start: 'top 80%',
-      end: 'bottom top',
-      onEnter: acquirePlayground,
-      onLeave: releasePlayground,
-      onEnterBack: acquirePlayground,
-      onLeaveBack: releasePlayground,
-    });
-  } else {
-    acquirePlayground();
-  }
+// Install ScrollTrigger lifecycle for playground (called after GSAP loads)
+function initPlaygroundScrollTrigger() {
+  ScrollTrigger.create({
+    trigger: '#playgroundSection',
+    start: 'top 80%',
+    end: 'bottom top',
+    onEnter: acquirePlayground,
+    onLeave: releasePlayground,
+    onEnterBack: acquirePlayground,
+    onLeaveBack: releasePlayground,
+  });
 }
 
 // ─── Global Mouse/Touch Reactivity ─────────────────────────────
@@ -376,10 +375,21 @@ function renderLoop(ts) {
 // Start non-GSAP systems immediately (no CDN dependency)
 initAmbientCanvases();
 pool.acquire('opening', 'opening-canvas', QuantumAdapter, openingParams);
-initPlayground();
+initPlaygroundControls();  // Wire sliders only — GPU context deferred
 initTiltSystem();
 initGlobalMouseReactivity();
 requestAnimationFrame(renderLoop);
+
+// Lazy playground GPU acquisition (pre-GSAP fallback via IntersectionObserver).
+// When GSAP loads, this observer is replaced by a ScrollTrigger lifecycle.
+let _pgObserver = null;
+const pgSection = document.getElementById('playgroundSection');
+if (pgSection) {
+  _pgObserver = new IntersectionObserver(([entry]) => {
+    if (entry.isIntersecting && !pool.has('playground')) acquirePlayground();
+  }, { threshold: 0.1 });
+  _pgObserver.observe(pgSection);
+}
 
 // Clean up on page hide (mobile tab switching) — re-acquire on return
 document.addEventListener('visibilitychange', () => {
@@ -428,6 +438,13 @@ if (window.__cdnReady) {
       gsap.ticker.add((time) => lenis.raf(time * 1000));
       gsap.ticker.lagSmoothing(0);
     }
+
+    // Replace IntersectionObserver with ScrollTrigger for playground
+    if (_pgObserver) {
+      _pgObserver.disconnect();
+      _pgObserver = null;
+    }
+    initPlaygroundScrollTrigger();
 
     // Full scroll choreography
     initOpening(pool, createHero);
