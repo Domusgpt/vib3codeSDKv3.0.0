@@ -1,0 +1,56 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "vib3_create_visualization",
+      "description": "Create a VIB3+ scene with system, geometry, and projection.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "system": {"type": "string", "enum": ["quantum", "faceted", "holographic"]},
+          "geometry_index": {"type": "integer", "minimum": 0, "maximum": 23},
+          "projection": {"type": "string", "enum": ["perspective", "stereographic", "orthographic"]}
+        },
+        "required": ["system"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "vib3_set_rotation",
+      "description": "Set XY/XZ/YZ/XW/YW/ZW rotations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "XY": {"type": "number"},
+          "XZ": {"type": "number"},
+          "YZ": {"type": "number"},
+          "XW": {"type": "number"},
+          "YW": {"type": "number"},
+          "ZW": {"type": "number"}
+        }
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "vib3_set_visual_parameters",
+      "description": "Set hue/saturation/intensity/speed/chaos/morphFactor/gridDensity/dimension.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hue": {"type": "integer", "minimum": 0, "maximum": 360},
+          "saturation": {"type": "number", "minimum": 0, "maximum": 1},
+          "intensity": {"type": "number", "minimum": 0, "maximum": 1},
+          "speed": {"type": "number", "minimum": 0.1, "maximum": 3},
+          "chaos": {"type": "number", "minimum": 0, "maximum": 1},
+          "morphFactor": {"type": "number", "minimum": 0, "maximum": 2},
+          "gridDensity": {"type": "number", "minimum": 4, "maximum": 100},
+          "dimension": {"type": "number", "minimum": 3.0, "maximum": 4.5}
+        }
+      }
+    }
+  }
+]
