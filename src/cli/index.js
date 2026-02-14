@@ -173,7 +173,7 @@ function showHelp(isJson) {
         usage: `${CLI_NAME} <command> [options]`,
         commands: {
             init: 'Scaffold a new VIB3+ project (--template vanilla|react|vue|svelte)',
-            create: 'Create a new 4D visualization',
+            create: 'Create a new 4D visualization (--describe, --preset, --color, --hue, --XW, etc.)',
             state: 'Get current engine state',
             set: 'Set parameters (rotation, visual)',
             geometry: 'Change or list geometries',
@@ -196,6 +196,9 @@ function showHelp(isJson) {
             `${CLI_NAME} init my-app --template vue`,
             `${CLI_NAME} init my-app --template svelte`,
             `${CLI_NAME} create --system quantum --geometry 8 --json`,
+            `${CLI_NAME} create --describe "serene ocean deep organic"`,
+            `${CLI_NAME} create --system holographic --preset energetic --color neon`,
+            `${CLI_NAME} create --system faceted --geometry 16 --XW 0.8 --YW 0.5 --hue 200`,
             `${CLI_NAME} set rotation --XW 1.5 --YW 0.5`,
             `${CLI_NAME} set visual --hue 200 --chaos 0.3`,
             `${CLI_NAME} geometry list --core-type hypersphere`,
@@ -229,15 +232,84 @@ function showVersion(isJson) {
 
 /**
  * Handle 'create' command
+ *
+ * Supports full creative parameter control:
+ *   vib3 create --system quantum --geometry 11 --hue 200 --chaos 0.3
+ *   vib3 create --system holographic --preset energetic
+ *   vib3 create --describe "serene ocean deep organic"
+ *   vib3 create --system faceted --geometry 16 --XW 0.8 --YW 0.5 --speed 0.6
  */
 async function handleCreate(parsed) {
-    const args = {
-        system: parsed.options.system || 'quantum',
-        geometry_index: parseInt(parsed.options.geometry || '0'),
-        projection: parsed.options.projection || 'perspective'
-    };
+    const opts = parsed.options;
 
-    return await mcpServer.handleToolCall('create_4d_visualization', args);
+    // Natural language description path — uses AestheticMapper
+    if (opts.describe || opts.description) {
+        const description = opts.describe || opts.description;
+        return await mcpServer.handleToolCall('design_from_description', {
+            description,
+            apply: true
+        });
+    }
+
+    // Step 1: Create the visualization scene
+    const createArgs = {
+        system: opts.system || 'quantum',
+        geometry_index: parseInt(opts.geometry || '0'),
+        projection: opts.projection || 'perspective'
+    };
+    const createResult = await mcpServer.handleToolCall('create_4d_visualization', createArgs);
+
+    // Step 2: Apply rotation if any 6D rotation flags provided
+    const rotationPlanes = ['XY', 'XZ', 'YZ', 'XW', 'YW', 'ZW'];
+    const rotationArgs = {};
+    let hasRotation = false;
+    for (const plane of rotationPlanes) {
+        if (opts[plane] !== undefined) {
+            rotationArgs[plane] = parseFloat(opts[plane]);
+            hasRotation = true;
+        }
+    }
+    if (hasRotation) {
+        await mcpServer.handleToolCall('set_rotation', rotationArgs);
+    }
+
+    // Step 3: Apply visual parameters if any provided
+    const visualKeys = ['hue', 'saturation', 'intensity', 'speed', 'chaos', 'morphFactor', 'gridDensity', 'dimension'];
+    const visualArgs = {};
+    let hasVisual = false;
+    for (const key of visualKeys) {
+        if (opts[key] !== undefined) {
+            visualArgs[key] = key === 'hue' ? parseInt(opts[key]) : parseFloat(opts[key]);
+            hasVisual = true;
+        }
+    }
+    if (hasVisual) {
+        await mcpServer.handleToolCall('set_visual_parameters', visualArgs);
+    }
+
+    // Step 4: Apply behavior preset if specified (ambient, reactive, immersive, energetic, calm, cinematic)
+    if (opts.preset) {
+        const presetDefaults = {
+            ambient:    { speed: 0.3, chaos: 0.1 },
+            reactive:   { speed: 1.0, chaos: 0.3 },
+            immersive:  { speed: 0.8, chaos: 0.15 },
+            energetic:  { speed: 2.5, chaos: 0.8 },
+            calm:       { speed: 0.2, chaos: 0.05 },
+            cinematic:  { speed: 0.5, chaos: 0.2 }
+        };
+        const presetParams = presetDefaults[opts.preset];
+        if (presetParams) {
+            await mcpServer.handleToolCall('set_visual_parameters', presetParams);
+        }
+    }
+
+    // Step 5: Apply color preset if specified (ocean, neon, galaxy, etc.)
+    if (opts.color || opts.colorPreset) {
+        const colorName = opts.color || opts.colorPreset;
+        await mcpServer.handleToolCall('apply_color_preset', { preset: colorName });
+    }
+
+    return createResult;
 }
 
 /**
