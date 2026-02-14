@@ -32,8 +32,16 @@ jobs:
           # Disable Jekyll processing (required for ES module paths)
           touch _site/.nojekyll
 
-          # Root index and v2 landing page
+          # Root index (redirects to site/index.html)
           cp index.html _site/
+
+          # Landing page (site/ directory — the main marketing page)
+          cp -r site/ _site/site/
+
+          # SDK demo page
+          cp -r demo/ _site/demo/ 2>/dev/null || true
+
+          # Legacy v2 landing page
           cp index-v2.html _site/ 2>/dev/null || true
 
           # Gallery, WebGPU live page, test hub, and all standalone visualizations
@@ -52,20 +60,28 @@ jobs:
           cp -r agent-config/ _site/agent-config/ 2>/dev/null || true
           cp CLAUDE.md _site/ 2>/dev/null || true
 
-          # Landing page JS modules (index.html imports ./js/landing/main.js)
+          # Landing page JS modules (legacy — index-v2.html imports ./js/landing/main.js)
           mkdir -p _site/js
-          cp -r js/landing _site/js/
+          cp -r js/landing _site/js/ 2>/dev/null || true
 
-          # Source modules (needed by WebGPU live page and test harness)
-          # The live page imports ES modules from ../src/ relative to docs/
+          # Source modules (needed by site/, demo/, WebGPU live page, and test harness)
+          # The live page imports ES modules from ../src/ relative to docs/ and site/
           cp -r src/ _site/src/
+
+          # C++ WASM core (needed by SDK runtime)
+          cp -r cpp/ _site/cpp/ 2>/dev/null || true
 
           echo "=== Deployed files ==="
           find _site -name "*.html" | sort
           echo "Total HTML files: $(find _site -name '*.html' | wc -l)"
           echo ""
-          echo "=== Landing Page Modules ==="
-          ls -la _site/js/landing/ 2>/dev/null && echo "Landing JS modules: OK" || echo "Landing JS modules: MISSING"
+          echo "=== Landing Page ==="
+          ls -la _site/site/index.html 2>/dev/null && echo "Landing page: OK" || echo "Landing page: MISSING"
+          ls -la _site/site/js/ 2>/dev/null && echo "Landing JS: OK" || echo "Landing JS: MISSING"
+          ls -la _site/site/styles/ 2>/dev/null && echo "Landing styles: OK" || echo "Landing styles: MISSING"
+          echo ""
+          echo "=== Demo Page ==="
+          ls -la _site/demo/index.html 2>/dev/null && echo "Demo page: OK" || echo "Demo page: MISSING"
           echo ""
           echo "=== WebGPU Live Page ==="
           ls -la _site/docs/webgpu-live.html 2>/dev/null && echo "WebGPU live page: OK" || echo "WebGPU live page: MISSING"
