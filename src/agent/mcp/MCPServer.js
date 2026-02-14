@@ -6,6 +6,9 @@
 import { toolDefinitions, getToolList, validateToolInput } from './tools.js';
 import { schemaRegistry } from '../../schemas/index.js';
 import { telemetry, EventType, withTelemetry } from '../telemetry/index.js';
+import { AestheticMapper } from '../../creative/AestheticMapper.js';
+import { ChoreographyPlayer } from '../../creative/ChoreographyPlayer.js';
+import { ParameterTimeline } from '../../creative/ParameterTimeline.js';
 
 /**
  * Generate unique IDs
@@ -184,6 +187,22 @@ export class MCPServer {
                     break;
                 case 'create_choreography':
                     result = this.createChoreography(args);
+                    break;
+                // Visual feedback tools (Phase 7.1)
+                case 'capture_screenshot':
+                    result = await this.captureScreenshot(args);
+                    break;
+                case 'design_from_description':
+                    result = await this.designFromDescription(args);
+                    break;
+                case 'get_aesthetic_vocabulary':
+                    result = this.getAestheticVocabulary();
+                    break;
+                case 'play_choreography':
+                    result = await this.playChoreographyTool(args);
+                    break;
+                case 'control_timeline':
+                    result = this.controlTimeline(args);
                     break;
                 default:
                     throw new Error(`Unknown tool: ${toolName}`);
@@ -1325,6 +1344,325 @@ export class MCPServer {
             })),
             choreography_json: JSON.stringify(choreography, null, 2),
             suggested_next_actions: ['describe_visual_state', 'export_package']
+        };
+    }
+
+    // ===== VISUAL FEEDBACK TOOLS (Phase 7.1 — Agent Harness) =====
+
+    /**
+     * Capture the current visualization as a base64 PNG by compositing all canvas layers.
+     * Only works in browser context where canvases exist.
+     */
+    async captureScreenshot(args) {
+        const { width = 512, height = 512, format = 'png', quality = 0.92 } = args;
+
+        const isBrowser = typeof document !== 'undefined';
+        if (!isBrowser) {
+            return {
+                error: {
+                    type: 'EnvironmentError',
+                    code: 'NO_BROWSER_CONTEXT',
+                    message: 'capture_screenshot requires a browser context with canvas elements',
+                    suggestion: 'Use the headless renderer tool (tools/headless-renderer.js) for Node.js environments'
+                }
+            };
+        }
+
+        try {
+            // Create composite canvas
+            const composite = document.createElement('canvas');
+            composite.width = width;
+            composite.height = height;
+            const ctx = composite.getContext('2d');
+
+            if (!ctx) {
+                return {
+                    error: { type: 'SystemError', code: 'CANVAS_CONTEXT_FAILED', message: 'Could not get 2D context for compositing' }
+                };
+            }
+
+            // Fill with black background
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, width, height);
+
+            // Find all visualization canvases and composite them in z-order
+            const canvases = document.querySelectorAll('canvas.visualization-canvas');
+            const sortedCanvases = Array.from(canvases).sort((a, b) => {
+                const zA = parseInt(a.style.zIndex || '0', 10);
+                const zB = parseInt(b.style.zIndex || '0', 10);
+                return zA - zB;
+            });
+
+            for (const canvas of sortedCanvases) {
+                if (canvas.width > 0 && canvas.height > 0) {
+                    ctx.drawImage(canvas, 0, 0, width, height);
+                }
+            }
+
+            // If no canvases found, try to find any canvas at all
+            if (sortedCanvases.length === 0) {
+                const anyCanvas = document.querySelector('canvas');
+                if (anyCanvas && anyCanvas.width > 0) {
+                    ctx.drawImage(anyCanvas, 0, 0, width, height);
+                }
+            }
+
+            // Convert to data URL
+            const mimeType = format === 'jpeg' ? 'image/jpeg' : format === 'webp' ? 'image/webp' : 'image/png';
+            const dataUrl = composite.toDataURL(mimeType, quality);
+            const base64 = dataUrl.split(',')[1];
+
+            // Clean up
+            composite.remove();
+
+            return {
+                format,
+                width,
+                height,
+                mime_type: mimeType,
+                data_url: dataUrl,
+                base64_length: base64.length,
+                canvas_count: sortedCanvases.length,
+                suggested_next_actions: ['describe_visual_state', 'set_visual_parameters', 'batch_set_parameters']
+            };
+        } catch (err) {
+            return {
+                error: {
+                    type: 'SystemError',
+                    code: 'SCREENSHOT_FAILED',
+                    message: err.message,
+                    suggestion: 'Check that canvas elements exist and are rendered'
+                }
+            };
+        }
+    }
+
+    /**
+     * Map a natural-language description to VIB3+ parameters using AestheticMapper.
+     */
+    async designFromDescription(args) {
+        const { description, apply = false } = args;
+
+        if (!this._aestheticMapper) {
+            this._aestheticMapper = new AestheticMapper();
+        }
+
+        const mapped = this._aestheticMapper.mapDescription(description);
+        const resolved = this._aestheticMapper.resolveToValues(description);
+
+        // Apply to engine if requested
+        if (apply && this.engine) {
+            if (resolved.system) {
+                await this.engine.switchSystem(resolved.system);
+            }
+            if (resolved.geometry !== undefined) {
+                this.engine.setParameter('geometry', resolved.geometry);
+            }
+            for (const [param, value] of Object.entries(resolved.params)) {
+                this.engine.setParameter(param, value);
+            }
+        }
+
+        return {
+            description,
+            applied: apply,
+            matched_words: mapped.matched_words,
+            total_words: mapped.total_words,
+            resolved: {
+                system: resolved.system,
+                geometry: resolved.geometry,
+                params: resolved.params,
+                color_preset: resolved.color_preset,
+                post_processing: resolved.post_processing
+            },
+            parameter_ranges: mapped.params,
+            suggested_next_actions: apply
+                ? ['describe_visual_state', 'capture_screenshot', 'create_timeline']
+                : ['design_from_description', 'batch_set_parameters']
+        };
+    }
+
+    /**
+     * Return the full aesthetic vocabulary by category.
+     */
+    getAestheticVocabulary() {
+        if (!this._aestheticMapper) {
+            this._aestheticMapper = new AestheticMapper();
+        }
+
+        return {
+            vocabulary: this._aestheticMapper.getVocabularyByCategory(),
+            all_words: this._aestheticMapper.getVocabulary(),
+            word_count: this._aestheticMapper.getVocabulary().length,
+            usage: 'Pass space-separated words to design_from_description. Example: "serene ocean deep minimal"',
+            suggested_next_actions: ['design_from_description']
+        };
+    }
+
+    /**
+     * Load and play a choreography.
+     */
+    async playChoreographyTool(args) {
+        const { choreography, choreography_id, action = 'play', seek_percent, loop = false } = args;
+
+        // Resolve choreography spec
+        let spec = choreography;
+        if (!spec && choreography_id && this._choreographies) {
+            spec = this._choreographies.get(choreography_id);
+        }
+
+        if (!spec && action === 'play') {
+            return {
+                error: {
+                    type: 'ValidationError',
+                    code: 'NO_CHOREOGRAPHY',
+                    message: 'Provide a choreography spec or a valid choreography_id',
+                    suggestion: 'Use create_choreography first, then pass the result here'
+                }
+            };
+        }
+
+        // Create or reuse player
+        if (!this._choreographyPlayer && this.engine) {
+            this._choreographyPlayer = new ChoreographyPlayer(this.engine, {
+                onSceneChange: (index, scene) => {
+                    telemetry.recordEvent(EventType.PARAMETER_CHANGE, {
+                        type: 'choreography_scene',
+                        scene_index: index,
+                        system: scene.system
+                    });
+                }
+            });
+        }
+
+        if (!this._choreographyPlayer) {
+            return {
+                error: {
+                    type: 'SystemError',
+                    code: 'NO_ENGINE',
+                    message: 'Engine not initialized — cannot play choreography',
+                    suggestion: 'Initialize the VIB3Engine first'
+                }
+            };
+        }
+
+        const player = this._choreographyPlayer;
+
+        switch (action) {
+            case 'play':
+                if (spec) {
+                    player.load(spec);
+                    player.loopMode = loop ? 'loop' : 'once';
+                }
+                player.play();
+                break;
+            case 'pause':
+                player.pause();
+                break;
+            case 'stop':
+                player.stop();
+                break;
+            case 'seek':
+                if (seek_percent !== undefined) {
+                    player.seekToPercent(seek_percent);
+                }
+                break;
+        }
+
+        return {
+            action,
+            state: player.getState(),
+            suggested_next_actions: action === 'play'
+                ? ['play_choreography', 'capture_screenshot', 'describe_visual_state']
+                : ['play_choreography']
+        };
+    }
+
+    /**
+     * Control a previously created timeline.
+     */
+    controlTimeline(args) {
+        const { timeline_id, action, seek_percent, speed } = args;
+
+        if (!this._liveTimelines) this._liveTimelines = new Map();
+
+        let tl = this._liveTimelines.get(timeline_id);
+
+        // If timeline not live yet, try to create it from stored data
+        if (!tl && this._timelines && this._timelines.has(timeline_id) && this.engine) {
+            const data = this._timelines.get(timeline_id);
+
+            tl = new ParameterTimeline(
+                (name, value) => this.engine.setParameter(name, value)
+            );
+
+            // Build import-compatible format
+            const importData = {
+                type: 'vib3-parameter-timeline',
+                version: '1.0.0',
+                duration: data.duration,
+                loopMode: data.loopMode || 'once',
+                bpm: data.bpm || 120,
+                tracks: {}
+            };
+
+            for (const [param, keyframes] of Object.entries(data.tracks)) {
+                importData.tracks[param] = {
+                    enabled: true,
+                    keyframes: keyframes.map(kf => ({
+                        time: kf.time,
+                        value: kf.value,
+                        easing: kf.easing || 'easeInOut'
+                    }))
+                };
+            }
+
+            tl.importTimeline(importData);
+            this._liveTimelines.set(timeline_id, tl);
+        }
+
+        if (!tl) {
+            return {
+                error: {
+                    type: 'ValidationError',
+                    code: 'TIMELINE_NOT_FOUND',
+                    message: `Timeline '${timeline_id}' not found`,
+                    suggestion: 'Create a timeline first with create_timeline'
+                }
+            };
+        }
+
+        switch (action) {
+            case 'play':
+                tl.play();
+                break;
+            case 'pause':
+                tl.pause();
+                break;
+            case 'stop':
+                tl.stop();
+                break;
+            case 'seek':
+                if (seek_percent !== undefined) {
+                    tl.seekToPercent(seek_percent);
+                }
+                break;
+            case 'set_speed':
+                if (speed !== undefined) {
+                    tl.playbackSpeed = Math.max(0.1, Math.min(10, speed));
+                }
+                break;
+        }
+
+        return {
+            timeline_id,
+            action,
+            playing: tl.playing,
+            currentTime: tl.currentTime,
+            duration: tl.duration,
+            progress: tl.duration > 0 ? tl.currentTime / tl.duration : 0,
+            playbackSpeed: tl.playbackSpeed,
+            suggested_next_actions: ['control_timeline', 'describe_visual_state', 'capture_screenshot']
         };
     }
 }
