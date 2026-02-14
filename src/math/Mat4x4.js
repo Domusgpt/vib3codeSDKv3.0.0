@@ -160,21 +160,42 @@ export class Mat4x4 {
      * @returns {Mat4x4} New matrix = this * m
      */
     multiply(m) {
+        const out = new Mat4x4();
+        const r = out.data;
         const a = this.data;
         const b = m.data;
-        const result = new Float32Array(16);
 
-        for (let col = 0; col < 4; col++) {
-            for (let row = 0; row < 4; row++) {
-                let sum = 0;
-                for (let k = 0; k < 4; k++) {
-                    sum += a[k * 4 + row] * b[col * 4 + k];
-                }
-                result[col * 4 + row] = sum;
-            }
-        }
+        const a00 = a[0], a01 = a[4], a02 = a[8], a03 = a[12];
+        const a10 = a[1], a11 = a[5], a12 = a[9], a13 = a[13];
+        const a20 = a[2], a21 = a[6], a22 = a[10], a23 = a[14];
+        const a30 = a[3], a31 = a[7], a32 = a[11], a33 = a[15];
 
-        return new Mat4x4(result);
+        const b00 = b[0], b01 = b[4], b02 = b[8], b03 = b[12];
+        const b10 = b[1], b11 = b[5], b12 = b[9], b13 = b[13];
+        const b20 = b[2], b21 = b[6], b22 = b[10], b23 = b[14];
+        const b30 = b[3], b31 = b[7], b32 = b[11], b33 = b[15];
+
+        r[0] = a00 * b00 + a01 * b10 + a02 * b20 + a03 * b30;
+        r[1] = a10 * b00 + a11 * b10 + a12 * b20 + a13 * b30;
+        r[2] = a20 * b00 + a21 * b10 + a22 * b20 + a23 * b30;
+        r[3] = a30 * b00 + a31 * b10 + a32 * b20 + a33 * b30;
+
+        r[4] = a00 * b01 + a01 * b11 + a02 * b21 + a03 * b31;
+        r[5] = a10 * b01 + a11 * b11 + a12 * b21 + a13 * b31;
+        r[6] = a20 * b01 + a21 * b11 + a22 * b21 + a23 * b31;
+        r[7] = a30 * b01 + a31 * b11 + a32 * b21 + a33 * b31;
+
+        r[8] = a00 * b02 + a01 * b12 + a02 * b22 + a03 * b32;
+        r[9] = a10 * b02 + a11 * b12 + a12 * b22 + a13 * b32;
+        r[10] = a20 * b02 + a21 * b12 + a22 * b22 + a23 * b32;
+        r[11] = a30 * b02 + a31 * b12 + a32 * b22 + a33 * b32;
+
+        r[12] = a00 * b03 + a01 * b13 + a02 * b23 + a03 * b33;
+        r[13] = a10 * b03 + a11 * b13 + a12 * b23 + a13 * b33;
+        r[14] = a20 * b03 + a21 * b13 + a22 * b23 + a23 * b33;
+        r[15] = a30 * b03 + a31 * b13 + a32 * b23 + a33 * b33;
+
+        return out;
     }
 
     /**
@@ -183,8 +204,44 @@ export class Mat4x4 {
      * @returns {Mat4x4} this
      */
     multiplyInPlace(m) {
-        const result = this.multiply(m);
-        this.data.set(result.data);
+        const a = this.data;
+        const b = m.data;
+
+        // Cache values to avoid aliasing issues and repeated array access
+        const a00 = a[0], a01 = a[4], a02 = a[8], a03 = a[12];
+        const a10 = a[1], a11 = a[5], a12 = a[9], a13 = a[13];
+        const a20 = a[2], a21 = a[6], a22 = a[10], a23 = a[14];
+        const a30 = a[3], a31 = a[7], a32 = a[11], a33 = a[15];
+
+        const b00 = b[0], b01 = b[4], b02 = b[8], b03 = b[12];
+        const b10 = b[1], b11 = b[5], b12 = b[9], b13 = b[13];
+        const b20 = b[2], b21 = b[6], b22 = b[10], b23 = b[14];
+        const b30 = b[3], b31 = b[7], b32 = b[11], b33 = b[15];
+
+        // Column 0
+        a[0] = a00 * b00 + a01 * b10 + a02 * b20 + a03 * b30;
+        a[1] = a10 * b00 + a11 * b10 + a12 * b20 + a13 * b30;
+        a[2] = a20 * b00 + a21 * b10 + a22 * b20 + a23 * b30;
+        a[3] = a30 * b00 + a31 * b10 + a32 * b20 + a33 * b30;
+
+        // Column 1
+        a[4] = a00 * b01 + a01 * b11 + a02 * b21 + a03 * b31;
+        a[5] = a10 * b01 + a11 * b11 + a12 * b21 + a13 * b31;
+        a[6] = a20 * b01 + a21 * b11 + a22 * b21 + a23 * b31;
+        a[7] = a30 * b01 + a31 * b11 + a32 * b21 + a33 * b31;
+
+        // Column 2
+        a[8] = a00 * b02 + a01 * b12 + a02 * b22 + a03 * b32;
+        a[9] = a10 * b02 + a11 * b12 + a12 * b22 + a13 * b32;
+        a[10] = a20 * b02 + a21 * b12 + a22 * b22 + a23 * b32;
+        a[11] = a30 * b02 + a31 * b12 + a32 * b22 + a33 * b32;
+
+        // Column 3
+        a[12] = a00 * b03 + a01 * b13 + a02 * b23 + a03 * b33;
+        a[13] = a10 * b03 + a11 * b13 + a12 * b23 + a13 * b33;
+        a[14] = a20 * b03 + a21 * b13 + a22 * b23 + a23 * b33;
+        a[15] = a30 * b03 + a31 * b13 + a32 * b23 + a33 * b33;
+
         return this;
     }
 
