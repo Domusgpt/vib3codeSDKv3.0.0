@@ -52,6 +52,10 @@ jobs:
           cp -r agent-config/ _site/agent-config/ 2>/dev/null || true
           cp CLAUDE.md _site/ 2>/dev/null || true
 
+          # VIB3+ Creative Engine demos
+          mkdir -p _site/demos
+          cp examples/vib3-create-demos/index.html _site/demos/ 2>/dev/null || true
+
           # Landing page JS modules (index.html imports ./js/landing/main.js)
           mkdir -p _site/js
           cp -r js/landing _site/js/
