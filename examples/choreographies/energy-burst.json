@@ -1,0 +1,122 @@
+{
+  "name": "Energy Burst",
+  "description": "A high-energy 20-second performance synchronized to 140 BPM. Three rapid scenes showcase explosive chaos → crystalline freeze → neon spin. Designed for music visualization and VJ performances.",
+  "duration_ms": 20000,
+  "bpm": 140,
+  "scenes": [
+    {
+      "time_start": 0,
+      "time_end": 7000,
+      "system": "quantum",
+      "geometry": 21,
+      "transition_in": { "type": "cut", "duration": 0 },
+      "color_preset": "Fire",
+      "post_processing": ["chromaticAberration", "distort"],
+      "tracks": {
+        "chaos": [
+          { "time": 0, "value": 0, "easing": "linear" },
+          { "time": 1000, "value": 0.9, "easing": "exponential" },
+          { "time": 3500, "value": 1.0, "easing": "easeInOut" },
+          { "time": 7000, "value": 0.6, "easing": "easeOut" }
+        ],
+        "speed": [
+          { "time": 0, "value": 1.0, "easing": "linear" },
+          { "time": 2000, "value": 3.0, "easing": "quadIn" },
+          { "time": 7000, "value": 2.5, "easing": "easeOut" }
+        ],
+        "hue": [
+          { "time": 0, "value": 0, "easing": "linear" },
+          { "time": 3500, "value": 30, "easing": "easeInOut" },
+          { "time": 7000, "value": 10, "easing": "easeInOut" }
+        ],
+        "intensity": [
+          { "time": 0, "value": 0.5, "easing": "linear" },
+          { "time": 1000, "value": 1.0, "easing": "exponential" },
+          { "time": 7000, "value": 0.8, "easing": "easeOut" }
+        ],
+        "morphFactor": [
+          { "time": 0, "value": 0, "easing": "linear" },
+          { "time": 3500, "value": 2.0, "easing": "elastic" },
+          { "time": 7000, "value": 1.5, "easing": "easeOut" }
+        ],
+        "rot4dXW": [
+          { "time": 0, "value": 0, "easing": "linear" },
+          { "time": 7000, "value": 6.28, "easing": "linear" }
+        ]
+      }
+    },
+    {
+      "time_start": 7000,
+      "time_end": 13000,
+      "system": "faceted",
+      "geometry": 15,
+      "transition_in": { "type": "cut", "duration": 0 },
+      "color_preset": "Ice",
+      "post_processing": ["bloom", "scanlines"],
+      "tracks": {
+        "chaos": [
+          { "time": 0, "value": 0.6, "easing": "linear" },
+          { "time": 500, "value": 0, "easing": "exponential" },
+          { "time": 6000, "value": 0, "easing": "linear" }
+        ],
+        "speed": [
+          { "time": 0, "value": 2.0, "easing": "linear" },
+          { "time": 500, "value": 0.1, "easing": "exponential" },
+          { "time": 6000, "value": 0.15, "easing": "linear" }
+        ],
+        "hue": [
+          { "time": 0, "value": 190, "easing": "linear" },
+          { "time": 6000, "value": 200, "easing": "easeInOut" }
+        ],
+        "intensity": [
+          { "time": 0, "value": 0.9, "easing": "linear" },
+          { "time": 1000, "value": 0.6, "easing": "easeOut" },
+          { "time": 6000, "value": 0.7, "easing": "easeInOut" }
+        ],
+        "gridDensity": [
+          { "time": 0, "value": 8, "easing": "linear" },
+          { "time": 3000, "value": 50, "easing": "easeInOut" },
+          { "time": 6000, "value": 30, "easing": "easeOut" }
+        ]
+      }
+    },
+    {
+      "time_start": 13000,
+      "time_end": 20000,
+      "system": "quantum",
+      "geometry": 9,
+      "transition_in": { "type": "crossfade", "duration": 500 },
+      "color_preset": "Neon",
+      "post_processing": ["bloom", "chromaticAberration", "rgbShift"],
+      "tracks": {
+        "speed": [
+          { "time": 0, "value": 0.5, "easing": "linear" },
+          { "time": 3500, "value": 3.0, "easing": "quadIn" },
+          { "time": 7000, "value": 0.3, "easing": "easeOut" }
+        ],
+        "hue": [
+          { "time": 0, "value": 280, "easing": "linear" },
+          { "time": 1750, "value": 310, "easing": "easeInOut" },
+          { "time": 3500, "value": 340, "easing": "easeInOut" },
+          { "time": 5250, "value": 300, "easing": "easeInOut" },
+          { "time": 7000, "value": 280, "easing": "easeOut" }
+        ],
+        "intensity": [
+          { "time": 0, "value": 0.6, "easing": "linear" },
+          { "time": 3500, "value": 1.0, "easing": "easeInOut" },
+          { "time": 6500, "value": 0.9, "easing": "easeInOut" },
+          { "time": 7000, "value": 0.0, "easing": "easeOut" }
+        ],
+        "rot4dZW": [
+          { "time": 0, "value": 0, "easing": "linear" },
+          { "time": 7000, "value": 12.56, "easing": "linear" }
+        ],
+        "chaos": [
+          { "time": 0, "value": 0.1, "easing": "linear" },
+          { "time": 3500, "value": 0.5, "easing": "easeInOut" },
+          { "time": 7000, "value": 0, "easing": "easeOut" }
+        ]
+      }
+    }
+  ]
+}

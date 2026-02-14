@@ -162,7 +162,7 @@ Vib3Rotor4D vib3_rotor4d_from_euler6(float xy, xz, yz, xw, yw, zw);
 
 ### 5. MCP Agent Tools (`src/agent/mcp/`)
 
-**Current tools** (19): See `src/agent/mcp/tools.js` for full definitions.
+**Current tools** (31): See `src/agent/mcp/tools.js` for full definitions.
 
 **Adding a new MCP tool**:
 
@@ -202,8 +202,10 @@ case 'new_tool_name':
 | `TransitionAnimator.js` | 683 | `.transition(params, duration, easing)`, `.sequence(steps)` |
 | `PostProcessingPipeline.js` | 1113 | `.addEffect(name, config)`, `.applyChain(presetName)`, 14 effects, 7 chains |
 | `ParameterTimeline.js` | 1061 | `.addTrack(param)`, `.addKeyframe(track, time, value, easing)`, `.play()` |
+| `ChoreographyPlayer.js` | 482 | `.load(spec)`, `.play()`, `.pause()`, `.stop()`, `.seek(ms)`, `.seekToPercent(pct)` |
+| `AestheticMapper.js` | 629 | `.mapDescription(text)`, `.resolveToValues(text)`, `.getVocabulary()`, `.getVocabularyByCategory()` |
 
-**Testing**: `tests/creative/` has 4 test files covering all creative modules.
+**Testing**: `tests/creative/` has 6 test files covering all creative modules.
 
 ### 7. Platform Integrations (`src/integrations/`)
 

@@ -106,7 +106,31 @@ bloom, chromaticAberration, vignette, filmGrain, scanlines, pixelate, blur, shar
 
 ## Design Workflows
 
-### Workflow 1: Static Preset Design
+### Workflow 1: Natural Language Design (Fastest)
+
+When a user gives a verbal description (e.g., "serene ocean deep organic" or "energetic neon glitchy"):
+
+**Live MCP Mode** (single-call):
+```json
+{"tool": "design_from_description", "args": {"description": "serene ocean deep organic", "apply": true}}
+```
+This uses the AestheticMapper to map 60+ aesthetic vocabulary words across 6 categories (emotions, styles, colors, motion, depth, geometry) to concrete VIB3+ parameters.
+
+**Then verify** with visual feedback:
+```json
+{"tool": "describe_visual_state"}
+{"tool": "capture_screenshot"}
+```
+
+**Available vocabulary** (call `get_aesthetic_vocabulary` for full list):
+- **Emotions**: serene, calm, peaceful, energetic, chaotic, mysterious, joyful, melancholic, angry, dreamy
+- **Styles**: minimal, intricate, organic, geometric, abstract, crystalline, glitchy, cinematic
+- **Colors**: ocean, fire, ice, neon, sunset, forest, galaxy, cyberpunk, monochrome, warm, cool
+- **Motion**: slow, fast, flowing, pulsing, breathing, spinning, hypnotic, turbulent, frozen
+- **Depth**: deep, flat, immersive, distant, close
+- **Geometry**: spherical, cubic, toroidal, fractal, wavy, crystal, simplex, twisted
+
+### Workflow 2: Static Preset Design (Manual Control)
 
 When a user asks for a specific visual (e.g., "deep ocean torus" or "glitchy neon fractal"):
 
@@ -115,6 +139,7 @@ When a user asks for a specific visual (e.g., "deep ocean torus" or "glitchy neo
 3. **Set 6D rotation** — use 4D planes (XW/YW/ZW) for otherworldly depth
 4. **Tune parameters** — hue for color, chaos for organic feel, gridDensity for intricacy
 5. **Apply post-processing** if needed (bloom for glow, chromatic aberration for edge effects)
+6. **Get visual feedback** — call `describe_visual_state` or `capture_screenshot` to verify
 
 **Output format (Artifact Mode)**:
 ```javascript
@@ -139,14 +164,12 @@ const preset = {
 // Object.entries(preset.params).forEach(([k, v]) => engine.setParameter(k, v));
 ```
 
-**Output format (Live MCP Mode)**:
+**Output format (Live MCP Mode)** — use `batch_set_parameters` for atomic application:
 ```json
-{"tool": "create_4d_visualization", "args": {"system": "quantum", "geometry_index": 11}}
-{"tool": "set_rotation", "args": {"XW": 0.8, "YW": 0.5, "ZW": 1.2, "XZ": 0.3}}
-{"tool": "set_visual_parameters", "args": {"hue": 200, "saturation": 0.9, "intensity": 0.7, "speed": 0.6, "chaos": 0.15, "gridDensity": 24, "dimension": 3.5}}
+{"tool": "batch_set_parameters", "args": {"system": "quantum", "geometry": 11, "rotation": {"XW": 0.8, "YW": 0.5, "ZW": 1.2, "XZ": 0.3}, "visual": {"hue": 200, "saturation": 0.9, "intensity": 0.7, "speed": 0.6, "chaos": 0.15, "gridDensity": 24, "dimension": 3.5}, "preset": "cinematic"}}
 ```
 
-### Workflow 2: Choreographed Timeline Sequences
+### Workflow 3: Choreographed Timeline Sequences
 
 For animated sequences synced to music/time, use the ParameterTimeline system.
 
@@ -198,7 +221,7 @@ const timeline = {
 // tl.play();
 ```
 
-### Workflow 3: Transition Sequences
+### Workflow 4: Transition Sequences
 
 For smooth animated transitions between distinct visual states:
 
@@ -227,7 +250,7 @@ const sequence = [
 // animator.sequence(sequence);
 ```
 
-### Workflow 4: Multi-Visualizer Scroll Choreography
+### Workflow 5: Multi-Visualizer Scroll Choreography
 
 For landing pages with coordinated multi-system scroll animations. Uses density-as-distance depth illusion.
 
@@ -255,7 +278,85 @@ For landing pages with coordinated multi-system scroll animations. Uses density-
 - Holographic layers build on top
 - Cross-fade via opacity + intensity + speed
 
-### Workflow 5: Audio-Reactive Design
+### Workflow 6: Multi-Scene Choreography Performance
+
+For complex performances that coordinate multiple systems, transitions, and timelines across time:
+
+**Live MCP Mode** (create + play):
+```json
+{"tool": "create_choreography", "args": {
+  "name": "Cosmic Journey",
+  "duration_ms": 30000,
+  "bpm": 120,
+  "scenes": [
+    {
+      "time_start": 0, "time_end": 10000,
+      "system": "quantum", "geometry": 11,
+      "transition_in": {"type": "cut", "duration": 0},
+      "color_preset": "Ocean",
+      "tracks": {
+        "hue": [{"time": 0, "value": 180}, {"time": 10000, "value": 240, "easing": "easeInOut"}],
+        "rot4dXW": [{"time": 0, "value": 0}, {"time": 10000, "value": 3.14, "easing": "linear"}]
+      }
+    },
+    {
+      "time_start": 10000, "time_end": 20000,
+      "system": "holographic", "geometry": 5,
+      "transition_in": {"type": "crossfade", "duration": 1500},
+      "color_preset": "Galaxy",
+      "tracks": {
+        "chaos": [{"time": 0, "value": 0}, {"time": 5000, "value": 0.8, "easing": "elastic"}, {"time": 10000, "value": 0.1}]
+      }
+    },
+    {
+      "time_start": 20000, "time_end": 30000,
+      "system": "faceted", "geometry": 16,
+      "transition_in": {"type": "crossfade", "duration": 2000},
+      "color_preset": "Neon",
+      "post_processing": ["bloom", "chromaticAberration"],
+      "tracks": {
+        "speed": [{"time": 0, "value": 0.5}, {"time": 10000, "value": 2.5, "easing": "quadIn"}],
+        "intensity": [{"time": 0, "value": 0.3}, {"time": 10000, "value": 1.0, "easing": "easeInOut"}]
+      }
+    }
+  ]
+}}
+```
+
+Then play it:
+```json
+{"tool": "play_choreography", "args": {"choreography_id": "<id>", "action": "play", "loop": true}}
+```
+
+Transport controls:
+```json
+{"tool": "play_choreography", "args": {"choreography_id": "<id>", "action": "pause"}}
+{"tool": "play_choreography", "args": {"choreography_id": "<id>", "action": "seek", "seek_percent": 0.5}}
+{"tool": "play_choreography", "args": {"choreography_id": "<id>", "action": "stop"}}
+```
+
+### Workflow 7: Agent Visual Feedback Loop
+
+The design → verify → refine loop for agents:
+
+1. **Design**: Use `design_from_description` or `batch_set_parameters` to set initial state
+2. **Verify**: Call `describe_visual_state` (text) or `capture_screenshot` (image, browser only)
+3. **Refine**: Adjust parameters based on the description or screenshot analysis
+4. **Repeat**: Continue until the visualization matches the intent
+
+```json
+{"tool": "design_from_description", "args": {"description": "serene ocean deep organic", "apply": true}}
+{"tool": "describe_visual_state"}
+{"tool": "set_visual_parameters", "args": {"chaos": 0.08, "gridDensity": 18}}
+{"tool": "describe_visual_state"}
+```
+
+For headless environments without a browser, use the headless renderer CLI:
+```bash
+node tools/headless-renderer.js --system quantum --geometry 11 --params '{"hue":200,"chaos":0.3}' --base64
+```
+
+### Workflow 8: Audio-Reactive Design
 
 Configure how audio frequency bands drive visualization parameters:
 
@@ -315,15 +416,19 @@ const audioConfig = {
 
 | Request | Action |
 |---------|--------|
-| "Make something beautiful" | Design a preset: pick a theme, map to system+geometry+params, output as preset JSON |
-| "Animate this" | Create a ParameterTimeline with multi-track keyframes |
+| "Make something beautiful" | Use `design_from_description` with aesthetic words, or manually design a preset |
+| "Make it look like..." | Use `design_from_description` with the user's words, then verify with `describe_visual_state` |
+| "Animate this" | Create a ParameterTimeline with multi-track keyframes via `create_timeline`, play with `control_timeline` |
 | "Make it react to music" | Configure audio band mappings with appropriate parameter targets |
 | "Design a landing page section" | Create scroll choreography with depth illusion + system transitions |
-| "Something calming" | Use `calm` preset base, low chaos, slow 4D rotation, cool hues (180-240) |
-| "Something energetic" | Use `energetic` preset base, high chaos, fast speed, warm/hot hues (0-60, 300-360) |
-| "Transition between two looks" | Create a transition sequence with appropriate easing |
+| "Something calming" | `design_from_description` with "serene calm peaceful slow", or manual calm preset |
+| "Something energetic" | `design_from_description` with "energetic neon fast", or manual energetic preset |
+| "Create a performance" | Use `create_choreography` to define multi-scene spec, then `play_choreography` to play |
+| "Transition between two looks" | Create a transition sequence with `play_transition` or choreography |
+| "What does it look like?" | Use `describe_visual_state` for text, `capture_screenshot` for image (browser) |
 | "Show me all the geometries" | List all 24 with system+core+base breakdown and descriptions |
-| "Export this" | Generate VIB3Package JSON or embed code |
+| "What aesthetic words can I use?" | Call `get_aesthetic_vocabulary` to list all 60+ words by category |
+| "Export this" | Generate VIB3Package JSON or embed code via `export_package` |
 
 ---
 
@@ -331,8 +436,11 @@ const audioConfig = {
 
 - Engine: `src/core/VIB3Engine.js`
 - Parameters: `src/core/Parameters.js`
-- Creative tooling: `src/creative/` (ColorPresetsSystem, TransitionAnimator, PostProcessingPipeline, ParameterTimeline)
-- MCP tools: `src/agent/mcp/tools.js` (19 tools)
+- Creative tooling: `src/creative/` (ColorPresetsSystem, TransitionAnimator, PostProcessingPipeline, ParameterTimeline, ChoreographyPlayer, AestheticMapper)
+- MCP tools: `src/agent/mcp/tools.js` (31 tools)
 - Choreography patterns: `DOCS/MULTIVIZ_CHOREOGRAPHY_PATTERNS.md`
 - Control reference: `DOCS/CONTROL_REFERENCE.md`
 - Agent context: `agent-config/claude-agent-context.md`
+- Agent harness architecture: `DOCS/AGENT_HARNESS_ARCHITECTURE.md`
+- Headless renderer: `tools/headless-renderer.js`
+- Example choreographies: `examples/choreographies/`

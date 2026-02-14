@@ -1,0 +1,65 @@
+{
+  "name": "Meditation Breath",
+  "description": "A calming 30-second loop designed for meditation and ambient backgrounds. Uses the 6-second VIB3+ Vitality breath cycle as its foundation, with gentle 4D rotation and slow hue drift through cool tones.",
+  "duration_ms": 30000,
+  "bpm": null,
+  "scenes": [
+    {
+      "time_start": 0,
+      "time_end": 30000,
+      "system": "holographic",
+      "geometry": 10,
+      "transition_in": { "type": "cut", "duration": 0 },
+      "color_preset": "Ethereal",
+      "post_processing": ["bloom"],
+      "tracks": {
+        "hue": [
+          { "time": 0, "value": 200, "easing": "sine" },
+          { "time": 6000, "value": 210, "easing": "sine" },
+          { "time": 12000, "value": 220, "easing": "sine" },
+          { "time": 18000, "value": 210, "easing": "sine" },
+          { "time": 24000, "value": 200, "easing": "sine" },
+          { "time": 30000, "value": 200, "easing": "sine" }
+        ],
+        "intensity": [
+          { "time": 0, "value": 0.35, "easing": "sine" },
+          { "time": 3000, "value": 0.5, "easing": "sine" },
+          { "time": 6000, "value": 0.35, "easing": "sine" },
+          { "time": 9000, "value": 0.5, "easing": "sine" },
+          { "time": 12000, "value": 0.35, "easing": "sine" },
+          { "time": 15000, "value": 0.5, "easing": "sine" },
+          { "time": 18000, "value": 0.35, "easing": "sine" },
+          { "time": 21000, "value": 0.5, "easing": "sine" },
+          { "time": 24000, "value": 0.35, "easing": "sine" },
+          { "time": 27000, "value": 0.5, "easing": "sine" },
+          { "time": 30000, "value": 0.35, "easing": "sine" }
+        ],
+        "speed": [
+          { "time": 0, "value": 0.2, "easing": "linear" },
+          { "time": 30000, "value": 0.25, "easing": "linear" }
+        ],
+        "chaos": [
+          { "time": 0, "value": 0.02, "easing": "linear" },
+          { "time": 30000, "value": 0.03, "easing": "linear" }
+        ],
+        "rot4dXW": [
+          { "time": 0, "value": 0, "easing": "linear" },
+          { "time": 30000, "value": 1.57, "easing": "linear" }
+        ],
+        "rot4dYW": [
+          { "time": 0, "value": 0, "easing": "linear" },
+          { "time": 30000, "value": 0.785, "easing": "linear" }
+        ],
+        "dimension": [
+          { "time": 0, "value": 3.8, "easing": "linear" },
+          { "time": 15000, "value": 3.6, "easing": "sine" },
+          { "time": 30000, "value": 3.8, "easing": "sine" }
+        ],
+        "gridDensity": [
+          { "time": 0, "value": 18, "easing": "linear" },
+          { "time": 30000, "value": 18, "easing": "linear" }
+        ]
+      }
+    }
+  ]
+}
