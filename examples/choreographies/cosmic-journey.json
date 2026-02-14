@@ -1,0 +1,117 @@
+{
+  "name": "Cosmic Journey",
+  "description": "A 60-second journey through three visual systems — from deep quantum ocean through galactic holographic space to neon faceted geometry. Designed to showcase system transitions and choreographed parameter animation.",
+  "duration_ms": 60000,
+  "bpm": 120,
+  "scenes": [
+    {
+      "time_start": 0,
+      "time_end": 20000,
+      "system": "quantum",
+      "geometry": 11,
+      "transition_in": { "type": "cut", "duration": 0 },
+      "color_preset": "Ocean",
+      "post_processing": [],
+      "tracks": {
+        "hue": [
+          { "time": 0, "value": 180, "easing": "linear" },
+          { "time": 10000, "value": 220, "easing": "easeInOut" },
+          { "time": 20000, "value": 260, "easing": "easeInOut" }
+        ],
+        "rot4dXW": [
+          { "time": 0, "value": 0, "easing": "linear" },
+          { "time": 20000, "value": 3.14, "easing": "linear" }
+        ],
+        "chaos": [
+          { "time": 0, "value": 0.02, "easing": "linear" },
+          { "time": 10000, "value": 0.15, "easing": "easeIn" },
+          { "time": 20000, "value": 0.05, "easing": "easeOut" }
+        ],
+        "gridDensity": [
+          { "time": 0, "value": 40, "easing": "linear" },
+          { "time": 20000, "value": 15, "easing": "easeInOut" }
+        ],
+        "intensity": [
+          { "time": 0, "value": 0.4, "easing": "linear" },
+          { "time": 10000, "value": 0.7, "easing": "easeInOut" },
+          { "time": 20000, "value": 0.5, "easing": "easeOut" }
+        ]
+      }
+    },
+    {
+      "time_start": 20000,
+      "time_end": 40000,
+      "system": "holographic",
+      "geometry": 5,
+      "transition_in": { "type": "crossfade", "duration": 2000 },
+      "color_preset": "Galaxy",
+      "post_processing": ["bloom", "vignette"],
+      "tracks": {
+        "hue": [
+          { "time": 0, "value": 260, "easing": "linear" },
+          { "time": 10000, "value": 300, "easing": "easeInOut" },
+          { "time": 20000, "value": 260, "easing": "easeInOut" }
+        ],
+        "chaos": [
+          { "time": 0, "value": 0.05, "easing": "linear" },
+          { "time": 5000, "value": 0.4, "easing": "elastic" },
+          { "time": 10000, "value": 0.6, "easing": "easeInOut" },
+          { "time": 15000, "value": 0.3, "easing": "bounce" },
+          { "time": 20000, "value": 0.1, "easing": "easeOut" }
+        ],
+        "morphFactor": [
+          { "time": 0, "value": 0, "easing": "linear" },
+          { "time": 10000, "value": 1.2, "easing": "easeInOut" },
+          { "time": 20000, "value": 0.3, "easing": "easeOut" }
+        ],
+        "rot4dYW": [
+          { "time": 0, "value": 0, "easing": "linear" },
+          { "time": 20000, "value": 6.28, "easing": "linear" }
+        ],
+        "speed": [
+          { "time": 0, "value": 0.5, "easing": "linear" },
+          { "time": 10000, "value": 1.5, "easing": "easeInOut" },
+          { "time": 20000, "value": 0.8, "easing": "easeOut" }
+        ]
+      }
+    },
+    {
+      "time_start": 40000,
+      "time_end": 60000,
+      "system": "faceted",
+      "geometry": 16,
+      "transition_in": { "type": "crossfade", "duration": 1500 },
+      "color_preset": "Neon",
+      "post_processing": ["bloom", "chromaticAberration"],
+      "tracks": {
+        "hue": [
+          { "time": 0, "value": 280, "easing": "linear" },
+          { "time": 5000, "value": 310, "easing": "easeInOut" },
+          { "time": 10000, "value": 330, "easing": "easeInOut" },
+          { "time": 15000, "value": 290, "easing": "elastic" },
+          { "time": 20000, "value": 280, "easing": "easeOut" }
+        ],
+        "speed": [
+          { "time": 0, "value": 0.5, "easing": "linear" },
+          { "time": 10000, "value": 2.0, "easing": "quadIn" },
+          { "time": 20000, "value": 0.3, "easing": "easeOut" }
+        ],
+        "intensity": [
+          { "time": 0, "value": 0.5, "easing": "linear" },
+          { "time": 10000, "value": 1.0, "easing": "easeInOut" },
+          { "time": 18000, "value": 0.9, "easing": "easeInOut" },
+          { "time": 20000, "value": 0.0, "easing": "easeOut" }
+        ],
+        "rot4dZW": [
+          { "time": 0, "value": 0, "easing": "linear" },
+          { "time": 20000, "value": 6.28, "easing": "linear" }
+        ],
+        "gridDensity": [
+          { "time": 0, "value": 10, "easing": "linear" },
+          { "time": 10000, "value": 50, "easing": "easeInOut" },
+          { "time": 20000, "value": 8, "easing": "easeOut" }
+        ]
+      }
+    }
+  ]
+}

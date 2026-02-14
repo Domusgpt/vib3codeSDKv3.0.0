@@ -76,6 +76,19 @@ Implementing the concrete runtime pieces described in `DOCS/AGENT_HARNESS_ARCHIT
 | `package.json` | Only if parallel work adds exports | Our changes don't touch package.json |
 | `src/creative/` | New files only | No conflict — `ChoreographyPlayer.js` and `AestheticMapper.js` are new |
 
+### Phase 3 — Tests, Skills Update, Example Choreographies (Commit 3)
+
+Completing the harness work with tests, skill updates, and example content:
+
+1. **Updated `.claude/commands/vib3-design.md`** — Added 4 new workflows: Natural Language Design (Workflow 1), Multi-Scene Choreography (Workflow 6), Agent Visual Feedback Loop (Workflow 7), re-numbered existing workflows; updated tool count (19→31), file references, "When User Says" table with new tool mappings
+2. **Updated `.claude/commands/vib3-dev.md`** — Added ChoreographyPlayer and AestheticMapper to creative tooling table, updated tool count (19→31), test count (4→6)
+3. **ChoreographyPlayer tests** (`tests/creative/ChoreographyPlayer.test.js`, 29 tests) — constructor, load, getState, seek, seekToPercent, scene transitions, stop, destroy, COLOR_PRESET_MAP
+4. **AestheticMapper tests** (`tests/creative/AestheticMapper.test.js`, 32 tests) — mapDescription, resolveToValues, getVocabulary, getVocabularyByCategory, VOCABULARY static, partial matching, real-world descriptions
+5. **MCP harness tool tests** (`tests/agent/MCPHarnessTools.test.js`, 25 tests) — designFromDescription, getAestheticVocabulary, captureScreenshot, createChoreography, playChoreographyTool, createTimeline, controlTimeline, describeVisualState
+6. **Example choreographies** (`examples/choreographies/`) — 3 ready-to-play specs: cosmic-journey (60s, 3 scenes), meditation-breath (30s loop), energy-burst (20s, 140 BPM)
+
+---
+
 ## Notes for Future Sessions
 
 - `ChoreographyPlayer` imports `ParameterTimeline` and `TransitionAnimator` from `src/creative/`
