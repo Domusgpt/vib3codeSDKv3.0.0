@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIB3+ Creative Engine Demos</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a28;--border:#2a2a3a;
+  --text:#e0e0f0;--text2:#8888aa;--accent:#7c4dff;--accent2:#00e5ff;
+  --glow:rgba(124,77,255,0.3);--danger:#ff4444;--success:#00e676;
+  --warn:#ffab00;--epic:#a855f7;--legendary:#f59e0b;--mythic:#ef4444;
+  --rare:#3b82f6;--common:#6b7280;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'SF Mono','Fira Code','Cascadia Code',monospace;font-size:13px;overflow-x:hidden}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ── Header ── */
+.header{
+  background:linear-gradient(135deg,#0d0d1a 0%,#1a0a2e 50%,#0a1a2e 100%);
+  border-bottom:1px solid var(--border);padding:20px 30px;
+  display:flex;align-items:center;gap:20px;
+}
+.header h1{font-size:22px;font-weight:700;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header .subtitle{color:var(--text2);font-size:12px}
+
+/* ── Tabs ── */
+.tabs{
+  display:flex;border-bottom:1px solid var(--border);background:var(--surface);
+  overflow-x:auto;-webkit-overflow-scrolling:touch;
+}
+.tab{
+  padding:12px 24px;cursor:pointer;font-size:13px;font-weight:500;
+  color:var(--text2);border-bottom:2px solid transparent;
+  transition:all .2s;white-space:nowrap;user-select:none;
+  display:flex;align-items:center;gap:8px;
+}
+.tab:hover{color:var(--text);background:var(--surface2)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(124,77,255,0.05)}
+.tab .badge{
+  font-size:10px;padding:2px 6px;border-radius:8px;
+  background:var(--accent);color:#fff;font-weight:600;
+}
+
+/* ── Panels ── */
+.panel{display:none;padding:20px 30px;animation:fadeIn .3s}
+.panel.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Section Headers ── */
+.section-title{
+  font-size:16px;font-weight:700;margin:24px 0 12px;
+  padding-bottom:8px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+}
+.section-title:first-child{margin-top:0}
+
+/* ── Canvas container ── */
+.canvas-wrap{
+  position:relative;border-radius:12px;overflow:hidden;
+  border:1px solid var(--border);background:#000;
+  margin-bottom:16px;
+}
+.canvas-wrap canvas{display:block;width:100%;height:100%}
+
+/* ── Boss Battle ── */
+.boss-layout{display:grid;grid-template-columns:1fr 320px;gap:20px}
+@media(max-width:800px){.boss-layout{grid-template-columns:1fr}}
+.boss-canvas{height:360px}
+.boss-controls{display:flex;flex-direction:column;gap:12px}
+.boss-phase-btns{display:flex;gap:8px}
+.boss-phase-btns button{
+  flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;
+  background:var(--surface2);color:var(--text);cursor:pointer;font-family:inherit;
+  font-size:12px;transition:all .2s;
+}
+.boss-phase-btns button:hover{border-color:var(--accent);box-shadow:0 0 12px var(--glow)}
+.boss-phase-btns button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.health-bar{
+  height:28px;border-radius:8px;background:var(--surface2);overflow:hidden;
+  border:1px solid var(--border);position:relative;
+}
+.health-fill{
+  height:100%;transition:width .5s cubic-bezier(.4,0,.2,1),background .5s;
+  border-radius:7px;
+}
+.health-label{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);
+}
+.action-btns{display:flex;gap:8px;flex-wrap:wrap}
+.action-btns button{
+  padding:8px 16px;border:1px solid var(--border);border-radius:8px;
+  background:var(--surface2);color:var(--text);cursor:pointer;font-family:inherit;
+  font-size:12px;transition:all .15s;
+}
+.action-btns button:hover{border-color:var(--accent2);box-shadow:0 0 10px rgba(0,229,255,.2)}
+.action-btns button:active{transform:scale(.95)}
+.action-btns button.danger{border-color:var(--danger);color:var(--danger)}
+.action-btns button.danger:hover{background:var(--danger);color:#fff}
+.action-btns button.success{border-color:var(--success);color:var(--success)}
+.action-btns button.success:hover{background:var(--success);color:#000}
+.param-display{
+  background:var(--surface2);border-radius:8px;padding:12px;
+  font-size:11px;line-height:1.8;border:1px solid var(--border);
+  max-height:200px;overflow-y:auto;
+}
+.param-display .label{color:var(--text2);display:inline-block;min-width:110px}
+.param-display .value{color:var(--accent2)}
+
+/* ── Status Effects ── */
+.effects-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.effect-card{
+  border:1px solid var(--border);border-radius:12px;padding:16px;
+  background:var(--surface);cursor:pointer;transition:all .25s;position:relative;overflow:hidden;
+}
+.effect-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.effect-card.selected{border-color:var(--accent);box-shadow:0 0 20px var(--glow)}
+.effect-card canvas{
+  position:absolute;top:0;left:0;width:100%;height:100%;opacity:0.15;pointer-events:none;
+}
+.effect-header{display:flex;align-items:center;gap:10px;margin-bottom:8px;position:relative;z-index:1}
+.effect-icon{font-size:24px}
+.effect-name{font-size:15px;font-weight:700}
+.effect-rarity{
+  font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;
+  margin-left:auto;text-transform:uppercase;
+}
+.rarity-COMMON{background:var(--common);color:#fff}
+.rarity-RARE{background:var(--rare);color:#fff}
+.rarity-EPIC{background:var(--epic);color:#fff}
+.rarity-LEGENDARY{background:var(--legendary);color:#000}
+.rarity-MYTHIC{background:var(--mythic);color:#fff;animation:mythicPulse 2s infinite}
+@keyframes mythicPulse{0%,100%{box-shadow:0 0 4px var(--mythic)}50%{box-shadow:0 0 16px var(--mythic)}}
+.effect-desc{font-size:11px;color:var(--text2);position:relative;z-index:1;margin-bottom:8px}
+.effect-params{font-size:10px;color:var(--text2);position:relative;z-index:1}
+.effect-params span{color:var(--accent2)}
+.effect-detail{
+  margin-top:20px;background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:20px;
+}
+.effect-detail-canvas{height:200px;margin-bottom:16px}
+
+/* ── Music Video ── */
+.timeline-container{position:relative;margin-bottom:20px}
+.timeline-track{
+  height:80px;background:var(--surface2);border-radius:8px;
+  border:1px solid var(--border);position:relative;overflow:hidden;
+  display:flex;
+}
+.timeline-scene{
+  height:100%;position:relative;display:flex;align-items:center;
+  justify-content:center;flex-direction:column;cursor:pointer;
+  transition:all .2s;border-right:1px solid var(--border);
+}
+.timeline-scene:hover{filter:brightness(1.3)}
+.timeline-scene.active{outline:2px solid var(--accent);outline-offset:-2px}
+.timeline-scene .scene-label{font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);z-index:1}
+.timeline-scene .scene-system{font-size:9px;color:rgba(255,255,255,.7);z-index:1}
+.timeline-scene canvas{position:absolute;inset:0;width:100%;height:100%;opacity:0.3}
+.timeline-playhead{
+  position:absolute;top:0;bottom:0;width:2px;background:var(--accent);
+  box-shadow:0 0 8px var(--glow);z-index:10;transition:left .05s linear;
+}
+.timeline-ruler{
+  display:flex;justify-content:space-between;padding:4px 0;font-size:10px;color:var(--text2);
+}
+.playback-controls{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.playback-controls button{
+  padding:8px 16px;border:1px solid var(--border);border-radius:8px;
+  background:var(--surface2);color:var(--text);cursor:pointer;font-family:inherit;
+  font-size:13px;transition:all .15s;
+}
+.playback-controls button:hover{border-color:var(--accent);box-shadow:0 0 10px var(--glow)}
+.playback-controls button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.playback-controls button.primary:hover{filter:brightness(1.2)}
+.playback-time{font-size:14px;font-weight:600;min-width:80px}
+.scene-detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.scene-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:16px;transition:all .2s;
+}
+.scene-card.active{border-color:var(--accent);box-shadow:0 0 12px var(--glow)}
+.scene-card h3{font-size:14px;margin-bottom:6px}
+.scene-card .meta{font-size:11px;color:var(--text2);line-height:1.8}
+.scene-card .meta .tag{
+  display:inline-block;padding:1px 6px;border-radius:4px;
+  background:var(--surface2);color:var(--accent2);font-size:10px;margin:2px 2px;
+}
+
+/* ── Collectible Cards ── */
+.card-controls{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.card-controls select,.card-controls input{
+  padding:8px 12px;border:1px solid var(--border);border-radius:8px;
+  background:var(--surface2);color:var(--text);font-family:inherit;font-size:12px;
+}
+.card-controls button{
+  padding:8px 20px;border:1px solid var(--accent);border-radius:8px;
+  background:var(--accent);color:#fff;cursor:pointer;font-family:inherit;
+  font-size:12px;font-weight:600;transition:all .15s;
+}
+.card-controls button:hover{filter:brightness(1.2)}
+.cards-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+.trading-card{
+  border:2px solid var(--border);border-radius:16px;overflow:hidden;
+  background:var(--surface);transition:all .3s;cursor:pointer;
+  position:relative;
+}
+.trading-card:hover{transform:translateY(-4px) scale(1.02);box-shadow:0 12px 32px rgba(0,0,0,.5)}
+.trading-card canvas{display:block;width:100%;height:180px;background:#000}
+.trading-card .card-body{padding:12px}
+.trading-card .card-name{font-size:13px;font-weight:700;margin-bottom:4px}
+.trading-card .card-desc{font-size:10px;color:var(--text2);margin-bottom:6px;line-height:1.4}
+.trading-card .card-footer{display:flex;justify-content:space-between;align-items:center}
+.trading-card .card-system{font-size:10px;color:var(--accent2);text-transform:uppercase}
+.rarity-bar{
+  position:absolute;top:0;left:0;right:0;height:3px;
+}
+.rarity-COMMON .rarity-bar{background:var(--common)}
+.rarity-RARE .rarity-bar{background:var(--rare)}
+.rarity-EPIC .rarity-bar{background:var(--epic)}
+.rarity-LEGENDARY .rarity-bar{background:linear-gradient(90deg,var(--legendary),#fbbf24)}
+.rarity-MYTHIC .rarity-bar{background:linear-gradient(90deg,var(--mythic),#f97316,var(--mythic));background-size:200% 100%;animation:mythicShine 2s linear infinite}
+@keyframes mythicShine{0%{background-position:0% 0}100%{background-position:200% 0}}
+
+.rarity-stats{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:16px;
+}
+.rarity-stat{
+  text-align:center;padding:12px 8px;border-radius:8px;
+  background:var(--surface);border:1px solid var(--border);
+}
+.rarity-stat .count{font-size:24px;font-weight:800}
+.rarity-stat .label{font-size:10px;color:var(--text2);margin-top:4px}
+
+/* ── Utility ── */
+.slider-group{display:flex;align-items:center;gap:10px}
+.slider-group label{font-size:12px;color:var(--text2);min-width:80px}
+.slider-group input[type=range]{flex:1;accent-color:var(--accent)}
+.slider-group .val{font-size:12px;color:var(--accent2);min-width:40px;text-align:right}
+.info-box{
+  background:rgba(124,77,255,0.08);border:1px solid rgba(124,77,255,0.2);
+  border-radius:8px;padding:12px 16px;font-size:12px;color:var(--text2);
+  margin-bottom:16px;line-height:1.6;
+}
+.info-box code{color:var(--accent2);background:var(--surface2);padding:1px 4px;border-radius:3px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>VIB3+ Creative Engine</h1>
+  <span class="subtitle">4D Visualization Demos &mdash; Generated by /vib3-create skill</span>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="boss">Boss Battle VFX <span class="badge">GAME</span></div>
+  <div class="tab" data-tab="effects">Status Effects <span class="badge">9</span></div>
+  <div class="tab" data-tab="music">Music Video <span class="badge">120BPM</span></div>
+  <div class="tab" data-tab="cards">Collectible Cards <span class="badge">GEN</span></div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- TAB 1: Boss Battle VFX -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<div class="panel active" id="panel-boss">
+  <div class="info-box">
+    Interactive boss battle VFX simulation. Click phases, adjust health, deal damage,
+    and trigger victory. The WebGL shader responds in real-time to all game events.
+    Uses <code>batch_set_parameters</code> + <code>play_transition</code> MCP tools.
+  </div>
+
+  <div class="boss-layout">
+    <div>
+      <div class="canvas-wrap boss-canvas">
+        <canvas id="boss-gl"></canvas>
+      </div>
+    </div>
+    <div class="boss-controls">
+      <div class="section-title">Phase Select</div>
+      <div class="boss-phase-btns">
+        <button class="active" data-phase="1">Phase 1<br><small>Crystalline</small></button>
+        <button data-phase="2">Phase 2<br><small>Void</small></button>
+        <button data-phase="3">Phase 3<br><small>Enraged</small></button>
+      </div>
+
+      <div class="section-title">Boss Health</div>
+      <div class="health-bar">
+        <div class="health-fill" id="health-fill" style="width:100%;background:linear-gradient(90deg,#00e676,#76ff03)"></div>
+        <div class="health-label" id="health-label">100%</div>
+      </div>
+      <div class="slider-group">
+        <label>HP</label>
+        <input type="range" id="health-slider" min="0" max="100" value="100">
+        <span class="val" id="health-val">100</span>
+      </div>
+
+      <div class="section-title">Actions</div>
+      <div class="action-btns">
+        <button id="btn-damage" class="danger">Deal Damage</button>
+        <button id="btn-victory" class="success">Victory!</button>
+        <button id="btn-reset">Reset</button>
+      </div>
+
+      <div class="section-title">Live Parameters</div>
+      <div class="param-display" id="boss-params"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- TAB 2: Status Effects -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-effects">
+  <div class="info-box">
+    9 game status effects mapped to VIB3+ parameter presets. Click any card to see it
+    rendered live. Each effect is a single atomic <code>batch_set_parameters</code> call.
+    Rarity is computed from the extremity formula: <code>|XW|+|YW|+|ZW|+(chaos*2)+|dim-3.8|</code>
+  </div>
+
+  <div class="effects-grid" id="effects-grid"></div>
+
+  <div class="effect-detail" id="effect-detail" style="display:none">
+    <div class="section-title" id="effect-detail-title">Effect Preview</div>
+    <div class="canvas-wrap effect-detail-canvas">
+      <canvas id="effect-gl"></canvas>
+    </div>
+    <div class="param-display" id="effect-params"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- TAB 3: Music Video -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-music">
+  <div class="info-box">
+    "Hyperspace Anthem" &mdash; 80-second, 5-scene choreography at 120 BPM.
+    Press Play to watch the timeline animate through all scenes with crossfades,
+    elastic easing, and simulated audio reactivity. Uses <code>ChoreographyPlayer</code>
+    with <code>create_timeline</code> + <code>configure_audio_band</code> MCP tools.
+  </div>
+
+  <div class="canvas-wrap" style="height:280px">
+    <canvas id="music-gl"></canvas>
+  </div>
+
+  <div class="playback-controls">
+    <button id="btn-play" class="primary">&#9654; Play</button>
+    <button id="btn-stop">&#9632; Stop</button>
+    <span class="playback-time" id="playback-time">0:00 / 1:20</span>
+  </div>
+
+  <div class="timeline-container">
+    <div class="timeline-track" id="timeline-track"></div>
+    <div class="timeline-ruler">
+      <span>0:00</span><span>0:08</span><span>0:30</span><span>0:50</span><span>1:05</span><span>1:20</span>
+    </div>
+  </div>
+
+  <div class="section-title">Scene Breakdown</div>
+  <div class="scene-detail-grid" id="scene-cards"></div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- TAB 4: Collectible Cards -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-cards">
+  <div class="info-box">
+    Evolutionary art card generator. Select a theme, set count, and generate unique
+    collectible cards with live WebGL previews. Uses <code>AIPresetGenerator.mutate()</code>
+    + <code>crossbreed()</code> for evolutionary art, and
+    <code>TradingCardGenerator</code> rarity formula.
+  </div>
+
+  <div class="card-controls">
+    <select id="card-theme">
+      <option value="">Random (all)</option>
+      <option value="deepSpace">Deep Space</option>
+      <option value="lavaLamp">Lava Lamp</option>
+      <option value="arctic">Arctic</option>
+      <option value="acid">Acid</option>
+      <option value="meditation">Meditation</option>
+      <option value="storm">Storm</option>
+      <option value="synthwave">Synthwave</option>
+      <option value="nature">Nature</option>
+    </select>
+    <input type="number" id="card-count" value="8" min="1" max="24" style="width:70px">
+    <button id="btn-generate">Generate Cards</button>
+    <button id="btn-evolve" style="background:var(--epic);border-color:var(--epic)">Evolve (3 gens)</button>
+  </div>
+
+  <div class="rarity-stats" id="rarity-stats"></div>
+
+  <div class="section-title" style="margin-top:20px">Collection</div>
+  <div class="cards-gallery" id="cards-gallery"></div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- WEBGL + LOGIC -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<script>
+// ── Shared WebGL shader (4D rotation + geometry) ─────────────────────
+const VERT = `attribute vec2 a_pos;void main(){gl_Position=vec4(a_pos,0,1);}`;
+const FRAG = `
+precision highp float;
+uniform float u_time;
+uniform vec2 u_resolution;
+uniform float u_hue;
+uniform float u_chaos;
+uniform float u_speed;
+uniform float u_intensity;
+uniform float u_morphFactor;
+uniform float u_gridDensity;
+uniform float u_dimension;
+uniform float u_saturation;
+uniform float u_geometry;
+uniform float u_rotXW;
+uniform float u_rotYW;
+uniform float u_rotZW;
+uniform float u_flash;
+
+vec3 hsv2rgb(vec3 c){vec4 K=vec4(1,.667,.333,3.);vec3 p=abs(fract(c.xxx+K.xyz)*6.-K.www);return c.z*mix(K.xxx,clamp(p-K.xxx,0.,1.),c.y);}
+
+mat4 rotXW(float a){float c=cos(a),s=sin(a);return mat4(c,0,0,s,0,1,0,0,0,0,1,0,-s,0,0,c);}
+mat4 rotYW(float a){float c=cos(a),s=sin(a);return mat4(1,0,0,0,0,c,0,s,0,0,1,0,0,-s,0,c);}
+mat4 rotZW(float a){float c=cos(a),s=sin(a);return mat4(1,0,0,0,0,1,0,0,0,0,c,s,0,0,-s,c);}
+
+float sdBox(vec3 p,vec3 b){vec3 d=abs(p)-b;return min(max(d.x,max(d.y,d.z)),0.)+length(max(d,0.));}
+float sdSphere(vec3 p,float r){return length(p)-r;}
+float sdTorus(vec3 p,vec2 t){vec2 q=vec2(length(p.xz)-t.x,p.y);return length(q)-t.y;}
+
+float getShape(vec3 p,float geo){
+  float base=mod(geo,8.);
+  float core=floor(geo/8.);
+  float d=1e5;
+  if(base<0.5)d=sdSphere(p,.4)-0.05*sin(length(p)*20.);
+  else if(base<1.5)d=sdBox(p,vec3(.35));
+  else if(base<2.5)d=sdSphere(p,.45);
+  else if(base<3.5)d=sdTorus(p,vec2(.35,.12));
+  else if(base<4.5){d=sdTorus(p,vec2(.3,.1));d=min(d,sdTorus(p.yxz,vec2(.3,.1)));}
+  else if(base<5.5){d=sdSphere(p,.4);d+=0.05*sin(p.x*15.)*sin(p.y*15.)*sin(p.z*15.);}
+  else if(base<6.5)d=p.y-0.1*sin(p.x*8.+u_time*u_speed)*sin(p.z*8.+u_time*u_speed*.7);
+  else d=max(sdBox(p,vec3(.35)),-(sdSphere(p,.45)));
+  if(core>0.5&&core<1.5){float r=length(p);d=mix(d,r-0.4,0.5);}
+  if(core>1.5){d=mix(d,max(abs(p.x+p.y+p.z)-0.5,abs(p.x-p.y+p.z)-0.5)*.577,0.4);}
+  return d;
+}
+
+void main(){
+  vec2 uv=(gl_FragCoord.xy*2.-u_resolution)/min(u_resolution.x,u_resolution.y);
+  float t=u_time*u_speed*0.5;
+
+  vec3 ro=vec3(0,0,2.5-u_dimension*0.3);
+  vec3 rd=normalize(vec3(uv,-1.5));
+
+  mat4 R=rotXW(u_rotXW+t*0.1)*rotYW(u_rotYW+t*0.15)*rotZW(u_rotZW+t*0.08);
+
+  float totalD=0.;vec3 col=vec3(0);
+  float glow=0.;
+  for(int i=0;i<64;i++){
+    vec3 p=ro+rd*totalD;
+    vec4 p4=R*vec4(p,0);
+    float proj=1./(u_dimension-p4.w*0.3);
+    vec3 pp=p4.xyz*proj;
+    pp+=u_morphFactor*0.2*sin(pp*3.+t);
+    pp+=u_chaos*0.15*vec3(sin(t*2.1+pp.y*5.),cos(t*1.7+pp.z*4.),sin(t*2.5+pp.x*6.));
+    float d=getShape(pp,u_geometry);
+    float grid=sin(pp.x*u_gridDensity)*sin(pp.y*u_gridDensity)*sin(pp.z*u_gridDensity);
+    d+=grid*0.01;
+    if(d<0.001){
+      vec3 n=normalize(vec3(
+        getShape(pp+vec3(.001,0,0),u_geometry)-getShape(pp-vec3(.001,0,0),u_geometry),
+        getShape(pp+vec3(0,.001,0),u_geometry)-getShape(pp-vec3(0,.001,0),u_geometry),
+        getShape(pp+vec3(0,0,.001),u_geometry)-getShape(pp-vec3(0,0,.001),u_geometry)
+      ));
+      float diff=max(dot(n,normalize(vec3(1,1,1))),0.);
+      float spec=pow(max(dot(reflect(rd,n),normalize(vec3(1,1,1))),0.),32.);
+      float hueShift=u_hue/360.+grid*0.1+totalD*0.05;
+      col=hsv2rgb(vec3(hueShift,u_saturation,u_intensity*(0.3+diff*0.5+spec*0.3)));
+      col+=glow*hsv2rgb(vec3(hueShift+0.1,0.8,0.4))*0.5;
+      break;
+    }
+    glow+=0.015/(1.+d*d*100.);
+    totalD+=d;
+    if(totalD>5.)break;
+  }
+  col+=glow*hsv2rgb(vec3(u_hue/360.,0.7,0.3))*u_intensity;
+  col+=u_flash*vec3(1,0.9,0.7);
+  col=pow(col,vec3(0.85));
+  float vig=1.-0.4*length(uv);
+  col*=vig;
+  gl_FragColor=vec4(col,1);
+}
+`;
+
+function createGL(canvas) {
+  const gl = canvas.getContext('webgl', { antialias: true, alpha: false });
+  if (!gl) return null;
+
+  function compile(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); return null; }
+    return s;
+  }
+
+  const vs = compile(gl.VERTEX_SHADER, VERT);
+  const fs = compile(gl.FRAGMENT_SHADER, FRAG);
+  const prog = gl.createProgram();
+  gl.attachShader(prog, vs); gl.attachShader(prog, fs);
+  gl.linkProgram(prog);
+  gl.useProgram(prog);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+  const aPos = gl.getAttribLocation(prog, 'a_pos');
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+  const uniforms = {};
+  ['u_time','u_resolution','u_hue','u_chaos','u_speed','u_intensity','u_morphFactor',
+   'u_gridDensity','u_dimension','u_saturation','u_geometry','u_rotXW','u_rotYW','u_rotZW','u_flash']
+  .forEach(n => uniforms[n] = gl.getUniformLocation(prog, n));
+
+  return { gl, uniforms, prog };
+}
+
+function resizeCanvas(canvas) {
+  const r = canvas.parentElement.getBoundingClientRect();
+  canvas.width = r.width * window.devicePixelRatio;
+  canvas.height = r.height * window.devicePixelRatio;
+}
+
+// ── Data from demo modules ───────────────────────────────────────────
+
+const BOSS_PHASES = {
+  1: { system:'quantum', geometry:21, visual:{hue:0,chaos:0.6,gridDensity:40,dimension:3.3,speed:1.2,intensity:0.8,morphFactor:0,saturation:0.85}, rotation:{XW:0.5,YW:0,ZW:1.8}, desc:'Dark aggressive crystalline' },
+  2: { system:'holographic', geometry:13, visual:{hue:280,chaos:0.8,gridDensity:60,dimension:3.1,speed:1.0,intensity:0.7,morphFactor:0.5,saturation:0.9}, rotation:{XW:1.2,YW:0.8,ZW:2.4}, desc:'Void ethereal fractured' },
+  3: { system:'quantum', geometry:20, visual:{hue:15,chaos:1.0,gridDensity:80,dimension:3.0,speed:1.5,intensity:0.9,morphFactor:1.0,saturation:1.0}, rotation:{XW:2.0,YW:1.5,ZW:3.0}, desc:'Enraged non-orientable' },
+};
+
+const STATUS_EFFECTS = {
+  poison:{ name:'Poison', icon:'\u2620', desc:'Toxic green fractal dissolution on hypersphere', system:'quantum', geometry:13, hue:120, chaos:0.6, speed:1.5, morphFactor:1.2, intensity:0.7, gridDensity:35, dimension:3.4, saturation:0.9, rotXW:0.8, rotYW:0.3, rotZW:0.5, rarity:'RARE' },
+  freeze:{ name:'Freeze', icon:'\u2744', desc:'Pristine ice-blue crystalline lattice, near-frozen', system:'faceted', geometry:15, hue:200, chaos:0.0, speed:0.1, morphFactor:0.0, intensity:0.8, gridDensity:80, dimension:3.8, saturation:0.5, rotXW:0.1, rotYW:0.0, rotZW:0.05, rarity:'COMMON' },
+  fire:{ name:'Fire', icon:'\uD83D\uDD25', desc:'Volatile orange fractal combustion, maximum energy', system:'quantum', geometry:5, hue:15, chaos:0.8, speed:2.5, morphFactor:0.8, intensity:0.9, gridDensity:30, dimension:3.5, saturation:1.0, rotXW:1.5, rotYW:0.8, rotZW:1.2, rarity:'EPIC' },
+  shield:{ name:'Shield', icon:'\uD83D\uDEE1', desc:'Stable purple holographic sphere with dramatic depth', system:'holographic', geometry:10, hue:270, chaos:0.05, speed:0.3, morphFactor:0.1, intensity:0.6, gridDensity:20, dimension:3.2, saturation:0.7, rotXW:0.2, rotYW:0.15, rotZW:0.1, rarity:'COMMON' },
+  haste:{ name:'Haste', icon:'\u26A1', desc:'Rapid yellow wave patterns, maximum velocity', system:'faceted', geometry:6, hue:60, chaos:0.3, speed:3.0, morphFactor:0.5, intensity:0.85, gridDensity:15, dimension:3.6, saturation:0.8, rotXW:0.5, rotYW:1.0, rotZW:0.3, rarity:'RARE' },
+  void:{ name:'Void', icon:'\uD83C\uDF11', desc:'Deep purple hypertetra Klein bottle, maximum distortion', system:'quantum', geometry:20, hue:280, chaos:0.9, speed:0.5, morphFactor:1.8, intensity:0.3, gridDensity:50, dimension:3.0, saturation:0.6, rotXW:2.5, rotYW:1.8, rotZW:2.0, rarity:'MYTHIC' },
+  rage:{ name:'Rage', icon:'\uD83D\uDCA2', desc:'Blood-red hypertetra crystal lattice, pulsing aggression', system:'quantum', geometry:23, hue:355, chaos:0.7, speed:2.2, morphFactor:1.5, intensity:0.95, gridDensity:45, dimension:3.2, saturation:1.0, rotXW:1.8, rotYW:1.2, rotZW:2.5, rarity:'LEGENDARY' },
+  heal:{ name:'Heal', icon:'\uD83D\uDC9A', desc:'Gentle green holographic sphere, breathing rhythm', system:'holographic', geometry:10, hue:140, chaos:0.02, speed:0.4, morphFactor:0.2, intensity:0.7, gridDensity:18, dimension:3.8, saturation:0.6, rotXW:0.3, rotYW:0.2, rotZW:0.15, rarity:'COMMON' },
+  clear:{ name:'Clear', icon:'\u2728', desc:'Neutral state \u2014 no active effect', system:'faceted', geometry:2, hue:200, chaos:0.0, speed:0.5, morphFactor:0.0, intensity:0.5, gridDensity:20, dimension:3.8, saturation:0.5, rotXW:0.0, rotYW:0.0, rotZW:0.0, rarity:'COMMON' },
+};
+
+const SCENES = [
+  { name:'Intro', system:'quantum', geometry:2, color:'Ocean', hue:200, saturation:0.8, intensity:0.6, chaos:0, speed:0.5, gridDensity:10, dimension:3.8, morphFactor:0, rotXW:0, rotYW:0, rotZW:0, start:0, end:8000, post:['vignette'], transition:'fade', desc:'Serene ocean sphere emerging from darkness' },
+  { name:'Verse', system:'faceted', geometry:1, color:'Monochrome', hue:0, saturation:0, intensity:0.6, chaos:0, speed:0.5, gridDensity:20, dimension:4.0, morphFactor:0, rotXW:0.6, rotYW:0, rotZW:0, start:8000, end:30000, post:[], transition:'crossfade', desc:'Architectural monochrome tesseract' },
+  { name:'Chorus', system:'holographic', geometry:11, color:'Neon', hue:300, saturation:1.0, intensity:0.9, chaos:0.2, speed:1.5, gridDensity:40, dimension:3.5, morphFactor:0, rotXW:0, rotYW:0, rotZW:0, start:30000, end:50000, post:['bloom','chromatic'], transition:'crossfade', desc:'PEAK ENERGY \u2014 neon holographic torus, audio-reactive' },
+  { name:'Bridge', system:'quantum', geometry:21, color:'Cyberpunk', hue:280, saturation:0.9, intensity:0.8, chaos:0, speed:1.0, gridDensity:30, dimension:3.5, morphFactor:0, rotXW:0, rotYW:0, rotZW:0, start:50000, end:65000, post:['glitch','rgbShift'], transition:'cut', desc:'Chaotic cyberpunk breakdown, elastic/bounce' },
+  { name:'Outro', system:'quantum', geometry:2, color:'Ocean', hue:200, saturation:0.8, intensity:0.8, chaos:0.05, speed:0.8, gridDensity:30, dimension:3.8, morphFactor:0, rotXW:0.6, rotYW:0, rotZW:0, start:65000, end:80000, post:['vignette'], transition:'crossfade', desc:'Return to sphere, fade to silence' },
+];
+
+const PARAM_RANGES = {
+  geometry:{min:0,max:23,type:'int'}, rot4dXY:{min:0,max:6.283,type:'float'},
+  rot4dXZ:{min:0,max:6.283,type:'float'}, rot4dYZ:{min:0,max:6.283,type:'float'},
+  rot4dXW:{min:0,max:6.283,type:'float'}, rot4dYW:{min:0,max:6.283,type:'float'},
+  rot4dZW:{min:0,max:6.283,type:'float'}, gridDensity:{min:4,max:100,type:'float'},
+  morphFactor:{min:0,max:2,type:'float'}, chaos:{min:0,max:1,type:'float'},
+  speed:{min:0.1,max:3,type:'float'}, hue:{min:0,max:360,type:'float'},
+  intensity:{min:0,max:1,type:'float'}, saturation:{min:0,max:1,type:'float'},
+  dimension:{min:3.0,max:4.5,type:'float'}
+};
+const GEO_NAMES = ['TETRAHEDRON','HYPERCUBE','SPHERE','TORUS','KLEIN BOTTLE','FRACTAL','WAVE','CRYSTAL'];
+const CORE_TYPES = ['BASE','HYPERSPHERE','HYPERTETRA'];
+const SYSTEMS = ['quantum','faceted','holographic'];
+const THEMES = {
+  deepSpace:{hue:[220,280],chaos:[0.1,0.3],speed:[0.2,0.5],intensity:[0.2,0.5],saturation:[0.5,0.8],dimension:[3.0,3.3]},
+  lavaLamp:{hue:[0,30],chaos:[0.3,0.6],speed:[0.3,0.8],intensity:[0.6,0.9],saturation:[0.8,1.0],dimension:[3.3,3.8]},
+  arctic:{hue:[180,210],chaos:[0.0,0.1],speed:[0.1,0.3],intensity:[0.7,0.9],saturation:[0.3,0.6],dimension:[3.5,4.2]},
+  acid:{hue:[80,160],chaos:[0.5,1.0],speed:[1.5,3.0],intensity:[0.7,1.0],saturation:[0.9,1.0],dimension:[3.0,3.2]},
+  meditation:{hue:[260,320],chaos:[0.0,0.05],speed:[0.1,0.3],intensity:[0.3,0.5],saturation:[0.3,0.5],dimension:[3.8,4.5]},
+  storm:{hue:[200,240],chaos:[0.6,1.0],speed:[1.0,2.5],intensity:[0.3,0.7],saturation:[0.4,0.7],dimension:[3.0,3.4]},
+  synthwave:{hue:[280,340],chaos:[0.1,0.3],speed:[0.5,1.0],intensity:[0.6,0.9],saturation:[0.7,1.0],dimension:[3.3,3.8]},
+  nature:{hue:[80,160],chaos:[0.1,0.3],speed:[0.3,0.8],intensity:[0.4,0.7],saturation:[0.5,0.8],dimension:[3.5,4.0]}
+};
+
+// ── Utility ──────────────────────────────────────────────────────────
+
+function rr(a,b){return a+Math.random()*(b-a)}
+function ri(a,b){return Math.floor(a+Math.random()*(b-a+1))}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function gaussRand(m=0,s=1){return m+s*Math.sqrt(-2*Math.log(Math.random()))*Math.cos(2*Math.PI*Math.random())}
+function calcRarity(p){const e=Math.abs(p.rot4dXW||0)+Math.abs(p.rot4dYW||0)+Math.abs(p.rot4dZW||0)+(p.chaos||0)*2+Math.abs((p.dimension||3.8)-3.8);return e>8?'MYTHIC':e>6?'LEGENDARY':e>4?'EPIC':e>2?'RARE':'COMMON'}
+function genPreset(theme){
+  const t=theme&&THEMES[theme]?THEMES[theme]:null;
+  const p={system:SYSTEMS[ri(0,2)],timestamp:Date.now()};
+  for(const[k,r]of Object.entries(PARAM_RANGES)){
+    if(t&&t[k]){const[a,b]=t[k];p[k]=r.type==='int'?ri(a,b):rr(a,b)}
+    else p[k]=r.type==='int'?ri(r.min,r.max):rr(r.min,r.max);
+  }
+  const bg=p.geometry%8,ct=Math.floor(p.geometry/8);
+  p.name=GEO_NAMES[bg]+' '+CORE_TYPES[ct];
+  p.rarity=calcRarity({rot4dXW:p.rot4dXW,rot4dYW:p.rot4dYW,rot4dZW:p.rot4dZW,chaos:p.chaos,dimension:p.dimension});
+  p.hue=p.hue||0;p.saturation=p.saturation||0.5;p.intensity=p.intensity||0.5;
+  p.speed=p.speed||1;p.chaos=p.chaos||0;p.gridDensity=p.gridDensity||20;
+  p.dimension=p.dimension||3.8;p.morphFactor=p.morphFactor||0;
+  // description
+  const parts=[];
+  if(p.speed>2)parts.push('high-energy');else if(p.speed>1)parts.push('dynamic');else if(p.speed>0.4)parts.push('gentle');else parts.push('near-frozen');
+  const h=p.hue;if(h<30||h>340)parts.push('red');else if(h<70)parts.push('golden');else if(h<150)parts.push('green');else if(h<210)parts.push('ocean-blue');else if(h<280)parts.push('violet');else parts.push('magenta');
+  if(p.chaos>0.7)parts.push('chaotic');else if(p.chaos>0.3)parts.push('turbulent');else if(p.chaos>0.05)parts.push('textured');else parts.push('pristine');
+  p.description=parts.join(', ');
+  return p;
+}
+function mutatePreset(p,int=0.3){
+  const m={...p,timestamp:Date.now()};
+  for(const[k,r]of Object.entries(PARAM_RANGES)){
+    if(k==='geometry'&&Math.random()>0.7){m.geometry=ri(r.min,r.max);continue;}
+    const span=r.max-r.min;let nv=p[k]+gaussRand(0,span*int*0.3);
+    nv=clamp(nv,r.min,r.max);m[k]=r.type==='int'?Math.round(nv):nv;
+  }
+  const bg=m.geometry%8,ct=Math.floor(m.geometry/8);
+  m.name=GEO_NAMES[bg]+' '+CORE_TYPES[ct];
+  m.rarity=calcRarity({rot4dXW:m.rot4dXW,rot4dYW:m.rot4dYW,rot4dZW:m.rot4dZW,chaos:m.chaos,dimension:m.dimension});
+  return m;
+}
+function crossbreedPreset(a,b,r=0.5){
+  const c={timestamp:Date.now()};
+  for(const[k,rng]of Object.entries(PARAM_RANGES)){
+    c[k]=rng.type==='int'?(Math.random()<r?b[k]:a[k]):(a[k]*(1-r)+b[k]*r);
+  }
+  c.system=Math.random()<r?b.system:a.system;
+  const bg=c.geometry%8,ct=Math.floor(c.geometry/8);
+  c.name=GEO_NAMES[bg]+' '+CORE_TYPES[ct];
+  c.rarity=calcRarity({rot4dXW:c.rot4dXW,rot4dYW:c.rot4dYW,rot4dZW:c.rot4dZW,chaos:c.chaos,dimension:c.dimension});
+  return c;
+}
+
+// ── Tab switching ────────────────────────────────────────────────────
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    if (tab.dataset.tab === 'boss') initBoss();
+    if (tab.dataset.tab === 'effects') initEffects();
+    if (tab.dataset.tab === 'music') initMusic();
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// TAB 1: Boss Battle VFX
+// ══════════════════════════════════════════════════════════════════════
+
+let bossGL = null, bossState = null, bossPhase = 1, bossHealth = 100, bossFlash = 0;
+
+function initBoss() {
+  const canvas = document.getElementById('boss-gl');
+  if (!bossGL) {
+    resizeCanvas(canvas);
+    bossGL = createGL(canvas);
+  }
+  setPhase(1);
+}
+
+function setPhase(n) {
+  bossPhase = n;
+  const p = BOSS_PHASES[n];
+  bossState = { ...p.visual, rotXW: p.rotation.XW, rotYW: p.rotation.YW || 0, rotZW: p.rotation.ZW, geometry: p.geometry };
+  document.querySelectorAll('.boss-phase-btns button').forEach(b => {
+    b.classList.toggle('active', +b.dataset.phase === n);
+  });
+  updateBossParams();
+}
+
+function updateBossParams() {
+  if (!bossState) return;
+  const el = document.getElementById('boss-params');
+  el.innerHTML = Object.entries(bossState).map(([k,v]) =>
+    `<span class="label">${k}</span> <span class="value">${typeof v==='number'?v.toFixed(3):v}</span>`
+  ).join('<br>');
+}
+
+document.querySelectorAll('.boss-phase-btns button').forEach(b => {
+  b.addEventListener('click', () => setPhase(+b.dataset.phase));
+});
+
+const healthSlider = document.getElementById('health-slider');
+healthSlider.addEventListener('input', () => {
+  bossHealth = +healthSlider.value;
+  document.getElementById('health-val').textContent = bossHealth;
+  updateHealthBar();
+});
+
+function updateHealthBar() {
+  const pct = bossHealth;
+  const fill = document.getElementById('health-fill');
+  fill.style.width = pct + '%';
+  if (pct > 60) fill.style.background = 'linear-gradient(90deg,#00e676,#76ff03)';
+  else if (pct > 30) fill.style.background = 'linear-gradient(90deg,#ffab00,#ff6d00)';
+  else fill.style.background = 'linear-gradient(90deg,#ff1744,#d50000)';
+  document.getElementById('health-label').textContent = pct + '%';
+  if (bossState) {
+    bossState.morphFactor = (1 - pct / 100) * 2;
+    const base = BOSS_PHASES[bossPhase].visual.chaos;
+    bossState.chaos = base + (1 - pct / 100) * 0.4;
+    updateBossParams();
+  }
+}
+
+document.getElementById('btn-damage').addEventListener('click', () => {
+  bossFlash = 1.0;
+  bossHealth = Math.max(0, bossHealth - 15);
+  healthSlider.value = bossHealth;
+  updateHealthBar();
+});
+
+document.getElementById('btn-victory').addEventListener('click', () => {
+  bossFlash = 0.5;
+  if (bossState) {
+    bossState.hue = 50; bossState.saturation = 1; bossState.intensity = 1;
+    bossState.chaos = 0; bossState.speed = 0.5; bossState.gridDensity = 15;
+    updateBossParams();
+  }
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  bossHealth = 100; healthSlider.value = 100;
+  updateHealthBar(); setPhase(1);
+});
+
+setTimeout(initBoss, 50);
+
+// ══════════════════════════════════════════════════════════════════════
+// TAB 2: Status Effects
+// ══════════════════════════════════════════════════════════════════════
+
+let effectGL = null, activeEffect = null;
+
+function initEffects() {
+  const grid = document.getElementById('effects-grid');
+  if (grid.children.length > 0) return;
+  for (const [key, fx] of Object.entries(STATUS_EFFECTS)) {
+    const card = document.createElement('div');
+    card.className = 'effect-card';
+    card.dataset.effect = key;
+    card.innerHTML = `
+      <div class="effect-header">
+        <span class="effect-icon">${fx.icon}</span>
+        <span class="effect-name">${fx.name}</span>
+        <span class="effect-rarity rarity-${fx.rarity}">${fx.rarity}</span>
+      </div>
+      <div class="effect-desc">${fx.desc}</div>
+      <div class="effect-params">
+        <span>${fx.system}</span> | geo <span>${fx.geometry}</span> |
+        hue <span>${fx.hue}</span> | chaos <span>${fx.chaos.toFixed(2)}</span> |
+        speed <span>${fx.speed.toFixed(1)}</span>
+      </div>
+    `;
+    card.addEventListener('click', () => selectEffect(key));
+    grid.appendChild(card);
+  }
+}
+
+function selectEffect(key) {
+  activeEffect = STATUS_EFFECTS[key];
+  document.querySelectorAll('.effect-card').forEach(c => c.classList.toggle('selected', c.dataset.effect === key));
+  const detail = document.getElementById('effect-detail');
+  detail.style.display = 'block';
+  document.getElementById('effect-detail-title').textContent = activeEffect.name + ' Effect Preview';
+  const canvas = document.getElementById('effect-gl');
+  if (!effectGL) { resizeCanvas(canvas); effectGL = createGL(canvas); }
+  const el = document.getElementById('effect-params');
+  const fx = activeEffect;
+  el.innerHTML = `
+    <span class="label">System</span> <span class="value">${fx.system}</span><br>
+    <span class="label">Geometry</span> <span class="value">${fx.geometry} (${GEO_NAMES[fx.geometry%8]} ${CORE_TYPES[Math.floor(fx.geometry/8)]})</span><br>
+    <span class="label">Hue</span> <span class="value">${fx.hue}</span><br>
+    <span class="label">Chaos</span> <span class="value">${fx.chaos.toFixed(3)}</span><br>
+    <span class="label">Speed</span> <span class="value">${fx.speed.toFixed(2)}</span><br>
+    <span class="label">MorphFactor</span> <span class="value">${fx.morphFactor.toFixed(2)}</span><br>
+    <span class="label">Intensity</span> <span class="value">${fx.intensity.toFixed(2)}</span><br>
+    <span class="label">GridDensity</span> <span class="value">${fx.gridDensity}</span><br>
+    <span class="label">Dimension</span> <span class="value">${fx.dimension.toFixed(1)}</span><br>
+    <span class="label">Saturation</span> <span class="value">${fx.saturation.toFixed(2)}</span><br>
+    <span class="label">rot4dXW</span> <span class="value">${fx.rotXW.toFixed(3)}</span><br>
+    <span class="label">rot4dYW</span> <span class="value">${fx.rotYW.toFixed(3)}</span><br>
+    <span class="label">rot4dZW</span> <span class="value">${fx.rotZW.toFixed(3)}</span><br>
+    <span class="label">Rarity</span> <span class="value">${fx.rarity}</span>
+  `;
+  detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// TAB 3: Music Video
+// ══════════════════════════════════════════════════════════════════════
+
+let musicGL = null, musicPlaying = false, musicTime = 0, musicStartT = 0;
+
+function initMusic() {
+  const canvas = document.getElementById('music-gl');
+  if (!musicGL) { resizeCanvas(canvas); musicGL = createGL(canvas); }
+  buildTimeline();
+  buildSceneCards();
+}
+
+const sceneColors = ['#0077be','#444','#ff00ff','#9333ea','#0077be'];
+function buildTimeline() {
+  const track = document.getElementById('timeline-track');
+  if (track.children.length > 1) return;
+  SCENES.forEach((s, i) => {
+    const el = document.createElement('div');
+    el.className = 'timeline-scene' + (i===0?' active':'');
+    el.dataset.scene = i;
+    const pct = ((s.end - s.start) / 80000 * 100).toFixed(2);
+    el.style.width = pct + '%';
+    el.style.background = sceneColors[i];
+    el.innerHTML = `<span class="scene-label">${s.name}</span><span class="scene-system">${s.system}</span>`;
+    el.addEventListener('click', () => { musicTime = s.start; });
+    track.appendChild(el);
+  });
+  // playhead
+  const ph = document.createElement('div');
+  ph.className = 'timeline-playhead';
+  ph.id = 'playhead';
+  ph.style.left = '0%';
+  track.appendChild(ph);
+}
+
+function buildSceneCards() {
+  const container = document.getElementById('scene-cards');
+  if (container.children.length) return;
+  SCENES.forEach((s, i) => {
+    const card = document.createElement('div');
+    card.className = 'scene-card';
+    card.id = 'scene-card-' + i;
+    const dur = ((s.end - s.start) / 1000).toFixed(0);
+    card.innerHTML = `
+      <h3 style="color:${sceneColors[i]}">${s.name} (${dur}s)</h3>
+      <div class="meta">
+        <span class="tag">${s.system}</span>
+        <span class="tag">geo ${s.geometry} (${GEO_NAMES[s.geometry%8]})</span>
+        <span class="tag">${s.color}</span>
+        ${s.post.map(p=>'<span class="tag">'+p+'</span>').join('')}
+        <span class="tag">${s.transition}</span>
+        <br>${s.desc}
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+document.getElementById('btn-play').addEventListener('click', () => {
+  if (!musicPlaying) { musicPlaying = true; musicStartT = performance.now() - musicTime; }
+  else { musicPlaying = false; }
+  document.getElementById('btn-play').textContent = musicPlaying ? '\u23F8 Pause' : '\u25B6 Play';
+});
+document.getElementById('btn-stop').addEventListener('click', () => {
+  musicPlaying = false; musicTime = 0;
+  document.getElementById('btn-play').textContent = '\u25B6 Play';
+});
+
+function getActiveScene(t) {
+  for (let i = SCENES.length - 1; i >= 0; i--) { if (t >= SCENES[i].start) return i; }
+  return 0;
+}
+
+function formatTime(ms) {
+  const s = Math.floor(ms / 1000);
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// TAB 4: Collectible Cards
+// ══════════════════════════════════════════════════════════════════════
+
+let cardGLs = [];
+let generatedCards = [];
+
+document.getElementById('btn-generate').addEventListener('click', generateCards);
+document.getElementById('btn-evolve').addEventListener('click', evolveCards);
+
+function generateCards() {
+  const theme = document.getElementById('card-theme').value || null;
+  const count = +document.getElementById('card-count').value || 8;
+  generatedCards = [];
+  for (let i = 0; i < count; i++) generatedCards.push(genPreset(theme));
+  renderCards();
+}
+
+function evolveCards() {
+  const theme = document.getElementById('card-theme').value || null;
+  const seed = genPreset(theme);
+  const RS = { COMMON:1, RARE:2, EPIC:3, LEGENDARY:4, MYTHIC:5 };
+  let pop = [seed];
+  for (let gen = 0; gen < 3; gen++) {
+    const np = [];
+    for (const m of pop) for (let i = 0; i < 5; i++) np.push(mutatePreset(m, 0.1 + gen * 0.1));
+    np.sort((a,b) => (RS[b.rarity]||0) - (RS[a.rarity]||0));
+    if (np.length >= 2) { np.push(crossbreedPreset(np[0],np[1],0.5)); np.push(crossbreedPreset(np[0],np[1],0.3)); }
+    np.sort((a,b) => (RS[b.rarity]||0) - (RS[a.rarity]||0));
+    pop = np.slice(0, 5);
+  }
+  generatedCards = pop;
+  renderCards();
+}
+
+function renderCards() {
+  cardGLs = [];
+  const gallery = document.getElementById('cards-gallery');
+  gallery.innerHTML = '';
+  const dist = { COMMON:0, RARE:0, EPIC:0, LEGENDARY:0, MYTHIC:0 };
+  generatedCards.forEach((p, i) => {
+    dist[p.rarity] = (dist[p.rarity]||0) + 1;
+    const card = document.createElement('div');
+    card.className = 'trading-card rarity-' + p.rarity;
+    card.innerHTML = `
+      <div class="rarity-bar"></div>
+      <canvas id="card-canvas-${i}"></canvas>
+      <div class="card-body">
+        <div class="card-name">${p.name}</div>
+        <div class="card-desc">${p.description}</div>
+        <div class="card-footer">
+          <span class="card-system">${p.system}</span>
+          <span class="effect-rarity rarity-${p.rarity}">${p.rarity}</span>
+        </div>
+      </div>
+    `;
+    gallery.appendChild(card);
+    requestAnimationFrame(() => {
+      const cv = document.getElementById('card-canvas-' + i);
+      if (cv) {
+        cv.width = cv.parentElement.offsetWidth * window.devicePixelRatio;
+        cv.height = 180 * window.devicePixelRatio;
+        const glCtx = createGL(cv);
+        if (glCtx) cardGLs.push({ gl: glCtx, preset: p });
+      }
+    });
+  });
+  // Stats
+  const statsEl = document.getElementById('rarity-stats');
+  const colors = { COMMON:'var(--common)', RARE:'var(--rare)', EPIC:'var(--epic)', LEGENDARY:'var(--legendary)', MYTHIC:'var(--mythic)' };
+  statsEl.innerHTML = ['COMMON','RARE','EPIC','LEGENDARY','MYTHIC'].map(r =>
+    `<div class="rarity-stat"><div class="count" style="color:${colors[r]}">${dist[r]||0}</div><div class="label">${r}</div></div>`
+  ).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// Main render loop
+// ══════════════════════════════════════════════════════════════════════
+
+function renderFrame(ctx, params, t) {
+  if (!ctx) return;
+  const { gl, uniforms } = ctx;
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+  gl.uniform1f(uniforms.u_time, t);
+  gl.uniform2f(uniforms.u_resolution, gl.canvas.width, gl.canvas.height);
+  gl.uniform1f(uniforms.u_hue, params.hue || 0);
+  gl.uniform1f(uniforms.u_chaos, params.chaos || 0);
+  gl.uniform1f(uniforms.u_speed, params.speed || 1);
+  gl.uniform1f(uniforms.u_intensity, params.intensity || 0.5);
+  gl.uniform1f(uniforms.u_morphFactor, params.morphFactor || 0);
+  gl.uniform1f(uniforms.u_gridDensity, params.gridDensity || 20);
+  gl.uniform1f(uniforms.u_dimension, params.dimension || 3.8);
+  gl.uniform1f(uniforms.u_saturation, params.saturation || 0.5);
+  gl.uniform1f(uniforms.u_geometry, params.geometry || 0);
+  gl.uniform1f(uniforms.u_rotXW, params.rotXW || 0);
+  gl.uniform1f(uniforms.u_rotYW, params.rotYW || 0);
+  gl.uniform1f(uniforms.u_rotZW, params.rotZW || 0);
+  gl.uniform1f(uniforms.u_flash, params.flash || 0);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+function loop(now) {
+  const t = now * 0.001;
+
+  // Boss
+  if (bossGL && bossState && document.getElementById('panel-boss').classList.contains('active')) {
+    bossFlash *= 0.92;
+    renderFrame(bossGL, { ...bossState, flash: bossFlash }, t);
+  }
+
+  // Effects
+  if (effectGL && activeEffect && document.getElementById('panel-effects').classList.contains('active')) {
+    renderFrame(effectGL, activeEffect, t);
+  }
+
+  // Music
+  if (document.getElementById('panel-music').classList.contains('active')) {
+    if (musicPlaying) {
+      musicTime = performance.now() - musicStartT;
+      if (musicTime >= 80000) { musicTime = 0; musicStartT = performance.now(); }
+    }
+    const si = getActiveScene(musicTime);
+    const scene = SCENES[si];
+    // Interpolate within scene
+    const sceneProgress = (musicTime - scene.start) / (scene.end - scene.start);
+    const p = { ...scene };
+    // Animate some params based on scene
+    if (si === 0) { p.gridDensity = 10 + sceneProgress * 20; p.intensity = sceneProgress * 0.6; }
+    if (si === 1) { p.gridDensity = 20 + sceneProgress * 40; p.rotXW = 0.6 + Math.sin(sceneProgress * Math.PI) * 0.6; }
+    if (si === 2) { p.speed = 1.5 + Math.sin(sceneProgress * Math.PI) * 0.5; p.chaos = 0.2 + Math.sin(sceneProgress * Math.PI) * 0.2; p.rotYW = sceneProgress * 6.283; }
+    if (si === 3) { p.chaos = Math.sin(sceneProgress * Math.PI) * 0.8; p.morphFactor = Math.sin(sceneProgress * Math.PI * 2) * 0.75 + 0.75; p.rotXW = sceneProgress * 6.283; p.rotZW = sceneProgress * 3.14; p.gridDensity = 30 + Math.sin(sceneProgress * Math.PI) * 50; }
+    if (si === 4) { p.intensity = 0.8 * (1 - sceneProgress); p.gridDensity = 30 - sceneProgress * 22; p.speed = 0.8 - sceneProgress * 0.7; }
+    if (musicGL) renderFrame(musicGL, { ...p, rotXW: p.rotXW||0, rotYW: p.rotYW||0, rotZW: p.rotZW||0 }, t);
+
+    // Update UI
+    document.getElementById('playhead').style.left = (musicTime / 80000 * 100) + '%';
+    document.getElementById('playback-time').textContent = formatTime(musicTime) + ' / 1:20';
+    document.querySelectorAll('.timeline-scene').forEach((el, i) => el.classList.toggle('active', i === si));
+    document.querySelectorAll('.scene-card').forEach((el, i) => el.classList.toggle('active', i === si));
+  }
+
+  // Cards
+  if (document.getElementById('panel-cards').classList.contains('active')) {
+    for (const { gl: ctx, preset } of cardGLs) {
+      renderFrame(ctx, {
+        hue: preset.hue, chaos: preset.chaos, speed: preset.speed,
+        intensity: preset.intensity, morphFactor: preset.morphFactor,
+        gridDensity: preset.gridDensity, dimension: preset.dimension,
+        saturation: preset.saturation, geometry: preset.geometry,
+        rotXW: preset.rot4dXW || 0, rotYW: preset.rot4dYW || 0,
+        rotZW: preset.rot4dZW || 0, flash: 0
+      }, t);
+    }
+  }
+
+  requestAnimationFrame(loop);
+}
+
+// Handle resize
+window.addEventListener('resize', () => {
+  ['boss-gl','effect-gl','music-gl'].forEach(id => {
+    const c = document.getElementById(id);
+    if (c && c.parentElement.offsetHeight > 0) resizeCanvas(c);
+  });
+});
+
+requestAnimationFrame(loop);
+
+// Generate initial cards
+setTimeout(generateCards, 100);
+</script>
+
+</body>
+</html>
