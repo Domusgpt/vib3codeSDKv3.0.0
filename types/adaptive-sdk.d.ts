@@ -5,14 +5,20 @@
  * Barrel re-export for all typed modules.
  *
  * Typed modules:
- *   - core/VIB3Engine (engine, systems, parameters, state)
- *   - core/ErrorReporter (opt-in error capture)
- *   - reactivity (ReactivityManager, ReactivityConfig, all input types)
- *   - reactivity/SpatialInputSystem (universal spatial input)
+ *   - core (VIB3Engine, CanvasManager, ParameterManager, ParameterMapper, VitalitySystem, RendererContracts, UnifiedResourceManager)
+ *   - math (constants, projections, rotations, Vec4)
+ *   - geometry (GeometryLibrary, generators, BufferBuilder)
+ *   - systems (QuantumEngine, FacetedSystem, RealHolographicSystem)
+ *   - scene (ObjectPool, TypedArrayPool, Vec4Pool, PoolManager)
+ *   - viewer (ViewerPortal, ViewerInputHandler, GalleryUI, CardBending, AudioReactivity, TradingCardExporter)
+ *   - variations (VariationManager)
+ *   - reactivity (ReactivityManager, ReactivityConfig, SpatialInputSystem)
  *   - render (WebGL/WebGPU backends, ShaderProgram, RenderState, CommandBuffer)
- *   - creative (ColorPresets, TransitionAnimator, PostProcessing, Timeline)
+ *   - creative (ColorPresets, TransitionAnimator, PostProcessing, Timeline, AestheticMapper, ChoreographyPlayer)
  *   - integrations (React, Vue, Svelte, Figma, Three.js, TouchDesigner, OBS)
  *   - advanced (WebXR, WebGPU Compute, MIDI, AI Presets, OffscreenWorker)
+ *   - export (ExportManager, ShaderExporter, VIB3PackageExporter, TradingCardGenerator)
+ *   - agent (MCPServer, AgentCLI, TelemetryService)
  */
 
 // Core engine
@@ -208,6 +214,122 @@ export {
     downloadLottie,
     createVIB3Package
 } from './export/index';
+
+// Core - expanded types (CanvasManager, Parameters, RendererContracts, etc.)
+export {
+    CanvasManager,
+    CanvasLayer,
+    ParameterManager,
+    ParameterDef,
+    VIB3Parameters,
+    ParameterConfiguration,
+    ParameterMapper,
+    MappableSystem,
+    VitalitySystem,
+    RendererContract,
+    RendererContractAdapter,
+    ResourceManagerContract,
+    FrameState,
+    UnifiedResourceManager
+} from './core/index';
+
+// Math - constants, projections, rotations, Vec4
+export {
+    PI, TAU, HALF_PI, QUARTER_PI,
+    DEG_TO_RAD, RAD_TO_DEG,
+    EPSILON,
+    PHI, PHI_INV,
+    PLANE_NAMES as ROTATION_PLANE_NAMES,
+    encodeGeometry,
+    decodeGeometry,
+    toRadians,
+    toDegrees,
+    clamp,
+    lerp,
+    smoothstep,
+    smootherstep,
+    perspectiveProject4D,
+    stereographicProject4D,
+    ProjectionResult,
+    createRotationMatrix4D,
+    identityMatrix4x4,
+    multiplyMatrix4x4,
+    transposeMatrix4x4,
+    applyMatrix4x4,
+    vectorLength4D,
+    normalizeVector4D,
+    normalizeRotationAngles,
+    composeRotationMatrixFromAngles,
+    RotationPlane,
+    Matrix4x4,
+    Vector4D,
+    Vec4
+} from './math/index';
+
+// Geometry - library, generators, buffers
+export {
+    GeometryLibrary,
+    Geometry4D,
+    VariationParameters,
+    GeometryBuffers,
+    buildVertexBuffer,
+    buildEdgeIndexBuffer,
+    buildFaceIndexBuffer,
+    buildGeometryBuffers,
+    generateTesseract,
+    generateSphere,
+    generateTorus
+} from './geometry/index';
+
+// Visualization systems
+export {
+    QuantumEngine,
+    QuantumEngineOptions,
+    FacetedSystem,
+    FacetedSystemOptions,
+    RealHolographicSystem,
+    HolographicSystemOptions,
+    CanvasSet,
+    AudioData,
+    RenderMode
+} from './systems/index';
+
+// Scene - memory pools
+export {
+    ObjectPool,
+    TypedArrayPool,
+    Vec4Pool,
+    Mat4x4Pool,
+    PoolManager,
+    pools,
+    PoolStats,
+    ObjectPoolOptions
+} from './scene/index';
+
+// Viewer - portal, input, gallery, cards
+export {
+    ViewerPortal,
+    ViewerInputHandler,
+    GalleryUI,
+    CardBending,
+    AudioReactivity as ViewerAudioReactivity,
+    TradingCardExporter,
+    PortalMode,
+    RotationState,
+    InputSource,
+    InputPreset,
+    GalleryViewMode,
+    BendPreset,
+    FrameStyle,
+    RarityLevel
+} from './viewer/index';
+
+// Variations
+export {
+    VariationManager,
+    VariationSlot,
+    VariationOptions
+} from './variations/index';
 
 // Agent system
 export {
