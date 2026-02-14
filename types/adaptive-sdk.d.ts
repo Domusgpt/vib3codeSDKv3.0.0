@@ -183,3 +183,49 @@ export {
     WorkerSwitchMessage,
     WorkerResizeMessage
 } from './advanced/index';
+
+// Export system
+export {
+    ExportManager,
+    ShaderExporter,
+    VIB3PackageExporter,
+    TradingCardGenerator,
+    TradingCardManager,
+    CardGeneratorBase,
+    FacetedCardGenerator,
+    QuantumCardGenerator,
+    HolographicCardGenerator,
+    TradingCardSystemFaceted,
+    TradingCardSystemHolographic,
+    TradingCardSystemQuantum,
+    VIB3_PACKAGE_VERSION,
+    exportSVG,
+    downloadSVG,
+    exportCSS,
+    downloadCSS,
+    toStyleObject,
+    exportLottie,
+    downloadLottie,
+    createVIB3Package
+} from './export/index';
+
+// Agent system
+export {
+    MCPServer,
+    mcpServer,
+    toolDefinitions,
+    AgentCLI,
+    BatchExecutor,
+    CommandType,
+    ResponseStatus,
+    TelemetryService,
+    TelemetrySpan,
+    EventType,
+    telemetry,
+    EventStreamServer,
+    EventStreamClient,
+    PrometheusExporter,
+    JSONExporter,
+    NDJSONExporter,
+    ConsoleExporter
+} from './agent/index';
