@@ -172,6 +172,7 @@ function showHelp(isJson) {
         description: 'VIB3+ 4D Visualization Engine CLI',
         usage: `${CLI_NAME} <command> [options]`,
         commands: {
+            init: 'Scaffold a new VIB3+ project (--template vanilla|react|vue|svelte)',
             create: 'Create a new 4D visualization',
             state: 'Get current engine state',
             set: 'Set parameters (rotation, visual)',
@@ -190,6 +191,10 @@ function showHelp(isJson) {
             '--verbose': 'Verbose output'
         },
         examples: [
+            `${CLI_NAME} init my-app`,
+            `${CLI_NAME} init my-app --template react`,
+            `${CLI_NAME} init my-app --template vue`,
+            `${CLI_NAME} init my-app --template svelte`,
             `${CLI_NAME} create --system quantum --geometry 8 --json`,
             `${CLI_NAME} set rotation --XW 1.5 --YW 0.5`,
             `${CLI_NAME} set visual --hue 200 --chaos 0.3`,
@@ -578,12 +583,28 @@ async function main() {
 
 /**
  * Handle init command — scaffold a new VIB3+ project
+ * Supports --template vanilla|react|vue|svelte
  */
 async function handleInit(parsed, startTime) {
     const { writeFileSync, mkdirSync, existsSync } = await import('node:fs');
     const { join } = await import('node:path');
 
-    const projectName = parsed.positional[0] || 'my-vib3-app';
+    const projectName = parsed.subcommand || parsed.positional[0] || 'my-vib3-app';
+    const template = parsed.options.template || parsed.options.t || 'vanilla';
+    const validTemplates = ['vanilla', 'react', 'vue', 'svelte'];
+
+    if (!validTemplates.includes(template)) {
+        return wrapResponse('init', {
+            error: {
+                type: 'ValidationError',
+                code: 'INVALID_TEMPLATE',
+                message: `Unknown template: ${template}`,
+                valid_options: validTemplates,
+                suggestion: `Use --template ${validTemplates.join('|')}`
+            }
+        }, false, performance.now() - startTime);
+    }
+
     const projectDir = join(process.cwd(), projectName);
 
     if (existsSync(projectDir)) {
@@ -599,25 +620,277 @@ async function handleInit(parsed, startTime) {
 
     mkdirSync(projectDir, { recursive: true });
 
-    // package.json
-    writeFileSync(join(projectDir, 'package.json'), JSON.stringify({
-        name: projectName,
-        version: '0.1.0',
-        type: 'module',
-        scripts: {
-            dev: 'npx vite --open',
-            build: 'npx vite build'
-        },
-        dependencies: {
-            '@vib3code/sdk': '^2.0.0'
-        },
-        devDependencies: {
-            vite: '^5.3.0'
-        }
-    }, null, 2) + '\n');
+    const files = getTemplateFiles(template, projectName);
 
-    // index.html
-    writeFileSync(join(projectDir, 'index.html'), `<!DOCTYPE html>
+    for (const [filename, content] of Object.entries(files)) {
+        const filepath = join(projectDir, filename);
+        const dir = join(projectDir, filename.split('/').slice(0, -1).join('/'));
+        if (dir !== projectDir) {
+            mkdirSync(dir, { recursive: true });
+        }
+        writeFileSync(filepath, content);
+    }
+
+    const fileNames = Object.keys(files);
+    const tree = fileNames.map((f, i) =>
+        `  ${i === fileNames.length - 1 ? '└── ' : '├── '}${f}`
+    ).join('\n');
+
+    console.log(`\n  Created ${projectName}/ (${template} template)`);
+    console.log(tree);
+    console.log(`\n  Next steps:`);
+    console.log(`    cd ${projectName}`);
+    console.log('    npm install');
+    console.log('    npm run dev\n');
+
+    return wrapResponse('init', {
+        project: projectName,
+        template,
+        files: fileNames,
+        next_steps: [`cd ${projectName}`, 'npm install', 'npm run dev']
+    }, true, performance.now() - startTime);
+}
+
+/**
+ * Generate template files based on framework choice
+ */
+function getTemplateFiles(template, projectName) {
+    const sdkDep = { '@vib3code/sdk': '^2.0.0' };
+    const viteDep = { vite: '^5.3.0' };
+
+    switch (template) {
+        case 'react':
+            return {
+                'package.json': JSON.stringify({
+                    name: projectName,
+                    version: '0.1.0',
+                    type: 'module',
+                    scripts: { dev: 'npx vite --open', build: 'npx vite build' },
+                    dependencies: { ...sdkDep, react: '^18.3.0', 'react-dom': '^18.3.0' },
+                    devDependencies: { ...viteDep, '@vitejs/plugin-react': '^4.3.0' }
+                }, null, 2) + '\n',
+                'vite.config.js': `import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+export default defineConfig({ plugins: [react()] });
+`,
+                'index.html': `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${projectName}</title>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>
+`,
+                'src/main.jsx': `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App.jsx';
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+`,
+                'src/App.jsx': `import React, { useRef, useEffect, useState } from 'react';
+import { VIB3Engine } from '@vib3code/sdk/core';
+
+export default function App() {
+    const engineRef = useRef(null);
+    const [system, setSystem] = useState('quantum');
+    const [geometry, setGeometry] = useState(0);
+    const [hue, setHue] = useState(200);
+
+    useEffect(() => {
+        const engine = new VIB3Engine();
+        engineRef.current = engine;
+        engine.initialize().then(() => engine.switchSystem(system));
+        return () => engine.destroy();
+    }, []);
+
+    useEffect(() => {
+        engineRef.current?.switchSystem(system);
+    }, [system]);
+
+    useEffect(() => {
+        engineRef.current?.setParameter('geometry', geometry);
+    }, [geometry]);
+
+    useEffect(() => {
+        engineRef.current?.setParameter('hue', hue);
+    }, [hue]);
+
+    return (
+        <div style={{ margin: 0, background: '#07070f', minHeight: '100vh' }}>
+            <div style={{ position: 'fixed', top: 12, left: 12, zIndex: 10, font: '13px monospace', color: '#0fc', display: 'flex', gap: 12 }}>
+                <label>System:
+                    <select value={system} onChange={e => setSystem(e.target.value)} style={{ marginLeft: 6 }}>
+                        <option>quantum</option>
+                        <option>faceted</option>
+                        <option>holographic</option>
+                    </select>
+                </label>
+                <label>Geometry: <input type="range" min="0" max="23" value={geometry} onChange={e => setGeometry(+e.target.value)} /></label>
+                <label>Hue: <input type="range" min="0" max="360" value={hue} onChange={e => setHue(+e.target.value)} /></label>
+            </div>
+        </div>
+    );
+}
+`
+            };
+
+        case 'vue':
+            return {
+                'package.json': JSON.stringify({
+                    name: projectName,
+                    version: '0.1.0',
+                    type: 'module',
+                    scripts: { dev: 'npx vite --open', build: 'npx vite build' },
+                    dependencies: { ...sdkDep, vue: '^3.4.0' },
+                    devDependencies: { ...viteDep, '@vitejs/plugin-vue': '^5.1.0' }
+                }, null, 2) + '\n',
+                'vite.config.js': `import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+export default defineConfig({ plugins: [vue()] });
+`,
+                'index.html': `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${projectName}</title>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
+`,
+                'src/main.js': `import { createApp } from 'vue';
+import App from './App.vue';
+createApp(App).mount('#app');
+`,
+                'src/App.vue': `<script setup>
+import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { VIB3Engine } from '@vib3code/sdk/core';
+
+const engine = ref(null);
+const system = ref('quantum');
+const geometry = ref(0);
+const hue = ref(200);
+
+onMounted(async () => {
+    engine.value = new VIB3Engine();
+    await engine.value.initialize();
+    await engine.value.switchSystem(system.value);
+});
+
+onUnmounted(() => engine.value?.destroy());
+
+watch(system, (val) => engine.value?.switchSystem(val));
+watch(geometry, (val) => engine.value?.setParameter('geometry', val));
+watch(hue, (val) => engine.value?.setParameter('hue', val));
+</script>
+
+<template>
+    <div style="margin: 0; background: #07070f; min-height: 100vh">
+        <div style="position: fixed; top: 12px; left: 12px; z-index: 10; font: 13px monospace; color: #0fc; display: flex; gap: 12px">
+            <label>System:
+                <select v-model="system" style="margin-left: 6px">
+                    <option>quantum</option>
+                    <option>faceted</option>
+                    <option>holographic</option>
+                </select>
+            </label>
+            <label>Geometry: <input type="range" min="0" max="23" v-model.number="geometry" /></label>
+            <label>Hue: <input type="range" min="0" max="360" v-model.number="hue" /></label>
+        </div>
+    </div>
+</template>
+`
+            };
+
+        case 'svelte':
+            return {
+                'package.json': JSON.stringify({
+                    name: projectName,
+                    version: '0.1.0',
+                    type: 'module',
+                    scripts: { dev: 'npx vite --open', build: 'npx vite build' },
+                    dependencies: sdkDep,
+                    devDependencies: { ...viteDep, '@sveltejs/vite-plugin-svelte': '^3.2.0', svelte: '^4.2.0' }
+                }, null, 2) + '\n',
+                'vite.config.js': `import { defineConfig } from 'vite';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
+export default defineConfig({ plugins: [svelte()] });
+`,
+                'index.html': `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${projectName}</title>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
+`,
+                'src/main.js': `import App from './App.svelte';
+const app = new App({ target: document.getElementById('app') });
+export default app;
+`,
+                'src/App.svelte': `<script>
+    import { onMount, onDestroy } from 'svelte';
+    import { VIB3Engine } from '@vib3code/sdk/core';
+
+    let engine = null;
+    let system = 'quantum';
+    let geometry = 0;
+    let hue = 200;
+
+    onMount(async () => {
+        engine = new VIB3Engine();
+        await engine.initialize();
+        await engine.switchSystem(system);
+    });
+
+    onDestroy(() => engine?.destroy());
+
+    $: engine?.switchSystem(system);
+    $: engine?.setParameter('geometry', geometry);
+    $: engine?.setParameter('hue', hue);
+</script>
+
+<div style="margin: 0; background: #07070f; min-height: 100vh">
+    <div style="position: fixed; top: 12px; left: 12px; z-index: 10; font: 13px monospace; color: #0fc; display: flex; gap: 12px">
+        <label>System:
+            <select bind:value={system} style="margin-left: 6px">
+                <option>quantum</option>
+                <option>faceted</option>
+                <option>holographic</option>
+            </select>
+        </label>
+        <label>Geometry: <input type="range" min="0" max="23" bind:value={geometry} /></label>
+        <label>Hue: <input type="range" min="0" max="360" bind:value={hue} /></label>
+    </div>
+</div>
+`
+            };
+
+        case 'vanilla':
+        default:
+            return {
+                'package.json': JSON.stringify({
+                    name: projectName,
+                    version: '0.1.0',
+                    type: 'module',
+                    scripts: { dev: 'npx vite --open', build: 'npx vite build' },
+                    dependencies: sdkDep,
+                    devDependencies: viteDep
+                }, null, 2) + '\n',
+                'index.html': `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
@@ -638,10 +911,8 @@ async function handleInit(parsed, startTime) {
     <script type="module" src="main.js"></script>
 </body>
 </html>
-`);
-
-    // main.js
-    writeFileSync(join(projectDir, 'main.js'), `import { VIB3Engine } from '@vib3code/sdk/core';
+`,
+                'main.js': `import { VIB3Engine } from '@vib3code/sdk/core';
 
 const engine = new VIB3Engine();
 await engine.initialize();
@@ -650,22 +921,9 @@ await engine.switchSystem('quantum');
 document.getElementById('sys').addEventListener('change', (e) => engine.switchSystem(e.target.value));
 document.getElementById('geo').addEventListener('input', (e) => engine.setParameter('geometry', +e.target.value));
 document.getElementById('hue').addEventListener('input', (e) => engine.setParameter('hue', +e.target.value));
-`);
-
-    console.log(`\\n  Created ${projectName}/`);
-    console.log('  ├── package.json');
-    console.log('  ├── index.html');
-    console.log('  └── main.js');
-    console.log(`\\n  Next steps:`);
-    console.log(`    cd ${projectName}`);
-    console.log('    npm install');
-    console.log('    npm run dev\\n');
-
-    return wrapResponse('init', {
-        project: projectName,
-        files: ['package.json', 'index.html', 'main.js'],
-        next_steps: [`cd ${projectName}`, 'npm install', 'npm run dev']
-    }, true, performance.now() - startTime);
+`
+            };
+    }
 }
 
 // Run CLI
