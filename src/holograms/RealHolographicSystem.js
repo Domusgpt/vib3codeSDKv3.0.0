@@ -410,7 +410,18 @@ export class RealHolographicSystem {
         
         console.log(`🔄 Holographic parameter update complete: ${param}=${value}`);
     }
-    
+
+    /**
+     * Update multiple parameters at once (RendererContract / VIB3Engine compatible)
+     * @param {Object} params - Key-value pairs of parameters to update
+     */
+    updateParameters(params) {
+        if (!params || typeof params !== 'object') return;
+        for (const [key, value] of Object.entries(params)) {
+            this.updateParameter(key, value);
+        }
+    }
+
     // Override updateVariant to preserve custom parameters
     updateVariant(newVariant) {
         if (newVariant < 0) newVariant = this.totalVariants - 1;
