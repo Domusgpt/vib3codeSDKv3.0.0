@@ -36,3 +36,6 @@ test-results/
 .env.local
 build_verify_full/
 build_verify_partial/
+
+# Generated skill archives
+agent-config/skills/*.zip

@@ -77,3 +77,28 @@ Pre-compiled context files optimized for different agent types:
 # Test MCP server locally
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | node src/agent/mcp/stdio-server.js
 ```
+
+## Skill Packs (Claude Code + OpenAI)
+
+Generated skill bundles for VIB3+ are in `agent-config/skills/`:
+
+- `agent-config/skills/claude-code/`
+  - `vib3-general-design`
+  - `vib3-sdk-development`
+- `agent-config/skills/openai/`
+  - `vib3-general-design`
+  - `vib3-sdk-development`
+
+Zip artifacts are generated locally (not committed to git by default):
+
+```bash
+cd agent-config/skills
+./build-skill-zips.sh
+```
+
+This script creates:
+- `agent-config/skills/claude-code-skills-vib3.zip`
+- `agent-config/skills/openai-skills-vib3.zip`
+- `agent-config/skills/vib3-skills-all-formats.zip`
+
+These skills include links to Anthropic Claude Code/MCP documentation and map directly to this repository's SDK docs.

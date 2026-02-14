@@ -1,0 +1,10 @@
+{
+  "name": "vib3-sdk-development",
+  "version": "1.0.0",
+  "description": "OpenAI-oriented skill pack for implementing and validating VIB3+ SDK changes.",
+  "entry": "instructions.md",
+  "tool_schema": "tools.json",
+  "references": [
+    "references.md"
+  ]
+}

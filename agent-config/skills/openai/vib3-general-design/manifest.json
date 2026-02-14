@@ -1,0 +1,10 @@
+{
+  "name": "vib3-general-design",
+  "version": "1.0.0",
+  "description": "OpenAI-oriented skill pack for creative direction and scene design with VIB3+ SDK.",
+  "entry": "instructions.md",
+  "tool_schema": "tools.json",
+  "references": [
+    "references.md"
+  ]
+}

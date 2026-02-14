@@ -1,0 +1,32 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "vib3_get_state",
+      "description": "Get active system, geometry, and runtime parameters.",
+      "parameters": {"type": "object", "properties": {}}
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "vib3_get_parameter_schema",
+      "description": "Get schema/ranges for all supported parameters.",
+      "parameters": {"type": "object", "properties": {}}
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "vib3_export_package",
+      "description": "Export scene/package for deployment or test fixtures.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "format": {"type": "string"},
+          "includeAssets": {"type": "boolean"}
+        }
+      }
+    }
+  }
+]
