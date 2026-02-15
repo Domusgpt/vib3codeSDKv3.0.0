@@ -276,6 +276,161 @@ Step 6: Export winner:
 
 ---
 
+## Canvas Management & System Lifecycle (CRITICAL)
+
+**This section is mandatory reading before generating ANY visual artifacts.** The VIB3+ engine enforces strict canvas and GPU resource management. Ignoring these rules produces broken demos that crash browsers.
+
+### Rule 1: ONE Active System At A Time
+
+The SDK runs **exactly one visualization system** at a time. `VIB3Engine.switchSystem()` completely destroys the current system before creating the next one. NEVER render multiple systems simultaneously.
+
+```javascript
+// CORRECT: Switch destroys old, creates new
+engine.switchSystem('quantum');   // destroys holographic, creates quantum
+engine.switchSystem('faceted');   // destroys quantum, creates faceted
+
+// WRONG: Never have two systems rendering at once
+// This will crash with WebGL context limits
+```
+
+### Rule 2: 5-Layer Canvas Architecture Per System
+
+Each active system uses **5 CSS-composited canvases** stacked via z-index:
+
+| Layer | Canvas ID | Blend Mode | CSS Opacity | Purpose |
+|-------|-----------|------------|-------------|---------|
+| background | `{system}-background-canvas` | normal | 0.4 | Base layer, lowest opacity |
+| shadow | `{system}-shadow-canvas` | multiply | 0.6 | Depth/shadow effects |
+| content | `{system}-content-canvas` | normal | 1.0 | Primary visual content |
+| highlight | `{system}-highlight-canvas` | screen | 0.8 | Bright accents, particles |
+| accent | `{system}-accent-canvas` | overlay | 0.3 | Top layer effects |
+
+**Implementation**: `src/core/CanvasManager.js` creates these with system-specific prefixes. Each layer gets its own WebGL context (managed internally).
+
+### Rule 3: Force Context Destruction on Cleanup
+
+When switching systems or destroying visuals, you MUST force-release GPU memory:
+
+```javascript
+// SDK pattern from CanvasManager.destroy()
+const ext = gl.getExtension('WEBGL_lose_context');
+if (ext) ext.loseContext();  // Force GPU memory release
+```
+
+Browsers cap WebGL contexts at ~16. Without `WEBGL_lose_context`, old contexts leak and new ones fail silently.
+
+### Rule 4: Shared Offscreen Canvas for Batch Rendering
+
+When generating multiple cards or thumbnails, use ONE shared offscreen WebGL context + `drawImage()` to 2D canvases:
+
+```javascript
+// CORRECT: Shared offscreen GL + drawImage to 2D canvases
+const offscreen = document.createElement('canvas');
+const gl = offscreen.getContext('webgl2');
+// Render each card to offscreen GL, then copy:
+cards.forEach(card => {
+    renderToGL(gl, card.params);
+    const target2d = card.canvas.getContext('2d');
+    target2d.drawImage(offscreen, 0, 0, w, h);
+});
+
+// WRONG: One GL context per card (will crash at 16+ cards)
+```
+
+### Rule 5: Single-Pass 5-Layer Composite for Demos
+
+When building standalone demos outside the SDK, compute all 5 layers in a **single fragment shader** using GLSL blend mode math instead of 5 separate canvases:
+
+```glsl
+// 5-layer composite in one pass (mirrors SDK's CSS composite)
+vec3 result = bg_color * bg_alpha;                              // background: normal
+result = mix(result, result * shadow_color, shadow_alpha);      // shadow: multiply
+result = mix(result, content_color, content_alpha);             // content: normal over
+vec3 screened = 1.0 - (1.0 - result) * (1.0 - highlight_color);
+result = mix(result, screened, highlight_alpha);                 // highlight: screen
+vec3 overlayed = mix(2.0*result*accent_color, 1.0-2.0*(1.0-result)*(1.0-accent_color), step(0.5, result));
+result = mix(result, overlayed, accent_alpha);                  // accent: overlay
+```
+
+This produces identical visual results with 1 GL context instead of 5.
+
+### Rule 6: Tab/Section Switching = System Switching
+
+In multi-section demos, treat tab/section switches like `switchSystem()`:
+1. Destroy the old section's GL context (with `WEBGL_lose_context`)
+2. Create a new GL context for the active section
+3. Maximum active GL contexts = 2 (1 for the section + 1 offscreen for card rendering)
+
+### GPU Memory Management Reference
+
+| File | What It Does |
+|------|-------------|
+| `src/core/CanvasManager.js` | 5-layer canvas creation, destruction with `WEBGL_lose_context`, DPR cap at 2.0 |
+| `src/core/UnifiedResourceManager.js` | Smart GPU memory budgeting, LRU eviction, device-aware limits |
+| `DOCS/GPU_DISPOSAL_GUIDE.md` | Full GPU resource cleanup patterns and best practices |
+| `DOCS/RENDERER_LIFECYCLE.md` | Rendering pipeline lifecycle, frame loop, state management |
+
+---
+
+## Shader Architecture (CRITICAL)
+
+**VIB3+ uses `fract()`-based lattice geometry patterns, NOT raymarched SDFs.** This is the #1 source of incorrect artifacts.
+
+### Real Geometry Pattern
+
+```glsl
+// CORRECT: fract()-based lattice (what VIB3+ actually uses)
+float geometryFunction(vec4 p, float geo) {
+    vec3 q = fract(p.xyz * gridSize) - 0.5;
+    if (geo < 1.0) return length(q) - 0.3;           // tetrahedron lattice
+    else if (geo < 2.0) return max(abs(q.x), max(abs(q.y), abs(q.z))) - 0.3;  // hypercube
+    else if (geo < 3.0) return length(q) - 0.4;       // sphere
+    // ... 8 base geometries, all fract()-based
+}
+```
+
+```glsl
+// WRONG: SDF raymarching (this is NOT what VIB3+ does)
+float sdBox(vec3 p, vec3 b) { ... }  // NO - never use this
+float rayMarch(vec3 ro, vec3 rd) { ... }  // NO - not the VIB3+ pattern
+```
+
+### Real 4D Projection
+
+```glsl
+// CORRECT: perspective projection from dimension uniform
+float w = u_dimension / (u_dimension + p.w);
+vec3 projected = p.xyz * w;
+
+// WRONG: camera-based ray origin/direction
+vec3 ro = vec3(0, 0, -3);  // NO - VIB3+ doesn't use camera rays
+```
+
+### Per-Layer Color System
+
+Each of the 5 layers gets distinct HSL coloring with hue offsets:
+
+```glsl
+// Layer color palette (from QuantumVisualizer.js getLayerColorPalette)
+vec3 bgColor     = hsl(hue + 0.0,  sat * 0.6, 0.15);  // dark base
+vec3 shadowColor = hsl(hue + 0.33, sat * 0.4, 0.1);   // shifted dark
+vec3 contentColor= hsl(hue + 0.0,  sat,       0.6);    // bright primary
+vec3 highlightCol= hsl(hue + 0.15, sat * 0.8, 0.8);   // bright shifted
+vec3 accentColor = hsl(hue + 0.67, sat * 0.7, 0.5);   // complementary
+```
+
+### Source of Truth for Shaders
+
+| System | Source File | Key Functions |
+|--------|-----------|---------------|
+| Quantum | `src/quantum/QuantumVisualizer.js` | Fragment shader with all 8 lattice patterns, 6D rotation, core warps, 5-layer color |
+| Faceted | `src/faceted/FacetedSystem.js` | Clean 2D geometric patterns from 4D projection |
+| Holographic | `src/holograms/HolographicVisualizer.js` | Per-layer renderer with `getDynamicGeometry()`, per-layer uniforms |
+
+**Always read these source files before generating shader code.** Do not invent shader patterns.
+
+---
+
 ## C++ WASM Core Integration
 
 The mathematical foundation that makes VIB3+ unique:
@@ -353,6 +508,13 @@ For complete tool definitions with JSON schemas, see `src/agent/mcp/tools.js`.
 | Document | What It Contains |
 |----------|-----------------|
 | `CLAUDE.md` | Full technical reference — shader architecture, C++ core, all module APIs |
+| `src/core/CanvasManager.js` | 5-layer canvas lifecycle, WEBGL_lose_context destruction, DPR management |
+| `src/core/UnifiedResourceManager.js` | GPU memory budgeting, LRU eviction, device-aware limits |
+| `DOCS/GPU_DISPOSAL_GUIDE.md` | GPU resource cleanup patterns, context management best practices |
+| `DOCS/RENDERER_LIFECYCLE.md` | Rendering pipeline lifecycle, frame loop, state management |
+| `src/quantum/QuantumVisualizer.js` | Production quantum shader — source of truth for lattice geometry + 5-layer color |
+| `src/faceted/FacetedSystem.js` | Production faceted shader — clean 2D geometry from 4D |
+| `src/holograms/HolographicVisualizer.js` | Production holographic shader — per-layer renderer with dynamic geometry |
 | `DOCS/AGENT_HARNESS_ARCHITECTURE.md` | Agent harness design, tool catalog, feedback loop architecture |
 | `DOCS/MULTIVIZ_CHOREOGRAPHY_PATTERNS.md` | Choreography composition patterns and examples |
 | `DOCS/CONTROL_REFERENCE.md` | Parameter control reference with ranges and effects |
