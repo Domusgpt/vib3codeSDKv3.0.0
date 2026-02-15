@@ -398,32 +398,75 @@ Combined = Rxy × Rxz × Ryz × Rxw × Ryw × Rzw
 
 ## MCP Agentic Control (`src/agent/mcp/`)
 
-### Available Tools
+**32 tools** defined in `src/agent/mcp/tools.js`, handled by `MCPServer.js`.
+**stdio transport**: `src/agent/mcp/stdio-server.js` — production-ready JSON-RPC 2.0 MCP server.
+
+### Tool Categories
 
 ```javascript
-// System control
-set_parameter(name, value)      // Set any parameter
-get_parameter(name)             // Get current value
-set_system(system)              // Switch visualization system
-randomize_all()                 // Randomize all parameters
+// System control (directly call VIB3Engine methods)
+batch_set_parameters(params)   // Atomic multi-parameter update
+set_rotation(xy, xz, yz, xw, yw, zw)  // 6D rotation
+set_visual_parameters(hue, chaos, speed, ...)  // Visual tuning
+switch_system(system)          // Quantum / Faceted / Holographic
+change_geometry(index)         // 0-23 geometry variants
+get_state()                    // Full engine state snapshot
+randomize_parameters()         // Random parameter generation
+reset_parameters()             // Reset to defaults
 
-// Gallery
-save_to_gallery(name)           // Save current state
-load_from_gallery(id)           // Load saved state
+// Creative (instantiate creative modules from MCPServer, NOT VIB3Engine)
+design_from_description(text)   // NLP → parameters via AestheticMapper
+apply_color_preset(preset)      // Delegates to ColorPresetsSystem (with transitions)
+play_transition(sequence)       // Executes via TransitionAnimator when engine available
+create_timeline(tracks)         // Stores for ParameterTimeline playback
+control_timeline(id, action)    // Play/pause/stop/seek stored timelines
+create_choreography(scenes)     // Multi-scene composition
+play_choreography(id)           // Delegates to ChoreographyPlayer
+set_post_processing(effects)    // Browser-only; returns load_code in Node context
+
+// Gallery (in-memory session-scoped persistence)
+save_to_gallery(slot)           // Captures engine.exportState() → Map
+load_from_gallery(slot)         // Restores via engine.importState()
+
+// Feedback
+describe_visual_state()         // Text description of current visual
+capture_screenshot()            // Base64 PNG composite (browser-only)
+
+// Discovery
+get_sdk_context()               // Onboarding documentation
+get_aesthetic_vocabulary()       // 130+ style keywords from AestheticMapper
+search_geometries(query)        // Geometry metadata lookup
+get_parameter_schema()          // JSON Schema for all parameters
 
 // Export
-export_trading_card()           // Generate trading card
-export_package()                // Full VIB3Package export
+export_package(format)          // VIB3Package generation
 ```
+
+### Architecture Note
+
+Creative modules (ColorPresetsSystem, TransitionAnimator, PostProcessingPipeline,
+ParameterTimeline, ChoreographyPlayer, AestheticMapper) are **instantiated lazily by
+MCPServer**, not by VIB3Engine. MCPServer creates them on first use with parameter
+callbacks pointing to the engine. This means:
+- They work through MCP tool calls
+- They work through direct instantiation in user code
+- They are NOT available as `engine.colorPresets` etc. (use MCP or instantiate directly)
 
 ### Programmatic Usage
 
 ```javascript
 // Via MCP protocol
-const result = await mcpClient.callTool('set_parameter', {
-    name: 'geometry',
-    value: 16  // Hypertetrahedron + Tetrahedron
+const result = await mcpClient.callTool('batch_set_parameters', {
+    system: 'quantum',
+    geometry: 16,   // Hypertetrahedron + Tetrahedron
+    hue: 280,
+    chaos: 0.4
 });
+
+// Via direct module instantiation
+import { ColorPresetsSystem } from './src/creative/ColorPresetsSystem.js';
+const colors = new ColorPresetsSystem((name, value) => engine.setParameter(name, value));
+colors.applyPreset('Cyberpunk Neon', true, 800);
 ```
 
 ---
