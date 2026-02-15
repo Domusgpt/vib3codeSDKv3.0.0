@@ -143,8 +143,7 @@ export function createRenderContext(canvas, options = {}) {
     if (options.backend === 'webgpu') {
         return null;
     }
-    const { createWebGLBackend } = require('./backends/WebGLBackend.js');
-    const backend = createWebGLBackend(canvas, options);
+    const backend = _createWebGLBackend(canvas, options);
 
     if (!backend) {
         return null;
@@ -379,3 +378,4 @@ import { RenderState } from './RenderState.js';
 import { ShaderProgram, ShaderLib } from './ShaderProgram.js';
 import { UnifiedRenderBridge } from './UnifiedRenderBridge.js';
 import { createWebGPUBackend } from './backends/WebGPUBackend.js';
+import { createWebGLBackend as _createWebGLBackend } from './backends/WebGLBackend.js';

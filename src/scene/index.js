@@ -60,10 +60,10 @@ export function createSceneContext(options = {}) {
         poolInitialSize = 100
     } = options;
 
-    const scene = new (require('./Scene4D.js').Scene4D)(sceneName);
-    const resources = new (require('./ResourceManager.js').ResourceManager)();
-    const disposal = new (require('./Disposable.js').DisposalManager)();
-    const poolManager = new (require('./MemoryPool.js').PoolManager)();
+    const scene = new Scene4D(sceneName);
+    const resources = new ResourceManager();
+    const disposal = new DisposalManager();
+    const poolManager = new PoolManager();
 
     resources.memoryLimit = memoryLimit;
 

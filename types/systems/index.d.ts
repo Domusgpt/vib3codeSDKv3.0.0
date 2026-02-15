@@ -174,6 +174,8 @@ export interface HolographicSystemOptions {
     canvas?: HTMLCanvasElement;
     /** Multi-canvas set for 5-layer mode */
     canvases?: CanvasSet;
+    /** Named relationship profile to load (default: 'holographic') */
+    relationshipProfile?: 'holographic' | 'symmetry' | 'chord' | 'storm' | 'legacy';
 }
 
 /**
@@ -224,4 +226,19 @@ export declare class RealHolographicSystem {
 
     /** Get variant name by index. */
     getVariantName(index: number): string;
+
+    /** The layer relationship graph instance. */
+    readonly layerGraph: import('../render/LayerRelationshipGraph').LayerRelationshipGraph;
+
+    /** Load a relationship profile by name. */
+    loadRelationshipProfile(profileName: 'holographic' | 'symmetry' | 'chord' | 'storm' | 'legacy'): void;
+
+    /** Set the keystone (driver) layer. */
+    setKeystone(layerName: 'background' | 'shadow' | 'content' | 'highlight' | 'accent'): void;
+
+    /** Set the relationship for a dependent layer. */
+    setLayerRelationship(
+        layerName: 'background' | 'shadow' | 'content' | 'highlight' | 'accent',
+        relationship: string | Function | { preset: string; config?: Record<string, unknown> }
+    ): void;
 }

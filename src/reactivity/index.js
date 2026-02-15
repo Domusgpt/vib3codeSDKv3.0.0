@@ -89,5 +89,3 @@ export function createPresetConfig(presetName) {
 
     return config;
 }
-
-console.log('🎛️ VIB3+ Reactivity System loaded');
