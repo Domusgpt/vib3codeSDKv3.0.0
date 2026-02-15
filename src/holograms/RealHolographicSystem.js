@@ -5,6 +5,7 @@
  */
 import { HolographicVisualizer } from './HolographicVisualizer.js';
 import { MultiCanvasBridge } from '../render/MultiCanvasBridge.js';
+import { LayerRelationshipGraph } from '../render/LayerRelationshipGraph.js';
 import { shaderLoader } from '../render/ShaderLoader.js';
 
 export class RealHolographicSystem {
@@ -31,6 +32,12 @@ export class RealHolographicSystem {
         this._renderMode = 'direct';
         /** @type {number} time accumulator for bridge rendering (ms) */
         this._bridgeTime = 0;
+
+        // Layer relationship graph — keystone-driven inter-layer parameter system
+        /** @type {LayerRelationshipGraph} */
+        this._layerGraph = new LayerRelationshipGraph({
+            profile: options.relationshipProfile || 'holographic'
+        });
 
         // Conditional reactivity: Use built-in only if ReactivityManager not active
         this.useBuiltInReactivity = !window.reactivityManager;
@@ -220,7 +227,11 @@ export class RealHolographicSystem {
         if (Object.keys(canvasMap).length === 0) return null;
 
         const bridge = new MultiCanvasBridge();
-        await bridge.initialize({ canvases: canvasMap, preferWebGPU: options.preferWebGPU !== false });
+        await bridge.initialize({
+            canvases: canvasMap,
+            preferWebGPU: options.preferWebGPU !== false,
+            relationshipGraph: this._layerGraph
+        });
 
         // Load external shader files, fall back to inline if unavailable
         let sources = {
@@ -369,57 +380,128 @@ export class RealHolographicSystem {
     }
     
     updateParameter(param, value) {
-        // Store custom parameter overrides
+        // Store custom parameter overrides (keystone state)
         if (!this.customParams) {
             this.customParams = {};
         }
         this.customParams[param] = value;
-        
-        console.log(`🌌 Updating holographic ${param}: ${value} (${this.visualizers.length} visualizers)`);
-        
-        // CRITICAL FIX: Call updateParameters method on ALL visualizers for immediate render
+
+        // Build keystone params from current state + this update
+        const keystoneParams = { ...this._buildKeystoneParams(), [param]: value };
+
+        // Resolve all layers through the relationship graph
+        const resolved = this._layerGraph.resolveAll(keystoneParams, Date.now());
+
+        // Apply resolved params to each visualizer by role
         this.visualizers.forEach((visualizer, index) => {
+            const role = visualizer.role || 'content';
+            const layerParams = resolved[role] || keystoneParams;
+
             try {
                 if (visualizer.updateParameters) {
-                    // Use new updateParameters method with proper parameter mapping
-                    const params = {};
-                    params[param] = value;
-                    visualizer.updateParameters(params);
-                    console.log(`✅ Updated holographic layer ${index} (${visualizer.role}) with ${param}=${value}`);
-                } else {
-                    console.warn(`⚠️ Holographic layer ${index} missing updateParameters method, using fallback`);
-                    // Fallback for older method (direct parameter setting)
-                    if (visualizer.variantParams) {
-                        visualizer.variantParams[param] = value;
-                        
-                        // If it's a geometry type change, regenerate role params with new geometry
-                        if (param === 'geometryType') {
-                            visualizer.roleParams = visualizer.generateRoleParams(visualizer.role);
-                        }
-                        
-                        // Force manual render for older visualizers
-                        if (visualizer.render) {
-                            visualizer.render();
-                        }
+                    visualizer.updateParameters(layerParams);
+                } else if (visualizer.variantParams) {
+                    Object.assign(visualizer.variantParams, layerParams);
+                    if (param === 'geometryType' || param === 'geometry') {
+                        visualizer.roleParams = visualizer.generateRoleParams(role);
                     }
                 }
             } catch (error) {
-                console.error(`❌ Failed to update holographic layer ${index}:`, error);
+                console.error(`Failed to update holographic layer ${index} (${role}):`, error);
             }
         });
-        
-        console.log(`🔄 Holographic parameter update complete: ${param}=${value}`);
     }
 
     /**
-     * Update multiple parameters at once (RendererContract / VIB3Engine compatible)
+     * Update multiple parameters at once (RendererContract / VIB3Engine compatible).
+     * Resolves all layers through the relationship graph in a single pass.
      * @param {Object} params - Key-value pairs of parameters to update
      */
     updateParameters(params) {
         if (!params || typeof params !== 'object') return;
-        for (const [key, value] of Object.entries(params)) {
-            this.updateParameter(key, value);
+
+        // Merge into custom params (keystone state)
+        if (!this.customParams) {
+            this.customParams = {};
         }
+        Object.assign(this.customParams, params);
+
+        // Build keystone params + resolve all layers in one shot
+        const keystoneParams = { ...this._buildKeystoneParams(), ...params };
+        const resolved = this._layerGraph.resolveAll(keystoneParams, Date.now());
+
+        this.visualizers.forEach((visualizer, index) => {
+            const role = visualizer.role || 'content';
+            const layerParams = resolved[role] || keystoneParams;
+
+            try {
+                if (visualizer.updateParameters) {
+                    visualizer.updateParameters(layerParams);
+                } else if (visualizer.variantParams) {
+                    Object.assign(visualizer.variantParams, layerParams);
+                }
+            } catch (error) {
+                console.error(`Failed to update holographic layer ${index} (${role}):`, error);
+            }
+        });
+    }
+
+    // ========================================================================
+    // Layer Relationship Graph API
+    // ========================================================================
+
+    /**
+     * Build keystone parameters from current state.
+     * These are the driver values that get transformed by the relationship
+     * graph to produce each dependent layer's parameters.
+     * @private
+     * @returns {Object}
+     */
+    _buildKeystoneParams() {
+        const base = {};
+        // Pull from first (content) visualizer's variant params if available
+        const content = this.visualizers.find(v => v.role === 'content');
+        if (content && content.variantParams) {
+            Object.assign(base, content.variantParams);
+        }
+        // Merge custom overrides
+        if (this.customParams) {
+            Object.assign(base, this.customParams);
+        }
+        return base;
+    }
+
+    /**
+     * Get the layer relationship graph for direct configuration.
+     * @returns {LayerRelationshipGraph}
+     */
+    get layerGraph() {
+        return this._layerGraph;
+    }
+
+    /**
+     * Load a relationship profile by name.
+     * @param {string} profileName - holographic, symmetry, chord, storm, legacy
+     */
+    loadRelationshipProfile(profileName) {
+        this._layerGraph.loadProfile(profileName);
+    }
+
+    /**
+     * Set the keystone (driver) layer.
+     * @param {string} layerName - background, shadow, content, highlight, or accent
+     */
+    setKeystone(layerName) {
+        this._layerGraph.setKeystone(layerName);
+    }
+
+    /**
+     * Set the relationship for a dependent layer.
+     * @param {string} layerName
+     * @param {string|Function|Object} relationship - Preset name, function, or { preset, config }
+     */
+    setLayerRelationship(layerName, relationship) {
+        this._layerGraph.setRelationship(layerName, relationship);
     }
 
     // Override updateVariant to preserve custom parameters
@@ -480,7 +562,9 @@ export class RealHolographicSystem {
             Object.assign(params, this.customParams);
         }
         
-        console.log('🌌 Holographic system getParameters:', params);
+        // Include layer relationship graph config for serialization
+        params.layerRelationship = this._layerGraph.exportConfig();
+
         return params;
     }
     

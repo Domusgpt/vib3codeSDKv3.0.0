@@ -7,30 +7,30 @@
  * UnifiedRenderBridge instances — one per canvas — and coordinates shader
  * compilation, uniform updates, and rendering across all layers.
  *
+ * Layer parameters are derived through a LayerRelationshipGraph, where one
+ * layer acts as the keystone (driver) and others derive their state through
+ * configurable relationship functions — not static multipliers.
+ *
  * Usage:
  *   const multi = new MultiCanvasBridge();
  *   await multi.initialize({
- *       canvases: {
- *           background: document.getElementById('bg-canvas'),
- *           shadow: document.getElementById('shadow-canvas'),
- *           content: document.getElementById('content-canvas'),
- *           highlight: document.getElementById('highlight-canvas'),
- *           accent: document.getElementById('accent-canvas'),
- *       },
- *       preferWebGPU: true
+ *       canvases: { background, shadow, content, highlight, accent },
+ *       preferWebGPU: true,
+ *       relationshipProfile: 'holographic' // or 'symmetry', 'chord', 'storm'
  *   });
  *
  *   multi.compileShaderAll('holographic', shaderSources);
- *   multi.setSharedUniforms({ u_time: t, u_resolution: [w, h] });
- *   multi.setLayerUniforms('background', { u_layerOpacity: 0.2, u_densityMult: 0.4 });
+ *   multi.setKeystoneUniforms({ u_time: t, u_density: 1.0, u_hue: 320 });
  *   multi.renderAll('holographic');
  */
 
 import { UnifiedRenderBridge } from './UnifiedRenderBridge.js';
+import { LayerRelationshipGraph, LAYER_ORDER as GRAPH_LAYER_ORDER } from './LayerRelationshipGraph.js';
 
 /**
- * Default layer configuration matching the VIB3+ holographic system.
- * Each layer has role-specific opacity, density, and speed multipliers.
+ * Default layer configuration — used as fallback when no relationship graph
+ * is active (legacy mode). Preserved for backward compatibility only.
+ * @deprecated Use LayerRelationshipGraph profiles instead.
  */
 const DEFAULT_LAYER_CONFIG = {
     background: { layerScale: 1.0, layerOpacity: 0.2, densityMult: 0.4, speedMult: 0.2 },
@@ -43,7 +43,7 @@ const DEFAULT_LAYER_CONFIG = {
 /**
  * Standard layer order (back to front).
  */
-const LAYER_ORDER = ['background', 'shadow', 'content', 'highlight', 'accent'];
+const LAYER_ORDER = GRAPH_LAYER_ORDER;
 
 export class MultiCanvasBridge {
     constructor() {
@@ -59,7 +59,7 @@ export class MultiCanvasBridge {
         /** @type {Map<string, object>} Per-layer uniform overrides */
         this._layerUniforms = new Map();
 
-        /** @type {Map<string, object>} Per-layer config (opacity, density, speed) */
+        /** @type {Map<string, object>} Per-layer config (opacity, density, speed) — legacy fallback */
         this._layerConfig = new Map();
 
         /** @type {boolean} */
@@ -67,6 +67,12 @@ export class MultiCanvasBridge {
 
         /** @type {string|null} Active backend type (set after init) */
         this._backendType = null;
+
+        /** @type {LayerRelationshipGraph|null} */
+        this._relationshipGraph = null;
+
+        /** @type {number} Frame time counter for relationship resolution */
+        this._frameTime = 0;
     }
 
     /**
@@ -76,7 +82,9 @@ export class MultiCanvasBridge {
      * @param {object} options.canvases - Map of layer name → HTMLCanvasElement
      * @param {boolean} [options.preferWebGPU=true] - Try WebGPU for each canvas
      * @param {boolean} [options.debug=false]
-     * @param {object} [options.layerConfig] - Override default layer configuration
+     * @param {object} [options.layerConfig] - Override default layer configuration (legacy)
+     * @param {string} [options.relationshipProfile] - Named relationship profile to load
+     * @param {LayerRelationshipGraph} [options.relationshipGraph] - Pre-configured graph instance
      * @returns {Promise<void>}
      */
     async initialize(options) {
@@ -84,7 +92,9 @@ export class MultiCanvasBridge {
             canvases,
             preferWebGPU = true,
             debug = false,
-            layerConfig = {}
+            layerConfig = {},
+            relationshipProfile,
+            relationshipGraph
         } = options;
 
         // Initialize bridges in parallel
@@ -102,7 +112,7 @@ export class MultiCanvasBridge {
                 this._bridges.set(layerName, bridge);
                 this._canvases.set(layerName, canvas);
 
-                // Apply layer config (user override > default)
+                // Apply legacy layer config (user override > default)
                 const config = {
                     ...(DEFAULT_LAYER_CONFIG[layerName] || {}),
                     ...(layerConfig[layerName] || {})
@@ -118,9 +128,19 @@ export class MultiCanvasBridge {
             }
         }
 
+        // Set up relationship graph
+        if (relationshipGraph instanceof LayerRelationshipGraph) {
+            this._relationshipGraph = relationshipGraph;
+        } else if (relationshipProfile) {
+            this._relationshipGraph = new LayerRelationshipGraph({ profile: relationshipProfile });
+        }
+
         this._initialized = this._bridges.size > 0;
         if (debug) {
-            console.log(`MultiCanvasBridge: ${this._bridges.size}/${entries.length} layers initialized (${this._backendType})`);
+            const graphInfo = this._relationshipGraph
+                ? ` [graph: ${this._relationshipGraph.activeProfile || 'custom'}]`
+                : ' [legacy mode]';
+            console.log(`MultiCanvasBridge: ${this._bridges.size}/${entries.length} layers initialized (${this._backendType})${graphInfo}`);
         }
     }
 
@@ -155,6 +175,55 @@ export class MultiCanvasBridge {
      */
     getBridge(layerName) {
         return this._bridges.get(layerName);
+    }
+
+    // ========================================================================
+    // Layer Relationship Graph
+    // ========================================================================
+
+    /**
+     * Get the active relationship graph. Creates one with 'holographic' profile
+     * if none exists.
+     * @returns {LayerRelationshipGraph}
+     */
+    get relationshipGraph() {
+        if (!this._relationshipGraph) {
+            this._relationshipGraph = new LayerRelationshipGraph({ profile: 'holographic' });
+        }
+        return this._relationshipGraph;
+    }
+
+    /**
+     * Set or replace the relationship graph.
+     * @param {LayerRelationshipGraph} graph
+     */
+    set relationshipGraph(graph) {
+        this._relationshipGraph = graph;
+    }
+
+    /**
+     * Load a named relationship profile.
+     * @param {string} profileName - holographic, symmetry, chord, storm, legacy
+     */
+    loadRelationshipProfile(profileName) {
+        this.relationshipGraph.loadProfile(profileName);
+    }
+
+    /**
+     * Set the keystone (driver) layer.
+     * @param {string} layerName
+     */
+    setKeystone(layerName) {
+        this.relationshipGraph.setKeystone(layerName);
+    }
+
+    /**
+     * Set the relationship for a dependent layer.
+     * @param {string} layerName
+     * @param {string|Function|Object} relationship - Preset name, function, or { preset, config }
+     */
+    setLayerRelationship(layerName, relationship) {
+        this.relationshipGraph.setRelationship(layerName, relationship);
     }
 
     // ========================================================================
@@ -204,6 +273,7 @@ export class MultiCanvasBridge {
 
     /**
      * Set uniforms shared across all layers (e.g. time, resolution, geometry).
+     * When a relationship graph is active, these are treated as keystone parameters.
      *
      * @param {object} uniforms
      */
@@ -212,7 +282,17 @@ export class MultiCanvasBridge {
     }
 
     /**
-     * Set per-layer uniform overrides (e.g. layerOpacity, densityMult).
+     * Alias for setSharedUniforms when using relationship graph mode.
+     * Makes intent clearer — these are the keystone's parameters.
+     *
+     * @param {object} uniforms - Keystone parameters to derive other layers from
+     */
+    setKeystoneUniforms(uniforms) {
+        this._sharedUniforms = uniforms;
+    }
+
+    /**
+     * Set per-layer uniform overrides. Applied after relationship resolution.
      *
      * @param {string} layerName
      * @param {object} uniforms
@@ -223,7 +303,8 @@ export class MultiCanvasBridge {
     }
 
     /**
-     * Update the layer configuration.
+     * Update the legacy layer configuration.
+     * @deprecated Use setLayerRelationship() instead.
      *
      * @param {string} layerName
      * @param {object} config - Partial config update
@@ -236,15 +317,38 @@ export class MultiCanvasBridge {
     /**
      * Build the merged uniform set for a specific layer.
      *
-     * Priority: shared < layer config < layer overrides
+     * When a relationship graph is active:
+     *   1. Shared uniforms are treated as keystone parameters
+     *   2. The graph resolves derived parameters for the layer
+     *   3. Per-layer overrides are applied on top
+     *
+     * Legacy fallback (no graph):
+     *   Priority: shared < layer config < layer overrides
      *
      * @param {string} layerName
      * @returns {object}
      */
     _buildLayerUniforms(layerName) {
-        const config = this._layerConfig.get(layerName) || {};
         const overrides = this._layerUniforms.get(layerName) || {};
 
+        if (this._relationshipGraph) {
+            // Relationship graph mode: resolve layer params from keystone
+            const resolved = this._relationshipGraph.resolve(
+                this._sharedUniforms,
+                layerName,
+                this._frameTime
+            );
+
+            // Map relationship output to shader uniforms
+            return {
+                ...resolved,
+                u_layerOpacity: resolved.layerOpacity || resolved.u_layerOpacity || 1.0,
+                ...overrides
+            };
+        }
+
+        // Legacy mode: static multipliers
+        const config = this._layerConfig.get(layerName) || {};
         return {
             ...this._sharedUniforms,
             u_layerScale: config.layerScale || 1.0,
@@ -260,15 +364,31 @@ export class MultiCanvasBridge {
     // ========================================================================
 
     /**
-     * Render all layers in order using the named shader.
+     * Render all layers in order.
      *
-     * @param {string} shaderName - Shader program to use
+     * When a relationship graph is active, each layer may use a different shader
+     * as assigned by graph.setLayerShader(). The shaderName parameter serves as
+     * the default for layers without an explicit shader assignment.
+     *
+     * @param {string} shaderName - Default shader program to use
      * @param {object} [options]
      * @param {number[]} [options.clearColor] - RGBA clear color
+     * @param {number} [options.time] - Frame time for relationship resolution
      */
     renderAll(shaderName, options = {}) {
+        if (options.time !== undefined) {
+            this._frameTime = options.time;
+        } else {
+            this._frameTime += 16; // ~60fps fallback
+        }
+
         for (const layerName of this.layerNames) {
-            this.renderLayer(layerName, shaderName, options);
+            // Per-layer shader from relationship graph, or default
+            const layerShader = (this._relationshipGraph
+                ? this._relationshipGraph.getLayerShader(layerName)
+                : null) || shaderName;
+
+            this.renderLayer(layerName, layerShader, options);
         }
     }
 
@@ -334,7 +454,10 @@ export class MultiCanvasBridge {
         this._sharedUniforms = {};
         this._initialized = false;
         this._backendType = null;
+        this._relationshipGraph = null;
+        this._frameTime = 0;
     }
 }
 
+export { DEFAULT_LAYER_CONFIG, LAYER_ORDER };
 export default MultiCanvasBridge;

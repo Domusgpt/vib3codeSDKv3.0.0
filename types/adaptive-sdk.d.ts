@@ -105,6 +105,19 @@ export {
     Shader4DOptions
 } from './render/index';
 
+// Layer relationship system
+export {
+    LayerRelationshipGraph,
+    RelationshipFn,
+    RelationshipPreset,
+    RelationshipConfig,
+    LayerRelationshipProfile,
+    LayerRelationshipExport,
+    LAYER_ORDER as RENDER_LAYER_ORDER,
+    RELATIONSHIP_PRESETS,
+    RELATIONSHIP_PROFILES
+} from './render/LayerRelationshipGraph';
+
 // Creative tooling
 export {
     ColorPresetsSystem,
