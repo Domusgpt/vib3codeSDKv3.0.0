@@ -4,7 +4,7 @@
 
 struct VIB3Uniforms {
     time: f32,
-    speed: f32,
+    _pad0: f32,
     resolution: vec2<f32>,
     geometry: f32,
     rot4dXY: f32,
@@ -17,18 +17,24 @@ struct VIB3Uniforms {
     gridDensity: f32,
     morphFactor: f32,
     chaos: f32,
+    speed: f32,
     hue: f32,
     intensity: f32,
     saturation: f32,
     mouseIntensity: f32,
     clickIntensity: f32,
-    roleIntensity: f32,
     bass: f32,
     mid: f32,
     high: f32,
+    layerScale: f32,
+    layerOpacity: f32,
+    _pad1: f32,
+    layerColorR: f32,
+    layerColorG: f32,
+    layerColorB: f32,
+    densityMult: f32,
+    speedMult: f32,
     breath: f32,
-    mouse: vec2<f32>,
-    _pad1: vec2<f32>,
 };
 
 @group(0) @binding(0) var<uniform> u: VIB3Uniforms;

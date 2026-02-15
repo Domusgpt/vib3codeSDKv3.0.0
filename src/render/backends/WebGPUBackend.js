@@ -152,10 +152,14 @@ struct VIB3Uniforms {
     layerScale: f32,
     layerOpacity: f32,
     _pad1: f32,
-    layerColor: vec3<f32>,
+    layerColorR: f32,
+    layerColorG: f32,
+    layerColorB: f32,
     densityMult: f32,
     speedMult: f32,
-    _pad2: vec3<f32>,
+
+    // Vitality
+    breath: f32,
 };
 `;
 
