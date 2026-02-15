@@ -29,6 +29,23 @@ See `DOCS/PRODUCT_STRATEGY.md` for full persona definitions and success metrics.
 
 ---
 
+## C++ WASM Core (`cpp/`)
+
+The mathematical foundation using Clifford algebra Cl(4,0).
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `cpp/include/vib3_ffi.h` | C Foreign Function Interface header |
+| `cpp/src/vib3_ffi.cpp` | C FFI implementation |
+| `cpp/math/Rotor4D.hpp/cpp` | 4D rotation via geometric algebra |
+| `cpp/math/Mat4x4.hpp/cpp` | Traditional 4x4 matrix operations |
+| `cpp/math/Vec4.hpp/cpp` | 4-component vector operations |
+| `cpp/math/Projection.hpp/cpp` | 4D→3D projection functions |
+| `cpp/geometry/` | 8 base geometry generators + WarpFunctions |
+| `cpp/bindings/embind.cpp` | JavaScript bindings via Emscripten |
+| `cpp/tests/` | Unit tests (Rotor4D, Mat4x4, Vec4, Projection, Geometry) |
 ## The Three Visualization Systems
 
 VIB3+ has three active rendering systems. Each one takes the same 24 geometries and 6D rotation math but renders them with a completely different visual approach:
@@ -122,6 +139,7 @@ Build WASM core (requires Emscripten): `cd cpp && ./build.sh`
 - 5 new MCP layer control tools: set_layer_profile, set_layer_relationship, etc. (Feb 15)
 - Test expansion: 933 → 1762 tests (+89% increase, Feb 6-15)
 
+### Warp Functions (`src/geometry/warp/`)
 **What's shipping next** (Q1-Q2 2026):
 - npm publish automation
 - Framework example apps (React, Vue, Svelte working source)
@@ -163,6 +181,180 @@ Recent dev session logs live in `DOCS/dev-tracks/`. **Always check dev-tracks fo
 
 ---
 
+## MCP Agentic Control (`src/agent/mcp/`)
+
+**32 tools** defined in `src/agent/mcp/tools.js`, handled by `MCPServer.js`.
+**stdio transport**: `src/agent/mcp/stdio-server.js` — production-ready JSON-RPC 2.0 MCP server.
+
+### Tool Categories
+
+```javascript
+// System control (directly call VIB3Engine methods)
+batch_set_parameters(params)   // Atomic multi-parameter update
+set_rotation(xy, xz, yz, xw, yw, zw)  // 6D rotation
+set_visual_parameters(hue, chaos, speed, ...)  // Visual tuning
+switch_system(system)          // Quantum / Faceted / Holographic
+change_geometry(index)         // 0-23 geometry variants
+get_state()                    // Full engine state snapshot
+randomize_parameters()         // Random parameter generation
+reset_parameters()             // Reset to defaults
+
+// Creative (instantiate creative modules from MCPServer, NOT VIB3Engine)
+design_from_description(text)   // NLP → parameters via AestheticMapper
+apply_color_preset(preset)      // Delegates to ColorPresetsSystem (with transitions)
+play_transition(sequence)       // Executes via TransitionAnimator when engine available
+create_timeline(tracks)         // Stores for ParameterTimeline playback
+control_timeline(id, action)    // Play/pause/stop/seek stored timelines
+create_choreography(scenes)     // Multi-scene composition
+play_choreography(id)           // Delegates to ChoreographyPlayer
+set_post_processing(effects)    // Browser-only; returns load_code in Node context
+
+// Gallery (in-memory session-scoped persistence)
+save_to_gallery(slot)           // Captures engine.exportState() → Map
+load_from_gallery(slot)         // Restores via engine.importState()
+
+// Feedback
+describe_visual_state()         // Text description of current visual
+capture_screenshot()            // Base64 PNG composite (browser-only)
+
+// Discovery
+get_sdk_context()               // Onboarding documentation
+get_aesthetic_vocabulary()       // 130+ style keywords from AestheticMapper
+search_geometries(query)        // Geometry metadata lookup
+get_parameter_schema()          // JSON Schema for all parameters
+
+// Export
+export_package(format)          // VIB3Package generation
+```
+
+### Architecture Note
+
+Creative modules (ColorPresetsSystem, TransitionAnimator, PostProcessingPipeline,
+ParameterTimeline, ChoreographyPlayer, AestheticMapper) are **instantiated lazily by
+MCPServer**, not by VIB3Engine. MCPServer creates them on first use with parameter
+callbacks pointing to the engine. This means:
+- They work through MCP tool calls
+- They work through direct instantiation in user code
+- They are NOT available as `engine.colorPresets` etc. (use MCP or instantiate directly)
+
+### Programmatic Usage
+
+```javascript
+// Via MCP protocol
+const result = await mcpClient.callTool('batch_set_parameters', {
+    system: 'quantum',
+    geometry: 16,   // Hypertetrahedron + Tetrahedron
+    hue: 280,
+    chaos: 0.4
+});
+
+// Via direct module instantiation
+import { ColorPresetsSystem } from './src/creative/ColorPresetsSystem.js';
+const colors = new ColorPresetsSystem((name, value) => engine.setParameter(name, value));
+colors.applyPreset('Cyberpunk Neon', true, 800);
+```
+
+---
+
+## Project Structure
+
+```
+Vib3-CORE-Documented01-/
+├── cpp/                          # C++ WASM core
+│   ├── include/vib3_ffi.h       # FFI header
+│   ├── src/vib3_ffi.cpp         # FFI implementation
+│   ├── math/                    # Rotor4D, Mat4x4, Vec4, Projection
+│   ├── geometry/                # 8 base generators + WarpFunctions
+│   ├── bindings/embind.cpp      # JS bindings via Emscripten
+│   ├── tests/                   # C++ unit tests
+│   ├── CMakeLists.txt           # Build configuration
+│   └── build.sh                 # Build script
+│
+├── src/
+│   ├── core/                    # Engine core
+│   │   ├── VIB3Engine.js        # Main VIB3+ engine (+ SpatialInputSystem integration)
+│   │   ├── CanvasManager.js     # Canvas lifecycle
+│   │   ├── ParameterMapper.js   # Parameter mapping
+│   │   ├── Parameters.js        # Parameter definitions
+│   │   └── UnifiedResourceManager.js  # Resource management
+│   │
+│   ├── quantum/                 # Quantum system
+│   │   ├── QuantumEngine.js
+│   │   └── QuantumVisualizer.js
+│   │
+│   ├── faceted/                 # Faceted system (with audio + saturation)
+│   │   └── FacetedSystem.js
+│   │
+│   ├── holograms/               # Holographic system
+│   │   ├── RealHolographicSystem.js
+│   │   └── HolographicVisualizer.js
+│   │
+│   ├── geometry/                # Geometry library
+│   │   ├── GeometryLibrary.js
+│   │   ├── GeometryFactory.js
+│   │   ├── generators/          # 8 base geometry generators
+│   │   ├── warp/
+│   │   │   ├── HypersphereCore.js
+│   │   │   └── HypertetraCore.js
+│   │   └── buffers/
+│   │       └── BufferBuilder.js
+│   │
+│   ├── render/                  # Render backends
+│   │   ├── ShaderProgram.js
+│   │   └── backends/
+│   │       ├── WebGLBackend.js
+│   │       └── WebGPUBackend.js
+│   │
+│   ├── reactivity/              # Reactivity & spatial input
+│   │   ├── ReactivityConfig.js
+│   │   ├── ReactivityManager.js
+│   │   └── SpatialInputSystem.js  # Universal spatial input (current release series)
+│   │
+│   ├── creative/                # Creative tooling (current release series)
+│   │   ├── ColorPresetsSystem.js  # 22 themed color presets
+│   │   ├── TransitionAnimator.js  # 14 easing functions, sequencing
+│   │   ├── PostProcessingPipeline.js  # 14 effects, 7 preset chains
+│   │   └── ParameterTimeline.js   # Keyframe animation with BPM sync
+│   │
+│   ├── integrations/            # Platform integrations (current release series)
+│   │   ├── frameworks/
+│   │   │   ├── Vib3React.js     # React component + useVib3() hook
+│   │   │   ├── Vib3Vue.js       # Vue 3 component + composable
+│   │   │   └── Vib3Svelte.js    # Svelte component + store
+│   │   ├── FigmaPlugin.js       # Figma plugin manifest + code
+│   │   ├── ThreeJsPackage.js    # Three.js ShaderMaterial
+│   │   ├── TouchDesignerExport.js  # GLSL TOP export
+│   │   └── OBSMode.js           # Transparent background + browser source
+│   │
+│   ├── advanced/                # Advanced features (current release series)
+│   │   ├── WebXRRenderer.js     # WebXR VR/AR with 6DOF
+│   │   ├── WebGPUCompute.js     # WGSL particle + FFT compute
+│   │   ├── MIDIController.js    # Web MIDI with learn mode
+│   │   ├── AIPresetGenerator.js # Text-to-preset + mutation
+│   │   └── OffscreenWorker.js   # Worker rendering + SharedArrayBuffer
+│   │
+│   ├── export/                  # Export system
+│   │   ├── VIB3PackageExporter.js
+│   │   └── TradingCardGenerator.js
+│   │
+│   └── agent/mcp/               # MCP agentic interface
+│       ├── MCPServer.js
+│       └── tools.js
+│
+├── tools/                        # Tooling
+│   └── shader-sync-verify.js    # Shader sync verification (current release series)
+│
+├── js/                          # UI layer
+│   ├── core/app.js
+│   ├── controls/
+│   └── gallery/
+│
+├── tests/                       # Test suite
+│   ├── sdk-browser.spec.js
+│   └── e2e/
+│
+└── index.html                   # Main entry point
+```
 ## Key Architecture Files
 
 ### Core Engine

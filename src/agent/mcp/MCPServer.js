@@ -9,6 +9,8 @@ import { telemetry, EventType, withTelemetry } from '../telemetry/index.js';
 import { AestheticMapper } from '../../creative/AestheticMapper.js';
 import { ChoreographyPlayer } from '../../creative/ChoreographyPlayer.js';
 import { ParameterTimeline } from '../../creative/ParameterTimeline.js';
+import { ColorPresetsSystem } from '../../creative/ColorPresetsSystem.js';
+import { TransitionAnimator } from '../../creative/TransitionAnimator.js';
 import { PRESET_REGISTRY } from '../../render/LayerRelationshipGraph.js';
 
 /**
@@ -42,6 +44,36 @@ export class MCPServer {
         this.engine = engine;
         this.sceneId = null;
         this.initialized = false;
+        this._gallerySlots = new Map();
+    }
+
+    /**
+     * Get or lazily create ColorPresetsSystem instance.
+     * Requires engine for the parameter update callback.
+     * @returns {ColorPresetsSystem|null}
+     */
+    _getColorPresets() {
+        if (this._colorPresets) return this._colorPresets;
+        if (!this.engine) return null;
+        this._colorPresets = new ColorPresetsSystem(
+            (name, value) => this.engine.setParameter(name, value)
+        );
+        return this._colorPresets;
+    }
+
+    /**
+     * Get or lazily create TransitionAnimator instance.
+     * Requires engine for the parameter update/get callbacks.
+     * @returns {TransitionAnimator|null}
+     */
+    _getTransitionAnimator() {
+        if (this._transitionAnimator) return this._transitionAnimator;
+        if (!this.engine) return null;
+        this._transitionAnimator = new TransitionAnimator(
+            (name, value) => this.engine.setParameter(name, value),
+            (name) => this.engine.getParameter(name)
+        );
+        return this._transitionAnimator;
     }
 
     buildResponse(operation, data, options = {}) {
@@ -484,32 +516,68 @@ export class MCPServer {
 
         telemetry.recordEvent(EventType.GALLERY_SAVE, { slot });
 
+        // Persist actual engine state if available
+        if (this.engine) {
+            const state = this.engine.exportState();
+            this._gallerySlots.set(slot, {
+                name: name || `Variation ${slot}`,
+                saved_at: new Date().toISOString(),
+                state
+            });
+        }
+
         return {
             slot,
             name: name || `Variation ${slot}`,
             saved_at: new Date().toISOString(),
+            persisted: !!this.engine,
+            gallery_size: this._gallerySlots.size,
             suggested_next_actions: ['load_from_gallery', 'randomize_parameters']
         };
     }
 
     /**
-     * Load from gallery
+     * Load from gallery — restores previously saved state
      */
     loadFromGallery(args) {
         const { slot } = args;
 
-        if (this.engine) {
-            // Apply variation
-            const params = this.engine.parameters?.generateVariationParameters?.(slot) || {};
-            this.engine.setParameters(params);
+        telemetry.recordEvent(EventType.GALLERY_LOAD, { slot });
+
+        const saved = this._gallerySlots.get(slot);
+        if (saved && this.engine) {
+            // Restore saved state
+            this.engine.importState(saved.state);
+            return {
+                slot,
+                name: saved.name,
+                saved_at: saved.saved_at,
+                loaded_at: new Date().toISOString(),
+                restored: true,
+                ...this.getState()
+            };
         }
 
-        telemetry.recordEvent(EventType.GALLERY_LOAD, { slot });
+        if (!saved) {
+            // No saved state — fall back to random variation
+            if (this.engine) {
+                const params = this.engine.parameters?.generateVariationParameters?.(slot) || {};
+                this.engine.setParameters(params);
+            }
+            return {
+                slot,
+                loaded_at: new Date().toISOString(),
+                restored: false,
+                note: 'No saved state in this slot — generated random variation',
+                ...this.getState()
+            };
+        }
 
         return {
             slot,
             loaded_at: new Date().toISOString(),
-            ...this.getState()
+            restored: false,
+            note: 'Engine not initialized — cannot apply state'
         };
     }
 
@@ -1217,8 +1285,17 @@ export class MCPServer {
             (sum, step) => sum + step.duration + step.delay, 0
         );
 
+        // Execute live if engine available
+        let executing = false;
+        const animator = this._getTransitionAnimator();
+        if (animator) {
+            const seqId = animator.sequence(normalizedSequence);
+            executing = !!seqId;
+        }
+
         return {
             transition_id: transitionId,
+            executing,
             step_count: normalizedSequence.length,
             total_duration_ms: totalDuration,
             steps: normalizedSequence.map((step, i) => ({
@@ -1228,7 +1305,7 @@ export class MCPServer {
                 easing: step.easing,
                 delay: step.delay
             })),
-            load_code: `const animator = new TransitionAnimator(\n  (n, v) => engine.setParameter(n, v),\n  (n) => engine.getParameter(n)\n);\nanimator.sequence(${JSON.stringify(normalizedSequence)});`,
+            load_code: executing ? null : `const animator = new TransitionAnimator(\n  (n, v) => engine.setParameter(n, v),\n  (n) => engine.getParameter(n)\n);\nanimator.sequence(${JSON.stringify(normalizedSequence)});`,
             suggested_next_actions: ['describe_visual_state', 'create_timeline', 'save_to_gallery']
         };
     }
@@ -1237,55 +1314,41 @@ export class MCPServer {
      * Apply a named color preset
      */
     applyColorPreset(args) {
-        const { preset } = args;
+        const { preset, transition = true, duration = 800 } = args;
 
-        // Color preset hue/saturation mappings (subset — full list in ColorPresetsSystem)
-        const COLOR_PRESETS = {
-            Ocean: { hue: 200, saturation: 0.8, intensity: 0.6 },
-            Lava: { hue: 15, saturation: 0.9, intensity: 0.8 },
-            Neon: { hue: 300, saturation: 1.0, intensity: 0.9 },
-            Monochrome: { hue: 0, saturation: 0.0, intensity: 0.6 },
-            Sunset: { hue: 30, saturation: 0.85, intensity: 0.7 },
-            Aurora: { hue: 140, saturation: 0.7, intensity: 0.6 },
-            Cyberpunk: { hue: 280, saturation: 0.9, intensity: 0.8 },
-            Forest: { hue: 120, saturation: 0.6, intensity: 0.5 },
-            Desert: { hue: 40, saturation: 0.5, intensity: 0.7 },
-            Galaxy: { hue: 260, saturation: 0.8, intensity: 0.4 },
-            Ice: { hue: 190, saturation: 0.5, intensity: 0.8 },
-            Fire: { hue: 10, saturation: 1.0, intensity: 0.9 },
-            Toxic: { hue: 100, saturation: 0.9, intensity: 0.7 },
-            Royal: { hue: 270, saturation: 0.7, intensity: 0.5 },
-            Pastel: { hue: 330, saturation: 0.3, intensity: 0.8 },
-            Retro: { hue: 50, saturation: 0.7, intensity: 0.6 },
-            Midnight: { hue: 240, saturation: 0.6, intensity: 0.3 },
-            Tropical: { hue: 160, saturation: 0.8, intensity: 0.7 },
-            Ethereal: { hue: 220, saturation: 0.4, intensity: 0.7 },
-            Volcanic: { hue: 5, saturation: 0.95, intensity: 0.6 },
-            Holographic: { hue: 180, saturation: 0.6, intensity: 0.8 },
-            Vaporwave: { hue: 310, saturation: 0.7, intensity: 0.7 }
-        };
+        const colorSystem = this._getColorPresets();
 
-        const presetData = COLOR_PRESETS[preset];
-        if (!presetData) {
+        if (colorSystem) {
+            // Use real ColorPresetsSystem — full preset library with transitions
+            const config = colorSystem.getPreset(preset);
+            if (!config) {
+                const allPresets = colorSystem.getPresets().map(p => p.name);
+                return {
+                    error: {
+                        type: 'ValidationError',
+                        code: 'INVALID_COLOR_PRESET',
+                        message: `Unknown color preset: ${preset}`,
+                        valid_options: allPresets
+                    }
+                };
+            }
+
+            colorSystem.applyPreset(preset, transition, duration);
+
             return {
-                error: {
-                    type: 'ValidationError',
-                    code: 'INVALID_COLOR_PRESET',
-                    message: `Unknown color preset: ${preset}`,
-                    valid_options: Object.keys(COLOR_PRESETS)
-                }
+                preset,
+                applied: { hue: config.hue, saturation: config.saturation, intensity: config.intensity },
+                transition: transition ? { enabled: true, duration } : { enabled: false },
+                full_config: config,
+                suggested_next_actions: ['set_post_processing', 'describe_visual_state', 'set_visual_parameters']
             };
         }
 
-        if (this.engine) {
-            this.engine.setParameter('hue', presetData.hue);
-            this.engine.setParameter('saturation', presetData.saturation);
-            this.engine.setParameter('intensity', presetData.intensity);
-        }
-
+        // Fallback: no engine, return preset metadata for artifact mode
         return {
             preset,
-            applied: presetData,
+            applied: null,
+            load_code: `const colors = new ColorPresetsSystem((n, v) => engine.setParameter(n, v));\ncolors.applyPreset('${preset}', ${transition}, ${duration});`,
             suggested_next_actions: ['set_post_processing', 'describe_visual_state', 'set_visual_parameters']
         };
     }
@@ -1296,14 +1359,50 @@ export class MCPServer {
     setPostProcessing(args) {
         const { effects, chain_preset, clear_first = true } = args;
 
+        // Try to execute live in browser context
+        let executing = false;
+        if (typeof document !== 'undefined') {
+            try {
+                const target = document.getElementById('viz-container')
+                    || document.querySelector('.vib3-container')
+                    || document.querySelector('canvas')?.parentElement;
+
+                if (target) {
+                    // Lazy-init pipeline, importing dynamically to avoid Node.js issues
+                    if (!this._postPipeline) {
+                        // PostProcessingPipeline imported statically would fail in Node;
+                        // it's already a known browser-only module, so guard at runtime
+                        const { PostProcessingPipeline: PPP } = { PostProcessingPipeline: globalThis.PostProcessingPipeline };
+                        if (PPP) {
+                            this._postPipeline = new PPP(target);
+                        }
+                    }
+
+                    if (this._postPipeline) {
+                        if (clear_first) this._postPipeline.clearChain?.();
+                        if (chain_preset) {
+                            this._postPipeline.loadPresetChain(chain_preset);
+                        } else if (effects) {
+                            for (const e of effects) {
+                                this._postPipeline.addEffect(e.name, { intensity: e.intensity || 0.5, ...e });
+                            }
+                        }
+                        this._postPipeline.apply();
+                        executing = true;
+                    }
+                }
+            } catch { /* fall through to code generation */ }
+        }
+
         return {
             applied: true,
+            executing,
             effects: effects || [],
             chain_preset: chain_preset || null,
             cleared_previous: clear_first,
-            load_code: effects ?
-                `const pipeline = new PostProcessingPipeline(gl, canvas);\n${effects.map(e => `pipeline.addEffect('${e.name}', { intensity: ${e.intensity || 0.5} });`).join('\n')}` :
-                `pipeline.applyChain('${chain_preset}');`,
+            load_code: executing ? null : (effects ?
+                `const pipeline = new PostProcessingPipeline(document.getElementById('viz-container'));\n${effects.map(e => `pipeline.addEffect('${e.name}', { intensity: ${e.intensity || 0.5} });`).join('\n')}\npipeline.apply();` :
+                `const pipeline = new PostProcessingPipeline(document.getElementById('viz-container'));\npipeline.loadPresetChain('${chain_preset}');\npipeline.apply();`),
             suggested_next_actions: ['describe_visual_state', 'apply_color_preset', 'create_choreography']
         };
     }

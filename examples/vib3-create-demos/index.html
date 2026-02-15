@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIB3+ Creative Engine — 5-Layer Composite Demos</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a28;--border:#2a2a3a;
+  --text:#e0e0f0;--text2:#8888aa;--accent:#7c4dff;--accent2:#00e5ff;
+  --glow:rgba(124,77,255,0.3);--danger:#ff4444;--success:#00e676;
+  --warn:#ffab00;--epic:#a855f7;--legendary:#f59e0b;--mythic:#ef4444;
+  --rare:#3b82f6;--common:#6b7280;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'SF Mono','Fira Code','Cascadia Code',monospace;font-size:13px;overflow-x:hidden}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+.header{background:linear-gradient(135deg,#0d0d1a 0%,#1a0a2e 50%,#0a1a2e 100%);border-bottom:1px solid var(--border);padding:20px 30px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.header h1{font-size:22px;font-weight:700;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header .subtitle{color:var(--text2);font-size:12px}
+.header .arch-badge{font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--accent);color:var(--accent);margin-left:auto}
+.tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);overflow-x:auto}
+.tab{padding:12px 24px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;user-select:none;display:flex;align-items:center;gap:8px}
+.tab:hover{color:var(--text);background:var(--surface2)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(124,77,255,0.05)}
+.tab .badge{font-size:10px;padding:2px 6px;border-radius:8px;background:var(--accent);color:#fff;font-weight:600}
+.panel{display:none;padding:20px 30px;animation:fadeIn .3s}
+.panel.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.section-title{font-size:16px;font-weight:700;margin:24px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.section-title:first-child{margin-top:0}
+.info-box{background:rgba(124,77,255,0.08);border:1px solid rgba(124,77,255,0.2);border-radius:8px;padding:12px 16px;font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.6}
+.info-box code{color:var(--accent2);background:var(--surface2);padding:1px 4px;border-radius:3px}
+.sys-label{font-size:9px;padding:2px 5px;border-radius:4px;border:1px solid;display:inline-block;margin-left:6px}
+.sys-quantum{border-color:#7c4dff;color:#7c4dff}
+.sys-faceted{border-color:#00e5ff;color:#00e5ff}
+.sys-holographic{border-color:#ff4081;color:#ff4081}
+.viz-canvas{width:100%;border-radius:12px;border:1px solid var(--border);background:#000;display:block}
+.boss-layout{display:grid;grid-template-columns:1fr 320px;gap:20px}
+@media(max-width:800px){.boss-layout{grid-template-columns:1fr}}
+.boss-controls{display:flex;flex-direction:column;gap:12px}
+.boss-phase-btns{display:flex;gap:8px}
+.boss-phase-btns button{flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);cursor:pointer;font-family:inherit;font-size:12px;transition:all .2s}
+.boss-phase-btns button:hover{border-color:var(--accent);box-shadow:0 0 12px var(--glow)}
+.boss-phase-btns button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.health-bar{height:28px;border-radius:8px;background:var(--surface2);overflow:hidden;border:1px solid var(--border);position:relative}
+.health-fill{height:100%;transition:width .5s cubic-bezier(.4,0,.2,1),background .5s;border-radius:7px}
+.health-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.action-btns{display:flex;gap:8px;flex-wrap:wrap}
+.action-btns button{padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);cursor:pointer;font-family:inherit;font-size:12px;transition:all .15s}
+.action-btns button:hover{border-color:var(--accent2);box-shadow:0 0 10px rgba(0,229,255,.2)}
+.action-btns button:active{transform:scale(.95)}
+.action-btns button.danger{border-color:var(--danger);color:var(--danger)}
+.action-btns button.danger:hover{background:var(--danger);color:#fff}
+.action-btns button.success{border-color:var(--success);color:var(--success)}
+.action-btns button.success:hover{background:var(--success);color:#000}
+.param-display{background:var(--surface2);border-radius:8px;padding:12px;font-size:11px;line-height:1.8;border:1px solid var(--border);max-height:200px;overflow-y:auto}
+.param-display .label{color:var(--text2);display:inline-block;min-width:110px}
+.param-display .value{color:var(--accent2)}
+.slider-group{display:flex;align-items:center;gap:10px}
+.slider-group label{font-size:12px;color:var(--text2);min-width:80px}
+.slider-group input[type=range]{flex:1;accent-color:var(--accent)}
+.slider-group .val{font-size:12px;color:var(--accent2);min-width:40px;text-align:right}
+.effects-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.effect-card{border:1px solid var(--border);border-radius:12px;padding:16px;background:var(--surface);cursor:pointer;transition:all .25s;position:relative;overflow:hidden}
+.effect-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.effect-card.selected{border-color:var(--accent);box-shadow:0 0 20px var(--glow)}
+.effect-header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.effect-icon{font-size:24px}
+.effect-name{font-size:15px;font-weight:700}
+.effect-rarity{font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;margin-left:auto;text-transform:uppercase}
+.rarity-COMMON{background:var(--common);color:#fff}
+.rarity-RARE{background:var(--rare);color:#fff}
+.rarity-EPIC{background:var(--epic);color:#fff}
+.rarity-LEGENDARY{background:var(--legendary);color:#000}
+.rarity-MYTHIC{background:var(--mythic);color:#fff;animation:mythicPulse 2s infinite}
+@keyframes mythicPulse{0%,100%{box-shadow:0 0 4px var(--mythic)}50%{box-shadow:0 0 16px var(--mythic)}}
+.effect-desc{font-size:11px;color:var(--text2);margin-bottom:8px}
+.effect-params{font-size:10px;color:var(--text2)}
+.effect-params span{color:var(--accent2)}
+.effect-detail{margin-top:20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;display:none}
+.timeline-track{height:80px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);position:relative;overflow:hidden;display:flex}
+.timeline-scene{height:100%;position:relative;display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:pointer;transition:all .2s;border-right:1px solid var(--border)}
+.timeline-scene:hover{filter:brightness(1.3)}
+.timeline-scene.active{outline:2px solid var(--accent);outline-offset:-2px}
+.timeline-scene .scene-label{font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);z-index:1}
+.timeline-scene .scene-system{font-size:9px;color:rgba(255,255,255,.7);z-index:1}
+.timeline-playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);box-shadow:0 0 8px var(--glow);z-index:10;transition:left .05s linear}
+.playback-controls{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.playback-controls button{padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);cursor:pointer;font-family:inherit;font-size:13px;transition:all .15s}
+.playback-controls button:hover{border-color:var(--accent);box-shadow:0 0 10px var(--glow)}
+.playback-controls button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.playback-time{font-size:14px;font-weight:600;min-width:80px}
+.scene-detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.scene-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;transition:all .2s}
+.scene-card.active{border-color:var(--accent);box-shadow:0 0 12px var(--glow)}
+.scene-card h3{font-size:14px;margin-bottom:6px}
+.scene-card .meta{font-size:11px;color:var(--text2);line-height:1.8}
+.scene-card .meta .tag{display:inline-block;padding:1px 6px;border-radius:4px;background:var(--surface2);color:var(--accent2);font-size:10px;margin:2px 2px}
+.card-controls{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.card-controls select,.card-controls input{padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-family:inherit;font-size:12px}
+.card-controls button{padding:8px 20px;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;transition:all .15s}
+.card-controls button:hover{filter:brightness(1.2)}
+.cards-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+.trading-card{border:2px solid var(--border);border-radius:16px;overflow:hidden;background:var(--surface);transition:all .3s;cursor:pointer;position:relative}
+.trading-card:hover{transform:translateY(-4px) scale(1.02);box-shadow:0 12px 32px rgba(0,0,0,.5)}
+.trading-card canvas{display:block;width:100%;height:180px;background:#000}
+.trading-card .card-body{padding:12px}
+.trading-card .card-name{font-size:13px;font-weight:700;margin-bottom:4px}
+.trading-card .card-desc{font-size:10px;color:var(--text2);margin-bottom:6px;line-height:1.4}
+.trading-card .card-footer{display:flex;justify-content:space-between;align-items:center}
+.trading-card .card-system{font-size:10px;color:var(--accent2);text-transform:uppercase}
+.rarity-bar{position:absolute;top:0;left:0;right:0;height:3px}
+.rarity-COMMON .rarity-bar{background:var(--common)}
+.rarity-RARE .rarity-bar{background:var(--rare)}
+.rarity-EPIC .rarity-bar{background:var(--epic)}
+.rarity-LEGENDARY .rarity-bar{background:linear-gradient(90deg,var(--legendary),#fbbf24)}
+.rarity-MYTHIC .rarity-bar{background:linear-gradient(90deg,var(--mythic),#f97316,var(--mythic));background-size:200% 100%;animation:mythicShine 2s linear infinite}
+@keyframes mythicShine{0%{background-position:0% 0}100%{background-position:200% 0}}
+.rarity-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:16px}
+.rarity-stat{text-align:center;padding:12px 8px;border-radius:8px;background:var(--surface);border:1px solid var(--border)}
+.rarity-stat .count{font-size:24px;font-weight:800}
+.rarity-stat .label{font-size:10px;color:var(--text2);margin-top:4px}
+.layer-legend{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;font-size:10px}
+.layer-legend span{padding:2px 6px;border-radius:4px;border:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>VIB3+ Creative Engine</h1>
+  <span class="subtitle">Real 5-Layer Composite Lattice Shader Demos &mdash; Generated by /vib3-create</span>
+  <span class="arch-badge">1 ACTIVE SYSTEM | 5-LAYER COMPOSITE | fract() LATTICE | 6D ROTATION</span>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="boss">Boss Battle VFX <span class="badge">5-LAYER</span></div>
+  <div class="tab" data-tab="effects">Status Effects <span class="badge">9</span></div>
+  <div class="tab" data-tab="music">Music Video <span class="badge">120BPM</span></div>
+  <div class="tab" data-tab="cards">Collectible Cards <span class="badge">GEN</span></div>
+</div>
+
+<!-- TAB 1: Boss Battle VFX -->
+<div class="panel active" id="panel-boss">
+  <div class="info-box">
+    Real VIB3+ 5-layer composite computed in a single shader pass. The production engine uses 5
+    stacked canvases with CSS blend modes (bg/shadow/content/highlight/accent) &mdash; one active
+    system at a time, with <code>WEBGL_lose_context</code> cleanup on switch. This demo computes the
+    identical 5-layer composite in GLSL using <code>fract()</code>-based lattice geometry,
+    <code>project4Dto3D()</code> perspective projection, and full 6D rotation.
+    <div class="layer-legend">
+      <span style="color:#556">BG 0.4</span>
+      <span style="color:#889">Shadow multiply</span>
+      <span style="color:#fff">Content 1.0</span>
+      <span style="color:#aaf">Highlight screen</span>
+      <span style="color:#a8f">Accent overlay</span>
+    </div>
+  </div>
+  <div class="boss-layout">
+    <div>
+      <canvas class="viz-canvas" id="boss-canvas" height="360"></canvas>
+    </div>
+    <div class="boss-controls">
+      <div class="section-title">Phase</div>
+      <div class="boss-phase-btns">
+        <button data-phase="1" class="active">Phase 1</button>
+        <button data-phase="2">Phase 2</button>
+        <button data-phase="3">Phase 3</button>
+      </div>
+      <div class="section-title">Health</div>
+      <div class="health-bar"><div class="health-fill" id="health-fill" style="width:100%;background:linear-gradient(90deg,#00e676,#76ff03)"></div><span class="health-label" id="health-label">100%</span></div>
+      <div class="slider-group"><label>HP</label><input type="range" id="health-slider" min="0" max="100" value="100"><span class="val" id="health-val">100</span></div>
+      <div class="section-title">Actions</div>
+      <div class="action-btns">
+        <button id="btn-damage" class="danger">-15 HP</button>
+        <button id="btn-victory" class="success">Victory</button>
+        <button id="btn-reset">Reset</button>
+      </div>
+      <div class="section-title">Parameters</div>
+      <div class="param-display" id="boss-params"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: Status Effects -->
+<div class="panel" id="panel-effects">
+  <div class="info-box">
+    9 game status effects using real VIB3+ lattice shaders. Each effect = one
+    <code>batch_set_parameters</code> call. Click any card for a live preview with
+    the 5-layer composite shader.
+  </div>
+  <div class="effects-grid" id="effects-grid"></div>
+  <div class="effect-detail" id="effect-detail">
+    <div class="section-title" id="effect-detail-title">Effect Preview</div>
+    <canvas class="viz-canvas" id="fx-canvas" height="240"></canvas>
+    <div class="param-display" id="effect-params" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<!-- TAB 3: Music Video -->
+<div class="panel" id="panel-music">
+  <div class="info-box">
+    80-second 5-scene choreography at 120 BPM. Each scene transitions system, geometry,
+    and color preset with per-scene parameter animation &mdash; all rendered through the
+    5-layer composite lattice shader.
+  </div>
+  <div class="playback-controls">
+    <button class="primary" id="btn-play">&#9654; Play</button>
+    <button id="btn-stop">&#9632; Stop</button>
+    <span class="playback-time" id="playback-time">0:00 / 1:20</span>
+  </div>
+  <div class="timeline-track" id="timeline-track"><div class="timeline-playhead" id="playhead" style="left:0%"></div></div>
+  <canvas class="viz-canvas" id="music-canvas" height="320" style="margin-top:16px"></canvas>
+  <div class="section-title" style="margin-top:20px">Scenes</div>
+  <div class="scene-detail-grid" id="scene-cards"></div>
+</div>
+
+<!-- TAB 4: Collectible Cards -->
+<div class="panel" id="panel-cards">
+  <div class="info-box">
+    Evolutionary art card generator. Each card renders the real VIB3+ lattice shader
+    with unique parameter presets. Cards rendered via shared offscreen WebGL context
+    (mirroring SDK canvas management &mdash; max 2 active contexts, <code>WEBGL_lose_context</code> on cleanup).
+  </div>
+  <div class="card-controls">
+    <select id="card-theme">
+      <option value="">Random</option>
+      <option value="deepSpace">Deep Space</option>
+      <option value="lavaLamp">Lava Lamp</option>
+      <option value="arctic">Arctic</option>
+      <option value="acid">Acid</option>
+      <option value="meditation">Meditation</option>
+      <option value="storm">Storm</option>
+      <option value="synthwave">Synthwave</option>
+      <option value="nature">Nature</option>
+    </select>
+    <input type="number" id="card-count" value="8" min="1" max="16" style="width:60px">
+    <button id="btn-generate">Generate</button>
+    <button id="btn-evolve">Evolve</button>
+  </div>
+  <div class="rarity-stats" id="rarity-stats"></div>
+  <div class="section-title" style="margin-top:20px">Collection</div>
+  <div class="cards-gallery" id="cards-gallery"></div>
+</div>
+
+<!-- Offscreen canvas for card rendering (shared context, never displayed) -->
+<canvas id="card-render" width="400" height="360" style="display:none"></canvas>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════
+// VIB3+ LATTICE SHADER — 5-Layer Composite Single Pass
+// Extracted from QuantumVisualizer.js (src/quantum/QuantumVisualizer.js)
+//
+// Architecture: fract()-based lattice | 6D rotation | perspective 4D→3D
+// Canvas management: 1 active context per section (mirrors SDK pattern)
+// Production: 5 stacked canvases with CSS blend modes per system
+// Demo: identical composite computed in GLSL blend mode math
+// ══════════════════════════════════════════════════════════════════════
+
+const VERT=`attribute vec2 a_pos;void main(){gl_Position=vec4(a_pos,0,1);}`;
+
+const FRAG=`
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+
+uniform vec2 u_resolution;
+uniform float u_time;
+uniform float u_geometry;
+uniform float u_gridDensity;
+uniform float u_morphFactor;
+uniform float u_chaos;
+uniform float u_speed;
+uniform float u_hue;
+uniform float u_intensity;
+uniform float u_saturation;
+uniform float u_dimension;
+uniform float u_rot4dXY,u_rot4dXZ,u_rot4dYZ;
+uniform float u_rot4dXW,u_rot4dYW,u_rot4dZW;
+
+// ── 6D Rotation Matrices (XY->XZ->YZ->XW->YW->ZW order) ──
+mat4 rotXY(float t){float c=cos(t),s=sin(t);return mat4(c,-s,0,0, s,c,0,0, 0,0,1,0, 0,0,0,1);}
+mat4 rotXZ(float t){float c=cos(t),s=sin(t);return mat4(c,0,s,0, 0,1,0,0, -s,0,c,0, 0,0,0,1);}
+mat4 rotYZ(float t){float c=cos(t),s=sin(t);return mat4(1,0,0,0, 0,c,-s,0, 0,s,c,0, 0,0,0,1);}
+mat4 rotXW(float t){float c=cos(t),s=sin(t);return mat4(c,0,0,-s, 0,1,0,0, 0,0,1,0, s,0,0,c);}
+mat4 rotYW(float t){float c=cos(t),s=sin(t);return mat4(1,0,0,0, 0,c,0,-s, 0,0,1,0, 0,s,0,c);}
+mat4 rotZW(float t){float c=cos(t),s=sin(t);return mat4(1,0,0,0, 0,1,0,0, 0,0,c,-s, 0,0,s,c);}
+
+// ── 4D->3D Perspective Projection ──
+vec3 project4Dto3D(vec4 p){
+  float w=u_dimension/(u_dimension+p.w);
+  return p.xyz*w;
+}
+
+// ── Polytope Core Warp Functions (geometries 8-23) ──
+vec3 warpHypersphereCore(vec3 p,int gi){
+  float r=length(p);
+  float mb=clamp(u_morphFactor*0.6+(u_dimension-3.0)*0.25,0.0,2.0);
+  float w=sin(r*(1.3+float(gi)*0.12)+u_time*0.0008*u_speed)*(0.4+mb*0.45);
+  vec4 p4=vec4(p*(1.0+mb*0.2),w);
+  p4=rotXY(u_rot4dXY)*p4;p4=rotXZ(u_rot4dXZ)*p4;p4=rotYZ(u_rot4dYZ)*p4;
+  p4=rotXW(u_rot4dXW)*p4;p4=rotYW(u_rot4dYW)*p4;p4=rotZW(u_rot4dZW)*p4;
+  return mix(p,project4Dto3D(p4),clamp(0.45+mb*0.35,0.0,1.0));
+}
+vec3 warpHypertetraCore(vec3 p,int gi){
+  vec3 c1=normalize(vec3(1,1,1)),c2=normalize(vec3(-1,-1,1)),c3=normalize(vec3(-1,1,-1)),c4=normalize(vec3(1,-1,-1));
+  float mb=clamp(u_morphFactor*0.8+(u_dimension-3.0)*0.2,0.0,2.0);
+  float bm=dot(p,c1)*0.14+dot(p,c2)*0.1+dot(p,c3)*0.08;
+  float w=sin(bm*5.5+u_time*0.0009*u_speed)*cos(dot(p,c4)*4.2-u_time*0.0007*u_speed)*(0.5+mb*0.4);
+  vec4 p4=vec4(p+vec3(dot(p,c1),dot(p,c2),dot(p,c3))*0.1*mb,w);
+  p4=rotXY(u_rot4dXY)*p4;p4=rotXZ(u_rot4dXZ)*p4;p4=rotYZ(u_rot4dYZ)*p4;
+  p4=rotXW(u_rot4dXW)*p4;p4=rotYW(u_rot4dYW)*p4;p4=rotZW(u_rot4dZW)*p4;
+  vec3 proj=project4Dto3D(p4);
+  float pi2=min(min(abs(dot(p,c1)),abs(dot(p,c2))),min(abs(dot(p,c3)),abs(dot(p,c4))));
+  vec3 bl=mix(p,proj,clamp(0.45+mb*0.35,0.0,1.0));
+  return mix(bl,bl*(1.0-pi2*0.55),0.2+mb*0.2);
+}
+vec3 applyCoreWarp(vec3 p,float gt){
+  int ci=int(clamp(floor(gt/8.0),0.0,2.0));
+  int gi=int(clamp(floor(mod(gt,8.0)+0.5),0.0,7.0));
+  if(ci==1)return warpHypersphereCore(p,gi);
+  if(ci==2)return warpHypertetraCore(p,gi);
+  return p;
+}
+
+// ── 8 Lattice Geometry Functions (real fract()-based patterns) ──
+float tetrahedronLattice(vec3 p,float gs){
+  vec3 q=fract(p*gs)-0.5;
+  float d1=length(q),d2=length(q-vec3(0.4,0,0)),d3=length(q-vec3(0,0.4,0)),d4=length(q-vec3(0,0,0.4));
+  float verts=1.0-smoothstep(0.0,0.04,min(min(d1,d2),min(d3,d4)));
+  float edges=max(max(1.0-smoothstep(0.0,0.02,abs(length(q.xy)-0.2)),1.0-smoothstep(0.0,0.02,abs(length(q.yz)-0.2))),1.0-smoothstep(0.0,0.02,abs(length(q.xz)-0.2)));
+  return max(verts,edges*0.5);
+}
+float hypercubeLattice(vec3 p,float gs){
+  vec3 grid=fract(p*gs);vec3 edges=min(grid,1.0-grid);
+  float minE=min(min(edges.x,edges.y),edges.z);
+  float lattice=1.0-smoothstep(0.0,0.03,minE);
+  vec3 centers=abs(grid-0.5);float maxC=max(max(centers.x,centers.y),centers.z);
+  return max(lattice*0.7,1.0-smoothstep(0.45,0.5,maxC));
+}
+float sphereLattice(vec3 p,float gs){
+  vec3 cell=fract(p*gs)-0.5;float sphere=1.0-smoothstep(0.15,0.25,length(cell));
+  float rr=length(cell.xy);
+  return max(sphere,max(1.0-smoothstep(0.0,0.02,abs(rr-0.3)),1.0-smoothstep(0.0,0.02,abs(rr-0.2)))*0.6);
+}
+float torusLattice(vec3 p,float gs){
+  vec3 cell=fract(p*gs)-0.5;
+  float td=length(vec2(length(cell.xy)-0.3,cell.z));
+  return max(1.0-smoothstep(0.08,0.12,td),0.0)+sin(atan(cell.y,cell.x)*8.0)*0.02;
+}
+float kleinLattice(vec3 p,float gs){
+  vec3 cell=fract(p*gs)-0.5;float u2=atan(cell.y,cell.x)/3.14159+1.0;float v2=cell.z+0.5;
+  vec3 kp=vec3((2.0+cos(u2*0.5))*cos(u2),(2.0+cos(u2*0.5))*sin(u2),sin(u2*0.5)+v2)*0.1;
+  return 1.0-smoothstep(0.1,0.15,length(cell-kp));
+}
+float fractalLattice(vec3 p,float gs){
+  vec3 cell=abs(fract(p*gs)*2.0-1.0);float dist=length(max(abs(cell)-0.3,0.0));
+  for(int i=0;i<3;i++){cell=abs(cell*2.0-1.0);dist=min(dist,length(max(abs(cell)-0.3,0.0))/pow(2.0,float(i+1)));}
+  return 1.0-smoothstep(0.0,0.05,dist);
+}
+float waveLattice(vec3 p,float gs){
+  float time=u_time*0.001*u_speed;vec3 cell=fract(p*gs)-0.5;
+  float interf=(sin(p.x*gs*2.0+time*2.0)+sin(p.y*gs*1.8+time*1.5)+sin(p.z*gs*2.2+time*1.8))/3.0;
+  return max(0.0,interf*(1.0-length(cell)*2.0));
+}
+float crystalLattice(vec3 p,float gs){
+  vec3 cell=fract(p*gs)-0.5;
+  float crystal=max(max(abs(cell.x)+abs(cell.y),abs(cell.y)+abs(cell.z)),abs(cell.x)+abs(cell.z));
+  crystal=1.0-smoothstep(0.3,0.4,crystal);
+  float faces=max(max(1.0-smoothstep(0.0,0.02,abs(abs(cell.x)-0.35)),1.0-smoothstep(0.0,0.02,abs(abs(cell.y)-0.35))),1.0-smoothstep(0.0,0.02,abs(abs(cell.z)-0.35)));
+  return max(crystal,faces*0.5);
+}
+
+float geometryFunction(vec4 p){
+  int gt=int(clamp(floor(mod(u_geometry,8.0)+0.5),0.0,7.0));
+  vec3 p3=project4Dto3D(p);
+  vec3 warped=applyCoreWarp(p3,u_geometry);
+  float gs=u_gridDensity*0.08;
+  if(gt==0)return tetrahedronLattice(warped,gs)*u_morphFactor;
+  if(gt==1)return hypercubeLattice(warped,gs)*u_morphFactor;
+  if(gt==2)return sphereLattice(warped,gs)*u_morphFactor;
+  if(gt==3)return torusLattice(warped,gs)*u_morphFactor;
+  if(gt==4)return kleinLattice(warped,gs)*u_morphFactor;
+  if(gt==5)return fractalLattice(warped,gs)*u_morphFactor;
+  if(gt==6)return waveLattice(warped,gs)*u_morphFactor;
+  return crystalLattice(warped,gs)*u_morphFactor;
+}
+
+// ── HSL to RGB ──
+vec3 hsl2rgb(float h,float s,float l){
+  float c=(1.0-abs(2.0*l-1.0))*s;float hp=h*6.0;float x=c*(1.0-abs(mod(hp,2.0)-1.0));float m=l-c*0.5;
+  vec3 rgb;
+  if(hp<1.0)rgb=vec3(c,x,0);else if(hp<2.0)rgb=vec3(x,c,0);
+  else if(hp<3.0)rgb=vec3(0,c,x);else if(hp<4.0)rgb=vec3(0,x,c);
+  else if(hp<5.0)rgb=vec3(x,0,c);else rgb=vec3(c,0,x);
+  return rgb+m;
+}
+
+// ── Per-Layer Color (from QuantumVisualizer.js getLayerColorPalette) ──
+vec3 getLayerColor(int li,float t){
+  float baseHue=u_hue;float sat=u_saturation;float hueOff=0.0,light=0.5;
+  if(li==0){hueOff=0.0;light=0.15;sat*=0.7;}
+  else if(li==1){hueOff=0.33;light=0.3;sat*=0.9;}
+  else if(li==2){hueOff=0.0;light=0.55;}
+  else if(li==3){hueOff=0.15;light=0.6;}
+  else{hueOff=0.67;light=0.5;}
+  return hsl2rgb(fract(baseHue+hueOff+sin(t*3.0)*0.05),sat,light);
+}
+
+void main(){
+  vec2 uv=(gl_FragCoord.xy-u_resolution.xy*0.5)/min(u_resolution.x,u_resolution.y);
+  float ts=u_time*0.0001*u_speed;
+  vec4 pos=vec4(uv*3.0,sin(ts*3.0),cos(ts*2.0));
+
+  // 6D rotation (XY->XZ->YZ->XW->YW->ZW)
+  pos=rotXY(u_rot4dXY)*pos;pos=rotXZ(u_rot4dXZ)*pos;pos=rotYZ(u_rot4dYZ)*pos;
+  pos=rotXW(u_rot4dXW)*pos;pos=rotYW(u_rot4dYW)*pos;pos=rotZW(u_rot4dZW)*pos;
+
+  float value=geometryFunction(pos);
+  value+=sin(pos.x*7.0)*cos(pos.y*11.0)*sin(pos.z*13.0)*u_chaos;
+
+  float gi=1.0-clamp(abs(value*0.8),0.0,1.0);
+  gi=pow(gi,1.5);
+  float ct=ts*2.0+value*3.0;
+
+  // ═════════════════════════════════════════════════════════════
+  // 5-LAYER COMPOSITE — single pass
+  // Production: 5 CSS-composited canvases per system
+  // bg(normal 0.4) | shadow(multiply 0.6) | content(normal 1.0)
+  // highlight(screen 0.8) | accent(overlay 0.3)
+  // ═════════════════════════════════════════════════════════════
+
+  // Layer 0: Background (normal, CSS opacity 0.4)
+  vec3 c0=getLayerColor(0,ct)*(0.3+gi*0.4);
+
+  // Layer 1: Shadow (multiply, CSS opacity 0.6)
+  float si=pow(1.0-gi,2.0);
+  vec3 c1=getLayerColor(1,ct)*(si*0.8+0.1);
+
+  // Layer 2: Content (normal, CSS opacity 1.0) + particles + RGB separation
+  vec3 c2=getLayerColor(2,ct)*(gi*1.2+0.2);
+  vec2 puv=uv*12.0;vec2 pid=floor(puv);vec2 pp=fract(puv)-0.5;
+  float pt=ts*20.0+dot(pid,vec2(127.1,311.7));
+  c2+=(1.0-smoothstep(0.05,0.2,length(pp)))*(sin(pt)*0.5+0.5)*0.4*hsl2rgb(fract(u_hue+0.15),u_saturation*0.5,0.85);
+  float dist=length(uv);float angle=atan(uv.y,uv.x);
+  c2.r+=sin(dist*30.0+angle*10.0+u_time*0.004)*gi*0.08;
+  c2.g+=cos(dist*25.0+angle*8.0+u_time*0.0035)*gi*0.06;
+  c2.b+=sin(dist*35.0+angle*12.0+u_time*0.0045)*gi*0.1;
+
+  // Layer 3: Highlight (screen, CSS opacity 0.8) + particles + lightning
+  float peak=pow(gi,3.0);
+  vec3 c3=getLayerColor(3,ct)*(peak*1.5+0.1);
+  vec2 hpuv=uv*20.0;vec2 hpid=floor(hpuv);vec2 hpp=fract(hpuv)-0.5;
+  float hpt=ts*50.0+dot(hpid,vec2(127.1,311.7));
+  c3+=(1.0-smoothstep(0.05,0.1,length(hpp)))*(sin(hpt)*0.5+0.5)*0.4*hsl2rgb(fract(u_hue+0.15),u_saturation*0.5,0.85);
+  float lightning=sin(uv.x*80.0+u_time*0.008)*cos(uv.y*60.0+u_time*0.006);
+  c3+=vec3(lightning*0.08,lightning*0.05,lightning*0.12)*gi;
+
+  // Layer 4: Accent (overlay, CSS opacity 0.3) + flicker
+  float rb=sin(value*50.0+ts*60.0)*0.5+0.5;
+  vec3 c4=getLayerColor(4,ct)*(rb*gi*2.0+0.05)*(1.0+sin(ts*120.0)*0.3);
+
+  // ── Composite with blend mode math ──
+  float a0=gi*u_intensity*0.6*0.4;
+  float a1=gi*u_intensity*0.4*0.6;
+  float a2=gi*u_intensity*1.0;
+  float a3=peak*u_intensity*0.8*0.8;
+  float a4=gi*u_intensity*0.3*0.3;
+
+  vec3 result=c0*a0;
+  result=mix(result,result*c1,clamp(a1,0.0,1.0));
+  result=mix(result,c2,clamp(a2,0.0,1.0));
+  vec3 screened=1.0-(1.0-result)*(1.0-c3);
+  result=mix(result,screened,clamp(a3,0.0,1.0));
+  vec3 overlayed=mix(2.0*result*c4,1.0-2.0*(1.0-result)*(1.0-c4),step(0.5,result));
+  result=mix(result,overlayed,clamp(a4,0.0,1.0));
+
+  gl_FragColor=vec4(clamp(result,0.0,1.0),1.0);
+}
+`;
+
+// ══════════════════════════════════════════════════════════════════════
+// WebGL Context Management
+// Mirrors SDK CanvasManager: create/destroy, force context loss
+// Max 2 active: 1 section + 1 card render (SDK allows 1 system at a time)
+// ══════════════════════════════════════════════════════════════════════
+
+function createGL(canvas){
+  const gl=canvas.getContext('webgl',{antialias:false,alpha:true,premultipliedAlpha:false});
+  if(!gl)return null;
+  function compile(t,s){const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS)){console.error('Shader:',gl.getShaderInfoLog(sh));return null}return sh}
+  const vs=compile(gl.VERTEX_SHADER,VERT),fs=compile(gl.FRAGMENT_SHADER,FRAG);
+  if(!vs||!fs)return null;
+  const prog=gl.createProgram();gl.attachShader(prog,vs);gl.attachShader(prog,fs);gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog,gl.LINK_STATUS)){console.error('Link:',gl.getProgramInfoLog(prog));return null}
+  gl.useProgram(prog);
+  const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+  const aPos=gl.getAttribLocation(prog,'a_pos');gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos,2,gl.FLOAT,false,0,0);
+  const u={};
+  ['u_time','u_resolution','u_hue','u_chaos','u_speed','u_intensity','u_morphFactor',
+   'u_gridDensity','u_dimension','u_saturation','u_geometry',
+   'u_rot4dXY','u_rot4dXZ','u_rot4dYZ','u_rot4dXW','u_rot4dYW','u_rot4dZW'
+  ].forEach(n=>u[n]=gl.getUniformLocation(prog,n));
+  return{gl,u,prog,buf};
+}
+
+function destroyGL(ctx){
+  if(!ctx)return;
+  try{
+    ctx.gl.deleteProgram(ctx.prog);
+    ctx.gl.deleteBuffer(ctx.buf);
+    const ext=ctx.gl.getExtension('WEBGL_lose_context');
+    if(ext)ext.loseContext();
+  }catch(_){}
+}
+
+function resizeCanvas(c){
+  const r=c.getBoundingClientRect();
+  const dpr=Math.min(window.devicePixelRatio,2);
+  c.width=r.width*dpr;
+  c.height=Math.max(r.height,200)*dpr;
+}
+
+function renderFrame(ctx,params,t){
+  if(!ctx)return;
+  const{gl,u}=ctx;
+  gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
+  gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.uniform1f(u.u_time,t);
+  gl.uniform2f(u.u_resolution,gl.canvas.width,gl.canvas.height);
+  gl.uniform1f(u.u_hue,(params.hue||0)/360.0);
+  gl.uniform1f(u.u_chaos,params.chaos||0);
+  gl.uniform1f(u.u_speed,params.speed||1);
+  gl.uniform1f(u.u_intensity,params.intensity||0.5);
+  gl.uniform1f(u.u_morphFactor,params.morphFactor!=null?params.morphFactor:1.0);
+  gl.uniform1f(u.u_gridDensity,params.gridDensity||20);
+  gl.uniform1f(u.u_dimension,params.dimension||3.8);
+  gl.uniform1f(u.u_saturation,params.saturation||0.5);
+  gl.uniform1f(u.u_geometry,params.geometry||0);
+  gl.uniform1f(u.u_rot4dXY,params.rot4dXY||0);
+  gl.uniform1f(u.u_rot4dXZ,params.rot4dXZ||0);
+  gl.uniform1f(u.u_rot4dYZ,params.rot4dYZ||0);
+  gl.uniform1f(u.u_rot4dXW,params.rot4dXW||0);
+  gl.uniform1f(u.u_rot4dYW,params.rot4dYW||0);
+  gl.uniform1f(u.u_rot4dZW,params.rot4dZW||0);
+  gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// Data
+// ══════════════════════════════════════════════════════════════════════
+
+const BOSS_PHASES={
+  1:{geometry:21,visual:{hue:0,chaos:0.6,gridDensity:40,dimension:3.3,speed:1.2,intensity:0.8,morphFactor:1.0,saturation:0.85,rot4dXW:0.5,rot4dYW:0,rot4dZW:1.8,rot4dXY:0,rot4dXZ:0,rot4dYZ:0}},
+  2:{geometry:13,visual:{hue:280,chaos:0.8,gridDensity:60,dimension:3.1,speed:1.0,intensity:0.7,morphFactor:1.2,saturation:0.9,rot4dXW:1.2,rot4dYW:0.8,rot4dZW:2.4,rot4dXY:0,rot4dXZ:0,rot4dYZ:0}},
+  3:{geometry:20,visual:{hue:15,chaos:1.0,gridDensity:80,dimension:3.0,speed:1.5,intensity:0.9,morphFactor:1.5,saturation:1.0,rot4dXW:2.0,rot4dYW:1.5,rot4dZW:3.0,rot4dXY:0,rot4dXZ:0,rot4dYZ:0}},
+};
+
+const STATUS_EFFECTS={
+  poison:{name:'Poison',icon:'\u2620',desc:'Toxic green fractal dissolution on hypersphere',geometry:13,hue:120,chaos:0.6,speed:1.5,morphFactor:1.2,intensity:0.7,gridDensity:35,dimension:3.4,saturation:0.9,rot4dXW:0.8,rot4dYW:0.3,rot4dZW:0.5,rarity:'RARE',system:'quantum'},
+  freeze:{name:'Freeze',icon:'\u2744',desc:'Pristine ice-blue crystalline lattice',geometry:15,hue:200,chaos:0.0,speed:0.1,morphFactor:1.0,intensity:0.8,gridDensity:80,dimension:3.8,saturation:0.5,rot4dXW:0.1,rot4dYW:0.0,rot4dZW:0.05,rarity:'COMMON',system:'faceted'},
+  fire:{name:'Fire',icon:'\uD83D\uDD25',desc:'Volatile orange fractal combustion',geometry:5,hue:15,chaos:0.8,speed:2.5,morphFactor:1.0,intensity:0.9,gridDensity:30,dimension:3.5,saturation:1.0,rot4dXW:1.5,rot4dYW:0.8,rot4dZW:1.2,rarity:'EPIC',system:'quantum'},
+  shield:{name:'Shield',icon:'\uD83D\uDEE1',desc:'Stable purple holographic sphere',geometry:10,hue:270,chaos:0.05,speed:0.3,morphFactor:1.0,intensity:0.6,gridDensity:20,dimension:3.2,saturation:0.7,rot4dXW:0.2,rot4dYW:0.15,rot4dZW:0.1,rarity:'COMMON',system:'holographic'},
+  haste:{name:'Haste',icon:'\u26A1',desc:'Rapid yellow wave patterns',geometry:6,hue:60,chaos:0.3,speed:3.0,morphFactor:1.0,intensity:0.85,gridDensity:15,dimension:3.6,saturation:0.8,rot4dXW:0.5,rot4dYW:1.0,rot4dZW:0.3,rarity:'RARE',system:'faceted'},
+  void:{name:'Void',icon:'\uD83C\uDF11',desc:'Deep purple hypertetra Klein bottle',geometry:20,hue:280,chaos:0.9,speed:0.5,morphFactor:1.8,intensity:0.3,gridDensity:50,dimension:3.0,saturation:0.6,rot4dXW:2.5,rot4dYW:1.8,rot4dZW:2.0,rarity:'MYTHIC',system:'quantum'},
+  rage:{name:'Rage',icon:'\uD83D\uDCA2',desc:'Blood-red hypertetra crystal lattice',geometry:23,hue:355,chaos:0.7,speed:2.2,morphFactor:1.5,intensity:0.95,gridDensity:45,dimension:3.2,saturation:1.0,rot4dXW:1.8,rot4dYW:1.2,rot4dZW:2.5,rarity:'LEGENDARY',system:'quantum'},
+  heal:{name:'Heal',icon:'\uD83D\uDC9A',desc:'Gentle green holographic sphere',geometry:10,hue:140,chaos:0.02,speed:0.4,morphFactor:1.0,intensity:0.7,gridDensity:18,dimension:3.8,saturation:0.6,rot4dXW:0.3,rot4dYW:0.2,rot4dZW:0.15,rarity:'COMMON',system:'holographic'},
+  clear:{name:'Clear',icon:'\u2728',desc:'Neutral state',geometry:2,hue:200,chaos:0.0,speed:0.5,morphFactor:1.0,intensity:0.5,gridDensity:20,dimension:3.8,saturation:0.5,rot4dXW:0.0,rot4dYW:0.0,rot4dZW:0.0,rarity:'COMMON',system:'faceted'},
+};
+
+const SCENES=[
+  {name:'Intro',geometry:2,hue:200,saturation:0.8,intensity:0.6,chaos:0,speed:0.5,gridDensity:10,dimension:3.8,morphFactor:1.0,rot4dXW:0,rot4dYW:0,rot4dZW:0,rot4dXY:0,rot4dXZ:0,rot4dYZ:0,start:0,end:8000,system:'quantum',desc:'Serene ocean sphere'},
+  {name:'Verse',geometry:1,hue:0,saturation:0,intensity:0.6,chaos:0,speed:0.5,gridDensity:20,dimension:4.0,morphFactor:1.0,rot4dXW:0.6,rot4dYW:0,rot4dZW:0,rot4dXY:0,rot4dXZ:0,rot4dYZ:0,start:8000,end:30000,system:'faceted',desc:'Monochrome tesseract'},
+  {name:'Chorus',geometry:11,hue:300,saturation:1.0,intensity:0.9,chaos:0.2,speed:1.5,gridDensity:40,dimension:3.5,morphFactor:1.0,rot4dXW:0,rot4dYW:0,rot4dZW:0,rot4dXY:0,rot4dXZ:0,rot4dYZ:0,start:30000,end:50000,system:'holographic',desc:'PEAK neon holographic torus'},
+  {name:'Bridge',geometry:21,hue:280,saturation:0.9,intensity:0.8,chaos:0,speed:1.0,gridDensity:30,dimension:3.5,morphFactor:1.0,rot4dXW:0,rot4dYW:0,rot4dZW:0,rot4dXY:0,rot4dXZ:0,rot4dYZ:0,start:50000,end:65000,system:'quantum',desc:'Cyberpunk breakdown'},
+  {name:'Outro',geometry:2,hue:200,saturation:0.8,intensity:0.8,chaos:0.05,speed:0.8,gridDensity:30,dimension:3.8,morphFactor:1.0,rot4dXW:0.6,rot4dYW:0,rot4dZW:0,rot4dXY:0,rot4dXZ:0,rot4dYZ:0,start:65000,end:80000,system:'quantum',desc:'Fade to silence'},
+];
+
+const PARAM_RANGES={geometry:{min:0,max:23,type:'int'},rot4dXY:{min:0,max:6.283,type:'float'},rot4dXZ:{min:0,max:6.283,type:'float'},rot4dYZ:{min:0,max:6.283,type:'float'},rot4dXW:{min:0,max:6.283,type:'float'},rot4dYW:{min:0,max:6.283,type:'float'},rot4dZW:{min:0,max:6.283,type:'float'},gridDensity:{min:4,max:100,type:'float'},morphFactor:{min:0.3,max:2,type:'float'},chaos:{min:0,max:1,type:'float'},speed:{min:0.1,max:3,type:'float'},hue:{min:0,max:360,type:'float'},intensity:{min:0.2,max:1,type:'float'},saturation:{min:0,max:1,type:'float'},dimension:{min:3.0,max:4.5,type:'float'}};
+const GEO_NAMES=['TETRAHEDRON','HYPERCUBE','SPHERE','TORUS','KLEIN BOTTLE','FRACTAL','WAVE','CRYSTAL'];
+const CORE_TYPES=['BASE','HYPERSPHERE','HYPERTETRA'];
+const SYSTEMS=['quantum','faceted','holographic'];
+const THEMES={deepSpace:{hue:[220,280],chaos:[0.1,0.3],speed:[0.2,0.5],intensity:[0.2,0.5],saturation:[0.5,0.8],dimension:[3.0,3.3]},lavaLamp:{hue:[0,30],chaos:[0.3,0.6],speed:[0.3,0.8],intensity:[0.6,0.9],saturation:[0.8,1.0],dimension:[3.3,3.8]},arctic:{hue:[180,210],chaos:[0.0,0.1],speed:[0.1,0.3],intensity:[0.7,0.9],saturation:[0.3,0.6],dimension:[3.5,4.2]},acid:{hue:[80,160],chaos:[0.5,1.0],speed:[1.5,3.0],intensity:[0.7,1.0],saturation:[0.9,1.0],dimension:[3.0,3.2]},meditation:{hue:[260,320],chaos:[0.0,0.05],speed:[0.1,0.3],intensity:[0.3,0.5],saturation:[0.3,0.5],dimension:[3.8,4.5]},storm:{hue:[200,240],chaos:[0.6,1.0],speed:[1.0,2.5],intensity:[0.3,0.7],saturation:[0.4,0.7],dimension:[3.0,3.4]},synthwave:{hue:[280,340],chaos:[0.1,0.3],speed:[0.5,1.0],intensity:[0.6,0.9],saturation:[0.7,1.0],dimension:[3.3,3.8]},nature:{hue:[80,160],chaos:[0.1,0.3],speed:[0.3,0.8],intensity:[0.4,0.7],saturation:[0.5,0.8],dimension:[3.5,4.0]}};
+
+function rr(a,b){return a+Math.random()*(b-a)}
+function ri(a,b){return Math.floor(a+Math.random()*(b-a+1))}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function gaussRand(m,s){return(m||0)+(s||1)*Math.sqrt(-2*Math.log(Math.random()))*Math.cos(2*Math.PI*Math.random())}
+function calcRarity(p){const e=Math.abs(p.rot4dXW||0)+Math.abs(p.rot4dYW||0)+Math.abs(p.rot4dZW||0)+(p.chaos||0)*2+Math.abs((p.dimension||3.8)-3.8);return e>8?'MYTHIC':e>6?'LEGENDARY':e>4?'EPIC':e>2?'RARE':'COMMON'}
+
+function genPreset(theme){
+  const t=theme&&THEMES[theme]?THEMES[theme]:null;
+  const p={system:SYSTEMS[ri(0,2)],timestamp:Date.now()};
+  for(const[k,r]of Object.entries(PARAM_RANGES)){
+    if(t&&t[k]){const[a,b]=t[k];p[k]=r.type==='int'?ri(a,b):rr(a,b)}
+    else p[k]=r.type==='int'?ri(r.min,r.max):rr(r.min,r.max);
+  }
+  const bg=p.geometry%8,ct=Math.floor(p.geometry/8);
+  p.name=GEO_NAMES[bg]+' '+CORE_TYPES[ct];p.rarity=calcRarity(p);
+  const parts=[];
+  if(p.speed>2)parts.push('high-energy');else if(p.speed>1)parts.push('dynamic');else if(p.speed>0.4)parts.push('gentle');else parts.push('near-frozen');
+  const h=p.hue;if(h<30||h>340)parts.push('red');else if(h<70)parts.push('golden');else if(h<150)parts.push('green');else if(h<210)parts.push('ocean-blue');else if(h<280)parts.push('violet');else parts.push('magenta');
+  if(p.chaos>0.7)parts.push('chaotic');else if(p.chaos>0.3)parts.push('turbulent');else if(p.chaos>0.05)parts.push('textured');else parts.push('pristine');
+  p.description=parts.join(', ');return p;
+}
+function mutatePreset(p,int2){
+  int2=int2||0.3;const m={...p,timestamp:Date.now()};
+  for(const[k,r]of Object.entries(PARAM_RANGES)){
+    if(k==='geometry'&&Math.random()>0.7){m.geometry=ri(r.min,r.max);continue}
+    const span=r.max-r.min;let nv=p[k]+gaussRand(0,span*int2*0.3);
+    nv=clamp(nv,r.min,r.max);m[k]=r.type==='int'?Math.round(nv):nv;
+  }
+  const bg=m.geometry%8,ct=Math.floor(m.geometry/8);
+  m.name=GEO_NAMES[bg]+' '+CORE_TYPES[ct];m.rarity=calcRarity(m);return m;
+}
+function crossbreedPreset(a,b,r){
+  r=r||0.5;const c={timestamp:Date.now()};
+  for(const[k,rng]of Object.entries(PARAM_RANGES))c[k]=rng.type==='int'?(Math.random()<r?b[k]:a[k]):(a[k]*(1-r)+b[k]*r);
+  c.system=Math.random()<r?b.system:a.system;
+  const bg=c.geometry%8,ct=Math.floor(c.geometry/8);
+  c.name=GEO_NAMES[bg]+' '+CORE_TYPES[ct];c.rarity=calcRarity(c);return c;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// Canvas Lifecycle — mirrors SDK CanvasManager
+// 1 active section context + 1 card render context = 2 max
+// Tab switch: destroyGL (force loseContext) then createGL on new tab
+// ══════════════════════════════════════════════════════════════════════
+
+let activeCtx=null,activeTab='boss',cardCtx=null;
+let bossState=null,bossPhase=1,bossHealth=100;
+let activeEffect=null;
+let musicPlaying=false,musicTime=0,musicStartT=0;
+let generatedCards=[];
+
+function activateTab(tab){
+  if(activeCtx){destroyGL(activeCtx);activeCtx=null}
+  activeTab=tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+tab));
+  const canvasId={boss:'boss-canvas',effects:'fx-canvas',music:'music-canvas'}[tab];
+  if(canvasId){const c=document.getElementById(canvasId);if(c){resizeCanvas(c);activeCtx=createGL(c)}}
+  if(tab==='boss'&&!bossState)setPhase(1);
+  if(tab==='effects')initEffects();
+  if(tab==='music')initMusic();
+  if(tab==='cards'){if(!cardCtx){cardCtx=createGL(document.getElementById('card-render'))}if(!generatedCards.length)generateCards()}
+}
+
+document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>activateTab(tab.dataset.tab))});
+
+// ══════════════════════════════════════════════════════════════════════
+// Boss Battle
+// ══════════════════════════════════════════════════════════════════════
+function setPhase(n){bossPhase=n;const p=BOSS_PHASES[n];bossState={...p.visual,geometry:p.geometry};document.querySelectorAll('.boss-phase-btns button').forEach(b=>b.classList.toggle('active',+b.dataset.phase===n));updateBossParams()}
+function updateBossParams(){if(!bossState)return;document.getElementById('boss-params').innerHTML=Object.entries(bossState).map(([k,v])=>`<span class="label">${k}</span> <span class="value">${typeof v==='number'?v.toFixed(3):v}</span>`).join('<br>')}
+function updateHealthBar(){
+  const pct=bossHealth;const fill=document.getElementById('health-fill');
+  fill.style.width=pct+'%';fill.style.background=pct>60?'linear-gradient(90deg,#00e676,#76ff03)':pct>30?'linear-gradient(90deg,#ffab00,#ff6d00)':'linear-gradient(90deg,#ff1744,#d50000)';
+  document.getElementById('health-label').textContent=pct+'%';document.getElementById('health-val').textContent=pct;
+  if(bossState){bossState.morphFactor=1.0+(1-pct/100)*1.0;bossState.chaos=BOSS_PHASES[bossPhase].visual.chaos+(1-pct/100)*0.4;updateBossParams()}
+}
+document.querySelectorAll('.boss-phase-btns button').forEach(b=>b.addEventListener('click',()=>setPhase(+b.dataset.phase)));
+document.getElementById('health-slider').addEventListener('input',function(){bossHealth=+this.value;updateHealthBar()});
+document.getElementById('btn-damage').addEventListener('click',()=>{bossHealth=Math.max(0,bossHealth-15);document.getElementById('health-slider').value=bossHealth;updateHealthBar()});
+document.getElementById('btn-victory').addEventListener('click',()=>{if(bossState){bossState.hue=50;bossState.saturation=1;bossState.intensity=1;bossState.chaos=0;bossState.speed=0.5;bossState.gridDensity=15;updateBossParams()}});
+document.getElementById('btn-reset').addEventListener('click',()=>{bossHealth=100;document.getElementById('health-slider').value=100;updateHealthBar();setPhase(1)});
+
+// ══════════════════════════════════════════════════════════════════════
+// Status Effects
+// ══════════════════════════════════════════════════════════════════════
+function initEffects(){
+  const grid=document.getElementById('effects-grid');if(grid.children.length>0)return;
+  for(const[key,fx]of Object.entries(STATUS_EFFECTS)){
+    const card=document.createElement('div');card.className='effect-card';card.dataset.effect=key;
+    const sc=fx.system==='quantum'?'sys-quantum':fx.system==='faceted'?'sys-faceted':'sys-holographic';
+    card.innerHTML=`<div class="effect-header"><span class="effect-icon">${fx.icon}</span><span class="effect-name">${fx.name}</span><span class="sys-label ${sc}">${fx.system}</span><span class="effect-rarity rarity-${fx.rarity}">${fx.rarity}</span></div><div class="effect-desc">${fx.desc}</div><div class="effect-params"><span>${fx.system}</span> | geo <span>${fx.geometry}</span> (${GEO_NAMES[fx.geometry%8]}) | hue <span>${fx.hue}</span> | chaos <span>${fx.chaos.toFixed(2)}</span></div>`;
+    card.addEventListener('click',()=>selectEffect(key));grid.appendChild(card);
+  }
+}
+function selectEffect(key){
+  activeEffect=STATUS_EFFECTS[key];
+  document.querySelectorAll('.effect-card').forEach(c=>c.classList.toggle('selected',c.dataset.effect===key));
+  const detail=document.getElementById('effect-detail');detail.style.display='block';
+  document.getElementById('effect-detail-title').textContent=activeEffect.name+' Effect Preview';
+  if(!activeCtx){const c=document.getElementById('fx-canvas');resizeCanvas(c);activeCtx=createGL(c)}
+  const fx=activeEffect;
+  document.getElementById('effect-params').innerHTML=`<span class="label">System</span> <span class="value">${fx.system}</span><br><span class="label">Geometry</span> <span class="value">${fx.geometry} (${GEO_NAMES[fx.geometry%8]} ${CORE_TYPES[Math.floor(fx.geometry/8)]})</span><br><span class="label">Hue</span> <span class="value">${fx.hue}</span><br><span class="label">Chaos</span> <span class="value">${fx.chaos.toFixed(3)}</span><br><span class="label">Speed</span> <span class="value">${fx.speed.toFixed(2)}</span><br><span class="label">MorphFactor</span> <span class="value">${fx.morphFactor.toFixed(2)}</span><br><span class="label">4D Rotation</span> <span class="value">XW=${fx.rot4dXW.toFixed(2)} YW=${fx.rot4dYW.toFixed(2)} ZW=${fx.rot4dZW.toFixed(2)}</span><br><span class="label">Rarity</span> <span class="value">${fx.rarity}</span>`;
+  detail.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// Music Video
+// ══════════════════════════════════════════════════════════════════════
+const sceneColors=['#0077be','#444','#ff00ff','#9333ea','#0077be'];
+function initMusic(){buildTimeline();buildSceneCards()}
+function buildTimeline(){const track=document.getElementById('timeline-track');if(track.children.length>1)return;SCENES.forEach((s,i)=>{const el=document.createElement('div');el.className='timeline-scene'+(i===0?' active':'');el.dataset.scene=i;el.style.width=((s.end-s.start)/80000*100).toFixed(2)+'%';el.style.background=sceneColors[i];el.innerHTML=`<span class="scene-label">${s.name}</span><span class="scene-system">${s.system}</span>`;el.addEventListener('click',()=>{musicTime=s.start});track.appendChild(el)})}
+function buildSceneCards(){const c=document.getElementById('scene-cards');if(c.children.length)return;SCENES.forEach((s,i)=>{const card=document.createElement('div');card.className='scene-card';card.id='scene-card-'+i;const dur=((s.end-s.start)/1000).toFixed(0);const sc=s.system==='quantum'?'sys-quantum':s.system==='faceted'?'sys-faceted':'sys-holographic';card.innerHTML=`<h3 style="color:${sceneColors[i]}">${s.name} (${dur}s) <span class="sys-label ${sc}">${s.system}</span></h3><div class="meta"><span class="tag">geo ${s.geometry} (${GEO_NAMES[s.geometry%8]})</span><br>${s.desc}</div>`;c.appendChild(card)})}
+document.getElementById('btn-play').addEventListener('click',()=>{if(!musicPlaying){musicPlaying=true;musicStartT=performance.now()-musicTime}else musicPlaying=false;document.getElementById('btn-play').textContent=musicPlaying?'\u23F8 Pause':'\u25B6 Play'});
+document.getElementById('btn-stop').addEventListener('click',()=>{musicPlaying=false;musicTime=0;document.getElementById('btn-play').textContent='\u25B6 Play'});
+function getActiveScene(t){for(let i=SCENES.length-1;i>=0;i--)if(t>=SCENES[i].start)return i;return 0}
+function formatTime(ms){const s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
+
+// ══════════════════════════════════════════════════════════════════════
+// Collectible Cards — shared offscreen GL context
+// ══════════════════════════════════════════════════════════════════════
+document.getElementById('btn-generate').addEventListener('click',generateCards);
+document.getElementById('btn-evolve').addEventListener('click',evolveCards);
+function generateCards(){const theme=document.getElementById('card-theme').value||null;const count=+document.getElementById('card-count').value||8;generatedCards=[];for(let i=0;i<count;i++)generatedCards.push(genPreset(theme));renderCardGallery()}
+function evolveCards(){const theme=document.getElementById('card-theme').value||null;const seed=genPreset(theme);const RS={COMMON:1,RARE:2,EPIC:3,LEGENDARY:4,MYTHIC:5};let pop=[seed];for(let gen=0;gen<3;gen++){const np=[];for(const m of pop)for(let i=0;i<5;i++)np.push(mutatePreset(m,0.1+gen*0.1));np.sort((a,b)=>(RS[b.rarity]||0)-(RS[a.rarity]||0));if(np.length>=2){np.push(crossbreedPreset(np[0],np[1],0.5));np.push(crossbreedPreset(np[0],np[1],0.3))}np.sort((a,b)=>(RS[b.rarity]||0)-(RS[a.rarity]||0));pop=np.slice(0,5)}generatedCards=pop;renderCardGallery()}
+function renderCardGallery(){
+  const gallery=document.getElementById('cards-gallery');gallery.innerHTML='';
+  const dist={COMMON:0,RARE:0,EPIC:0,LEGENDARY:0,MYTHIC:0};
+  if(!cardCtx){cardCtx=createGL(document.getElementById('card-render'))}
+  generatedCards.forEach((p,i)=>{
+    dist[p.rarity]=(dist[p.rarity]||0)+1;
+    const card=document.createElement('div');card.className='trading-card rarity-'+p.rarity;
+    card.innerHTML=`<div class="rarity-bar"></div><canvas id="card-2d-${i}" width="400" height="360"></canvas><div class="card-body"><div class="card-name">${p.name}</div><div class="card-desc">${p.description||''}</div><div class="card-footer"><span class="card-system">${p.system||''}</span><span class="effect-rarity rarity-${p.rarity}">${p.rarity}</span></div></div>`;
+    gallery.appendChild(card);
+  });
+  // Render each card via shared context -> drawImage
+  const t=performance.now();
+  generatedCards.forEach((p,i)=>{
+    if(!cardCtx)return;
+    renderFrame(cardCtx,p,t+i*1000);
+    const c2d=document.getElementById('card-2d-'+i);
+    if(c2d){const ctx2d=c2d.getContext('2d');ctx2d.drawImage(cardCtx.gl.canvas,0,0,c2d.width,c2d.height)}
+  });
+  const colors={COMMON:'var(--common)',RARE:'var(--rare)',EPIC:'var(--epic)',LEGENDARY:'var(--legendary)',MYTHIC:'var(--mythic)'};
+  document.getElementById('rarity-stats').innerHTML=['COMMON','RARE','EPIC','LEGENDARY','MYTHIC'].map(r=>`<div class="rarity-stat"><div class="count" style="color:${colors[r]}">${dist[r]||0}</div><div class="label">${r}</div></div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// Main Render Loop — only renders active tab
+// ══════════════════════════════════════════════════════════════════════
+function loop(now){
+  if(activeCtx){
+    if(activeTab==='boss'&&bossState)renderFrame(activeCtx,bossState,now);
+    if(activeTab==='effects'&&activeEffect)renderFrame(activeCtx,activeEffect,now);
+    if(activeTab==='music'){
+      if(musicPlaying){musicTime=performance.now()-musicStartT;if(musicTime>=80000){musicTime=0;musicStartT=performance.now()}}
+      const si=getActiveScene(musicTime);const scene=SCENES[si];
+      const sp=Math.min(1,(musicTime-scene.start)/Math.max(1,scene.end-scene.start));
+      const p={...scene};
+      if(si===0){p.gridDensity=10+sp*20;p.intensity=0.1+sp*0.5}
+      if(si===1){p.gridDensity=20+sp*40;p.rot4dXW=0.6+Math.sin(sp*Math.PI)*0.6}
+      if(si===2){p.speed=1.5+Math.sin(sp*Math.PI)*0.5;p.chaos=0.2+Math.sin(sp*Math.PI)*0.2;p.rot4dYW=sp*6.283}
+      if(si===3){p.chaos=Math.sin(sp*Math.PI)*0.8;p.morphFactor=1.0+Math.sin(sp*Math.PI*2)*0.5;p.rot4dXW=sp*6.283;p.rot4dZW=sp*3.14;p.gridDensity=30+Math.sin(sp*Math.PI)*50}
+      if(si===4){p.intensity=0.8*(1-sp*0.9);p.gridDensity=30-sp*22;p.speed=0.8-sp*0.6}
+      renderFrame(activeCtx,p,now);
+      document.getElementById('playhead').style.left=(musicTime/80000*100)+'%';
+      document.getElementById('playback-time').textContent=formatTime(musicTime)+' / 1:20';
+      document.querySelectorAll('.timeline-scene').forEach((el,i)=>el.classList.toggle('active',i===si));
+      document.querySelectorAll('.scene-card').forEach((el,i)=>el.classList.toggle('active',i===si));
+    }
+  }
+  // Cards: re-render with animation via shared offscreen context
+  if(activeTab==='cards'&&cardCtx&&generatedCards.length){
+    generatedCards.forEach((p,i)=>{
+      renderFrame(cardCtx,p,now+i*2000);
+      const c2d=document.getElementById('card-2d-'+i);
+      if(c2d){const ctx2d=c2d.getContext('2d');if(ctx2d)ctx2d.drawImage(cardCtx.gl.canvas,0,0,c2d.width,c2d.height)}
+    });
+  }
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener('resize',()=>{
+  if(activeCtx&&activeTab!=='cards'){
+    const canvasId={boss:'boss-canvas',effects:'fx-canvas',music:'music-canvas'}[activeTab];
+    if(canvasId){const c=document.getElementById(canvasId);if(c)resizeCanvas(c)}
+  }
+});
+
+setTimeout(()=>{activateTab('boss');requestAnimationFrame(loop)},50);
+</script>
+</body>
+</html>

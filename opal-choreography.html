@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIB3+ Opal Choreography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 300vh; overflow-x: hidden; background: #000; }
+  canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: block; }
+  #info {
+    position: fixed; bottom: 20px; left: 20px; color: rgba(255,255,255,0.4);
+    font: 12px/1.4 monospace; pointer-events: none; z-index: 10;
+  }
+  #info span { color: rgba(200,180,255,0.6); }
+</style>
+</head>
+<body>
+<canvas id="opal"></canvas>
+<div id="info">
+  VIB3+ Opal Choreography<br>
+  Scroll for depth &middot; Move mouse to rotate hyperspace &middot; Click for fire flash<br>
+  <span id="state"></span>
+</div>
+<script>
+// ============================================================================
+// VIB3+ Opal Choreography - Self-Contained 4D Visualization
+// Implements real VIB3 math: 6-plane 4D rotation, perspective projection,
+// 3 geometry variants, opalescent color cycling, scroll/mouse/click reactivity
+// ============================================================================
+
+const canvas = document.getElementById('opal');
+const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+if (!gl) { document.body.innerHTML = '<h1 style="color:#fff;padding:2em">WebGL required</h1>'; }
+
+// --- Shader Sources ---
+
+const VERT = `
+attribute vec2 a_position;
+void main() { gl_Position = vec4(a_position, 0.0, 1.0); }
+`;
+
+const FRAG = `
+precision highp float;
+
+uniform float u_time;
+uniform vec2  u_resolution;
+
+// 6D rotation (radians)
+uniform float u_rot4dXY, u_rot4dXZ, u_rot4dYZ;
+uniform float u_rot4dXW, u_rot4dYW, u_rot4dZW;
+
+// Visual params
+uniform float u_gridDensity;   // 4-60
+uniform float u_morphFactor;   // 0-2
+uniform float u_chaos;         // 0-1
+uniform float u_speed;         // 0.1-3
+uniform float u_hue;           // 0-360
+uniform float u_intensity;     // 0-1
+uniform float u_dimension;     // 3.0-4.5
+uniform float u_geometry;      // 0, 1, or 2 for our three variants
+
+// ---- 6D Rotation Matrices (from VIB3 FacetedSystem.js) ----
+
+mat4 rotateXY(float t) {
+    float c=cos(t), s=sin(t);
+    return mat4(c,-s,0,0, s,c,0,0, 0,0,1,0, 0,0,0,1);
+}
+mat4 rotateXZ(float t) {
+    float c=cos(t), s=sin(t);
+    return mat4(c,0,s,0, 0,1,0,0, -s,0,c,0, 0,0,0,1);
+}
+mat4 rotateYZ(float t) {
+    float c=cos(t), s=sin(t);
+    return mat4(1,0,0,0, 0,c,-s,0, 0,s,c,0, 0,0,0,1);
+}
+mat4 rotateXW(float t) {
+    float c=cos(t), s=sin(t);
+    return mat4(c,0,0,-s, 0,1,0,0, 0,0,1,0, s,0,0,c);
+}
+mat4 rotateYW(float t) {
+    float c=cos(t), s=sin(t);
+    return mat4(1,0,0,0, 0,c,0,-s, 0,0,1,0, 0,s,0,c);
+}
+mat4 rotateZW(float t) {
+    float c=cos(t), s=sin(t);
+    return mat4(1,0,0,0, 0,1,0,0, 0,0,c,-s, 0,0,s,c);
+}
+
+// ---- 4D -> 3D Perspective Projection (from VIB3 core) ----
+
+vec3 project4D(vec4 p, float dim) {
+    float w = dim / (dim + p.w);
+    return p.xyz * w;
+}
+
+// ---- Geometry Functions (simplified from VIB3 24-geometry system) ----
+
+// Variant 0: Hypercube lattice (geometry 1 from VIB3)
+float hypercubeLattice(vec4 p, float d) {
+    vec4 pos = fract(p * d * 0.08);
+    vec4 dist = min(pos, 1.0 - pos);
+    float minDist = min(min(dist.x, dist.y), min(dist.z, dist.w));
+    return minDist * u_morphFactor;
+}
+
+// Variant 1: Sphere lattice (geometry 2 from VIB3)
+float sphereLattice(vec4 p, float d) {
+    float r = length(p);
+    float density = d * 0.08;
+    float spheres = abs(fract(r * density) - 0.5) * 2.0;
+    float theta = atan(p.y, p.x);
+    float harmonics = sin(theta * 5.0 + u_time * 0.0003) * 0.15;
+    return (spheres + harmonics) * u_morphFactor;
+}
+
+// Variant 2: Crystal lattice (geometry 7 from VIB3)
+float crystalLattice(vec4 p, float d) {
+    vec4 pos = fract(p * d * 0.08) - 0.5;
+    float cube = max(max(abs(pos.x), abs(pos.y)), max(abs(pos.z), abs(pos.w)));
+    float facets = sin(pos.x * 20.0) * sin(pos.y * 20.0) * 0.06;
+    return (cube + facets) * u_morphFactor;
+}
+
+float geometryFunction(vec4 p) {
+    float d = u_gridDensity;
+    int g = int(floor(u_geometry + 0.5));
+    if (g == 0) return hypercubeLattice(p, d);
+    if (g == 1) return sphereLattice(p, d);
+    return crystalLattice(p, d);
+}
+
+// ---- Hypersphere Core Warp (from VIB3 warpHypersphereCore) ----
+
+vec3 warpHypersphere(vec3 p) {
+    float radius = length(p);
+    float morphBlend = clamp(u_morphFactor * 0.6 + (u_dimension - 3.0) * 0.25, 0.0, 2.0);
+    float w = sin(radius * 1.42 + u_time * 0.0008 * u_speed) * (0.4 + morphBlend * 0.45);
+
+    vec4 p4d = vec4(p * (1.0 + morphBlend * 0.2), w);
+    p4d = rotateXY(u_rot4dXY) * p4d;
+    p4d = rotateXZ(u_rot4dXZ) * p4d;
+    p4d = rotateYZ(u_rot4dYZ) * p4d;
+    p4d = rotateXW(u_rot4dXW) * p4d;
+    p4d = rotateYW(u_rot4dYW) * p4d;
+    p4d = rotateZW(u_rot4dZW) * p4d;
+
+    vec3 projected = project4D(p4d, u_dimension);
+    return mix(p, projected, clamp(0.45 + morphBlend * 0.35, 0.0, 1.0));
+}
+
+// ---- HSL to RGB ----
+
+vec3 hsl2rgb(float h, float s, float l) {
+    float c = (1.0 - abs(2.0 * l - 1.0)) * s;
+    float hp = h * 6.0;
+    float x = c * (1.0 - abs(mod(hp, 2.0) - 1.0));
+    float m = l - c * 0.5;
+    vec3 rgb;
+    if      (hp < 1.0) rgb = vec3(c, x, 0.0);
+    else if (hp < 2.0) rgb = vec3(x, c, 0.0);
+    else if (hp < 3.0) rgb = vec3(0.0, c, x);
+    else if (hp < 4.0) rgb = vec3(0.0, x, c);
+    else if (hp < 5.0) rgb = vec3(x, 0.0, c);
+    else               rgb = vec3(c, 0.0, x);
+    return rgb + m;
+}
+
+// ---- Main Fragment Shader ----
+
+void main() {
+    vec2 uv = (gl_FragCoord.xy - u_resolution * 0.5) / min(u_resolution.x, u_resolution.y);
+    float t = u_time * 0.0001 * u_speed;
+
+    // Create 4D point
+    vec4 pos = vec4(uv * 3.0, sin(t * 3.0) * 0.8, cos(t * 2.0) * 0.8);
+
+    // Apply full 6D rotation (VIB3 rotation order: XY->XZ->YZ->XW->YW->ZW)
+    pos = rotateXY(u_rot4dXY) * pos;
+    pos = rotateXZ(u_rot4dXZ) * pos;
+    pos = rotateYZ(u_rot4dYZ) * pos;
+    pos = rotateXW(u_rot4dXW) * pos;
+    pos = rotateYW(u_rot4dYW) * pos;
+    pos = rotateZW(u_rot4dZW) * pos;
+
+    // 4D -> 3D perspective projection
+    vec3 basePoint = project4D(pos, u_dimension);
+
+    // Apply hypersphere core warp
+    vec3 warped = warpHypersphere(basePoint);
+
+    // Evaluate geometry on warped 4D position
+    vec4 warpedPos = vec4(warped, pos.w);
+    float value = geometryFunction(warpedPos);
+
+    // Chaos noise
+    float noise = sin(pos.x * 7.0) * cos(pos.y * 11.0) * sin(pos.z * 13.0);
+    value += noise * u_chaos;
+
+    // Geometry intensity
+    float geomIntensity = 1.0 - clamp(abs(value), 0.0, 1.0);
+    geomIntensity = pow(geomIntensity, 1.3);
+
+    // ---- Opalescent Color System ----
+    // Multi-hue iridescence: cycle through opal fire colors
+    float baseHue = u_hue / 360.0;
+    float iridescence = sin(value * 12.0 + t * 2.0) * 0.08;
+    float depthShift = length(uv) * 0.05;
+    float angleShift = atan(uv.y, uv.x) * 0.02;
+
+    // Primary opal color
+    float h1 = fract(baseHue + iridescence + depthShift);
+    vec3 opal1 = hsl2rgb(h1, 0.7, 0.45 + geomIntensity * 0.35);
+
+    // Secondary fire color (shifted)
+    float h2 = fract(baseHue + 0.15 + iridescence * 1.3 + angleShift);
+    vec3 opal2 = hsl2rgb(h2, 0.85, 0.5 + geomIntensity * 0.3);
+
+    // Pearlescent undertone (desaturated, bright)
+    float h3 = fract(baseHue + 0.35 + depthShift * 0.5);
+    vec3 pearl = hsl2rgb(h3, 0.25, 0.7 + geomIntensity * 0.2);
+
+    // Blend layers: geometry drives which color dominates
+    float blend1 = smoothstep(0.3, 0.7, geomIntensity);
+    float blend2 = smoothstep(0.5, 0.9, geomIntensity);
+    vec3 color = mix(opal1, opal2, blend1);
+    color = mix(color, pearl, blend2 * 0.4);
+
+    // Fire flash from chaos
+    float fireFlash = u_chaos * smoothstep(0.5, 1.0, geomIntensity);
+    vec3 fire = hsl2rgb(fract(baseHue + 0.08), 1.0, 0.7);
+    color += fire * fireFlash * 0.6;
+
+    // Holographic shimmer
+    float shimmer = sin(uv.x * 25.0 + t * 5.0) * cos(uv.y * 20.0 + t * 3.5) * 0.06;
+    color += vec3(shimmer) * geomIntensity;
+
+    // Apply intensity
+    color *= u_intensity;
+
+    // Soft vignette
+    float vignette = 1.0 - length(uv) * 0.4;
+    color *= vignette;
+
+    gl_FragColor = vec4(color, 1.0);
+}
+`;
+
+// --- WebGL Setup ---
+
+function compileShader(gl, type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        console.error('Shader error:', gl.getShaderInfoLog(s));
+        return null;
+    }
+    return s;
+}
+
+const vs = compileShader(gl, gl.VERTEX_SHADER, VERT);
+const fs = compileShader(gl, gl.FRAGMENT_SHADER, FRAG);
+const prog = gl.createProgram();
+gl.attachShader(prog, vs);
+gl.attachShader(prog, fs);
+gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+    console.error('Link error:', gl.getProgramInfoLog(prog));
+}
+
+// Fullscreen quad
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+
+// Cache uniform locations
+const loc = {};
+const unifNames = [
+    'u_time','u_resolution',
+    'u_rot4dXY','u_rot4dXZ','u_rot4dYZ','u_rot4dXW','u_rot4dYW','u_rot4dZW',
+    'u_gridDensity','u_morphFactor','u_chaos','u_speed',
+    'u_hue','u_intensity','u_dimension','u_geometry'
+];
+unifNames.forEach(n => { loc[n] = gl.getUniformLocation(prog, n); });
+
+// --- State ---
+
+const state = {
+    // Opalescent hue sequence: 180 -> 220 -> 280 -> 330 -> 200
+    hueKeyframes: [180, 220, 280, 330, 200],
+    hue: 200,
+    gridDensity: 15,
+    morphFactor: 1.0,
+    chaos: 0.15,
+    speed: 0.8,
+    intensity: 0.75,
+    dimension: 3.5,
+    geometry: 0,
+
+    // 6D rotation (mouse-driven for XW, YW)
+    rot4dXY: 0, rot4dXZ: 0, rot4dYZ: 0,
+    rot4dXW: 0, rot4dYW: 0, rot4dZW: 0,
+
+    // Interaction state
+    mouseX: 0.5,
+    mouseY: 0.5,
+    scrollY: 0,
+    maxScroll: 1,
+    clickChaos: 0,
+    clickDecayStart: 0,
+    baseChaos: 0.15,
+
+    // Evolution cycle
+    cycleTime: 0,
+    cyclePhase: 0
+};
+
+// --- Input Handlers ---
+
+document.addEventListener('mousemove', (e) => {
+    state.mouseX = e.clientX / window.innerWidth;
+    state.mouseY = e.clientY / window.innerHeight;
+});
+
+document.addEventListener('touchmove', (e) => {
+    if (e.touches.length > 0) {
+        state.mouseX = e.touches[0].clientX / window.innerWidth;
+        state.mouseY = e.touches[0].clientY / window.innerHeight;
+    }
+}, { passive: true });
+
+window.addEventListener('scroll', () => {
+    state.scrollY = window.scrollY;
+    state.maxScroll = document.body.scrollHeight - window.innerHeight;
+});
+
+document.addEventListener('click', () => {
+    state.clickChaos = 0.8;
+    state.clickDecayStart = performance.now();
+});
+
+document.addEventListener('touchstart', () => {
+    state.clickChaos = 0.8;
+    state.clickDecayStart = performance.now();
+}, { passive: true });
+
+// --- Resize ---
+
+function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+}
+window.addEventListener('resize', resize);
+resize();
+
+// --- 2000ms Evolution Cycle ---
+
+function updateEvolution(now) {
+    // 2-second cycle
+    const cycleMs = 2000;
+    state.cycleTime = (now % cycleMs) / cycleMs; // 0->1 over 2s
+    state.cyclePhase = Math.floor(now / cycleMs) % 5; // which hue keyframe
+
+    // Hue: interpolate between keyframes
+    const hues = state.hueKeyframes;
+    const fromHue = hues[state.cyclePhase];
+    const toHue = hues[(state.cyclePhase + 1) % hues.length];
+    // Smooth interpolation with easeInOut
+    const t = state.cycleTime;
+    const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+    // Handle hue wrapping
+    let diff = toHue - fromHue;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+    state.hue = ((fromHue + diff * ease) % 360 + 360) % 360;
+
+    // MorphFactor: gentle breathing pulse (0.8 -> 1.3)
+    state.morphFactor = 1.05 + Math.sin(t * Math.PI * 2) * 0.25;
+
+    // GridDensity breathing (subtle, around base from scroll)
+    const scrollGridBase = 4 + (state.scrollY / Math.max(1, state.maxScroll)) * 56;
+    state.gridDensity = scrollGridBase + Math.sin(t * Math.PI * 2 + 0.5) * 3;
+
+    // Slow auto-rotation in XY and ZW planes
+    state.rot4dXY = now * 0.00008;
+    state.rot4dZW = now * 0.00012;
+
+    // Geometry cycles every 3 evolution phases (6 seconds)
+    state.geometry = Math.floor(now / 6000) % 3;
+}
+
+// --- Scroll Mapping ---
+
+function updateScrollParams() {
+    const scrollNorm = state.scrollY / Math.max(1, state.maxScroll); // 0->1
+
+    // Dimension: 3.0 -> 4.5 as you scroll deeper
+    state.dimension = 3.0 + scrollNorm * 1.5;
+
+    // Intensity increases slightly with depth
+    state.intensity = 0.65 + scrollNorm * 0.25;
+
+    // Speed slightly increases with depth
+    state.speed = 0.6 + scrollNorm * 0.8;
+}
+
+// --- Mouse -> Hyperspace Rotation ---
+
+function updateMouseRotation() {
+    // Mouse X -> rot4dYW (left-right = Y-W hyperplane rotation)
+    // Mouse Y -> rot4dXW (up-down = X-W hyperplane rotation)
+    const targetYW = (state.mouseX - 0.5) * Math.PI * 1.5;
+    const targetXW = (state.mouseY - 0.5) * Math.PI * 1.5;
+
+    // Smooth interpolation
+    state.rot4dYW += (targetYW - state.rot4dYW) * 0.06;
+    state.rot4dXW += (targetXW - state.rot4dXW) * 0.06;
+
+    // Subtle YZ rotation from mouse for parallax feel
+    state.rot4dYZ = Math.sin(state.mouseX * Math.PI) * 0.15;
+    state.rot4dXZ = Math.sin(state.mouseY * Math.PI) * 0.15;
+}
+
+// --- Click Chaos Decay ---
+
+function updateClickChaos(now) {
+    if (state.clickChaos > state.baseChaos) {
+        const elapsed = now - state.clickDecayStart;
+        const decay = Math.max(0, 1.0 - elapsed / 500);
+        state.chaos = state.baseChaos + (0.8 - state.baseChaos) * decay;
+        if (decay <= 0) state.clickChaos = 0;
+    } else {
+        // Gentle chaos breathing
+        state.chaos = state.baseChaos + Math.sin(now * 0.001) * 0.05;
+    }
+}
+
+// --- Render Loop ---
+
+function render(now) {
+    updateEvolution(now);
+    updateScrollParams();
+    updateMouseRotation();
+    updateClickChaos(now);
+
+    gl.useProgram(prog);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    // Set uniforms
+    gl.uniform1f(loc.u_time, now);
+    gl.uniform2f(loc.u_resolution, canvas.width, canvas.height);
+
+    gl.uniform1f(loc.u_rot4dXY, state.rot4dXY);
+    gl.uniform1f(loc.u_rot4dXZ, state.rot4dXZ);
+    gl.uniform1f(loc.u_rot4dYZ, state.rot4dYZ);
+    gl.uniform1f(loc.u_rot4dXW, state.rot4dXW);
+    gl.uniform1f(loc.u_rot4dYW, state.rot4dYW);
+    gl.uniform1f(loc.u_rot4dZW, state.rot4dZW);
+
+    gl.uniform1f(loc.u_gridDensity, state.gridDensity);
+    gl.uniform1f(loc.u_morphFactor, state.morphFactor);
+    gl.uniform1f(loc.u_chaos, state.chaos);
+    gl.uniform1f(loc.u_speed, state.speed);
+    gl.uniform1f(loc.u_hue, state.hue);
+    gl.uniform1f(loc.u_intensity, state.intensity);
+    gl.uniform1f(loc.u_dimension, state.dimension);
+    gl.uniform1f(loc.u_geometry, state.geometry);
+
+    // Draw
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    const posLoc = gl.getAttribLocation(prog, 'a_position');
+    gl.enableVertexAttribArray(posLoc);
+    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    // HUD
+    const scrollPct = Math.round((state.scrollY / Math.max(1, state.maxScroll)) * 100);
+    const geomNames = ['Hypercube', 'Sphere', 'Crystal'];
+    document.getElementById('state').textContent =
+        `Hue: ${Math.round(state.hue)}  Dim: ${state.dimension.toFixed(2)}  Grid: ${state.gridDensity.toFixed(0)}  `+
+        `Geom: ${geomNames[state.geometry]}  Scroll: ${scrollPct}%  `+
+        `4D Rot: XW=${state.rot4dXW.toFixed(2)} YW=${state.rot4dYW.toFixed(2)}`;
+
+    requestAnimationFrame(render);
+}
+
+requestAnimationFrame(render);
+</script>
+</body>
+</html>
