@@ -173,10 +173,13 @@ export class MCPServer {
                     result = this.getParameterSchema();
                     break;
                 case 'get_sdk_context':
-                    result = this.getSDKContext();
+                    result = this.getSDKContext(args);
                     break;
-                case 'verify_knowledge':
-                    result = this.verifyKnowledge(args);
+                case 'inspect_layers':
+                    result = this.inspectLayers(args);
+                    break;
+                case 'set_holographic_layer':
+                    result = this.setHolographicLayer(args);
                     break;
                 // Reactivity tools (Phase 6.5)
                 case 'set_reactivity_config':
@@ -650,162 +653,218 @@ export class MCPServer {
     /**
      * Get SDK context for agent onboarding
      */
-    getSDKContext() {
+    getSDKContext(args = {}) {
+        const { include_state = true, include_tools = false } = args;
+
+        const context = {
+            sdk: 'VIB3+ 4D Visualization Engine',
+            version: '2.0.3',
+
+            // Capability manifest — what this engine can do
+            capabilities: {
+                systems: ['quantum', 'faceted', 'holographic'],
+                geometries: { count: 24, formula: 'core_type * 8 + base_geometry', base: 8, warps: 3 },
+                rotation: { planes: 6, '3D': ['XY', 'XZ', 'YZ'], '4D': ['XW', 'YW', 'ZW'], range: '±6.28 rad' },
+                layers: { count: 5, roles: ['background', 'shadow', 'content', 'highlight', 'accent'], addressable: true },
+                audio: { bands: ['bass', 'mid', 'high'], modes: ['add', 'multiply', 'replace', 'max', 'min'] },
+                input: { sources: ['deviceTilt', 'mousePosition', 'gyroscope', 'gamepad', 'perspective', 'programmatic', 'audio', 'midi'] },
+                creative: {
+                    color_presets: 22,
+                    easing_functions: 14,
+                    post_effects: 14,
+                    aesthetic_keywords: '130+',
+                    choreography: true,
+                    timeline_bpm_sync: true
+                },
+                environment: {
+                    browser: typeof document !== 'undefined',
+                    screenshot: typeof document !== 'undefined',
+                    webgpu: typeof navigator !== 'undefined' && !!navigator.gpu,
+                    wasm: typeof WebAssembly !== 'undefined'
+                }
+            },
+
+            // Parameter ranges — the agent needs these to generate valid values
+            parameter_ranges: {
+                geometry: { min: 0, max: 23, type: 'integer' },
+                hue: { min: 0, max: 360, type: 'integer' },
+                saturation: { min: 0, max: 1 },
+                intensity: { min: 0, max: 1 },
+                speed: { min: 0.1, max: 3 },
+                chaos: { min: 0, max: 1 },
+                morphFactor: { min: 0, max: 2 },
+                gridDensity: { min: 4, max: 100 },
+                dimension: { min: 3.0, max: 4.5 },
+                rot4dXY: { min: -6.28, max: 6.28 },
+                rot4dXW: { min: -6.28, max: 6.28 }
+            },
+
+            // Workflow hints — what tool sequences accomplish creative goals
+            workflows: {
+                quick_design: 'design_from_description → describe_visual_state → batch_set_parameters',
+                choreography: 'create_choreography → play_choreography → describe_visual_state',
+                evolve: 'batch_set_parameters → describe_visual_state → batch_set_parameters (iterate)',
+                layer_control: 'inspect_layers → set_holographic_layer → inspect_layers',
+                audio_reactive: 'configure_audio_band → apply_behavior_preset → describe_visual_state'
+            },
+
+            // Geometry quick-reference
+            geometry_map: {
+                'sphere': 2, 'hypersphere+sphere': 10, 'hypertetra+sphere': 18,
+                'torus': 3, 'hypersphere+torus': 11, 'hypertetra+torus': 19,
+                'fractal': 5, 'hypersphere+fractal': 13, 'hypertetra+fractal': 21,
+                'crystal': 7, 'wave': 6, 'klein_bottle': 4, 'hypercube': 1, 'tetrahedron': 0
+            }
+        };
+
+        if (include_state) {
+            context.current_state = this.getState();
+        }
+
+        if (include_tools) {
+            context.tool_summary = Object.entries(toolDefinitions).map(([name, def]) => ({
+                name,
+                description: def.description.split('.')[0] // First sentence only
+            }));
+        }
+
+        return context;
+    }
+
+    /**
+     * Inspect holographic layer state — returns per-layer metadata in JSON format.
+     * This replaces the old verify_knowledge quiz with something actually useful.
+     */
+    inspectLayers(args = {}) {
+        const { layer = 'all' } = args;
+
+        const systemName = this.engine?.currentSystemName || 'unknown';
+        const isHolographic = systemName === 'holographic';
+
+        if (!isHolographic) {
+            return {
+                system: systemName,
+                note: 'Layer inspection is most detailed for the holographic system (5 independent canvas layers). Switch with switch_system("holographic").',
+                layers: [{
+                    role: 'main',
+                    system: systemName,
+                    opacity: 1.0,
+                    enabled: true,
+                    description: `Single canvas for ${systemName} system`
+                }],
+                suggested_next_actions: ['switch_system', 'describe_visual_state']
+            };
+        }
+
+        // Build layer metadata from the holographic system
+        const system = this.engine?.currentSystem;
+        const layerRoles = ['background', 'shadow', 'content', 'highlight', 'accent'];
+        const defaultConfigs = {
+            background: { densityMult: 0.4, speedMult: 0.2, colorShift: 0, intensity: 0.2, reactivity: 0.5 },
+            shadow:     { densityMult: 0.8, speedMult: 0.3, colorShift: 180, intensity: 0.4, reactivity: 0.7 },
+            content:    { densityMult: 1.0, speedMult: 1.0, colorShift: 0, intensity: 1.0, reactivity: 0.9 },
+            highlight:  { densityMult: 1.5, speedMult: 0.8, colorShift: 60, intensity: 0.6, reactivity: 1.1 },
+            accent:     { densityMult: 2.5, speedMult: 0.4, colorShift: 300, intensity: 0.3, reactivity: 1.5 }
+        };
+
+        const buildLayerInfo = (role) => {
+            const config = defaultConfigs[role] || {};
+            const visualizer = system?.visualizers?.find?.(v => v?.role === role);
+            const overrides = this._layerOverrides?.get(role) || {};
+
+            return {
+                role,
+                enabled: overrides.enabled !== undefined ? overrides.enabled : true,
+                opacity: overrides.opacity !== undefined ? overrides.opacity : 1.0,
+                blendMode: overrides.blendMode || 'normal',
+                densityMult: overrides.densityMult ?? config.densityMult,
+                speedMult: overrides.speedMult ?? config.speedMult,
+                colorShift: overrides.colorShift ?? config.colorShift,
+                intensity: overrides.intensity ?? config.intensity,
+                reactivity: overrides.reactivity ?? config.reactivity,
+                has_visualizer: !!visualizer
+            };
+        };
+
+        const layers = layer === 'all'
+            ? layerRoles.map(buildLayerInfo)
+            : [buildLayerInfo(layer)];
+
         return {
-            sdk_name: 'VIB3+ SDK',
-            version: '1.9.0',
-            purpose: 'General-purpose 4D rotation visualization SDK for plugins, extensions, wearables, and agentic use',
-
-            quick_reference: {
-                active_visualization_systems: 3,
-                placeholder_systems: 1,
-                rotation_planes: 6,
-                base_geometries: 8,
-                core_warp_types: 3,
-                total_geometries: 24,
-                canvas_layers_per_system: 5
-            },
-
-            systems: {
-                ACTIVE: [
-                    { name: 'quantum', description: 'Complex quantum lattice visualizations with 24 geometries' },
-                    { name: 'faceted', description: 'Clean 2D geometric patterns with 4D rotation' },
-                    { name: 'holographic', description: '5-layer audio-reactive holographic effects' }
-                ],
-                PLACEHOLDER_TBD: [
-                    { name: 'polychora', status: 'TBD', description: '4D polytopes - placeholder, not production ready' }
-                ]
-            },
-
-            geometry_encoding: {
-                formula: 'geometry_index = core_index * 8 + base_index',
-                base_geometries: ['tetrahedron', 'hypercube', 'sphere', 'torus', 'klein_bottle', 'fractal', 'wave', 'crystal'],
-                core_types: ['base (0)', 'hypersphere (1)', 'hypertetrahedron (2)'],
-                example: 'geometry 10 = hypersphere(sphere) because 1*8+2=10'
-            },
-
-            rotation_planes: {
-                total: 6,
-                '3D_space': ['XY', 'XZ', 'YZ'],
-                '4D_hyperspace': ['XW', 'YW', 'ZW'],
-                range: '-6.28 to 6.28 radians'
-            },
-
-            canvas_layers: {
-                count: 5,
-                names: ['background', 'shadow', 'content', 'highlight', 'accent']
-            },
-
-            knowledge_quiz: {
-                IMPORTANT: 'Call verify_knowledge with multiple choice answers (a/b/c/d) to confirm understanding',
-                questions: [
-                    'Q1: How many rotation planes? a)3 b)4 c)6 d)8',
-                    'Q2: Geometry encoding formula? a)base*3+core b)core*8+base c)base+core d)core*base',
-                    'Q3: Canvas layers per system? a)3 b)4 c)5 d)6',
-                    'Q4: Which are the 3 ACTIVE systems? a)quantum,faceted,holographic b)quantum,faceted,polychora c)all four d)none',
-                    'Q5: How many base geometry types? a)6 b)8 c)10 d)24',
-                    'Q6: Core warp types? a)base,sphere,cube b)base,hypersphere,hypertetrahedron c)2D,3D,4D d)none'
-                ]
-            },
-
-            documentation: {
-                primary: 'DOCS/SYSTEM_INVENTORY.md',
-                geometry: '24-GEOMETRY-6D-ROTATION-SUMMARY.md',
-                controls: 'DOCS/CONTROL_REFERENCE.md',
-                cli: 'DOCS/CLI_ONBOARDING.md'
-            },
-
-            suggested_next_actions: ['verify_knowledge', 'create_4d_visualization', 'search_geometries']
+            system: 'holographic',
+            layer_count: layerRoles.length,
+            layers,
+            suggested_next_actions: ['set_holographic_layer', 'batch_set_parameters', 'describe_visual_state']
         };
     }
 
     /**
-     * Verify agent knowledge of SDK (multiple choice)
+     * Set properties on an individual holographic layer.
+     * Stores overrides in a layer override map and applies them to the visualizer.
      */
-    verifyKnowledge(answers) {
-        const correctAnswers = {
-            q1_rotation_planes: 'c',      // 6 rotation planes
-            q2_geometry_formula: 'b',     // core*8+base
-            q3_canvas_layers: 'c',        // 5 layers
-            q4_active_systems: 'a',       // quantum, faceted, holographic (polychora is TBD)
-            q5_base_geometries: 'b',      // 8 base geometries
-            q6_core_types: 'b'            // base, hypersphere, hypertetrahedron
-        };
+    setHolographicLayer(args) {
+        const { layer, opacity, blendMode, enabled, colorShift, densityMult, speedMult, reactivity } = args;
 
-        const docReferences = {
-            q1_rotation_planes: {
-                topic: '6D ROTATION SYSTEM',
-                doc: 'DOCS/SYSTEM_INVENTORY.md#the-6d-rotation-system',
-                reason: '6 planes: XY, XZ, YZ (3D) + XW, YW, ZW (4D hyperspace)'
-            },
-            q2_geometry_formula: {
-                topic: 'GEOMETRY ENCODING',
-                doc: '24-GEOMETRY-6D-ROTATION-SUMMARY.md',
-                reason: 'geometry = coreIndex * 8 + baseIndex. Example: 10 = 1*8+2 = hypersphere+sphere'
-            },
-            q3_canvas_layers: {
-                topic: 'CANVAS LAYER SYSTEM',
-                doc: 'DOCS/SYSTEM_INVENTORY.md#the-4-visualization-systems',
-                reason: '5 layers: background, shadow, content, highlight, accent'
-            },
-            q4_active_systems: {
-                topic: 'ACTIVE VS PLACEHOLDER SYSTEMS',
-                doc: 'DOCS/SYSTEM_INVENTORY.md',
-                reason: 'Only 3 ACTIVE: quantum, faceted, holographic. Polychora is TBD/placeholder!'
-            },
-            q5_base_geometries: {
-                topic: 'BASE GEOMETRY TYPES',
-                doc: '24-GEOMETRY-6D-ROTATION-SUMMARY.md',
-                reason: '8 base: tetrahedron, hypercube, sphere, torus, klein, fractal, wave, crystal'
-            },
-            q6_core_types: {
-                topic: 'CORE WARP TYPES',
-                doc: '24-GEOMETRY-6D-ROTATION-SUMMARY.md',
-                reason: '3 cores: base (no warp), hypersphere, hypertetrahedron'
+        const systemName = this.engine?.currentSystemName || 'unknown';
+        if (systemName !== 'holographic') {
+            return {
+                error: {
+                    type: 'SystemError',
+                    code: 'NOT_HOLOGRAPHIC',
+                    message: `set_holographic_layer requires holographic system (current: ${systemName})`,
+                    suggestion: 'Call switch_system("holographic") first'
+                }
+            };
+        }
+
+        // Initialize layer override storage
+        if (!this._layerOverrides) this._layerOverrides = new Map();
+        const existing = this._layerOverrides.get(layer) || {};
+        const updates = {};
+
+        if (opacity !== undefined) { existing.opacity = opacity; updates.opacity = opacity; }
+        if (blendMode !== undefined) { existing.blendMode = blendMode; updates.blendMode = blendMode; }
+        if (enabled !== undefined) { existing.enabled = enabled; updates.enabled = enabled; }
+        if (colorShift !== undefined) { existing.colorShift = colorShift; updates.colorShift = colorShift; }
+        if (densityMult !== undefined) { existing.densityMult = densityMult; updates.densityMult = densityMult; }
+        if (speedMult !== undefined) { existing.speedMult = speedMult; updates.speedMult = speedMult; }
+        if (reactivity !== undefined) { existing.reactivity = reactivity; updates.reactivity = reactivity; }
+
+        this._layerOverrides.set(layer, existing);
+
+        // Apply to visualizer if available
+        const system = this.engine?.currentSystem;
+        const visualizer = system?.visualizers?.find?.(v => v?.role === layer);
+        if (visualizer) {
+            if (opacity !== undefined && visualizer.canvas) {
+                visualizer.canvas.style.opacity = String(opacity);
             }
-        };
-
-        const results = {
-            score: 0,
-            max_score: 6,
-            details: [],
-            REVIEW_REQUIRED: []
-        };
-
-        // Check each answer
-        for (const [question, correct] of Object.entries(correctAnswers)) {
-            const given = answers[question]?.toLowerCase?.() || answers[question];
-            if (given === correct) {
-                results.score++;
-                results.details.push({ question, status: '✓ CORRECT' });
-            } else if (given !== undefined) {
-                results.details.push({
-                    question,
-                    status: '✗ WRONG',
-                    your_answer: given,
-                    correct_answer: correct
-                });
-                results.REVIEW_REQUIRED.push(docReferences[question]);
+            if (blendMode !== undefined && visualizer.canvas) {
+                visualizer.canvas.style.mixBlendMode = blendMode;
+            }
+            if (enabled !== undefined && visualizer.canvas) {
+                visualizer.canvas.style.display = enabled ? '' : 'none';
+            }
+            if (colorShift !== undefined && visualizer.roleParams) {
+                visualizer.roleParams.colorShift = colorShift;
+            }
+            if (densityMult !== undefined && visualizer.roleParams) {
+                visualizer.roleParams.densityMult = densityMult;
+            }
+            if (speedMult !== undefined && visualizer.roleParams) {
+                visualizer.roleParams.speedMult = speedMult;
+            }
+            if (reactivity !== undefined) {
+                visualizer.reactivity = reactivity;
             }
         }
 
-        results.percentage = Math.round((results.score / results.max_score) * 100);
-
-        // Build response
-        if (results.REVIEW_REQUIRED.length > 0) {
-            results.MESSAGE = `Score: ${results.score}/${results.max_score}. YOU MAY PROCEED but PLEASE review the topics below to avoid errors.`;
-            results.URGENT = results.REVIEW_REQUIRED.map(ref => ({
-                TOPIC: ref.topic,
-                READ: ref.doc,
-                WHY: ref.reason
-            }));
-        } else {
-            results.MESSAGE = `PERFECT SCORE! You understand the VIB3+ SDK architecture.`;
-        }
-
-        results.suggested_next_actions = ['create_4d_visualization', 'get_state', 'search_geometries'];
-
-        return results;
+        return {
+            layer,
+            applied: updates,
+            current_state: this.inspectLayers({ layer }).layers[0],
+            suggested_next_actions: ['inspect_layers', 'set_holographic_layer', 'describe_visual_state']
+        };
     }
 
     /**

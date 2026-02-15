@@ -222,51 +222,64 @@ export const toolDefinitions = {
     // Onboarding Tools
     get_sdk_context: {
         name: 'get_sdk_context',
-        description: 'Returns essential SDK context for agent onboarding. Call this first to understand the system.',
-        inputSchema: {
-            type: 'object',
-            properties: {}
-        }
-    },
-
-    verify_knowledge: {
-        name: 'verify_knowledge',
-        description: 'Verifies agent has absorbed SDK context. Multiple choice quiz - submit letter answers (a/b/c/d).',
+        description: 'Returns a compact capability manifest: what systems exist, what tools are available, what parameter ranges are valid, and what the current engine state is. Designed for injection into agent context — call once at session start, not repeatedly.',
         inputSchema: {
             type: 'object',
             properties: {
-                q1_rotation_planes: {
-                    type: 'string',
-                    enum: ['a', 'b', 'c', 'd'],
-                    description: 'Q1: How many rotation planes? a)3 b)4 c)6 d)8'
+                include_state: {
+                    type: 'boolean',
+                    default: true,
+                    description: 'Include current engine state in response'
                 },
-                q2_geometry_formula: {
-                    type: 'string',
-                    enum: ['a', 'b', 'c', 'd'],
-                    description: 'Q2: Geometry encoding formula? a)base*3+core b)core*8+base c)base+core d)core*base'
-                },
-                q3_canvas_layers: {
-                    type: 'string',
-                    enum: ['a', 'b', 'c', 'd'],
-                    description: 'Q3: Canvas layers per system? a)3 b)4 c)5 d)6'
-                },
-                q4_active_systems: {
-                    type: 'string',
-                    enum: ['a', 'b', 'c', 'd'],
-                    description: 'Q4: Which are the 3 ACTIVE systems? a)quantum,faceted,holographic b)quantum,faceted,polychora c)faceted,holographic,polychora d)all four'
-                },
-                q5_base_geometries: {
-                    type: 'string',
-                    enum: ['a', 'b', 'c', 'd'],
-                    description: 'Q5: How many base geometry types? a)6 b)8 c)10 d)24'
-                },
-                q6_core_types: {
-                    type: 'string',
-                    enum: ['a', 'b', 'c', 'd'],
-                    description: 'Q6: Core warp types? a)base,sphere,cube b)base,hypersphere,hypertetrahedron c)none,partial,full d)2D,3D,4D'
+                include_tools: {
+                    type: 'boolean',
+                    default: false,
+                    description: 'Include tool summary list (names + one-line descriptions)'
                 }
+            }
+        }
+    },
+
+    inspect_layers: {
+        name: 'inspect_layers',
+        description: 'Returns the current state of all holographic canvas layers with per-layer metadata: role, opacity, blend mode, reactivity multiplier, role-specific parameters, and enabled state. Only meaningful when holographic system is active.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                layer: {
+                    type: 'string',
+                    enum: ['background', 'shadow', 'content', 'highlight', 'accent', 'all'],
+                    default: 'all',
+                    description: 'Inspect a specific layer or all layers'
+                }
+            }
+        }
+    },
+
+    set_holographic_layer: {
+        name: 'set_holographic_layer',
+        description: 'Controls individual holographic layer properties. Set opacity, blend mode, enable/disable, or override role parameters for any of the 5 layers (background, shadow, content, highlight, accent). Only works when holographic system is active.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                layer: {
+                    type: 'string',
+                    enum: ['background', 'shadow', 'content', 'highlight', 'accent'],
+                    description: 'Target layer role name'
+                },
+                opacity: { type: 'number', minimum: 0, maximum: 1, description: 'Layer opacity (0=invisible, 1=full)' },
+                blendMode: {
+                    type: 'string',
+                    enum: ['normal', 'screen', 'multiply', 'add', 'overlay'],
+                    description: 'CSS blend mode for this layer'
+                },
+                enabled: { type: 'boolean', description: 'Show/hide this layer' },
+                colorShift: { type: 'number', minimum: 0, maximum: 360, description: 'Hue offset for this layer' },
+                densityMult: { type: 'number', minimum: 0.1, maximum: 5, description: 'Grid density multiplier' },
+                speedMult: { type: 'number', minimum: 0, maximum: 3, description: 'Animation speed multiplier' },
+                reactivity: { type: 'number', minimum: 0, maximum: 3, description: 'Mouse/touch reactivity multiplier' }
             },
-            required: ['q1_rotation_planes', 'q2_geometry_formula', 'q3_canvas_layers']
+            required: ['layer']
         }
     },
 
@@ -651,7 +664,7 @@ export const toolDefinitions = {
 
     capture_screenshot: {
         name: 'capture_screenshot',
-        description: 'Captures the current visualization as a base64-encoded PNG image by compositing all 5 canvas layers. Only works in browser context. Returns image data that multimodal agents can analyze for visual feedback.',
+        description: 'Captures current visualization as a base64-encoded PNG by compositing canvas layers. BROWSER-ONLY: returns an EnvironmentError with capability report in headless/Node contexts. When available, returns data_url for multimodal analysis. Use describe_visual_state as a text-based alternative in non-browser environments.',
         inputSchema: {
             type: 'object',
             properties: {
