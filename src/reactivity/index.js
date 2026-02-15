@@ -23,10 +23,11 @@ export { ReactivityManager } from './ReactivityManager.js';
 /**
  * Create a pre-configured ReactivityManager with common settings
  */
-export function createReactivityManager(options = {}) {
+export async function createReactivityManager(options = {}) {
     const { config, parameterUpdateFn } = options;
 
-    const manager = new (await import('./ReactivityManager.js')).ReactivityManager(parameterUpdateFn);
+    const { ReactivityManager } = await import('./ReactivityManager.js');
+    const manager = new ReactivityManager(parameterUpdateFn);
 
     if (config) {
         manager.loadConfig(config);
@@ -39,7 +40,6 @@ export function createReactivityManager(options = {}) {
  * Create ReactivityConfig from a preset name
  */
 export function createPresetConfig(presetName) {
-    const { ReactivityConfig } = require('./ReactivityConfig.js');
     const config = new ReactivityConfig();
 
     switch (presetName) {
@@ -89,5 +89,3 @@ export function createPresetConfig(presetName) {
 
     return config;
 }
-
-console.log('🎛️ VIB3+ Reactivity System loaded');

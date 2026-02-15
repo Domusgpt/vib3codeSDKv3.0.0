@@ -59,10 +59,10 @@ export {
     clamp, lerp, smoothstep, smootherstep
 } from './constants.js';
 
-// Default export for convenience
-export default {
-    Vec4: (await import('./Vec4.js')).Vec4,
-    Rotor4D: (await import('./Rotor4D.js')).Rotor4D,
-    Mat4x4: (await import('./Mat4x4.js')).Mat4x4,
-    Projection: (await import('./Projection.js')).Projection
-};
+// Default export — uses the static imports already declared above
+import { Vec4 as _Vec4 } from './Vec4.js';
+import { Rotor4D as _Rotor4D } from './Rotor4D.js';
+import { Mat4x4 as _Mat4x4 } from './Mat4x4.js';
+import { Projection as _Projection } from './Projection.js';
+
+export default { Vec4: _Vec4, Rotor4D: _Rotor4D, Mat4x4: _Mat4x4, Projection: _Projection };

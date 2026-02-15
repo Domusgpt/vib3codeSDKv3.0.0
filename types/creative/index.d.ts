@@ -33,3 +33,20 @@ export {
     Keyframe,
     TimelineState
 } from './ParameterTimeline';
+
+export {
+    AestheticMapper,
+    AestheticMapping,
+    AestheticResult,
+    AestheticValues,
+    ParameterRange,
+    VocabularyEntry
+} from './AestheticMapper';
+
+export {
+    ChoreographyPlayer,
+    ChoreographySpec,
+    ChoreographyScene,
+    ChoreographyPlayerOptions,
+    ChoreographyState
+} from './ChoreographyPlayer';

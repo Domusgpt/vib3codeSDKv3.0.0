@@ -151,8 +151,8 @@ export class ParallelTestFramework {
         // Create system instance based on type
         switch (testSpec.system) {
             case 'faceted':
-                const { VIB34DIntegratedEngine } = await import('../core/Engine.js');
-                testSystem = new VIB34DIntegratedEngine();
+                const { VIB3Engine } = await import('../core/VIB3Engine.js');
+                testSystem = new VIB3Engine();
                 break;
             case 'quantum':
                 const { QuantumEngine } = await import('../quantum/QuantumEngine.js');

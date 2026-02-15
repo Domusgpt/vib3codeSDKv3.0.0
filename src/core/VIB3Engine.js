@@ -26,7 +26,7 @@ export class VIB3Engine {
      */
     constructor(options = {}) {
         this.activeSystem = null; // Only one system active at a time
-        this.currentSystemName = 'quantum';
+        this.currentSystemName = options.system || 'quantum';
         this.parameters = new ParameterManager();
         this.initialized = false;
         this.canvasManager = null;
@@ -82,7 +82,11 @@ export class VIB3Engine {
         }
 
         // Initialize starting system
-        await this.switchSystem(this.currentSystemName);
+        const systemOk = await this.switchSystem(this.currentSystemName);
+        if (!systemOk) {
+            console.error(`VIB3+ Engine: Failed to create initial system "${this.currentSystemName}"`);
+            return false;
+        }
 
         // Sync base parameters to reactivity manager
         this.reactivity.setBaseParameters(this.parameters.getAllParameters());
@@ -167,7 +171,7 @@ export class VIB3Engine {
                         }
                     }
 
-                    const facetedSuccess = system.initialize();
+                    const facetedSuccess = await system.initialize();
                     if (!facetedSuccess) {
                         throw new Error('Faceted system initialization failed');
                     }
@@ -273,6 +277,17 @@ export class VIB3Engine {
 
         if (this.activeSystem && this.activeSystem.updateParameters) {
             this.activeSystem.updateParameters(params);
+        } else if (this.debug && this.activeSystem && !this.activeSystem.updateParameters) {
+            console.warn('VIB3+ Engine [debug]: activeSystem missing updateParameters() method');
+        } else if (this.debug && !this.activeSystem) {
+            console.warn('VIB3+ Engine [debug]: updateCurrentSystemParameters() called with no activeSystem');
+        }
+
+        // Notify parameter change listeners
+        if (this._parameterListeners && this._parameterListeners.size > 0) {
+            for (const listener of this._parameterListeners) {
+                try { listener(params); } catch (_) { /* listener error */ }
+            }
         }
     }
 
@@ -630,6 +645,43 @@ export class VIB3Engine {
         if (state.spatialActive) {
             this.spatialInput.enable();
         }
+    }
+
+    // ========================================================================
+    // Convenience Methods (dogfood feedback)
+    // ========================================================================
+
+    /**
+     * Create a parameter update callback for use with creative modules.
+     * Returns (name, value) => void that calls setParameter internally.
+     * Eliminates boilerplate: `(name, value) => engine.setParameter(name, value)`.
+     * @returns {(name: string, value: number) => void}
+     */
+    createParameterCallback() {
+        return (name, value) => this.setParameter(name, value);
+    }
+
+    /**
+     * Get current breath value from VitalitySystem (0-1).
+     * Avoids reaching into engine.vitality.getBreath() directly.
+     * @returns {number}
+     */
+    getBreath() {
+        return this.vitality.getBreath();
+    }
+
+    /**
+     * Register a listener for parameter changes.
+     * Callback receives the full parameter object after each change.
+     * @param {(params: object) => void} callback
+     * @returns {() => void} Unsubscribe function
+     */
+    onParameterChange(callback) {
+        if (!this._parameterListeners) {
+            this._parameterListeners = new Set();
+        }
+        this._parameterListeners.add(callback);
+        return () => this._parameterListeners.delete(callback);
     }
 
     /**
