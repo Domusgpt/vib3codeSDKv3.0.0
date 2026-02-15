@@ -119,6 +119,31 @@ export {
     MultiCanvasBridge
 } from './MultiCanvasBridge.js';
 
+// Layer relationship graph (keystone-driven inter-layer parameter system)
+export {
+    LayerRelationshipGraph,
+    LAYER_ORDER,
+    PROFILES,
+    PRESET_REGISTRY,
+    echo,
+    mirror,
+    complement,
+    harmonic,
+    reactive,
+    chase
+} from './LayerRelationshipGraph.js';
+
+// Layer preset manager (save/load/tune relationship presets)
+export {
+    LayerPresetManager
+} from './LayerPresetManager.js';
+
+// Layer reactivity bridge (audio/tilt/input → relationship modulation)
+export {
+    LayerReactivityBridge,
+    MODULATION_PROFILES
+} from './LayerReactivityBridge.js';
+
 /**
  * Create a complete rendering context
  * @param {HTMLCanvasElement} canvas
@@ -129,8 +154,7 @@ export function createRenderContext(canvas, options = {}) {
     if (options.backend === 'webgpu') {
         return null;
     }
-    const { createWebGLBackend } = require('./backends/WebGLBackend.js');
-    const backend = createWebGLBackend(canvas, options);
+    const backend = _createWebGLBackend(canvas, options);
 
     if (!backend) {
         return null;
@@ -365,3 +389,4 @@ import { RenderState } from './RenderState.js';
 import { ShaderProgram, ShaderLib } from './ShaderProgram.js';
 import { UnifiedRenderBridge } from './UnifiedRenderBridge.js';
 import { createWebGPUBackend } from './backends/WebGPUBackend.js';
+import { createWebGLBackend as _createWebGLBackend } from './backends/WebGLBackend.js';

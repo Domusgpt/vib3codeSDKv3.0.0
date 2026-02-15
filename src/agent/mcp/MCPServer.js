@@ -11,6 +11,7 @@ import { ChoreographyPlayer } from '../../creative/ChoreographyPlayer.js';
 import { ParameterTimeline } from '../../creative/ParameterTimeline.js';
 import { ColorPresetsSystem } from '../../creative/ColorPresetsSystem.js';
 import { TransitionAnimator } from '../../creative/TransitionAnimator.js';
+import { PRESET_REGISTRY } from '../../render/LayerRelationshipGraph.js';
 
 /**
  * Generate unique IDs
@@ -235,6 +236,22 @@ export class MCPServer {
                     break;
                 case 'control_timeline':
                     result = this.controlTimeline(args);
+                    break;
+                // Layer relationship tools (Phase 8)
+                case 'set_layer_profile':
+                    result = this.setLayerProfile(args);
+                    break;
+                case 'set_layer_relationship':
+                    result = this.setLayerRelationship(args);
+                    break;
+                case 'set_layer_keystone':
+                    result = this.setLayerKeystone(args);
+                    break;
+                case 'get_layer_config':
+                    result = this.getLayerConfig();
+                    break;
+                case 'tune_layer_relationship':
+                    result = this.tuneLayerRelationship(args);
                     break;
                 default:
                     throw new Error(`Unknown tool: ${toolName}`);
@@ -1762,6 +1779,185 @@ export class MCPServer {
             progress: tl.duration > 0 ? tl.currentTime / tl.duration : 0,
             playbackSpeed: tl.playbackSpeed,
             suggested_next_actions: ['control_timeline', 'describe_visual_state', 'capture_screenshot']
+        };
+    }
+
+    // ====================================================================
+    // Layer Relationship Tools (Phase 8)
+    // ====================================================================
+
+    /**
+     * Get the holographic system's layer graph (if available).
+     * @private
+     * @returns {import('../../render/LayerRelationshipGraph.js').LayerRelationshipGraph|null}
+     */
+    _getLayerGraph() {
+        if (!this.engine) return null;
+        // Try to access the current system's layer graph
+        const system = this.engine.currentSystem || this.engine._activeSystem;
+        if (system && system.layerGraph) {
+            return system.layerGraph;
+        }
+        if (system && system._layerGraph) {
+            return system._layerGraph;
+        }
+        return null;
+    }
+
+    /**
+     * Load a named layer relationship profile.
+     */
+    setLayerProfile(args) {
+        const { profile } = args;
+        const graph = this._getLayerGraph();
+
+        if (!graph) {
+            return {
+                error: 'Layer relationship graph not available. Switch to holographic system first.',
+                suggested_next_actions: ['switch_system']
+            };
+        }
+
+        graph.loadProfile(profile);
+        telemetry.recordEvent(EventType.PARAMETER_CHANGE, { type: 'layer_profile', profile });
+
+        return {
+            profile,
+            keystone: graph.keystone,
+            active_profile: graph.activeProfile,
+            available_profiles: ['holographic', 'symmetry', 'chord', 'storm', 'legacy'],
+            suggested_next_actions: ['get_layer_config', 'set_layer_relationship', 'tune_layer_relationship']
+        };
+    }
+
+    /**
+     * Set relationship for a specific layer.
+     */
+    setLayerRelationship(args) {
+        const { layer, relationship, config } = args;
+        const graph = this._getLayerGraph();
+
+        if (!graph) {
+            return {
+                error: 'Layer relationship graph not available. Switch to holographic system first.',
+                suggested_next_actions: ['switch_system']
+            };
+        }
+
+        if (config) {
+            graph.setRelationship(layer, { preset: relationship, config });
+        } else {
+            graph.setRelationship(layer, relationship);
+        }
+
+        telemetry.recordEvent(EventType.PARAMETER_CHANGE, {
+            type: 'layer_relationship', layer, relationship
+        });
+
+        return {
+            layer,
+            relationship,
+            config: config || {},
+            keystone: graph.keystone,
+            suggested_next_actions: ['get_layer_config', 'tune_layer_relationship', 'describe_visual_state']
+        };
+    }
+
+    /**
+     * Change the keystone (driver) layer.
+     */
+    setLayerKeystone(args) {
+        const { layer } = args;
+        const graph = this._getLayerGraph();
+
+        if (!graph) {
+            return {
+                error: 'Layer relationship graph not available. Switch to holographic system first.',
+                suggested_next_actions: ['switch_system']
+            };
+        }
+
+        graph.setKeystone(layer);
+        telemetry.recordEvent(EventType.PARAMETER_CHANGE, { type: 'layer_keystone', layer });
+
+        return {
+            keystone: layer,
+            note: 'Other layers\' relationships are preserved. Set new relationships for the old keystone if needed.',
+            suggested_next_actions: ['set_layer_relationship', 'get_layer_config']
+        };
+    }
+
+    /**
+     * Get current layer configuration.
+     */
+    getLayerConfig() {
+        const graph = this._getLayerGraph();
+
+        if (!graph) {
+            return {
+                error: 'Layer relationship graph not available. Switch to holographic system first.',
+                suggested_next_actions: ['switch_system']
+            };
+        }
+
+        const config = graph.exportConfig();
+
+        return {
+            keystone: config.keystone,
+            active_profile: config.profile,
+            relationships: config.relationships,
+            shaders: config.shaders,
+            available_profiles: ['holographic', 'symmetry', 'chord', 'storm', 'legacy'],
+            available_presets: ['echo', 'mirror', 'complement', 'harmonic', 'reactive', 'chase'],
+            suggested_next_actions: ['set_layer_profile', 'set_layer_relationship', 'tune_layer_relationship']
+        };
+    }
+
+    /**
+     * Tune a layer's relationship config.
+     */
+    tuneLayerRelationship(args) {
+        const { layer, config: configOverrides } = args;
+        const graph = this._getLayerGraph();
+
+        if (!graph) {
+            return {
+                error: 'Layer relationship graph not available. Switch to holographic system first.',
+                suggested_next_actions: ['switch_system']
+            };
+        }
+
+        const graphConfig = graph.exportConfig();
+        const currentRel = graphConfig.relationships[layer];
+
+        if (!currentRel || !currentRel.preset) {
+            return {
+                error: `Layer "${layer}" has no tunable preset relationship. Set one first with set_layer_relationship.`,
+                suggested_next_actions: ['set_layer_relationship']
+            };
+        }
+
+        const factory = PRESET_REGISTRY[currentRel.preset];
+        if (!factory) {
+            return {
+                error: `Unknown preset "${currentRel.preset}" on layer "${layer}".`,
+                suggested_next_actions: ['set_layer_relationship']
+            };
+        }
+
+        const newConfig = { ...(currentRel.config || {}), ...configOverrides };
+        graph.setRelationship(layer, { preset: currentRel.preset, config: newConfig });
+
+        telemetry.recordEvent(EventType.PARAMETER_CHANGE, {
+            type: 'layer_tune', layer, tuned_keys: Object.keys(configOverrides)
+        });
+
+        return {
+            layer,
+            preset: currentRel.preset,
+            previous_config: currentRel.config,
+            new_config: newConfig,
+            suggested_next_actions: ['get_layer_config', 'describe_visual_state', 'capture_screenshot']
         };
     }
 }

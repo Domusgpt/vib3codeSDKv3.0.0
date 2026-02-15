@@ -762,6 +762,93 @@ export const toolDefinitions = {
             },
             required: ['timeline_id', 'action']
         }
+    },
+
+    // Layer Relationship Tools (Phase 8)
+    set_layer_profile: {
+        name: 'set_layer_profile',
+        description: 'Loads a named layer relationship profile that configures how the 5 canvas layers relate to each other. Profiles: holographic (default), symmetry, chord, storm, legacy (original static behavior).',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                profile: {
+                    type: 'string',
+                    enum: ['holographic', 'symmetry', 'chord', 'storm', 'legacy'],
+                    description: 'Named profile to load'
+                }
+            },
+            required: ['profile']
+        }
+    },
+
+    set_layer_relationship: {
+        name: 'set_layer_relationship',
+        description: 'Sets the relationship type for a specific layer relative to the keystone. Available relationships: echo (attenuated follower), mirror (inverted rotation/hue), complement (color opposite), harmonic (musical intervals), reactive (amplifies changes), chase (delayed follower).',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                layer: {
+                    type: 'string',
+                    enum: ['background', 'shadow', 'content', 'highlight', 'accent'],
+                    description: 'Target layer name'
+                },
+                relationship: {
+                    type: 'string',
+                    enum: ['echo', 'mirror', 'complement', 'harmonic', 'reactive', 'chase'],
+                    description: 'Relationship preset name'
+                },
+                config: {
+                    type: 'object',
+                    description: 'Optional config overrides for the relationship (e.g., { opacity: 0.5, gain: 3 })'
+                }
+            },
+            required: ['layer', 'relationship']
+        }
+    },
+
+    set_layer_keystone: {
+        name: 'set_layer_keystone',
+        description: 'Changes which layer acts as the keystone (driver) for the layer relationship graph. Other layers derive their parameters from the keystone through relationship functions.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                layer: {
+                    type: 'string',
+                    enum: ['background', 'shadow', 'content', 'highlight', 'accent'],
+                    description: 'Layer to designate as keystone'
+                }
+            },
+            required: ['layer']
+        }
+    },
+
+    get_layer_config: {
+        name: 'get_layer_config',
+        description: 'Returns the current layer relationship configuration including keystone, profile, and per-layer relationships with their config parameters.',
+        inputSchema: {
+            type: 'object',
+            properties: {}
+        }
+    },
+
+    tune_layer_relationship: {
+        name: 'tune_layer_relationship',
+        description: 'Hot-patches a layer relationship config without replacing the full graph. Merges provided config values into the existing relationship (e.g., increase reactive gain, shift harmonic hue angle).',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                layer: {
+                    type: 'string',
+                    enum: ['background', 'shadow', 'content', 'highlight', 'accent'],
+                    description: 'Layer to tune'
+                },
+                config: {
+                    type: 'object',
+                    description: 'Config values to merge (e.g., { opacity: 0.6, gain: 3.0, hueAngle: 120 })'
+                }
+            },
+            required: ['layer', 'config']
+        }
     }
 };
 

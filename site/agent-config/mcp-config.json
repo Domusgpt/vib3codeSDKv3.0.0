@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "vib3-sdk": {
+      "command": "npx",
+      "args": ["@vib3code/sdk", "mcp-server"],
+      "env": {},
+      "description": "VIB3+ 4D Visualization SDK — MCP server with 19 tools for scene management, 6D rotation, visual parameters, audio reactivity, export, and gallery operations.",
+      "tools": [
+        "create_4d_visualization",
+        "set_rotation",
+        "set_visual_parameters",
+        "switch_system",
+        "get_scene_state",
+        "set_geometry",
+        "set_projection",
+        "animate_transition",
+        "set_audio_reactivity",
+        "set_spatial_input",
+        "export_scene",
+        "export_trading_card",
+        "export_shader",
+        "save_to_gallery",
+        "load_from_gallery",
+        "list_gallery",
+        "randomize_all",
+        "reset_to_defaults",
+        "get_system_info"
+      ]
+    }
+  }
+}

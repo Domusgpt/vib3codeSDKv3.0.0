@@ -14,6 +14,8 @@ export type BackendType = 'webgl' | 'webgpu' | 'direct-webgl' | null;
 
 /** VIB3Engine constructor options */
 export interface VIB3EngineOptions {
+    /** Initial system to create (default: 'quantum') */
+    system?: SystemName;
     /** Prefer WebGPU with WebGL fallback (default: true) */
     preferWebGPU?: boolean;
     /** Enable debug logging (default: false) */
@@ -194,6 +196,30 @@ export declare class VIB3Engine {
 
     /** Import engine state (restores system, parameters, and reactivity) */
     importState(state: Partial<VIB3EngineState>): Promise<void>;
+
+    // ========================================================================
+    // Convenience Methods
+    // ========================================================================
+
+    /**
+     * Create a parameter update callback for creative modules.
+     * Returns `(name, value) => void` that calls `setParameter` internally.
+     * Eliminates boilerplate wiring.
+     */
+    createParameterCallback(): (name: string, value: number) => void;
+
+    /**
+     * Get current breath value from VitalitySystem (0-1).
+     * Avoids reaching into `engine.vitality.getBreath()` directly.
+     */
+    getBreath(): number;
+
+    /**
+     * Register a listener for parameter changes.
+     * Callback receives the full parameter object after each change.
+     * @returns Unsubscribe function
+     */
+    onParameterChange(callback: (params: Record<string, number>) => void): () => void;
 
     // ========================================================================
     // Lifecycle

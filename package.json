@@ -200,6 +200,9 @@
     "./reactivity/config": {
       "import": "./src/reactivity/ReactivityConfig.js"
     },
+    "./creative": {
+      "import": "./src/creative/index.js"
+    },
     "./creative/color-presets": {
       "import": "./src/creative/ColorPresetsSystem.js"
     },
@@ -211,6 +214,9 @@
     },
     "./creative/timeline": {
       "import": "./src/creative/ParameterTimeline.js"
+    },
+    "./export": {
+      "import": "./src/export/index.js"
     },
     "./integrations/react": {
       "import": "./src/integrations/frameworks/Vib3React.js"
@@ -247,6 +253,9 @@
     },
     "./advanced/offscreen": {
       "import": "./src/advanced/OffscreenWorker.js"
+    },
+    "./variations": {
+      "import": "./src/variations/VariationManager.js"
     },
     "./tools/shader-sync": {
       "import": "./tools/shader-sync-verify.js"

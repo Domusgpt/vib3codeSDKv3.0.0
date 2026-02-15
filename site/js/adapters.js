@@ -11,9 +11,9 @@
  * AmbientLattice is a lightweight Canvas2D accent — NOT a visualization system.
  */
 
-import { QuantumEngine } from '../src/quantum/QuantumEngine.js';
-import { RealHolographicSystem } from '../src/holograms/RealHolographicSystem.js';
-import { FacetedSystem } from '../src/faceted/FacetedSystem.js';
+import { QuantumEngine } from '../../src/quantum/QuantumEngine.js';
+import { RealHolographicSystem } from '../../src/holograms/RealHolographicSystem.js';
+import { FacetedSystem } from '../../src/faceted/FacetedSystem.js';
 
 const DEFAULT_PARAMS = {
   geometry: 3, hue: 200, gridDensity: 24, speed: 1.0,
