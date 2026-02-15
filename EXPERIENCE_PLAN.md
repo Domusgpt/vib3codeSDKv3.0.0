@@ -729,3 +729,473 @@ The 22 built-in presets available for time-of-day and choreography reference:
 ---
 
 **End of Plan. Ready for red-team review and enhancement before implementation.**
+
+---
+
+## RED TEAM REPORT + ENHANCEMENTS
+
+---
+
+### Part 1: Failure Modes (Things That WILL Break)
+
+#### 1.1 iOS DeviceMotion Permission Gate
+
+**Issue**: On iOS 13+, `DeviceOrientationEvent` and `DeviceMotionEvent` require an explicit call to `DeviceOrientationEvent.requestPermission()`, which MUST be triggered from a user gesture (tap/click handler). Without this, all accelerometer/gyroscope data silently returns null. The plan references continuous accelerometer/gyro input but never describes a permission request flow. On iOS, the entire motion pipeline (Section 4) will be dead on arrival.
+
+**Fix**: Add a mandatory "tap to begin" splash overlay on iOS devices. On the first user tap, call `DeviceOrientationEvent.requestPermission()` and `DeviceMotionEvent.requestPermission()` inside the click handler. Gate the motion pipeline initialization behind the resolved permission promise. If the user denies, fall back to the mouse/touch mapping table (Section 4, Mouse Fallback) and display a subtle indicator that motion input is unavailable. Detect iOS via `navigator.userAgent` or, more robustly, by checking `typeof DeviceOrientationEvent.requestPermission === 'function'`.
+
+#### 1.2 Chrome AudioContext Autoplay Policy
+
+**Issue**: Chrome (and most Chromium-based browsers) suspend `AudioContext` on creation. Calling `getUserMedia()` or creating an `AnalyserNode` before a user gesture means the entire audio pipeline (Section 3) produces silence. The `AudioContext.state` will be `'suspended'` and `getByteFrequencyData()` will return all zeros. The plan's continuous FFT analysis, onset detection, pitch tracking, and all 17 audio-to-parameter mappings will output flat zero.
+
+**Fix**: Create the `AudioContext` early but immediately check `audioContext.state`. If `'suspended'`, register a one-time click/touchstart listener on `document` that calls `audioContext.resume()`. Do NOT call `getUserMedia` until the context is running. The "tap to begin" overlay from 1.1 can serve double duty: resume AudioContext AND request iOS motion permissions in the same gesture handler. Additionally, wrap `getUserMedia({ audio: true })` in a try/catch and handle the case where the user denies microphone access (see 1.4).
+
+#### 1.3 getUserMedia Failure / No Microphone
+
+**Issue**: `navigator.mediaDevices.getUserMedia({ audio: true })` can fail for multiple reasons: user denies permission, no microphone hardware exists (desktop without mic, kiosk displays), browser in HTTP context (getUserMedia requires HTTPS except on localhost), or the browser simply does not support it. The plan describes microphone-dependent features (FFT, breath detection, silence detection, speech recognition) as primary experience drivers. If getUserMedia fails, approximately 40% of the 42 continuous mappings go dead.
+
+**Fix**: Wrap getUserMedia in a try/catch. On failure, activate a "no-audio" mode that:
+1. Replaces microphone input with a built-in generative audio signal: use an `OscillatorNode` + `GainNode` feeding the `AnalyserNode` with a slowly evolving sine sweep (20Hz-2kHz, 30-second cycle). This gives the FFT pipeline synthetic data that still drives the geometry morphing and color shifts.
+2. Alternatively, offer the user a "play audio file" option using an `<input type="file" accept="audio/*">` that feeds an `<audio>` element through `createMediaElementSource()` into the AnalyserNode.
+3. Display a small non-intrusive indicator (pulsing mic icon with a slash) so the user knows audio input is unavailable.
+4. All audio-dependent mappings in Section 3 still function; they just receive synthetic or file-based spectral data instead of live microphone input.
+
+#### 1.4 All Sensors Denied -- Graceful Degradation
+
+**Issue**: A paranoid user or restrictive browser policy could deny EVERY sensor: microphone, accelerometer, gyroscope, ambient light, battery, speech, and network info. The plan never describes what happens in this total-denial scenario. With no sensor input, the only remaining inputs are mouse/touch position and the system clock. The 42 continuous mappings collapse to roughly 8 (mouse position/velocity + time-of-day), and the experience becomes static and unresponsive.
+
+**Fix**: Implement a degradation tier system:
+
+| Tier | Available Inputs | Strategy |
+|------|-----------------|----------|
+| Full | All sensors | Plan as designed |
+| No Audio | Mouse/touch, motion, environment | Synthetic audio oscillator drives FFT pipeline |
+| No Motion | Mouse/touch, audio, environment | Mouse velocity maps to all 6 rotation planes (already in plan) |
+| No Audio + No Motion | Mouse/touch, environment only | Synthetic audio + autonomous micro-sequences every 10s instead of 30s |
+| Minimal | Mouse/touch + clock only | Auto-engage autonomous choreography as the BASE mode. User input modulates the choreography rather than driving from scratch. Reduce idle threshold from 30s to 5s |
+
+The key insight: the autonomous sequence (Section 5) is the safety net. If the reactive layer has insufficient input, progressively blend in autonomous behavior. The experience should ALWAYS be visually active and interesting, even if the user is on a locked-down browser with a trackpad and nothing else.
+
+#### 1.5 120Hz Display vs 30fps Background Tab
+
+**Issue**: `requestAnimationFrame` fires at the display refresh rate. On a 120Hz iPad Pro or 144Hz gaming monitor, the render loop runs at 2x-2.4x the expected rate. Every time-dependent calculation that uses frame counting instead of `deltaTime` will run at double speed. Conversely, when the browser tab is backgrounded, rAF is throttled to ~1fps or paused entirely. The plan's smoothing constants (alpha = 0.15, 0.08, etc.) are frame-rate dependent -- at 120fps they produce half the smoothing effect, making parameters jittery; at 1fps they produce almost no smoothing.
+
+**Fix**: All smoothing and velocity calculations MUST use `deltaTime` (from `performance.now()` delta between frames) rather than per-frame constants. Convert all EMA alpha values to time-based constants:
+
+```
+// Instead of: smoothed += 0.12 * (raw - smoothed)
+// Use: smoothed += (1 - Math.exp(-deltaTime / timeConstant)) * (raw - smoothed)
+// where timeConstant is in seconds (e.g., 0.1s for responsive, 0.3s for smooth)
+```
+
+For the autonomous choreography, use absolute timestamps (`performance.now()`) for scene progression, not frame-accumulated time. When a tab returns from background, calculate the elapsed time and jump to the correct position in the choreography rather than trying to fast-forward through missed frames.
+
+Additionally, cap `deltaTime` at 100ms (10fps floor) to prevent physics explosions when returning from a backgrounded tab. If `deltaTime > 100ms`, treat it as a discontinuity: snap parameters to their target values rather than interpolating.
+
+#### 1.6 Memory Leaks from Continuous FFT Analysis
+
+**Issue**: Running `getByteFrequencyData()` and `getByteTimeDomainData()` into pre-allocated `Uint8Array` buffers at 60fps is inherently safe -- the buffers are reused. However, the plan describes several features that accumulate state without bound:
+- Onset detection maintains a "running average" via EMA, which is fine.
+- The hue shift in Surprise 2.13 permanently adds +15 degrees per onset. Over hours with music playing, this means thousands of hue shifts -- harmless numerically (modulo 360), but worth confirming the modulo is actually applied.
+- The real risk is the `SpeechRecognition` API: in continuous mode, it produces `SpeechRecognitionResult` objects that are appended to `SpeechRecognitionResultList`. If results are not consumed and the reference is held, this list grows without bound. After hours, this can consume significant memory.
+- Any `console.log` or debug output left in sensor handlers will fill the browser console buffer and consume memory.
+
+**Fix**:
+1. For SpeechRecognition: Use `interimResults: true` and process each result immediately. On each `onresult` event, extract the transcript, process it, and discard. Set `maxAlternatives: 1`. Restart the recognition session every 60 seconds to clear the internal result list.
+2. For hue accumulation: Always apply `hue = hue % 360` after any addition. This is likely already implicit but must be explicitly enforced.
+3. Remove all `console.log` from hot paths (sensor handlers, render loop, mapping engine). Use a debug flag that defaults to false.
+4. For the spectral flux history used in onset detection: use a fixed-size ring buffer (e.g., 128 frames). Never use a growing array.
+5. Profile with Chrome DevTools Memory tab after 2 hours of continuous operation. Set a memory budget of 50MB for the entire experience.
+
+#### 1.7 Shake Detection False Positives
+
+**Issue**: The shake threshold of 25 m/s^3 jerk magnitude (Surprise 2.3) will trigger frequently during walking (typical walking jerk: 15-30 m/s^3, depending on mounting), running (50-100 m/s^3), riding a bus or subway (20-60 m/s^3 on bumps), and even from typing on a laptop with an accelerometer. The "chaos explosion" effect is dramatic and disorienting. False positives will make the experience feel broken and uncontrollable for mobile users in motion.
+
+**Fix**:
+1. Raise the threshold to 40 m/s^3. True intentional shakes produce 60-120 m/s^3.
+2. Require sustained high jerk: the jerk must exceed the threshold for at least 3 consecutive samples (50ms at 60fps) rather than a single spike. Walking produces spiky, periodic jolts; intentional shaking produces sustained high-amplitude oscillation.
+3. Add a frequency check: compute the dominant frequency of the acceleration signal over a 500ms window. Walking is 1.5-2.5 Hz, running is 2.5-4 Hz, intentional shaking is 5-10 Hz. Only trigger on the higher frequency band.
+4. Implement a global cooldown: after a shake triggers, suppress further shake detection for 8 seconds (not just the 5-second decay described in the plan). This prevents repeated triggers from transit vibrations.
+5. Provide a user setting to disable shake entirely. Some users (accessibility, motion sensitivity) will want this off.
+
+#### 1.8 SpeechRecognition Browser Compatibility
+
+**Issue**: The Web Speech API (`SpeechRecognition` / `webkitSpeechRecognition`) is only supported in Chrome (desktop and Android) and Edge. It is NOT supported in Firefox, Safari (desktop or iOS), Samsung Internet, or any WebKit-based iOS browser. This means Surprise 2.7 (Speech -> Geometric Structures) is unavailable to approximately 40% of web users (all iOS users, all Firefox users).
+
+**Fix**: The plan already mentions a fallback: "audio amplitude envelope used to simulate rhythmic pattern detection via zero-crossing analysis." This is good but needs to be fleshed out:
+1. When `window.SpeechRecognition` and `window.webkitSpeechRecognition` are both undefined, activate the zero-crossing fallback immediately, not lazily.
+2. The zero-crossing analysis can approximate vowel vs. consonant detection: vowels have low zero-crossing rates (ZCR) and high energy, plosive consonants have high ZCR with energy spikes. Map low-ZCR high-energy segments to the vowel geometry table. Map high-ZCR energy transients to the consonant micro-chaos bursts.
+3. Syllable rate can be approximated by counting amplitude envelope peaks above a threshold, with 150-400ms minimum spacing.
+4. This fallback should be tested and tuned independently. Do not treat it as a second-class citizen -- it will be the experience for nearly half of users.
+
+#### 1.9 AmbientLightSensor Availability
+
+**Issue**: The `AmbientLightSensor` API (Surprise 2.4) is behind a flag in Chrome (`#enable-generic-sensor-extra-classes`), not available in Firefox, Safari, or Edge by default. Effectively zero real-world users will have this API active. The fallback described (1x1 pixel camera capture from getUserMedia) is clever but requires camera permission, which is a SEPARATE permission dialog and far more intrusive than microphone. Users will be alarmed by a camera permission request for a visualization.
+
+**Fix**: Replace the camera fallback entirely. Instead:
+1. Use `prefers-color-scheme` media query as a binary dark/light signal.
+2. Use the time-of-day palette (Surprise 2.6) as the primary ambient light proxy. It already adjusts for expected light conditions.
+3. If the screen brightness API becomes available in the future, use it. For now, treat ambient light as a "nice to have" enhancement that activates only when the sensor is genuinely available -- do not prompt for camera permission as a fallback.
+4. Mark this feature as progressive enhancement with zero user-facing degradation when absent.
+
+#### 1.10 Battery API Deprecation
+
+**Issue**: The `navigator.getBattery()` API (Surprise 2.5) was deprecated in Firefox (removed entirely) and is unavailable in Safari. It works in Chrome/Chromium on Android and desktop. On iOS, it is completely unavailable. The plan relies on it for color temperature mapping, urgency speed changes, and the dramatic "critical battery" pulsing effect.
+
+**Fix**: Wrap `navigator.getBattery()` in a feature check. If unavailable, default to "80% battery" equivalent values (cool palette, no urgency modifications). The color temperature from time-of-day (Surprise 2.6) already provides the warm/cool variation that battery level was partially duplicating. Remove battery from the critical path entirely. It should be a subtle enhancement layer, not a core mapping. The "critical battery" red pulse effect is dramatic but affects very few users (who is watching visualizations at 5% battery?) -- it is safe to cut.
+
+#### 1.11 Network Information API Support
+
+**Issue**: `navigator.connection` (Surprise 2.11) is only available in Chrome and Samsung Internet on Android. It is not available in Safari, Firefox, or any iOS browser. The plan uses it to cap visual complexity, which is a proxy for device capability. Using network speed as a device capability proxy is also a flawed heuristic -- a fast Wi-Fi connection does not imply a powerful GPU, and vice versa.
+
+**Fix**: Replace network-based complexity adjustment with actual performance measurement:
+1. On load, run a 2-second GPU benchmark: render the most expensive shader (Quantum with Hypertetrahedron + Fractal, geometry 21) at full resolution and measure the average frame time.
+2. If avg frame time > 20ms (below 50fps), drop to medium complexity tier.
+3. If avg frame time > 33ms (below 30fps), drop to low complexity tier.
+4. Continue monitoring frame time during operation. If the 60-frame rolling average drops below 45fps, dynamically reduce gridDensity by 10 and disable post-processing. If it recovers, gradually restore.
+5. This approach is more accurate than network speed and works on every browser.
+
+#### 1.12 Haptic API (navigator.vibrate) on iOS
+
+**Issue**: `navigator.vibrate()` does not exist on iOS. Period. Not in Safari, not in Chrome on iOS, not in any iOS browser (they all use WebKit). The plan references haptic feedback in Surprises 2.3 (shake explosion), 2.10 (orientation change), 2.12 (rotation boundary clicks), and 2.13 (onset micro-pulse). On iOS, all of these calls will throw a TypeError or silently fail if not guarded.
+
+**Fix**: Create a haptic abstraction function:
+```javascript
+function haptic(pattern) {
+    if (navigator.vibrate) {
+        navigator.vibrate(pattern);
+    }
+    // On iOS, use AudioContext to play a very short (10ms) low-frequency
+    // sine burst at minimal volume as a psychoacoustic "thump" substitute.
+    // This is not true haptics but provides subtle auditory feedback.
+}
+```
+Guard every `navigator.vibrate()` call behind a check. Do not let haptic failure propagate. The experience must feel complete without haptics -- they are enhancement, not core feedback.
+
+#### 1.13 Multi-Touch Gesture Conflicts with Browser Gestures
+
+**Issue**: The plan defines pinch (2 fingers), rotation (2 fingers), three-finger swipe, four-finger tap, and five-finger press. Several of these conflict with browser/OS gestures:
+- **Pinch**: Conflicts with browser pinch-to-zoom. On iOS Safari, pinch-to-zoom cannot be fully prevented by `touch-action: none` if the page is not in a standalone/PWA mode.
+- **Two-finger rotation**: On macOS trackpad, this is a system gesture for Mission Control/Launchpad.
+- **Three-finger swipe**: On iOS, this is the app switcher gesture. On Android, it can be screenshot or system navigation.
+- **Four/five finger gestures**: On iPad, these are system gestures (app switching, home).
+
+The plan's gesture system will fight the OS for control of these touches, producing unpredictable behavior.
+
+**Fix**:
+1. Add `touch-action: none` to the canvas element CSS AND set `{ passive: false }` on all touch event listeners, then call `e.preventDefault()` in `touchstart` and `touchmove`. This prevents browser zoom/scroll but NOT system-level gestures.
+2. Limit custom gestures to 1-2 touches. Remove four-finger tap and five-finger press entirely -- they are unreliable due to OS conflicts and are nearly impossible to discover without instruction.
+3. For three-finger swipe: make it optional, with a keyboard equivalent (arrow keys for system cycling, number keys for core type) that is the primary control on desktop.
+4. Add a `<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">` tag and set CSS `touch-action: manipulation` on the body to suppress double-tap-to-zoom delays.
+5. Consider offering a fullscreen PWA mode via `manifest.json` where system gestures are reduced.
+
+#### 1.14 WebGL Context Loss on Mobile
+
+**Issue**: Mobile GPUs aggressively reclaim WebGL contexts when memory is low, the app is backgrounded, or another WebGL context is created. The plan has three simultaneous WebGL canvases. Creating 3 WebGL contexts on a mobile device with a 4-context limit means a FOURTH context (e.g., from an ad iframe or background tab) will cause one of the three to be lost. The existing codebase (QuantumVisualizer.js) has `webglcontextlost` and `webglcontextrestored` handlers, but the experience plan does not address how to handle mid-experience context loss.
+
+**Fix**:
+1. Reduce to a single shared WebGL context. Use a single canvas and render all three systems to it. The plan's three-canvas architecture is a compositing convenience, but it triples the context count. Use a single WebGL canvas for the active system, and a second for cross-fade transitions. The overlay canvas can be a plain 2D canvas or CSS layer.
+2. If keeping multiple contexts: listen for `webglcontextlost` on all canvases. On loss, display a CSS fallback (a gradient animation using CSS `@keyframes` and `hsl()`) that approximates the current color state. On `webglcontextrestored`, reinitialize shaders and uniforms from the current state manager.
+3. Set `preserveDrawingBuffer: false` (already done in the codebase) to reduce memory pressure.
+4. On context loss, do NOT immediately try to create a new context. Wait for the `webglcontextrestored` event. Trying to force a new context often fails and wastes the limited context budget.
+
+#### 1.15 Canvas Blend-Mode Compositing Artifacts
+
+**Issue**: The three-canvas architecture uses CSS `mix-blend-mode: screen` and `mix-blend-mode: overlay` for compositing. CSS blend modes are rendered by the browser compositor, which varies by GPU driver and browser. Known issues:
+- On some Android devices, `mix-blend-mode: overlay` with WebGL canvases produces black rectangles or inverted colors.
+- When `premultipliedAlpha: true` (set in the codebase), the alpha channel interacts with blend modes in non-intuitive ways. A canvas with premultiplied alpha composited with `screen` blend mode can produce washed-out or overly bright results.
+- Safari on iOS occasionally flickers when multiple overlapping canvases with blend modes are animated simultaneously.
+- Some Intel integrated GPUs on Windows render `mix-blend-mode` in software, causing severe performance drops.
+
+**Fix**:
+1. Test the three specific blend mode combinations on: iOS Safari, Android Chrome, Samsung Internet, Firefox desktop, and Chrome with Intel integrated graphics. Document known-bad configurations.
+2. Provide a fallback rendering mode: single-canvas with no blend modes. Detect the need for fallback by rendering a test pattern to two small (16x16) canvases with blend modes and reading back the pixel values to verify correctness. If the readback does not match expected values, switch to single-canvas mode.
+3. For the cross-fade during system transitions, prefer opacity animation on a single canvas rather than two canvases with blend modes. Render the outgoing frame to an offscreen canvas, then crossfade using `globalAlpha` on a 2D compositing canvas, or simply animate the WebGL canvas opacity with a CSS transition.
+
+#### 1.16 requestAnimationFrame and Page Visibility
+
+**Issue**: When the page is hidden (tab switched, phone locked), `requestAnimationFrame` stops firing. The plan does not describe what happens to stateful accumulators (rotation angles, hue drift, autonomous choreography position) when the page returns. If rotation angles were being accumulated by adding velocity * deltaTime, and deltaTime is suddenly 30 seconds (user switched tabs and came back), the rotation will jump by 30 * velocity radians -- producing a violent spin.
+
+**Fix**: Listen for `document.visibilitychange`. When the page becomes hidden, record the timestamp. When it becomes visible again, calculate the elapsed time but cap the effective deltaTime for parameter updates at 100ms. For the autonomous choreography, jump to the correct scene position based on wall-clock time (modulo 120 seconds) rather than accumulating. For rotation angles, apply modulo 2*PI to prevent floating-point drift. For audio, discard the first 5 frames of FFT data after resuming (the buffers will contain stale data).
+
+---
+
+### Part 2: Performance Budget
+
+#### 2.1 Fragment Shader GPU Cost
+
+The Faceted fragment shader (the simplest of the three) performs the following per pixel:
+
+| Operation | Approximate Cost (ALU ops) |
+|-----------|---------------------------|
+| UV normalization + 4D point creation | ~10 |
+| 6 rotation matrices (each: 2 trig + 8 mul + 4 add) | ~6 x 16 = 96 |
+| 6 matrix-vector multiplies (each: 16 mul + 12 add) | ~6 x 28 = 168 |
+| 4D-to-3D projection (1 div + 3 mul) | ~5 |
+| Core warp (Hypersphere or Hypertetra): trig, dot products, 6 more rotations | ~180 (when active, geometries 8-23) |
+| Geometry function (1 of 8): fract, abs, min, sin/cos, atan | ~20-40 depending on type |
+| Chaos noise (3 sin/cos) | ~12 |
+| HSL-to-RGB color calculation (3 sin) | ~15 |
+| Audio modulation, intensity, clamping | ~10 |
+| **Total (Base geometry 0-7)** | **~340 ALU ops/pixel** |
+| **Total (Warped geometry 8-23)** | **~520 ALU ops/pixel** |
+
+The Quantum shader is heavier due to more complex lattice functions (vertex detection, edge rendering, face highlighting, pow() calls). Estimate: ~600-800 ALU ops/pixel.
+
+The Holographic shader adds 5-layer processing with per-layer color palettes and RGB separation. If rendering all 5 layers in a single pass: ~900-1200 ALU ops/pixel. If each layer is a separate pass on a separate canvas, it is 5 x ~600 = ~3000 ALU ops/pixel total (but spread across 5 draw calls).
+
+**At 1080p (1920x1080 = 2,073,600 pixels)**:
+
+| System | Ops/pixel | Total ops/frame | At 60fps |
+|--------|-----------|----------------|----------|
+| Faceted (warped) | ~520 | ~1.08 billion | ~64.5 billion ops/s |
+| Quantum | ~700 | ~1.45 billion | ~87.2 billion ops/s |
+| Holographic (single pass) | ~1000 | ~2.07 billion | ~124.4 billion ops/s |
+
+**iPhone 12 GPU (Apple A14, 4-core GPU)**: ~1.4 TFLOPS. At 60fps, that is ~23.3 GFLOPS per frame. The Faceted shader needs ~1.08 GFLOPS per frame, which is ~4.6% of the budget. The Quantum shader is ~6.2%. Even Holographic is ~8.9%. **This is comfortably feasible**, even considering that real-world GPU utilization is 50-70% of theoretical peak due to memory bandwidth, cache misses, and pipeline bubbles.
+
+**However**: The plan describes rendering on up to 3 canvases simultaneously. If all three have active shaders rendering at 1080p, the cost triples. The cross-fade period is the danger zone. Recommendation: during cross-fades, render the outgoing system at half resolution (540p) to keep total GPU load under 20% of budget.
+
+**Pixel 6 (Mali-G78 GPU)**: ~0.85 TFLOPS. Tighter budget. The Holographic system at full resolution uses ~14.6% of per-frame budget. Still feasible, but leaves less headroom for the browser compositor, Android system UI, and OS services. Monitor frame drops on mid-range Android specifically.
+
+#### 2.2 Audio Processing CPU Cost
+
+| Component | Cost per frame (at 60fps) |
+|-----------|--------------------------|
+| `getByteFrequencyData()` (1024 bins) | ~0.02ms (browser-optimized native call) |
+| 8-band decomposition (mean of bin ranges) | ~0.01ms (simple arithmetic, ~930 additions + 8 divisions) |
+| EMA smoothing (8 bands x 2 smoothing values) | <0.01ms |
+| Spectral flux (1024 subtractions + 1024 max + 1 sum) | ~0.01ms |
+| Spectral centroid (1024 mul + 1024 add + 1 div) | ~0.01ms |
+| Spectral spread (1024 mul + sqrt) | ~0.01ms |
+| Onset detection (1 comparison) | <0.001ms |
+| Pitch tracking (autocorrelation: N log N for FFT-based, or ~N^2/4 for naive) | ~0.5ms if naive with 2048 samples, ~0.05ms if FFT-based |
+| **Total audio processing** | **~0.1-0.6ms per frame** |
+
+At 16.67ms per frame, audio processing is 0.6-3.6% of the frame budget. **Trivially affordable.** The one risk is naive autocorrelation for pitch tracking. Use FFT-based autocorrelation (compute FFT, square magnitudes, inverse FFT) or limit the autocorrelation to the 200-2000Hz range (bins 9-93 at 44.1kHz/2048) to reduce computation.
+
+#### 2.3 Mapping Engine CPU Cost
+
+42 continuous mappings + 12 cross-modulations per frame:
+
+| Component | Cost per frame |
+|-----------|---------------|
+| 42 mapping evaluations (each: 1 easing function + 1 multiply + 1 smoothing EMA) | ~42 x ~5 ops = ~210 ops |
+| 12 cross-modulation multipliers | ~12 x ~3 ops = ~36 ops |
+| 17 parameter smoothing passes | ~17 x ~3 ops = ~51 ops |
+| 6 rotation angle accumulations (add + modulo) | ~12 ops |
+| 18 threshold checks | ~18 comparisons |
+| **Total** | **~330 arithmetic operations** |
+
+This is approximately **0.001ms** on any modern CPU. **Completely trivial.** The mapping engine could run at 1000fps without concern. The plan's worry about "42 continuous mappings + 12 cross-modulations" being expensive is unfounded -- this is about 1 microsecond of work.
+
+#### 2.4 Canvas Blend-Mode Compositing Cost
+
+CSS `mix-blend-mode` compositing of overlaid canvases is performed by the browser's compositor, which runs on the GPU. The compositing cost depends on the blend mode:
+
+| Blend Mode | GPU Cost |
+|-----------|----------|
+| `normal` | 1 texture sample + alpha blend (~4 ops/pixel) |
+| `screen` | 1 texture sample + screen formula: `1 - (1-a)*(1-b)` (~8 ops/pixel) |
+| `overlay` | 1 texture sample + conditional formula (~12 ops/pixel) |
+
+At 1080p with 3 layers: ~2M pixels x ~24 ops = ~48M ops. This is **negligible** compared to the fragment shader cost. The compositing itself is not the performance risk -- the risk is that some browsers fall back to CPU compositing for `mix-blend-mode` on canvases, in which case the cost jumps to ~2-5ms per frame (CPU pixel processing of 2M pixels x 3 layers). This is the scenario to detect and work around (see Part 1, item 1.15).
+
+#### 2.5 Total Frame Budget Summary
+
+| Component | Time (ms) | % of 16.67ms budget |
+|-----------|-----------|---------------------|
+| Audio processing | 0.1-0.6 | 0.6-3.6% |
+| Mapping engine | <0.01 | <0.1% |
+| Sensor reading + smoothing | <0.05 | <0.3% |
+| Uniform upload to GPU | ~0.1 | 0.6% |
+| Fragment shader (Quantum, warped) | 2-4 (GPU) | 12-24% (GPU) |
+| Compositor blend modes | 0.5-1 (GPU) | 3-6% (GPU) |
+| JS overhead (GC, event loop) | 1-2 | 6-12% |
+| **Total estimated** | **4-8ms** | **24-48%** |
+
+**Verdict**: The experience is feasible at 60fps on target devices with comfortable headroom. The primary risk is not per-frame cost but sustained thermal throttling on mobile -- after 5-10 minutes of continuous GPU load at 20-40%, mobile devices will throttle. Add a thermal management strategy: if frame time degrades by >30% from initial measurement, reduce gridDensity by 20% and consider rendering every other frame for the non-active canvases.
+
+---
+
+### Part 3: Enhancements That Multiply Impact
+
+#### 3.1 Visual Coherence: From Mappings to Aesthetic Theory
+
+The plan defines 42 input-to-parameter mappings, but there is no theory of WHY these mappings produce beauty rather than chaos. Without aesthetic constraints, the system is a random number generator with extra steps. Here is a framework:
+
+**The Principle of Sympathetic Resonance**: Mappings feel "right" when the perceptual quality of the input matches the perceptual quality of the output. Bass is heavy, slow, and spatial -- it should map to large-scale, slow parameters (morphFactor, dimension, ZW rotation). Treble is bright, quick, and sharp -- it should map to small-scale, fast parameters (gridDensity, hue, intensity flicker). The current mapping table mostly follows this principle but violates it in a few places:
+- Upper-mid energy maps to `chaos`. But upper-mids (2-6kHz) are the speech intelligibility range -- they carry structure, not chaos. Consider mapping spectral *flatness* (not energy) to chaos instead. A flat spectrum = noise = chaos. A peaked spectrum = tone = order.
+- Spectral centroid maps to hue across the full 0-360 range. This produces jarring color jumps when the spectral content changes quickly (e.g., between vocal phrases and instrumental sections). Constrain the centroid-to-hue mapping to a 60-degree range centered on the time-of-day base hue. This keeps color coherent while still being audio-responsive.
+
+**The Rule of Dominant Voice**: At any moment, one input source should be the "lead" and others should be "accompaniment." If audio is loud and motion is still, audio should own 80% of the parameter influence and motion should be subtle modulation. If the user is actively tilting the device but there is no audio, motion should dominate. Implement this as a dynamic gain system:
+```
+audioInfluence = clamp(audioRMS / (audioRMS + motionMagnitude + 0.01), 0.1, 0.9)
+motionInfluence = 1.0 - audioInfluence
+```
+Apply these as multipliers to their respective mapping groups. This prevents the "everything is driving everything" problem where all inputs compete equally and the result is visual mud.
+
+**Color Palette Locking**: Instead of letting hue roam freely across 360 degrees, lock the experience to one of the 22 color presets' hue neighborhoods at any given time. Audio and motion can shift hue within a +/-30 degree range of the active preset's base hue. The only events that should trigger a full palette change are: system switch, orientation change, or the autonomous choreography. This ensures that at any given moment, the colors are harmonious rather than random.
+
+**Geometry Transition Whitelist**: Not all geometry-to-geometry transitions look good. Transitioning from Torus (3) to Fractal (5) can produce visual garbage at intermediate morphFactor values. Create a transition affinity matrix (8x8) that rates how aesthetically pleasing each transition is. Favor high-affinity transitions and use rapid cuts (100ms) for low-affinity ones instead of slow morphs. Example high-affinity pairs: Sphere<->Torus, Hypercube<->Crystal, Wave<->Fractal. Example low-affinity pairs: Klein Bottle<->Tetrahedron.
+
+#### 3.2 Narrative Arc: Emotional Choreography
+
+The current 8-scene autonomous sequence has an energy arc but not an emotional one. Energy goes: low -> medium -> high -> peak -> shift -> storm -> intense -> calm. This is a hill shape. Here is how to give it EMOTIONAL resonance:
+
+**Reframe as a 5-Act Structure**:
+
+| Act | Scenes | Emotion | Musical Analogy |
+|-----|--------|---------|-----------------|
+| I: Awakening | 1 | Wonder, curiosity | Piano solo, pp |
+| II: Discovery | 2-3 | Excitement, energy | Strings enter, crescendo |
+| III: Transcendence | 4-5 | Awe, surrender | Full orchestra, fff |
+| IV: Turbulence | 6-7 | Tension, disorientation | Dissonance, irregular rhythm |
+| V: Resolution | 8 | Peace, integration | Return to piano, pp, but richer |
+
+**Key insight for Scene 8 (Resolution)**: Do NOT return to exactly Scene 1's values. The return should be to values that are SIMILAR but subtly different -- slightly warmer hue (+15 degrees), slightly higher base dimension (3.3 instead of 3.2), slightly slower rotation but in a different plane combination. This creates the feeling of "we have been changed by the journey" rather than "we are back to the beginning." The loop seam should be felt as a threshold crossing, not a reset.
+
+**Add a Breath Beat**: The choreography lacks rhythmic structure. Add a global "breath" oscillation that persists across all scenes: a sine wave with a 6-second period that gently modulates intensity by +/-0.05 and speed by +/-0.1. This creates an organic, living quality -- like the visualization is breathing. During Act III (Transcendence), shorten the breath to 3 seconds (excitement). During Act V (Resolution), lengthen it to 10 seconds (deep calm). This single addition will make the autonomous sequence feel alive rather than mechanical.
+
+**Punctuation Moments**: Add 3 "punctuation" micro-events at the act boundaries:
+- End of Act I (scene 1->2 transition): A single, slow "inhale" -- dimension rises from 3.2 to 3.8 over 2 seconds with `easeIn`, then the system switch happens at the peak.
+- End of Act III (scene 5->6 transition): A "shatter" -- all rotations receive a random impulse, chaos spikes to 0.7 for 300ms, and intensity flashes to 1.0 for 100ms. This is the "storm arrives" moment.
+- End of Act IV (scene 7->8 transition): A "hush" -- speed drops to 0.1 for 1 second with `expoOut`, then gradually rises to Scene 8 values. The silence before the resolution.
+
+#### 3.3 Memory: Adaptive User Modeling
+
+This is the enhancement that transforms the experience from "interactive art" to "intelligent art."
+
+**Behavior Accumulator**: Maintain a running profile of user behavior patterns over the session:
+
+```javascript
+const userProfile = {
+    // Spatial preference: where does the mouse/touch spend the most time?
+    spatialHeatmap: new Float32Array(16), // 4x4 grid, accumulated dwell time
+
+    // Temporal preference: does the user interact in bursts or continuously?
+    interactionCadence: 0, // 0 = continuous, 1 = bursty
+
+    // Audio response: which frequency bands correlate with user interaction?
+    audioInteractionCorrelation: new Float32Array(8), // per-band correlation
+
+    // Preferred system: track time spent in each system after manual switches
+    systemPreference: [0, 0, 0], // Faceted, Quantum, Holographic
+
+    // Preferred geometry range: which geometries does the user return to?
+    geometryAffinity: new Float32Array(24),
+
+    // Interaction intensity: does the user prefer subtle or dramatic?
+    dramaticPreference: 0.5, // 0 = subtle, 1 = dramatic
+};
+```
+
+**How to use it**:
+1. **Spatial bias**: If the user consistently hovers in the top-right, bias the geometry's visual center of mass toward the top-right by offsetting the UV coordinates in the shader by a small amount (0.05-0.15 units, smoothed over 30 seconds). The visualization gravitates toward the user's attention.
+2. **Audio-interaction correlation**: If the user tends to interact (touch/mouse activity increases) during bass-heavy moments, gradually increase the bass mapping gains by 20-40% over 5 minutes. The system learns to emphasize the audio features the user responds to.
+3. **Dramatic preference**: If the user frequently triggers shake (dramatic) or avoids the freeze mode (prefers dynamism), gradually increase the chaos floor from 0 to 0.1 and the speed floor from 0.1 to 0.5. If the user prefers freeze and slow mouse movements, decrease the chaos maximum from 1.0 to 0.5 and increase smoothing constants by 30%.
+4. **System preference**: During autonomous mode, weight scene system selection toward the user's preferred system. If they spend 70% of manual time in Quantum, the autonomous sequence should use Quantum for 4 of 8 scenes instead of the default 2-3.
+
+**Decay**: All profile values decay toward neutral with a 10-minute half-life. If the user changes behavior, the system adapts within 5-10 minutes. This prevents the profile from getting "stuck."
+
+**Privacy**: All data stays in JavaScript variables (session-scoped). Nothing is persisted to localStorage or sent to any server.
+
+#### 3.4 Social/Shared State: Synchronized Visuals
+
+**Lightweight approach (no server required)**:
+
+Two users can share a synchronized experience by sharing a URL containing:
+- A `seed` parameter (64-bit integer) that determines all pseudo-random choices (autonomous choreography variations, noise seeds, initial hue offset).
+- A `t0` parameter (Unix timestamp in ms) that establishes the shared time origin.
+
+```
+https://example.com/synesthesia?seed=8472619305&t0=1708012800000
+```
+
+Both devices use `performance.now() - (Date.now() - t0)` to compute a shared time reference. The autonomous choreography and all time-based parameter calculations use this shared time instead of local time. Since the choreography is deterministic given a time value, both devices will show identical visuals during autonomous mode.
+
+During reactive mode, visuals diverge (each user's sensors are different), but the BASE state (time-of-day palette, autonomous seed) remains shared. When both users go idle, they converge back to identical autonomous visuals within 3 seconds.
+
+**Enhanced approach (WebRTC Data Channel)**:
+
+For true real-time sync, use a WebRTC peer connection with a data channel:
+1. User A generates an offer, serializes it as a compact URL or QR code.
+2. User B scans/clicks the link, generates an answer.
+3. Both connect over a data channel.
+4. Every 100ms, each peer sends a compressed state packet: 17 parameter floats (68 bytes) + system ID (1 byte) + geometry (1 byte) = 70 bytes per update. At 10 updates/second, this is 700 bytes/second -- trivial bandwidth.
+5. Each device renders a weighted blend: 70% own sensors, 30% peer state. The result is visuals that are recognizably similar but not identical -- like two dancers performing the same choreography with personal style.
+
+**Signaling**: Use a free TURN/STUN service (e.g., Google's public STUN servers) and exchange signaling data via a simple copy-paste or QR code. No backend server needed.
+
+#### 3.5 Export Moment: Capturable Artifacts
+
+The user should be able to "freeze" what they are seeing and take it with them. Three export formats:
+
+**1. Screenshot (PNG/JPEG)**: Capture the current composite of all canvases.
+- Implementation: Create a temporary canvas at 2x resolution. Draw each visible WebGL canvas onto it using `drawImage()` in the correct z-order with the correct `globalCompositeOperation` matching the CSS blend modes. Call `toDataURL('image/png')`. Trigger a download or share via `navigator.share()` on mobile.
+- Timing: Capture on a UI button press OR automatically capture when the user double-taps (the "freeze" gesture) -- save the frozen frame as a bonus.
+- Add a subtle watermark: "VIB3+ SYNESTHESIA" in 8pt transparent text in the bottom-right corner.
+
+**2. Animated Loop (GIF/WebM)**: Capture a 3-6 second loop.
+- Implementation: Use `MediaRecorder` API on a canvas captured via `captureStream(30)`. Record for 4 seconds, stop, and provide the blob as a download. WebM is natively supported in Chrome; for broader compatibility, use a JS-based GIF encoder (e.g., gif.js) but warn that GIF encoding is slow (5-15 seconds for a 4-second loop).
+- Better alternative: Record a 4-second WebM and offer it as the primary format. On iOS where MediaRecorder may not support WebM, fall back to a series of PNG frames assembled client-side.
+
+**3. Parameter Snapshot (JSON)**: Export the exact state as a shareable JSON blob.
+- Contains: all 17 parameters, active system, geometry index, all 6 rotation angles, color preset name, timestamp, and the seed value.
+- This can be shared as a URL query parameter (base64-encoded) that, when opened, initializes the experience to that exact state.
+- This is the most faithful export and enables "preset sharing" between users.
+
+**4. Live Wallpaper / Screensaver Embed (HTML snippet)**:
+- Generate a minimal self-contained HTML file (~50KB) that contains just the active shader, the frozen parameter state, and a gentle autonomous drift. The user gets a file they can set as a browser new-tab page, an Electron screensaver, or embed in an iframe.
+
+#### 3.6 Accessibility
+
+**Deaf Users**:
+- The experience should be fully functional without audio. The "no microphone" fallback (Part 1, item 1.3) handles this technically, but the UX should be intentional, not accidental.
+- Offer a "Visual Only" mode toggle that disables the microphone permission prompt entirely and replaces all audio-driven mappings with enhanced motion and touch mappings. Double the sensitivity of tilt-to-rotation. Add touch-pressure (where available via `Touch.force`) as a substitute for audio intensity.
+- For the autonomous choreography, audio-absent mode should increase the emphasis on geometric and color transitions to compensate for the missing audio-reactive dimension.
+
+**Blind or Low-Vision Users**:
+- This is primarily a visual experience, but there is value in the audio and haptic dimensions.
+- Offer an "Audio Description" mode where the SpeechSynthesis API narrates state changes: "Switching to Quantum system. Geometry: Hypersphere Fractal. Colors shifting to Cyberpunk Neon." Narrate only major transitions (system switch, geometry change, scene change in autonomous mode), not continuous parameter updates.
+- Amplify the haptic feedback layer: instead of subtle 15ms pulses, use longer patterns (50-100ms) that encode parameter state. Different vibration rhythms for different systems. Rotation boundary crossings use distinct patterns (short-short for 3D planes, long for 4D planes).
+- Use screen reader ARIA live regions to announce system and scene transitions.
+
+**Reduced Motion (prefers-reduced-motion)**:
+- Check `window.matchMedia('(prefers-reduced-motion: reduce)')`.
+- If active: set all rotation velocities to 0 (no autorotation, only user-driven). Reduce `speed` maximum from 3.0 to 0.5. Disable the shake explosion (Surprise 2.3) entirely. Disable the orientation change flourish (Surprise 2.10). Slow all transitions from their specified duration to 3x the duration. Disable the geometry flicker micro-keyframes in the choreography.
+- The experience becomes a gentle, slowly-evolving color field that responds to touch and audio but does not spin, flash, or shake.
+
+**Photosensitivity / Epilepsy**:
+- The onset flash (Surprise 2.13: intensity spikes by +0.3 with 150ms decay) and the orientation change flash (intensity spikes to 1.0 for 100ms) could trigger photosensitive epilepsy if occurring at 3-30Hz.
+- Add a photosensitivity guard: track the number of intensity spikes > 0.7 in any 1-second window. If more than 3 spikes occur, suppress further spikes for 2 seconds and reduce the intensity ceiling to 0.6.
+- Honor `prefers-reduced-motion` as a signal to disable ALL flash effects.
+- On first load, display a brief (3 second, dismissable) warning: "This experience contains flashing lights and motion. Tap to adjust." Link to a settings panel with a "reduce flashing" toggle.
+
+**Motor Impairment**:
+- The multi-touch gesture system (Section 2.8) assumes manual dexterity. Ensure that every gesture has a keyboard equivalent and that the keyboard controls are documented in an accessible help panel.
+- Support switch access: a single-button input mode where each tap cycles through a predetermined sequence of system states. This is minimal but ensures the experience is not completely locked out for switch users.
+
+#### 3.7 Easter Eggs: Hidden Behaviors That Reward Exploration
+
+**1. The Konami Code**: Up-Up-Down-Down-Left-Right-Left-Right-B-A (keyboard) or the equivalent swipe pattern on touch. Activates a hidden 9th scene in the autonomous choreography: "Polychora Preview" -- uses the Hypertetrahedron + Crystal geometry (index 23) with all 6 rotation planes at maximum velocity (0.5 rad/s), chaos 0.0, morphFactor 2.0, dimension 4.5, and the Holographic Rainbow preset with 120-degree hue shift cycling. This runs for 10 seconds, then returns to normal operation. It is a glimpse at the eventual Polychora system that the CLAUDE.md marks as "TBD placeholder."
+
+**2. Midnight Activation**: If the experience is running at exactly midnight (00:00:00 local time, checked within a 2-second window), trigger a unique "New Day" event: all parameters simultaneously lerp to zero (total darkness) over 3 seconds, hold for 2 seconds of pure black, then bloom back to the Deep Night palette over 5 seconds with the dimension slowly climbing from 3.0 to 4.5. A once-per-day event that rewards the persistent user.
+
+**3. The Silence Reward**: If the user achieves complete silence (RMS < -70dB) for 60 continuous seconds with the microphone active (not just absent), activate "Void Mode": the background color inverts (dark becomes light, light becomes dark), geometry switches to Klein Bottle (index 4), all rotations stop, and the only animation is a very slow (0.05 Hz) pulsing of the dimension parameter between 3.0 and 4.5. This creates a meditative, breathing space that feels like a reward for stillness. Any sound above -50dB gently transitions back to normal over 5 seconds.
+
+**4. Harmonic Resonance**: If the microphone detects a sustained pure tone (spectral energy concentrated in a single frequency band for > 3 seconds -- someone humming or playing a sustained note), match the geometry to the note: C = Tetrahedron, D = Hypercube, E = Sphere, F = Torus, G = Klein Bottle, A = Fractal, B = Wave. Lock the geometry to that note's shape and morph the hue to match the frequency (lower = warmer, higher = cooler). The visualization becomes a visual instrument. Release when the tone stops.
+
+**5. Golden Ratio Rotation**: If the user manually sets any rotation plane to exactly 2.399 radians (the golden angle, 137.508 degrees) by dragging precisely, all other rotation planes smoothly align to golden ratio multiples of each other (2.399, 4.798 mod 2pi = 1.215, 1.215*1.618 mod 2pi = ...). This produces the most aesthetically pleasing, non-repeating rotation pattern possible. A subtle golden spiral overlay flashes for 500ms to signal the easter egg activation.
+
+**6. Browser Console Message**: When the developer console is opened (detectable via `window.outerHeight - window.innerHeight > 200` heuristic or a `debugger` timing check), display a message in the console using styled `console.log`:
+```
+%c VIB3+ SYNESTHESIA %c Try typing: vib3.secret('tesseract')
+```
+If the user calls `window.vib3.secret('tesseract')` from the console, all geometry indices cycle through 0-23 in rapid succession (50ms each, total 1.2 seconds) while all rotation planes spin at 3.0 rad/s. A developer treat.
+
+**7. Device Flip**: If the device is held upside down (beta > 150 degrees or beta < -150 degrees) for more than 3 seconds, mirror the shader output horizontally and vertically (multiply UV by -1), invert the hue (hue += 180 degrees), and reverse all rotation directions. The world is literally upside down. Flipping back restores normal operation with a 1-second elastic transition.
+
+---
+
+**End of Red Team Report + Enhancements.**
