@@ -114,8 +114,8 @@ export {
     LayerRelationshipProfile,
     LayerRelationshipExport,
     LAYER_ORDER as RENDER_LAYER_ORDER,
-    RELATIONSHIP_PRESETS,
-    RELATIONSHIP_PROFILES
+    PRESET_REGISTRY,
+    PROFILES
 } from './render/LayerRelationshipGraph';
 
 // Creative tooling

@@ -103,8 +103,8 @@ export declare function harmonic(config?: HarmonicConfig): RelationshipFn;
 export declare function reactive(config?: ReactiveConfig): RelationshipFn;
 export declare function chase(config?: ChaseConfig): RelationshipFn;
 
-export declare const RELATIONSHIP_PRESETS: Record<RelationshipPreset, (...args: any[]) => RelationshipFn>;
-export declare const RELATIONSHIP_PROFILES: Record<RelationshipProfileName, LayerRelationshipProfile>;
+export declare const PRESET_REGISTRY: Record<RelationshipPreset, (...args: any[]) => RelationshipFn>;
+export declare const PROFILES: Record<RelationshipProfileName, LayerRelationshipProfile>;
 
 // ============================================================================
 // LayerRelationshipGraph

@@ -119,6 +119,20 @@ export {
     MultiCanvasBridge
 } from './MultiCanvasBridge.js';
 
+// Layer relationship graph (keystone-driven inter-layer parameter system)
+export {
+    LayerRelationshipGraph,
+    LAYER_ORDER,
+    PROFILES,
+    PRESET_REGISTRY,
+    echo,
+    mirror,
+    complement,
+    harmonic,
+    reactive,
+    chase
+} from './LayerRelationshipGraph.js';
+
 /**
  * Create a complete rendering context
  * @param {HTMLCanvasElement} canvas

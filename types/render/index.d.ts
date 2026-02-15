@@ -12,6 +12,7 @@ export * from './ShaderProgram';
 export * from './WebGLBackend';
 export * from './WebGPUBackend';
 export * from './UnifiedRenderBridge';
+export * from './LayerRelationshipGraph';
 
 import { RenderState, BlendMode, CullFace } from './RenderState';
 import { CommandBuffer, CommandBufferOptions } from './CommandBuffer';
