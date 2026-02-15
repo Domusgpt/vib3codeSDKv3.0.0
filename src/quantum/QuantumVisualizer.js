@@ -14,6 +14,7 @@ export class QuantumHolographicVisualizer {
         this.role = role;
         this.reactivity = reactivity;
         this.variant = variant;
+        this._canvasLabel = typeof canvasIdOrElement === 'string' ? canvasIdOrElement : canvasIdOrElement?.id || 'unknown';
         
         // CRITICAL FIX: Define contextOptions as instance property to match SmartCanvasPool
         this.contextOptions = {
@@ -34,9 +35,9 @@ export class QuantumHolographicVisualizer {
                   this.canvas.getContext('experimental-webgl', this.contextOptions);
         
         if (!this.gl) {
-            console.error(`WebGL not supported for ${canvasId}`);
+            console.error(`WebGL not supported for ${this._canvasLabel}`);
             if (window.mobileDebug) {
-                window.mobileDebug.log(`❌ ${canvasId}: WebGL context creation failed`);
+                window.mobileDebug.log(`❌ ${this._canvasLabel}: WebGL context creation failed`);
             }
             // Show user-friendly error instead of white screen
             this.showWebGLError();
@@ -44,7 +45,7 @@ export class QuantumHolographicVisualizer {
         } else {
             if (window.mobileDebug) {
                 const version = this.gl.getParameter(this.gl.VERSION);
-                window.mobileDebug.log(`✅ ${canvasId}: WebGL context created - ${version}`);
+                window.mobileDebug.log(`✅ ${this._canvasLabel}: WebGL context created - ${version}`);
             }
         }
         
@@ -59,15 +60,15 @@ export class QuantumHolographicVisualizer {
         this._onContextLost = (e) => {
             e.preventDefault();
             this._contextLost = true;
-            console.warn(`WebGL context lost for ${canvasId}`);
+            console.warn(`WebGL context lost for ${this._canvasLabel}`);
         };
         this._onContextRestored = () => {
-            console.log(`WebGL context restored for ${canvasId}`);
+            console.log(`WebGL context restored for ${this._canvasLabel}`);
             this._contextLost = false;
             try {
                 this.init();
             } catch (err) {
-                console.error(`Failed to reinit after context restore for ${canvasId}:`, err);
+                console.error(`Failed to reinit after context restore for ${this._canvasLabel}:`, err);
             }
         };
         this.canvas.addEventListener('webglcontextlost', this._onContextLost);

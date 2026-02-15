@@ -207,7 +207,7 @@ export class HolographicVisualizer {
             uniform float u_time;
             uniform vec2 u_mouse;
             uniform float u_geometry;
-            uniform float u_density;
+            uniform float u_gridDensity;
             uniform float u_speed;
             uniform vec3 u_color;
             uniform float u_intensity;
@@ -218,9 +218,8 @@ export class HolographicVisualizer {
             uniform float u_mouseIntensity;
             uniform float u_clickIntensity;
             uniform float u_densityVariation;
-            uniform float u_geometryType;
             uniform float u_chaos;
-            uniform float u_morph;
+            uniform float u_morphFactor;
             uniform float u_touchMorph;
             uniform float u_touchChaos;
             uniform float u_scrollParallax;
@@ -293,7 +292,7 @@ export class HolographicVisualizer {
             // ========================================
             vec3 warpHypersphereCore(vec3 p, int geometryIndex, vec2 mouseDelta) {
                 float radius = length(p);
-                float morphBlend = clamp(u_morph * 0.6 + 0.3, 0.0, 2.0);
+                float morphBlend = clamp(u_morphFactor * 0.6 + 0.3, 0.0, 2.0);
                 float w = sin(radius * (1.3 + float(geometryIndex) * 0.12) + u_time * 0.0008 * u_speed);
                 w *= (0.4 + morphBlend * 0.45);
 
@@ -315,7 +314,7 @@ export class HolographicVisualizer {
                 vec3 c3 = normalize(vec3(-1.0, 1.0, -1.0));
                 vec3 c4 = normalize(vec3(1.0, -1.0, -1.0));
 
-                float morphBlend = clamp(u_morph * 0.8 + 0.2, 0.0, 2.0);
+                float morphBlend = clamp(u_morphFactor * 0.8 + 0.2, 0.0, 2.0);
                 float basisMix = dot(p, c1) * 0.14 + dot(p, c2) * 0.1 + dot(p, c3) * 0.08;
                 float w = sin(basisMix * 5.5 + u_time * 0.0009 * u_speed);
                 w *= cos(dot(p, c4) * 4.2 - u_time * 0.0007 * u_speed);
@@ -551,12 +550,12 @@ export class HolographicVisualizer {
                 float audioDensityMod = 1.0 + u_audioDensityBoost * 0.5;
                 // Controlled density calculation - breathing modulation added
                 float breathDensityMod = 1.0 + u_breath * 0.1;
-                float baseDensity = u_density * u_roleDensity * breathDensityMod;
+                float baseDensity = u_gridDensity * u_roleDensity * breathDensityMod;
 
                 float densityVariations = (u_densityVariation * 0.3 + (scrollDensityMod - 1.0) * 0.4 + (audioDensityMod - 1.0) * 0.2);
                 float roleDensity = baseDensity + densityVariations;
                 
-                float morphedGeometry = u_geometryType + u_morph * 3.0 + u_touchMorph * 2.0 + u_audioMorphBoost * 1.5;
+                float morphedGeometry = u_geometry + u_morphFactor * 3.0 + u_touchMorph * 2.0 + u_audioMorphBoost * 1.5;
                 float lattice = getDynamicGeometry(p, roleDensity, morphedGeometry);
                 
                 // Enhanced holographic color processing
@@ -590,9 +589,9 @@ export class HolographicVisualizer {
                 color = rgbGlitch(color, uv, enhancedChaos);
                 
                 // Apply morph distortion to position
-                vec2 morphDistortion = vec2(sin(uv.y * 10.0 + u_time * 0.001) * u_morph * 0.1, 
-                                           cos(uv.x * 10.0 + u_time * 0.001) * u_morph * 0.1);
-                color = mix(color, color * (1.0 + length(morphDistortion)), u_morph * 0.5);
+                vec2 morphDistortion = vec2(sin(uv.y * 10.0 + u_time * 0.001) * u_morphFactor * 0.1, 
+                                           cos(uv.x * 10.0 + u_time * 0.001) * u_morphFactor * 0.1);
+                color = mix(color, color * (1.0 + length(morphDistortion)), u_morphFactor * 0.5);
                 
                 // Enhanced holographic interaction effects
                 float mouseDist = length(uv - (u_mouse - 0.5) * vec2(aspectRatio, 1.0));
@@ -621,7 +620,7 @@ export class HolographicVisualizer {
             time: this.gl.getUniformLocation(this.program, 'u_time'),
             mouse: this.gl.getUniformLocation(this.program, 'u_mouse'),
             geometry: this.gl.getUniformLocation(this.program, 'u_geometry'),
-            density: this.gl.getUniformLocation(this.program, 'u_density'),
+            density: this.gl.getUniformLocation(this.program, 'u_gridDensity'),
             speed: this.gl.getUniformLocation(this.program, 'u_speed'),
             color: this.gl.getUniformLocation(this.program, 'u_color'),
             intensity: this.gl.getUniformLocation(this.program, 'u_intensity'),
@@ -632,9 +631,9 @@ export class HolographicVisualizer {
             mouseIntensity: this.gl.getUniformLocation(this.program, 'u_mouseIntensity'),
             clickIntensity: this.gl.getUniformLocation(this.program, 'u_clickIntensity'),
             densityVariation: this.gl.getUniformLocation(this.program, 'u_densityVariation'),
-            geometryType: this.gl.getUniformLocation(this.program, 'u_geometryType'),
+            geometryType: this.gl.getUniformLocation(this.program, 'u_geometry'),
             chaos: this.gl.getUniformLocation(this.program, 'u_chaos'),
-            morph: this.gl.getUniformLocation(this.program, 'u_morph'),
+            morph: this.gl.getUniformLocation(this.program, 'u_morphFactor'),
             touchMorph: this.gl.getUniformLocation(this.program, 'u_touchMorph'),
             touchChaos: this.gl.getUniformLocation(this.program, 'u_touchChaos'),
             scrollParallax: this.gl.getUniformLocation(this.program, 'u_scrollParallax'),

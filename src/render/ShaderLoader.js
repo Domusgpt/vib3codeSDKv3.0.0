@@ -200,6 +200,44 @@ export class ShaderLoader {
     }
 
     /**
+     * Resolve #include directives in shader source.
+     * GLSL: #include "common/rotation4d.glsl"
+     * WGSL: // @include "common/rotation4d.wgsl"
+     *
+     * Includes are resolved from the loader's cache (call loadCommonLibrary() first).
+     * Non-recursive — only resolves one level of includes.
+     *
+     * @param {string} source - Shader source with include directives
+     * @returns {string} Resolved shader source
+     */
+    resolveIncludes(source) {
+        if (!source) return source;
+
+        // GLSL: #include "path"
+        // WGSL: // @include "path"
+        const includeRegex = /(?:^|\n)\s*(?:#include|\/\/\s*@include)\s+"([^"]+)"\s*(?:\n|$)/g;
+
+        return source.replace(includeRegex, (match, path) => {
+            const cached = this._cache.get(path);
+            if (cached) {
+                return '\n// --- included from ' + path + ' ---\n' + cached + '\n// --- end ' + path + ' ---\n';
+            }
+            console.warn(`ShaderLoader: Include not found in cache: "${path}" — load it first via loadCommonLibrary()`);
+            return match; // Leave directive in place if not found
+        });
+    }
+
+    /**
+     * Load a shader file and resolve includes.
+     * @param {string} relativePath
+     * @returns {Promise<string|null>}
+     */
+    async loadAndResolve(relativePath) {
+        const source = await this.load(relativePath);
+        return source ? this.resolveIncludes(source) : null;
+    }
+
+    /**
      * Clear all cached shaders.
      */
     clearCache() {

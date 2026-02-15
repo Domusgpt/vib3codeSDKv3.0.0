@@ -31,7 +31,7 @@ See `DOCS/PRODUCT_STRATEGY.md` for full persona definitions and success metrics.
 
 ## The Three Visualization Systems
 
-VIB3+ has three active rendering systems. Each one takes the same 24 geometries and 6D rotation math but renders them with a completely different visual approach:
+VIB3+ has three active rendering systems. Each one takes the same 24 geometry variants and 6D rotation math but renders them with a completely different visual approach:
 
 ### Quantum (`src/quantum/`)
 **The dense, complex one.** Renders quantum-inspired lattice patterns — think crystalline interference, energy fields, particle grids. Uses a single procedural fragment shader that generates complex visual structures entirely on the GPU. Best for abstract, high-density visualizations with a scientific/mathematical feel.
@@ -48,14 +48,16 @@ VIB3+ has three active rendering systems. Each one takes the same 24 geometries 
 
 ## Core Concepts
 
-### 24 Geometries
-Every system renders 24 geometry variants, encoded as:
+### 24 Geometry Variants
+Every system renders 24 geometry variants — 8 base shapes × 3 4D warp modes:
 ```
 index = coreType * 8 + baseGeometry
 ```
-- **8 base geometries** (0-7): Tetrahedron, Hypercube, Sphere, Torus, Klein Bottle, Fractal, Wave, Crystal
-- **3 core warps** (0-2): Base (no warp), Hypersphere (S³ projection), Hypertetrahedron (pentatope warp)
-- Total: 8 bases × 3 warps = 24 variants per system
+- **8 base shapes** (0-7): Tetrahedron, Hypercube, Sphere, Torus, Klein Bottle, Fractal, Wave, Crystal
+- **3 warp modes** (0-2): Base (no warp), Hypersphere (S³ projection), Hypertetrahedron (pentatope warp)
+- Total: 8 shapes × 3 warps = 24 variants per system
+
+Each base shape uses a distinct lattice/SDF function. The warp modes apply continuous 4D deformations before projection, producing visually different results especially at higher morphFactor and dimension values.
 
 ### 6D Rotation
 Objects exist in 4D space (X, Y, Z, W). Rotation happens in six independent planes:

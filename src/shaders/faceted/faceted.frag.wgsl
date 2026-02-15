@@ -137,8 +137,15 @@ fn geometryFunction_w(p: vec4<f32>) -> f32 {
     let gt = i32(clamp(floor(baseFloat + 0.5), 0.0, 7.0));
     let d = u.gridDensity * 0.08;
     if (gt == 0) {
-        let pos = fract(p * d); let dist = min(pos, 1.0 - pos);
-        return min(min(dist.x, dist.y), min(dist.z, dist.w)) * u.morphFactor;
+        // Tetrahedron — tetrahedral symmetry planes
+        let c1 = normalize(vec3<f32>(1.0, 1.0, 1.0));
+        let c2 = normalize(vec3<f32>(-1.0, -1.0, 1.0));
+        let c3 = normalize(vec3<f32>(-1.0, 1.0, -1.0));
+        let c4 = normalize(vec3<f32>(1.0, -1.0, -1.0));
+        let q = fract(p.xyz * d + 0.5) - 0.5;
+        let minPlane = min(min(abs(dot(q, c1)), abs(dot(q, c2))),
+                           min(abs(dot(q, c3)), abs(dot(q, c4))));
+        return (1.0 - smoothstep(0.0, 0.05, minPlane)) * u.morphFactor;
     } else if (gt == 1) {
         let pos = fract(p * d); let dist = min(pos, 1.0 - pos);
         return min(min(dist.x, dist.y), min(dist.z, dist.w)) * u.morphFactor;
