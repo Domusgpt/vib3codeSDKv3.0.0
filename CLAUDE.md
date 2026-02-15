@@ -95,7 +95,7 @@ Per-layer shader assignment is supported — layers don't have to run the same p
 ```bash
 pnpm install          # NOT npm — pnpm is canonical (pnpm-lock.yaml)
 pnpm run dev          # Vite dev server with hot reload
-pnpm test             # Vitest unit tests (1702 tests, 75 files)
+pnpm test             # Vitest unit tests (1762 tests, 77 files)
 pnpm run test:e2e     # Playwright browser tests
 pnpm run verify:shaders  # Check inline/external shader sync
 ```
@@ -108,20 +108,21 @@ Build WASM core (requires Emscripten): `cd cpp && ./build.sh`
 
 **Engine status**: Complete. 95,000+ lines across 570+ files. All three systems working.
 
-**Test health**: 1702 tests across 75 files, all passing (as of 2026-02-15).
+**Test health**: 1762 tests across 77 files, all passing (as of 2026-02-15).
 
 **What's shipped (Q1 2026)**:
 - npm published: `@vib3code/sdk@2.0.1` (Feb 3)
 - Real MCP server: JSON-RPC 2.0 over stdio (Feb 6)
-- Agent harness: ChoreographyPlayer, AestheticMapper, 31 MCP tools (Feb 13)
+- Agent harness: ChoreographyPlayer, AestheticMapper, 36 MCP tools (Feb 13-15)
 - RendererContract compliance across all 3 systems (Feb 6-15)
 - TypeScript types: comprehensive coverage for 15+ modules (Feb 15)
 - LayerRelationshipGraph: keystone-driven inter-layer parameter system (Feb 15)
 - Codebase audit: fixed broken barrels, require() in ESM, missing exports (Feb 15)
-- Test expansion: 933 → 1702 tests (+83% increase, Feb 6-15)
+- LayerPresetManager + LayerReactivityBridge for preset save/load/tune + input-driven modulation (Feb 15)
+- 5 new MCP layer control tools: set_layer_profile, set_layer_relationship, etc. (Feb 15)
+- Test expansion: 933 → 1762 tests (+89% increase, Feb 6-15)
 
 **What's shipping next** (Q1-Q2 2026):
-- Layer preset manager + reactivity-driven layer modulation
 - npm publish automation
 - Framework example apps (React, Vue, Svelte working source)
 - CDN/UMD distribution for `<script>` tag usage
@@ -187,8 +188,10 @@ Recent dev session logs live in `DOCS/dev-tracks/`. **Always check dev-tracks fo
 | File | Role |
 |---|---|
 | `src/render/LayerRelationshipGraph.js` | Keystone-driven inter-layer parameter system. 6 presets, 5 profiles, per-layer shader support, serializable. |
+| `src/render/LayerPresetManager.js` | Save/load/tune/import/export user presets for layer relationships. localStorage persistence. |
+| `src/render/LayerReactivityBridge.js` | Audio/tilt/mouse/input → layer relationship modulation. 5 profiles (audioStorm, tiltHarmonic, mouseChase, audioPulse, fullReactive). |
 | `src/render/MultiCanvasBridge.js` | 5-layer rendering orchestrator. Integrates with LayerRelationshipGraph for per-layer parameter resolution. |
-| `types/render/LayerRelationshipGraph.d.ts` | Full TypeScript definitions for the layer system |
+| `examples/layer-dynamics-demo.html` | Visual demo page for testing layer dynamics, profiles, tuning, and reactivity modulation. |
 
 ### Render Pipeline
 | File | Role |
@@ -248,7 +251,7 @@ Recent dev session logs live in `DOCS/dev-tracks/`. **Always check dev-tracks fo
 7. **WASM is optional** — Engine falls back to JS math if `.wasm` isn't available.
 8. **WebGPU is optional** — Falls back to WebGL.
 9. **ESM only** — `"type": "module"` in package.json. Do NOT use `require()` — it will throw `ReferenceError`.
-10. **31 MCP tools, not 12** — DOCS/SYSTEM_INVENTORY.md is stale. Check `src/agent/mcp/tools.js` for the real count.
+10. **36 MCP tools, not 12** — DOCS/SYSTEM_INVENTORY.md is stale. Check `src/agent/mcp/tools.js` for the real count.
 11. **Layer relationships default to 'holographic' profile** — The `legacy` profile replicates the old static multiplier behavior if you need it.
 12. **`initialize()` checks `switchSystem()` return** — As of Feb 15, `VIB3Engine.initialize()` returns `false` if the initial system fails to create. Check the return value.
 
@@ -287,7 +290,7 @@ Recent dev session logs live in `DOCS/dev-tracks/`. **Always check dev-tracks fo
 
 ---
 
-## MCP Agent Tools (31)
+## MCP Agent Tools (36)
 
 For AI agents controlling VIB3+ programmatically. Full definitions in `src/agent/mcp/tools.js`.
 
@@ -335,6 +338,15 @@ For AI agents controlling VIB3+ programmatically. Full definitions in `src/agent
 | `play_choreography` | Play choreography sequence |
 | `control_timeline` | Play/pause/seek timeline |
 
+### Phase 8 Layer Control (+5)
+| Tool | What it does |
+|---|---|
+| `set_layer_profile` | Load a named layer relationship profile |
+| `set_layer_relationship` | Set relationship type for a specific layer |
+| `set_layer_keystone` | Change the keystone (driver) layer |
+| `get_layer_config` | Get current layer relationship configuration |
+| `tune_layer_relationship` | Hot-patch a layer's relationship config |
+
 ---
 
 ## Recent Session Work (Feb 15, 2026)
@@ -344,10 +356,14 @@ For AI agents controlling VIB3+ programmatically. Full definitions in `src/agent
 
 ### What was built
 1. **LayerRelationshipGraph** — Keystone-driven inter-layer parameter system replacing static multipliers
-2. **Test expansion** — 1430 → 1702 tests (+272), covering geometry, math, render, scene, layer relationships
-3. **TypeScript types** — Full coverage for 15+ modules, strict-checked
-4. **P0-P2 dogfood fixes** — `initialize()` failure handling, debug warnings, convenience API
-5. **Codebase audit** — Fixed 7 broken barrel files, require() in ESM, missing exports
+2. **LayerPresetManager** — Save/load/tune/import/export user presets for layer relationships
+3. **LayerReactivityBridge** — Audio/tilt/mouse → layer relationship modulation with 5 profiles
+4. **5 MCP layer tools** — `set_layer_profile`, `set_layer_relationship`, `set_layer_keystone`, `get_layer_config`, `tune_layer_relationship`
+5. **Layer dynamics demo** — Visual demo page (`examples/layer-dynamics-demo.html`) for testing all layer dynamics
+6. **Test expansion** — 1430 → 1762 tests (+332), covering geometry, math, render, scene, layer relationships, presets, reactivity
+7. **TypeScript types** — Full coverage for 15+ modules including all new layer modules
+8. **P0-P2 dogfood fixes** — `initialize()` failure handling, debug warnings, convenience API
+9. **Codebase audit** — Fixed 7 broken barrel files, require() in ESM, missing exports
 
 ### What was fixed in the audit
 | File | Problem |

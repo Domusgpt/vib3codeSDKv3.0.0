@@ -13,6 +13,8 @@ export * from './WebGLBackend';
 export * from './WebGPUBackend';
 export * from './UnifiedRenderBridge';
 export * from './LayerRelationshipGraph';
+export * from './LayerPresetManager';
+export * from './LayerReactivityBridge';
 
 import { RenderState, BlendMode, CullFace } from './RenderState';
 import { CommandBuffer, CommandBufferOptions } from './CommandBuffer';

@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIB3+ Layer Dynamics Demo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        .header {
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(0,255,136,0.2);
+            background: rgba(0,0,0,0.9);
+        }
+        .logo { font-size: 20px; font-weight: bold; color: #00FF88; letter-spacing: 2px; }
+        .subtitle { font-size: 11px; color: rgba(255,255,255,0.4); }
+
+        .main { display: flex; gap: 12px; padding: 12px; height: calc(100vh - 50px); }
+
+        /* Canvas stack */
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #111;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .canvas-area canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        #holo-background-canvas { z-index: 1; }
+        #holo-shadow-canvas { z-index: 2; }
+        #holo-content-canvas { z-index: 3; }
+        #holo-highlight-canvas { z-index: 4; }
+        #holo-accent-canvas { z-index: 5; }
+
+        .layer-label {
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            z-index: 10;
+            font-size: 10px;
+            color: rgba(255,255,255,0.3);
+        }
+
+        /* Controls panel */
+        .controls {
+            width: 320px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .panel {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .panel h3 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #00FF88;
+            margin-bottom: 8px;
+        }
+        .btn-row { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+        .btn {
+            padding: 6px 10px;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 4px;
+            background: rgba(255,255,255,0.05);
+            color: #ccc;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn:hover { background: rgba(0,255,136,0.15); border-color: #00FF88; color: #fff; }
+        .btn.active { background: rgba(0,255,136,0.2); border-color: #00FF88; color: #00FF88; }
+
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .slider-row label {
+            font-size: 10px;
+            width: 70px;
+            color: rgba(255,255,255,0.5);
+            text-transform: uppercase;
+        }
+        .slider-row input[type="range"] {
+            flex: 1;
+            accent-color: #00FF88;
+        }
+        .slider-row .val {
+            font-size: 10px;
+            width: 40px;
+            text-align: right;
+            color: #00FF88;
+            font-family: monospace;
+        }
+
+        select {
+            width: 100%;
+            padding: 6px 8px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 4px;
+            color: #ccc;
+            font-size: 11px;
+            margin-bottom: 8px;
+        }
+        select option { background: #1a1a2e; }
+
+        .status-bar {
+            font-size: 10px;
+            color: rgba(255,255,255,0.3);
+            padding: 4px 0;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            margin-top: 4px;
+        }
+        .status-bar .highlight { color: #00FF88; }
+
+        #log {
+            font-family: monospace;
+            font-size: 10px;
+            max-height: 120px;
+            overflow-y: auto;
+            color: rgba(255,255,255,0.4);
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <span class="logo">VIB3+</span>
+            <span class="subtitle">Layer Dynamics Demo</span>
+        </div>
+    </div>
+
+    <div class="main">
+        <!-- 5-layer canvas stack -->
+        <div class="canvas-area" id="holographicLayers">
+            <canvas id="holo-background-canvas"></canvas>
+            <canvas id="holo-shadow-canvas"></canvas>
+            <canvas id="holo-content-canvas"></canvas>
+            <canvas id="holo-highlight-canvas"></canvas>
+            <canvas id="holo-accent-canvas"></canvas>
+            <div class="layer-label" id="layerStatus">5 layers</div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <!-- Profile selector -->
+            <div class="panel">
+                <h3>Layer Profile</h3>
+                <div class="btn-row" id="profileBtns">
+                    <button class="btn active" data-profile="holographic">Holographic</button>
+                    <button class="btn" data-profile="symmetry">Symmetry</button>
+                    <button class="btn" data-profile="chord">Chord</button>
+                    <button class="btn" data-profile="storm">Storm</button>
+                    <button class="btn" data-profile="legacy">Legacy</button>
+                </div>
+                <div class="status-bar">
+                    Active: <span class="highlight" id="activeProfile">holographic</span>
+                    | Keystone: <span class="highlight" id="activeKeystone">content</span>
+                </div>
+            </div>
+
+            <!-- Per-layer relationships -->
+            <div class="panel">
+                <h3>Layer Relationships</h3>
+                <div id="layerControls"></div>
+            </div>
+
+            <!-- Tune active layer -->
+            <div class="panel">
+                <h3>Tune Layer</h3>
+                <select id="tuneLayer">
+                    <option value="background">Background</option>
+                    <option value="shadow">Shadow</option>
+                    <option value="highlight" selected>Highlight</option>
+                    <option value="accent">Accent</option>
+                </select>
+                <div class="slider-row">
+                    <label>Opacity</label>
+                    <input type="range" id="tuneOpacity" min="0" max="1" step="0.01" value="0.5">
+                    <span class="val" id="tuneOpacityVal">0.50</span>
+                </div>
+                <div class="slider-row">
+                    <label>Gain</label>
+                    <input type="range" id="tuneGain" min="0" max="10" step="0.1" value="2.0">
+                    <span class="val" id="tuneGainVal">2.0</span>
+                </div>
+                <div class="slider-row">
+                    <label>Hue Shift</label>
+                    <input type="range" id="tuneHue" min="0" max="360" step="1" value="137">
+                    <span class="val" id="tuneHueVal">137</span>
+                </div>
+                <div class="slider-row">
+                    <label>Speed</label>
+                    <input type="range" id="tuneSpeed" min="0.05" max="2" step="0.05" value="0.5">
+                    <span class="val" id="tuneSpeedVal">0.50</span>
+                </div>
+                <div class="slider-row">
+                    <label>Lerp Rate</label>
+                    <input type="range" id="tuneLerp" min="0.01" max="1" step="0.01" value="0.1">
+                    <span class="val" id="tuneLerpVal">0.10</span>
+                </div>
+            </div>
+
+            <!-- Keystone parameters -->
+            <div class="panel">
+                <h3>Keystone Parameters</h3>
+                <div class="slider-row">
+                    <label>Hue</label>
+                    <input type="range" id="paramHue" min="0" max="360" step="1" value="320">
+                    <span class="val" id="paramHueVal">320</span>
+                </div>
+                <div class="slider-row">
+                    <label>Density</label>
+                    <input type="range" id="paramDensity" min="0.1" max="5" step="0.1" value="1.0">
+                    <span class="val" id="paramDensityVal">1.0</span>
+                </div>
+                <div class="slider-row">
+                    <label>Speed</label>
+                    <input type="range" id="paramSpeed" min="0.1" max="3" step="0.1" value="1.0">
+                    <span class="val" id="paramSpeedVal">1.0</span>
+                </div>
+                <div class="slider-row">
+                    <label>Chaos</label>
+                    <input type="range" id="paramChaos" min="0" max="1" step="0.01" value="0.2">
+                    <span class="val" id="paramChaosVal">0.20</span>
+                </div>
+                <div class="slider-row">
+                    <label>Rot4D XW</label>
+                    <input type="range" id="paramRot4dXW" min="-3.14" max="3.14" step="0.01" value="0">
+                    <span class="val" id="paramRot4dXWVal">0.00</span>
+                </div>
+                <div class="slider-row">
+                    <label>Intensity</label>
+                    <input type="range" id="paramIntensity" min="0" max="1" step="0.01" value="0.6">
+                    <span class="val" id="paramIntensityVal">0.60</span>
+                </div>
+            </div>
+
+            <!-- Reactivity modulation -->
+            <div class="panel">
+                <h3>Reactivity Modulation</h3>
+                <div class="btn-row" id="modulationBtns">
+                    <button class="btn" data-mod="none">None</button>
+                    <button class="btn" data-mod="audioStorm">Audio Storm</button>
+                    <button class="btn" data-mod="audioPulse">Audio Pulse</button>
+                    <button class="btn" data-mod="tiltHarmonic">Tilt Harmonic</button>
+                    <button class="btn" data-mod="mouseChase">Mouse Chase</button>
+                    <button class="btn" data-mod="fullReactive">Full Reactive</button>
+                </div>
+                <div class="status-bar">
+                    Modulation: <span class="highlight" id="activeModulation">none</span>
+                </div>
+            </div>
+
+            <!-- Log output -->
+            <div class="panel">
+                <h3>Debug Log</h3>
+                <div id="log"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { LayerRelationshipGraph, PROFILES, PRESET_REGISTRY, LAYER_ORDER } from '../src/render/LayerRelationshipGraph.js';
+        import { LayerPresetManager } from '../src/render/LayerPresetManager.js';
+        import { LayerReactivityBridge, MODULATION_PROFILES } from '../src/render/LayerReactivityBridge.js';
+
+        // ====================================================================
+        // State
+        // ====================================================================
+        const graph = new LayerRelationshipGraph({ profile: 'holographic' });
+        const presetManager = new LayerPresetManager(graph);
+        const reactivityBridge = new LayerReactivityBridge(graph, presetManager);
+
+        const logEl = document.getElementById('log');
+        function log(msg) {
+            const line = `[${new Date().toLocaleTimeString()}] ${msg}\n`;
+            logEl.textContent = line + logEl.textContent;
+            if (logEl.textContent.length > 2000) {
+                logEl.textContent = logEl.textContent.slice(0, 2000);
+            }
+        }
+
+        // ====================================================================
+        // Canvas setup — draw colored rectangles per layer to visualize params
+        // ====================================================================
+        const canvasIds = ['holo-background-canvas', 'holo-shadow-canvas', 'holo-content-canvas', 'holo-highlight-canvas', 'holo-accent-canvas'];
+        const contexts = {};
+
+        canvasIds.forEach(id => {
+            const canvas = document.getElementById(id);
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            contexts[id.replace('holo-', '').replace('-canvas', '')] = canvas.getContext('2d');
+        });
+
+        // Keystone params
+        let keystoneParams = {
+            hue: 320,
+            density: 1.0,
+            speed: 1.0,
+            chaos: 0.2,
+            rot4dXW: 0,
+            intensity: 0.6,
+            layerOpacity: 1.0,
+            saturation: 0.8
+        };
+
+        // ====================================================================
+        // Render loop — visualize resolved layer params
+        // ====================================================================
+        let frameTime = 0;
+
+        function renderFrame() {
+            frameTime += 16;
+
+            // Simulate fake audio/tilt/mouse for reactivity demo
+            const fakeInput = {
+                audio: {
+                    bass: 0.3 + 0.3 * Math.sin(frameTime * 0.002),
+                    mid: 0.2 + 0.2 * Math.sin(frameTime * 0.003),
+                    high: 0.15 + 0.15 * Math.sin(frameTime * 0.005)
+                },
+                tilt: {
+                    alpha: 15 * Math.sin(frameTime * 0.001),
+                    beta: 10 * Math.cos(frameTime * 0.0015),
+                    gamma: 20 * Math.sin(frameTime * 0.0008)
+                },
+                mouse: {
+                    x: 0.5 + 0.3 * Math.sin(frameTime * 0.0005),
+                    y: 0.5 + 0.3 * Math.cos(frameTime * 0.0007)
+                }
+            };
+
+            // Apply reactivity modulations
+            reactivityBridge.update(fakeInput);
+
+            // Resolve all layers through the graph
+            const resolved = graph.resolveAll(keystoneParams, frameTime);
+
+            // Draw each layer
+            for (const layerName of LAYER_ORDER) {
+                const ctx = contexts[layerName];
+                if (!ctx) continue;
+
+                const params = resolved[layerName];
+                const canvas = ctx.canvas;
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const opacity = Math.max(0, Math.min(1, params.layerOpacity || 0.5));
+                const hue = (params.hue || 0) % 360;
+                const sat = Math.max(0, Math.min(1, params.saturation || 0.8));
+                const intensity = Math.max(0, Math.min(1, params.intensity || 0.5));
+                const density = Math.max(0.1, params.density || 1.0);
+                const speed = params.speed || 1.0;
+                const chaos = params.chaos || 0;
+
+                // Background gradient with layer color
+                const grad = ctx.createRadialGradient(
+                    canvas.width / 2, canvas.height / 2, 0,
+                    canvas.width / 2, canvas.height / 2, canvas.width * 0.4
+                );
+                grad.addColorStop(0, `hsla(${hue}, ${sat * 100}%, ${30 + intensity * 40}%, ${opacity})`);
+                grad.addColorStop(1, `hsla(${hue}, ${sat * 100}%, ${10 + intensity * 15}%, ${opacity * 0.3})`);
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Geometric pattern based on density and chaos
+                const count = Math.floor(density * 8);
+                const rot = (params.rot4dXW || 0) + frameTime * speed * 0.0005;
+
+                ctx.strokeStyle = `hsla(${(hue + 30) % 360}, ${sat * 100}%, ${50 + intensity * 30}%, ${opacity * 0.6})`;
+                ctx.lineWidth = 1 + intensity;
+
+                for (let i = 0; i < count; i++) {
+                    const angle = (i / count) * Math.PI * 2 + rot;
+                    const r = canvas.width * (0.1 + 0.25 * (1 - chaos) + chaos * Math.sin(frameTime * 0.003 + i));
+                    const cx = canvas.width / 2 + Math.cos(angle) * r * 0.3;
+                    const cy = canvas.height / 2 + Math.sin(angle) * r * 0.3;
+                    const size = r * 0.15;
+
+                    ctx.beginPath();
+                    const sides = 3 + (i % 4);
+                    for (let s = 0; s <= sides; s++) {
+                        const a = (s / sides) * Math.PI * 2 + rot * 0.5;
+                        const x = cx + Math.cos(a) * size;
+                        const y = cy + Math.sin(a) * size;
+                        if (s === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    ctx.stroke();
+                }
+
+                // Layer name overlay
+                ctx.fillStyle = `rgba(255,255,255,${opacity * 0.15})`;
+                ctx.font = `${10 * window.devicePixelRatio}px monospace`;
+                ctx.fillText(`${layerName} | o:${opacity.toFixed(2)} h:${Math.round(hue)} d:${density.toFixed(1)} s:${speed.toFixed(2)}`, 8 * window.devicePixelRatio, canvas.height - 8 * window.devicePixelRatio);
+            }
+
+            requestAnimationFrame(renderFrame);
+        }
+
+        renderFrame();
+        log('Layer dynamics demo initialized');
+
+        // ====================================================================
+        // Profile buttons
+        // ====================================================================
+        document.getElementById('profileBtns').addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-profile]');
+            if (!btn) return;
+            const profile = btn.dataset.profile;
+
+            graph.loadProfile(profile);
+            log(`Loaded profile: ${profile}`);
+
+            document.querySelectorAll('#profileBtns .btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            document.getElementById('activeProfile').textContent = profile;
+            document.getElementById('activeKeystone').textContent = graph.keystone;
+            updateLayerControlsUI();
+        });
+
+        // ====================================================================
+        // Per-layer relationship controls
+        // ====================================================================
+        function updateLayerControlsUI() {
+            const container = document.getElementById('layerControls');
+            container.innerHTML = '';
+            const config = graph.exportConfig();
+
+            for (const layer of LAYER_ORDER) {
+                if (layer === graph.keystone) continue;
+                const rel = config.relationships[layer];
+                const preset = rel ? rel.preset : 'none';
+
+                const row = document.createElement('div');
+                row.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:4px;';
+                row.innerHTML = `
+                    <span style="font-size:10px;width:70px;color:rgba(255,255,255,0.5)">${layer}</span>
+                    <select data-layer="${layer}" style="flex:1;padding:3px 4px;font-size:10px;">
+                        ${Object.keys(PRESET_REGISTRY).map(p =>
+                            `<option value="${p}" ${p === preset ? 'selected' : ''}>${p}</option>`
+                        ).join('')}
+                    </select>
+                `;
+                container.appendChild(row);
+            }
+
+            container.querySelectorAll('select').forEach(sel => {
+                sel.addEventListener('change', () => {
+                    const layer = sel.dataset.layer;
+                    const preset = sel.value;
+                    graph.setRelationship(layer, preset);
+                    log(`Set ${layer} → ${preset}`);
+                    document.getElementById('activeProfile').textContent = graph.activeProfile || 'custom';
+                });
+            });
+        }
+
+        updateLayerControlsUI();
+
+        // ====================================================================
+        // Tune sliders
+        // ====================================================================
+        const tuneSliders = ['Opacity', 'Gain', 'Hue', 'Speed', 'Lerp'];
+        const tuneKeyMap = {
+            Opacity: 'opacity', Gain: 'gain', Hue: 'hueAngle', Speed: 'speedRatio', Lerp: 'lerpRate'
+        };
+
+        tuneSliders.forEach(name => {
+            const slider = document.getElementById('tune' + name);
+            const valEl = document.getElementById('tune' + name + 'Val');
+            slider.addEventListener('input', () => {
+                const val = parseFloat(slider.value);
+                valEl.textContent = val.toFixed(name === 'Hue' ? 0 : 2);
+
+                const layer = document.getElementById('tuneLayer').value;
+                const key = tuneKeyMap[name];
+                presetManager.tune(layer, { [key]: val });
+                log(`Tune ${layer}.${key} = ${val}`);
+            });
+        });
+
+        // ====================================================================
+        // Keystone parameter sliders
+        // ====================================================================
+        const paramSliders = {
+            paramHue: 'hue', paramDensity: 'density', paramSpeed: 'speed',
+            paramChaos: 'chaos', paramRot4dXW: 'rot4dXW', paramIntensity: 'intensity'
+        };
+
+        for (const [id, key] of Object.entries(paramSliders)) {
+            const slider = document.getElementById(id);
+            const valEl = document.getElementById(id + 'Val');
+            slider.addEventListener('input', () => {
+                const val = parseFloat(slider.value);
+                valEl.textContent = val.toFixed(key === 'hue' ? 0 : 2);
+                keystoneParams[key] = val;
+            });
+        }
+
+        // ====================================================================
+        // Modulation buttons
+        // ====================================================================
+        document.getElementById('modulationBtns').addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-mod]');
+            if (!btn) return;
+            const mod = btn.dataset.mod;
+
+            document.querySelectorAll('#modulationBtns .btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            if (mod === 'none') {
+                reactivityBridge.clearModulations();
+                reactivityBridge.deactivate();
+                log('Modulation disabled');
+            } else {
+                reactivityBridge.loadModulationProfile(mod);
+                reactivityBridge.activate();
+                log(`Modulation profile: ${mod} (${reactivityBridge.mappings.length} mappings)`);
+            }
+
+            document.getElementById('activeModulation').textContent = mod;
+        });
+
+        // ====================================================================
+        // Resize handler
+        // ====================================================================
+        window.addEventListener('resize', () => {
+            canvasIds.forEach(id => {
+                const canvas = document.getElementById(id);
+                const rect = canvas.parentElement.getBoundingClientRect();
+                canvas.width = rect.width * window.devicePixelRatio;
+                canvas.height = rect.height * window.devicePixelRatio;
+            });
+        });
+
+        log(`Profiles: ${Object.keys(PROFILES).join(', ')}`);
+        log(`Presets: ${Object.keys(PRESET_REGISTRY).join(', ')}`);
+        log(`Modulations: ${Object.keys(MODULATION_PROFILES).join(', ')}`);
+    </script>
+</body>
+</html>

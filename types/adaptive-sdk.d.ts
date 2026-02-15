@@ -118,6 +118,24 @@ export {
     PROFILES
 } from './render/LayerRelationshipGraph';
 
+// Layer preset manager
+export {
+    LayerPresetManager,
+    LayerPreset,
+    PresetMetadata,
+    PresetLibrary,
+    PresetManagerOptions
+} from './render/LayerPresetManager';
+
+// Layer reactivity bridge
+export {
+    LayerReactivityBridge,
+    ModulationMapping,
+    InputState as LayerInputState,
+    ReactivityBridgeConfig,
+    MODULATION_PROFILES
+} from './render/LayerReactivityBridge';
+
 // Creative tooling
 export {
     ColorPresetsSystem,

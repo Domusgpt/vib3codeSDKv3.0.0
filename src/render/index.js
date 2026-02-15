@@ -133,6 +133,17 @@ export {
     chase
 } from './LayerRelationshipGraph.js';
 
+// Layer preset manager (save/load/tune relationship presets)
+export {
+    LayerPresetManager
+} from './LayerPresetManager.js';
+
+// Layer reactivity bridge (audio/tilt/input → relationship modulation)
+export {
+    LayerReactivityBridge,
+    MODULATION_PROFILES
+} from './LayerReactivityBridge.js';
+
 /**
  * Create a complete rendering context
  * @param {HTMLCanvasElement} canvas
