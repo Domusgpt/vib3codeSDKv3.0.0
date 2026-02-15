@@ -61,10 +61,15 @@ The mathematical foundation using Clifford algebra Cl(4,0).
 
 | File | Purpose |
 |------|---------|
-| `vib3_ffi.h/cpp` | C Foreign Function Interface |
-| `Rotor4D.hpp/cpp` | 4D rotation via geometric algebra |
-| `Mat4x4.hpp/cpp` | Traditional 4x4 matrix operations |
-| `embind.cpp` | JavaScript bindings via Emscripten |
+| `cpp/include/vib3_ffi.h` | C Foreign Function Interface header |
+| `cpp/src/vib3_ffi.cpp` | C FFI implementation |
+| `cpp/math/Rotor4D.hpp/cpp` | 4D rotation via geometric algebra |
+| `cpp/math/Mat4x4.hpp/cpp` | Traditional 4x4 matrix operations |
+| `cpp/math/Vec4.hpp/cpp` | 4-component vector operations |
+| `cpp/math/Projection.hpp/cpp` | 4D→3D projection functions |
+| `cpp/geometry/` | 8 base geometry generators + WarpFunctions |
+| `cpp/bindings/embind.cpp` | JavaScript bindings via Emscripten |
+| `cpp/tests/` | Unit tests (Rotor4D, Mat4x4, Vec4, Projection, Geometry) |
 
 ### Core Types
 
@@ -336,7 +341,7 @@ Where:
 | Hypersphere | 8-15 | `warpHypersphereCore()` |
 | Hypertetrahedron | 16-23 | `warpHypertetraCore()` |
 
-### Warp Functions (`src/geometry/`)
+### Warp Functions (`src/geometry/warp/`)
 
 **HypersphereCore.js**:
 ```javascript
@@ -428,10 +433,14 @@ const result = await mcpClient.callTool('set_parameter', {
 ```
 Vib3-CORE-Documented01-/
 ├── cpp/                          # C++ WASM core
-│   ├── vib3_ffi.cpp/h           # FFI interface
-│   ├── Rotor4D.cpp/hpp          # 4D rotation math
-│   ├── Mat4x4.cpp/hpp           # Matrix operations
-│   └── embind.cpp               # JS bindings
+│   ├── include/vib3_ffi.h       # FFI header
+│   ├── src/vib3_ffi.cpp         # FFI implementation
+│   ├── math/                    # Rotor4D, Mat4x4, Vec4, Projection
+│   ├── geometry/                # 8 base generators + WarpFunctions
+│   ├── bindings/embind.cpp      # JS bindings via Emscripten
+│   ├── tests/                   # C++ unit tests
+│   ├── CMakeLists.txt           # Build configuration
+│   └── build.sh                 # Build script
 │
 ├── src/
 │   ├── core/                    # Engine core
@@ -454,8 +463,13 @@ Vib3-CORE-Documented01-/
 │   │
 │   ├── geometry/                # Geometry library
 │   │   ├── GeometryLibrary.js
-│   │   ├── HypersphereCore.js
-│   │   └── HypertetraCore.js
+│   │   ├── GeometryFactory.js
+│   │   ├── generators/          # 8 base geometry generators
+│   │   ├── warp/
+│   │   │   ├── HypersphereCore.js
+│   │   │   └── HypertetraCore.js
+│   │   └── buffers/
+│   │       └── BufferBuilder.js
 │   │
 │   ├── render/                  # Render backends
 │   │   ├── ShaderProgram.js
