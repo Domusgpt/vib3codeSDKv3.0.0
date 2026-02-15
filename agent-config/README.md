@@ -121,7 +121,7 @@ Pre-compiled context files optimized for different agent types:
 | File | For | Content |
 |------|-----|---------|
 | `claude-agent-context.md` | Claude Code / Claude Desktop | Compact SDK reference + tool usage examples |
-| `openai-agent-context.md` | OpenAI Assistants / GPTs | Function calling schema + examples |
+| `openai-agent-context.md` | OpenAI Assistants / GPTs | Function calling schema + examples + copied Claude skill workflow |
 
 ## Quick Test
 

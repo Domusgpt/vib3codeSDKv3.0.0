@@ -3,6 +3,39 @@
 > For OpenAI Assistants, GPTs, and function-calling agents.
 > Version: 2.0.1
 
+
+## Claude Code Skill Pack (ported for OpenAI use)
+
+The Claude-focused skill context has been copied here so OpenAI agents can use the same high-signal workflow and domain constraints.
+
+### Core Concepts (5 facts)
+
+1. **3 active systems**: `quantum` (complex lattice), `faceted` (clean geometry), `holographic` (5-layer audio-reactive). Polychora is TBD.
+2. **24 geometries**: `index = coreType * 8 + baseGeometry`. Cores: base(0), hypersphere(1), hypertetrahedron(2). Bases: tetrahedron, hypercube, sphere, torus, klein_bottle, fractal, wave, crystal.
+3. **6D rotation**: XY, XZ, YZ (3D) + XW, YW, ZW (4D hyperspace). Range: -6.28 to 6.28 radians. Order: XY then XZ then YZ then XW then YW then ZW.
+4. **5 canvas layers** per system: background, shadow, content, highlight, accent.
+5. **Vitality System**: Global breath cycle (6s period, 0-1 sine wave) modulating all systems.
+
+### Skill Workflow (OpenAI tool-calling equivalent)
+
+```
+1. vib3_create_visualization  → Create with system + geometry
+2. vib3_set_rotation          → Set 6D rotation angles
+3. vib3_set_visual_parameters → Tune hue, speed, chaos, intensity
+4. vib3_apply_preset          → Apply preset (ambient/reactive/immersive/etc.)
+5. vib3_get_state             → Inspect current state for iteration/export
+```
+
+### Prompting pattern for OpenAI agents
+
+Use this structure when orchestrating multi-step visual design:
+
+1. Ask for desired mood/style (e.g., "serene ocean deep").
+2. Map request to system + geometry + rotation + visual params.
+3. Call tools in the workflow order above.
+4. Retrieve `vib3_get_state` and summarize what changed.
+5. Offer one conservative and one experimental variation.
+
 ## Function Calling Schema
 
 These can be registered as tools in an OpenAI Assistant or GPT:
