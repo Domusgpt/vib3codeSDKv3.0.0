@@ -276,26 +276,11 @@ Step 6: Export winner:
 
 ---
 
-## Canvas Management & System Lifecycle (CRITICAL)
+## Canvas Management & GPU Resources
 
-**This section is mandatory reading before generating ANY visual artifacts.** The VIB3+ engine enforces strict canvas and GPU resource management. Ignoring these rules produces broken demos that crash browsers.
+### 5-Layer Canvas Architecture Per System
 
-### Rule 1: ONE Active System At A Time
-
-The SDK runs **exactly one visualization system** at a time. `VIB3Engine.switchSystem()` completely destroys the current system before creating the next one. NEVER render multiple systems simultaneously.
-
-```javascript
-// CORRECT: Switch destroys old, creates new
-engine.switchSystem('quantum');   // destroys holographic, creates quantum
-engine.switchSystem('faceted');   // destroys quantum, creates faceted
-
-// WRONG: Never have two systems rendering at once
-// This will crash with WebGL context limits
-```
-
-### Rule 2: 5-Layer Canvas Architecture Per System
-
-Each active system uses **5 CSS-composited canvases** stacked via z-index:
+Each visualization system uses **5 CSS-composited canvases** stacked via z-index. This is the core visual architecture — every system renders through these layers:
 
 | Layer | Canvas ID | Blend Mode | CSS Opacity | Purpose |
 |-------|-----------|------------|-------------|---------|
@@ -305,44 +290,38 @@ Each active system uses **5 CSS-composited canvases** stacked via z-index:
 | highlight | `{system}-highlight-canvas` | screen | 0.8 | Bright accents, particles |
 | accent | `{system}-accent-canvas` | overlay | 0.3 | Top layer effects |
 
-**Implementation**: `src/core/CanvasManager.js` creates these with system-specific prefixes. Each layer gets its own WebGL context (managed internally).
+**Implementation**: `src/core/CanvasManager.js` creates these with system-specific prefixes. Multiple systems can run simultaneously — each gets its own set of 5 layered canvases.
 
-### Rule 3: Force Context Destruction on Cleanup
+### Multi-System Rendering
 
-When switching systems or destroying visuals, you MUST force-release GPU memory:
+VIB3+ supports running multiple visualization systems together. Systems can be layered, composited, or shown side-by-side:
 
 ```javascript
-// SDK pattern from CanvasManager.destroy()
+// Two systems rendering simultaneously
+const quantum = new QuantumEngine(quantumCanvases);
+const holographic = new RealHolographicSystem(holoCanvases);
+// Both active, both rendering to their own 5-layer canvas stacks
+```
+
+### WebGL Context Budget
+
+Browsers cap WebGL contexts at ~16. With 5 layers per system, plan context usage:
+- 2 systems × 5 layers = 10 GL contexts (fits within budget)
+- Use `WEBGL_lose_context` when destroying systems you're done with
+- For batch operations (cards, thumbnails), use a shared offscreen GL context + `drawImage()` to 2D canvases to avoid per-item GL context creation
+
+```javascript
+// Clean up contexts you're done with
 const ext = gl.getExtension('WEBGL_lose_context');
-if (ext) ext.loseContext();  // Force GPU memory release
+if (ext) ext.loseContext();  // Frees the GL context slot
 ```
 
-Browsers cap WebGL contexts at ~16. Without `WEBGL_lose_context`, old contexts leak and new ones fail silently.
+### Single-Pass 5-Layer Composite for Demos
 
-### Rule 4: Shared Offscreen Canvas for Batch Rendering
-
-When generating multiple cards or thumbnails, use ONE shared offscreen WebGL context + `drawImage()` to 2D canvases:
-
-```javascript
-// CORRECT: Shared offscreen GL + drawImage to 2D canvases
-const offscreen = document.createElement('canvas');
-const gl = offscreen.getContext('webgl2');
-// Render each card to offscreen GL, then copy:
-cards.forEach(card => {
-    renderToGL(gl, card.params);
-    const target2d = card.canvas.getContext('2d');
-    target2d.drawImage(offscreen, 0, 0, w, h);
-});
-
-// WRONG: One GL context per card (will crash at 16+ cards)
-```
-
-### Rule 5: Single-Pass 5-Layer Composite for Demos
-
-When building standalone demos outside the SDK, compute all 5 layers in a **single fragment shader** using GLSL blend mode math instead of 5 separate canvases:
+In standalone demos outside the SDK, you can compute all 5 layers in a **single fragment shader** using GLSL blend mode math. This gives the same visual result as the SDK's CSS composite but uses 1 GL context per system instead of 5:
 
 ```glsl
-// 5-layer composite in one pass (mirrors SDK's CSS composite)
+// 5-layer composite in one pass
 vec3 result = bg_color * bg_alpha;                              // background: normal
 result = mix(result, result * shadow_color, shadow_alpha);      // shadow: multiply
 result = mix(result, content_color, content_alpha);             // content: normal over
@@ -352,22 +331,15 @@ vec3 overlayed = mix(2.0*result*accent_color, 1.0-2.0*(1.0-result)*(1.0-accent_c
 result = mix(result, overlayed, accent_alpha);                  // accent: overlay
 ```
 
-This produces identical visual results with 1 GL context instead of 5.
-
-### Rule 6: Tab/Section Switching = System Switching
-
-In multi-section demos, treat tab/section switches like `switchSystem()`:
-1. Destroy the old section's GL context (with `WEBGL_lose_context`)
-2. Create a new GL context for the active section
-3. Maximum active GL contexts = 2 (1 for the section + 1 offscreen for card rendering)
+This is especially useful for demos showing multiple systems together — each system as 1 GL context keeps the total well within browser limits.
 
 ### GPU Memory Management Reference
 
 | File | What It Does |
 |------|-------------|
-| `src/core/CanvasManager.js` | 5-layer canvas creation, destruction with `WEBGL_lose_context`, DPR cap at 2.0 |
-| `src/core/UnifiedResourceManager.js` | Smart GPU memory budgeting, LRU eviction, device-aware limits |
-| `DOCS/GPU_DISPOSAL_GUIDE.md` | Full GPU resource cleanup patterns and best practices |
+| `src/core/CanvasManager.js` | 5-layer canvas creation per system, context destruction, DPR cap at 2.0 |
+| `src/core/UnifiedResourceManager.js` | GPU memory budgeting, LRU eviction, device-aware limits |
+| `DOCS/GPU_DISPOSAL_GUIDE.md` | GPU resource cleanup patterns and best practices |
 | `DOCS/RENDERER_LIFECYCLE.md` | Rendering pipeline lifecycle, frame loop, state management |
 
 ---
