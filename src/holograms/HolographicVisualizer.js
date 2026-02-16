@@ -132,28 +132,28 @@ export class HolographicVisualizer {
         const finalName = geometryName + suffixes[variationLevel];
         
         const geometryConfigs = {
-            0: { density: 0.8 + variationLevel * 0.2, speed: 0.3 + variationLevel * 0.1, chaos: variationLevel * 0.1, morph: 0.0 + variationLevel * 0.2 },
-            1: { density: 1.0 + variationLevel * 0.3, speed: 0.5 + variationLevel * 0.1, chaos: variationLevel * 0.15, morph: variationLevel * 0.2 },
-            2: { density: 1.2 + variationLevel * 0.4, speed: 0.4 + variationLevel * 0.2, chaos: 0.1 + variationLevel * 0.1, morph: 0.3 + variationLevel * 0.2 },
-            3: { density: 0.9 + variationLevel * 0.3, speed: 0.6 + variationLevel * 0.2, chaos: 0.2 + variationLevel * 0.2, morph: 0.5 + variationLevel * 0.1 },
-            4: { density: 1.4 + variationLevel * 0.5, speed: 0.7 + variationLevel * 0.1, chaos: 0.3 + variationLevel * 0.2, morph: 0.7 + variationLevel * 0.1 },
-            5: { density: 1.8 + variationLevel * 0.3, speed: 0.5 + variationLevel * 0.3, chaos: 0.5 + variationLevel * 0.2, morph: 0.8 + variationLevel * 0.05 },
-            6: { density: 0.6 + variationLevel * 0.4, speed: 0.8 + variationLevel * 0.4, chaos: 0.4 + variationLevel * 0.3, morph: 0.6 + variationLevel * 0.2 },
-            7: { density: 1.6 + variationLevel * 0.2, speed: 0.2 + variationLevel * 0.1, chaos: 0.1 + variationLevel * 0.1, morph: 0.2 + variationLevel * 0.2 }
+            0: { gridDensity: 0.8 + variationLevel * 0.2, speed: 0.3 + variationLevel * 0.1, chaos: variationLevel * 0.1, morphFactor: 0.0 + variationLevel * 0.2 },
+            1: { gridDensity: 1.0 + variationLevel * 0.3, speed: 0.5 + variationLevel * 0.1, chaos: variationLevel * 0.15, morphFactor: variationLevel * 0.2 },
+            2: { gridDensity: 1.2 + variationLevel * 0.4, speed: 0.4 + variationLevel * 0.2, chaos: 0.1 + variationLevel * 0.1, morphFactor: 0.3 + variationLevel * 0.2 },
+            3: { gridDensity: 0.9 + variationLevel * 0.3, speed: 0.6 + variationLevel * 0.2, chaos: 0.2 + variationLevel * 0.2, morphFactor: 0.5 + variationLevel * 0.1 },
+            4: { gridDensity: 1.4 + variationLevel * 0.5, speed: 0.7 + variationLevel * 0.1, chaos: 0.3 + variationLevel * 0.2, morphFactor: 0.7 + variationLevel * 0.1 },
+            5: { gridDensity: 1.8 + variationLevel * 0.3, speed: 0.5 + variationLevel * 0.3, chaos: 0.5 + variationLevel * 0.2, morphFactor: 0.8 + variationLevel * 0.05 },
+            6: { gridDensity: 0.6 + variationLevel * 0.4, speed: 0.8 + variationLevel * 0.4, chaos: 0.4 + variationLevel * 0.3, morphFactor: 0.6 + variationLevel * 0.2 },
+            7: { gridDensity: 1.6 + variationLevel * 0.2, speed: 0.2 + variationLevel * 0.1, chaos: 0.1 + variationLevel * 0.1, morphFactor: 0.2 + variationLevel * 0.2 }
         };
-        
+
         const config = geometryConfigs[baseGeometry];
-        
+
         return {
-            geometryType: baseGeometry,
+            geometry: baseGeometry,
             name: finalName,
-            density: config.density,
+            gridDensity: config.gridDensity,
             speed: config.speed,
             hue: (variant * 12.27) % 360,
-            saturation: 0.8 + (variationLevel * 0.05), // Add saturation parameter
+            saturation: 0.8 + (variationLevel * 0.05),
             intensity: 0.5 + (variationLevel * 0.1),
             chaos: config.chaos,
-            morph: config.morph
+            morphFactor: config.morphFactor
         };
     }
     
@@ -169,20 +169,20 @@ export class HolographicVisualizer {
                 densityMult: 0.8, speedMult: 0.3, colorShift: 180.0, intensity: 0.4,
                 mouseReactivity: 0.5, clickReactivity: 0.3 
             },
-            'content': { 
-                densityMult: vp.density, speedMult: vp.speed, 
+            'content': {
+                densityMult: vp.gridDensity, speedMult: vp.speed,
                 colorShift: vp.hue, intensity: vp.intensity,
-                mouseReactivity: 1.0, clickReactivity: 0.8 
+                mouseReactivity: 1.0, clickReactivity: 0.8
             },
-            'highlight': { 
-                densityMult: 1.5 + (vp.density * 0.3), speedMult: 0.8 + (vp.speed * 0.2), 
+            'highlight': {
+                densityMult: 1.5 + (vp.gridDensity * 0.3), speedMult: 0.8 + (vp.speed * 0.2),
                 colorShift: vp.hue + 60.0, intensity: 0.6 + (vp.intensity * 0.2),
-                mouseReactivity: 1.2, clickReactivity: 1.0 
+                mouseReactivity: 1.2, clickReactivity: 1.0
             },
-            'accent': { 
-                densityMult: 2.5 + (vp.density * 0.5), speedMult: 0.4 + (vp.speed * 0.1), 
+            'accent': {
+                densityMult: 2.5 + (vp.gridDensity * 0.5), speedMult: 0.4 + (vp.speed * 0.1),
                 colorShift: vp.hue + 300.0, intensity: 0.3 + (vp.intensity * 0.1),
-                mouseReactivity: 1.5, clickReactivity: 1.2 
+                mouseReactivity: 1.5, clickReactivity: 1.2
             }
         };
         
@@ -620,7 +620,7 @@ export class HolographicVisualizer {
             time: this.gl.getUniformLocation(this.program, 'u_time'),
             mouse: this.gl.getUniformLocation(this.program, 'u_mouse'),
             geometry: this.gl.getUniformLocation(this.program, 'u_geometry'),
-            density: this.gl.getUniformLocation(this.program, 'u_gridDensity'),
+            gridDensity: this.gl.getUniformLocation(this.program, 'u_gridDensity'),
             speed: this.gl.getUniformLocation(this.program, 'u_speed'),
             color: this.gl.getUniformLocation(this.program, 'u_color'),
             intensity: this.gl.getUniformLocation(this.program, 'u_intensity'),
@@ -631,9 +631,8 @@ export class HolographicVisualizer {
             mouseIntensity: this.gl.getUniformLocation(this.program, 'u_mouseIntensity'),
             clickIntensity: this.gl.getUniformLocation(this.program, 'u_clickIntensity'),
             densityVariation: this.gl.getUniformLocation(this.program, 'u_densityVariation'),
-            geometryType: this.gl.getUniformLocation(this.program, 'u_geometry'),
             chaos: this.gl.getUniformLocation(this.program, 'u_chaos'),
-            morph: this.gl.getUniformLocation(this.program, 'u_morphFactor'),
+            morphFactor: this.gl.getUniformLocation(this.program, 'u_morphFactor'),
             touchMorph: this.gl.getUniformLocation(this.program, 'u_touchMorph'),
             touchChaos: this.gl.getUniformLocation(this.program, 'u_touchChaos'),
             scrollParallax: this.gl.getUniformLocation(this.program, 'u_scrollParallax'),
@@ -893,11 +892,11 @@ export class HolographicVisualizer {
         this.gl.uniform2f(this.uniforms.resolution, this.canvas.width, this.canvas.height);
         this.gl.uniform1f(this.uniforms.time, time);
         this.gl.uniform2f(this.uniforms.mouse, this.mouseX, this.mouseY);
-        this.gl.uniform1f(this.uniforms.geometryType, this.variantParams.geometryType || 0);
-        this.gl.uniform1f(this.uniforms.density, this.variantParams.density || 1.0);
-        // FIX: Controlled speed calculation - base speed controls main movement, audio provides subtle boost
-        const baseSpeed = (this.variantParams.speed || 0.5) * 0.2; // Much slower base speed
-        const audioBoost = (this.audioSpeedBoost || 0.0) * 0.1; // Subtle audio boost only
+        this.gl.uniform1f(this.uniforms.geometry, this.variantParams.geometry !== undefined ? this.variantParams.geometry : this.variant || 0);
+        this.gl.uniform1f(this.uniforms.gridDensity, this.variantParams.gridDensity || 1.0);
+        // Controlled speed calculation - base speed controls main movement, audio provides subtle boost
+        const baseSpeed = (this.variantParams.speed || 0.5) * 0.2;
+        const audioBoost = (this.audioSpeedBoost || 0.0) * 0.1;
         this.gl.uniform1f(this.uniforms.speed, baseSpeed + audioBoost);
         this.gl.uniform3fv(this.uniforms.color, new Float32Array(rgbColor));
         this.gl.uniform1f(this.uniforms.intensity, (this.variantParams.intensity || 0.5) * this.roleParams.intensity);
@@ -908,9 +907,8 @@ export class HolographicVisualizer {
         this.gl.uniform1f(this.uniforms.mouseIntensity, this.mouseIntensity);
         this.gl.uniform1f(this.uniforms.clickIntensity, this.clickIntensity);
         this.gl.uniform1f(this.uniforms.densityVariation, this.densityVariation);
-        this.gl.uniform1f(this.uniforms.geometryType, this.variantParams.geometryType !== undefined ? this.variantParams.geometryType : this.variant || 0);
         this.gl.uniform1f(this.uniforms.chaos, this.variantParams.chaos || 0.0);
-        this.gl.uniform1f(this.uniforms.morph, this.variantParams.morph || 0.0);
+        this.gl.uniform1f(this.uniforms.morphFactor, this.variantParams.morphFactor || 0.0);
         
         // Touch and scroll uniforms
         this.gl.uniform1f(this.uniforms.touchMorph, this.touchMorph);
@@ -1000,61 +998,33 @@ export class HolographicVisualizer {
     }
 
     /**
-     * CRITICAL FIX: Update visualization parameters with immediate re-render
-     * This method was missing and causing parameter sliders to not work in holographic system
+     * Update visualization parameters from SDK global parameter names.
+     * Parameters are written directly to variantParams — no name mapping needed
+     * since shader uniforms now use SDK-standard names.
      */
     updateParameters(params) {
         if (!params || typeof params !== 'object') return;
-        // Update variant parameters with proper mapping and scaling
         if (this.variantParams) {
             Object.keys(params).forEach(param => {
-                const mappedParam = this.mapParameterName(param);
-                if (mappedParam !== null) {
-                    let scaledValue = params[param];
-                    // Guard against NaN/Infinity reaching GPU uniforms
-                    if (typeof scaledValue !== 'number' || !Number.isFinite(scaledValue)) return;
-                    
-                    // FIX: Scale gridDensity to reasonable holographic density range (back to normal levels)
-                    if (param === 'gridDensity') {
-                        // Convert gridDensity (5-100) to holographic density (0.3-2.5) - reasonable range
-                        // Formula: density = 0.3 + (gridDensity - 5) / (100 - 5) * (2.5 - 0.3)
-                        scaledValue = 0.3 + (parseFloat(params[param]) - 5) / 95 * 2.2;
-                        console.log(`🔧 Density scaling: gridDensity=${params[param]} → density=${scaledValue.toFixed(3)} (normal range)`);
-                    }
-                    
-                    this.variantParams[mappedParam] = scaledValue;
-                    
-                    // Handle special parameter types
-                    if (mappedParam === 'geometryType') {
-                        // Regenerate role params with new geometry
-                        this.roleParams = this.generateRoleParams(this.role);
-                    }
+                let scaledValue = params[param];
+                // Guard against NaN/Infinity reaching GPU uniforms
+                if (typeof scaledValue !== 'number' || !Number.isFinite(scaledValue)) return;
+
+                // Scale gridDensity (5-100) to holographic density range (0.3-2.5)
+                if (param === 'gridDensity') {
+                    scaledValue = 0.3 + (parseFloat(params[param]) - 5) / 95 * 2.2;
+                }
+
+                this.variantParams[param] = scaledValue;
+
+                // Regenerate role params when geometry changes
+                if (param === 'geometry') {
+                    this.roleParams = this.generateRoleParams(this.role);
                 }
             });
         }
-        
+
         // Don't call render() here - engine will call it to prevent infinite loop
-    }
-    
-    /**
-     * Map global parameter names to holographic system parameter names
-     */
-    mapParameterName(globalParam) {
-        const paramMap = {
-            'gridDensity': 'density',
-            'morphFactor': 'morph',
-            'rot4dXW': 'rot4dXW',
-            'rot4dYW': 'rot4dYW', 
-            'rot4dZW': 'rot4dZW',
-            'hue': 'hue',
-            'intensity': 'intensity',
-            'saturation': 'saturation',
-            'chaos': 'chaos',
-            'speed': 'speed',
-            'geometry': 'geometryType',
-            'breath': 'breath'
-        };
-        return paramMap[globalParam] || globalParam;
     }
 
     /**
