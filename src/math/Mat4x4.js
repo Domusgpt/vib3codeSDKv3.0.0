@@ -547,6 +547,122 @@ export class Mat4x4 {
         return new Mat4x4(json.data);
     }
 
+    // ========== IN-PLACE ROTATIONS ==========
+
+    /**
+     * Rotate in XY plane in place
+     * @param {number} angle
+     * @returns {Mat4x4} this
+     */
+    rotateXY(angle) {
+        const c = Math.cos(angle);
+        const s = Math.sin(angle);
+        const m = this.data;
+
+        for (let i = 0; i < 4; i++) {
+            const a0 = m[i];      // Col 0
+            const a1 = m[i + 4];  // Col 1
+            m[i]     = a0 * c + a1 * s;
+            m[i + 4] = -a0 * s + a1 * c;
+        }
+        return this;
+    }
+
+    /**
+     * Rotate in XZ plane in place
+     * @param {number} angle
+     * @returns {Mat4x4} this
+     */
+    rotateXZ(angle) {
+        const c = Math.cos(angle);
+        const s = Math.sin(angle);
+        const m = this.data;
+
+        for (let i = 0; i < 4; i++) {
+            const a0 = m[i];      // Col 0
+            const a2 = m[i + 8];  // Col 2
+            m[i]     = a0 * c - a2 * s;
+            m[i + 8] = a0 * s + a2 * c;
+        }
+        return this;
+    }
+
+    /**
+     * Rotate in YZ plane in place
+     * @param {number} angle
+     * @returns {Mat4x4} this
+     */
+    rotateYZ(angle) {
+        const c = Math.cos(angle);
+        const s = Math.sin(angle);
+        const m = this.data;
+
+        for (let i = 0; i < 4; i++) {
+            const a1 = m[i + 4];  // Col 1
+            const a2 = m[i + 8];  // Col 2
+            m[i + 4] = a1 * c + a2 * s;
+            m[i + 8] = -a1 * s + a2 * c;
+        }
+        return this;
+    }
+
+    /**
+     * Rotate in XW plane in place
+     * @param {number} angle
+     * @returns {Mat4x4} this
+     */
+    rotateXW(angle) {
+        const c = Math.cos(angle);
+        const s = Math.sin(angle);
+        const m = this.data;
+
+        for (let i = 0; i < 4; i++) {
+            const a0 = m[i];       // Col 0
+            const a3 = m[i + 12];  // Col 3
+            m[i]      = a0 * c + a3 * s;
+            m[i + 12] = -a0 * s + a3 * c;
+        }
+        return this;
+    }
+
+    /**
+     * Rotate in YW plane in place
+     * @param {number} angle
+     * @returns {Mat4x4} this
+     */
+    rotateYW(angle) {
+        const c = Math.cos(angle);
+        const s = Math.sin(angle);
+        const m = this.data;
+
+        for (let i = 0; i < 4; i++) {
+            const a1 = m[i + 4];   // Col 1
+            const a3 = m[i + 12];  // Col 3
+            m[i + 4]  = a1 * c + a3 * s;
+            m[i + 12] = -a1 * s + a3 * c;
+        }
+        return this;
+    }
+
+    /**
+     * Rotate in ZW plane in place
+     * @param {number} angle
+     * @returns {Mat4x4} this
+     */
+    rotateZW(angle) {
+        const c = Math.cos(angle);
+        const s = Math.sin(angle);
+        const m = this.data;
+
+        for (let i = 0; i < 4; i++) {
+            const a2 = m[i + 8];   // Col 2
+            const a3 = m[i + 12];  // Col 3
+            m[i + 8]  = a2 * c + a3 * s;
+            m[i + 12] = -a2 * s + a3 * c;
+        }
+        return this;
+    }
+
     // ========== ROTATION MATRICES FOR ALL 6 PLANES ==========
 
     /**
@@ -681,12 +797,12 @@ export class Mat4x4 {
     static rotationFromAngles(angles) {
         let result = Mat4x4.identity();
 
-        if (angles.xy) result = result.multiply(Mat4x4.rotationXY(angles.xy));
-        if (angles.xz) result = result.multiply(Mat4x4.rotationXZ(angles.xz));
-        if (angles.yz) result = result.multiply(Mat4x4.rotationYZ(angles.yz));
-        if (angles.xw) result = result.multiply(Mat4x4.rotationXW(angles.xw));
-        if (angles.yw) result = result.multiply(Mat4x4.rotationYW(angles.yw));
-        if (angles.zw) result = result.multiply(Mat4x4.rotationZW(angles.zw));
+        if (angles.xy) result.rotateXY(angles.xy);
+        if (angles.xz) result.rotateXZ(angles.xz);
+        if (angles.yz) result.rotateYZ(angles.yz);
+        if (angles.xw) result.rotateXW(angles.xw);
+        if (angles.yw) result.rotateYW(angles.yw);
+        if (angles.zw) result.rotateZW(angles.zw);
 
         return result;
     }
