@@ -112,7 +112,7 @@ export class VIB3Orchestrator {
         // 1. Physics / Logic Update
         this.entities.forEach(entity => {
             if (entity.active && entity.update) {
-                entity.update(dt);
+                entity.update(this.time, dt);
             }
         });
 
