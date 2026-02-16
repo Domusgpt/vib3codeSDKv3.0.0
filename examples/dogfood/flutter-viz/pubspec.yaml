@@ -1,0 +1,47 @@
+name: vib3_flutter_viz
+description: >
+  VIB3+ 4D Music Visualization — Flutter app with WebGL shader rendering,
+  real-time audio FFT, and home screen widgets. Dogfood project for the
+  VIB3+ SDK by Clear Seas Solutions LLC.
+
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # WebView for rendering VIB3+ WebGL shaders
+  webview_flutter: ^4.10.0
+
+  # Audio capture for microphone input
+  record: ^5.1.2
+
+  # Persistent user preferences
+  shared_preferences: ^2.3.3
+
+  # State management (lightweight, built-in)
+  provider: ^6.1.2
+
+  # Permission handling for microphone
+  permission_handler: ^11.3.1
+
+  # Path utilities
+  path_provider: ^2.1.4
+
+  # Material design icons (included in Flutter SDK)
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/vib3_visualization.html

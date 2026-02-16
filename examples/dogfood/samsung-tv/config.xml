@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets"
+        xmlns:tizen="http://tizen.org/ns/widgets"
+        id="http://vib3.clearseas.io/samsung-tv"
+        version="1.0.0"
+        viewmodes="maximized">
+
+    <name>VIB3+ Visualizer</name>
+    <tizen:application id="vib3code.visualizer"
+                       package="vib3code"
+                       required_version="5.0" />
+
+    <icon src="icon.png" />
+
+    <content src="index.html" />
+
+    <tizen:metadata key="http://samsung.com/tv/metadata/multiscreen.support" value="true" />
+    <tizen:metadata key="http://samsung.com/tv/metadata/devel.api.version" value="5.0" />
+
+    <!-- Display: fullscreen, no system chrome -->
+    <feature name="http://tizen.org/feature/screen.size.all" />
+
+    <!-- WebGL support required -->
+    <feature name="http://tizen.org/feature/opengles.version.2_0" />
+
+    <!-- Audio capture for microphone-based reactivity -->
+    <tizen:privilege name="http://tizen.org/privilege/mediacapture" />
+
+    <!-- TV audio control (volume level detection) -->
+    <tizen:privilege name="http://tizen.org/privilege/tv.audio" />
+
+    <!-- TV input device (remote key registration) -->
+    <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice" />
+
+    <!-- Filesystem for potential preset save/load -->
+    <tizen:privilege name="http://tizen.org/privilege/filesystem.read" />
+    <tizen:privilege name="http://tizen.org/privilege/filesystem.write" />
+
+    <!-- Internet access (not required but prevents store rejection warnings) -->
+    <tizen:privilege name="http://tizen.org/privilege/internet" />
+
+    <!-- App lifecycle -->
+    <tizen:privilege name="http://tizen.org/privilege/application.launch" />
+
+    <!-- TV window management -->
+    <tizen:privilege name="http://tizen.org/privilege/tv.window" />
+
+    <!-- Screen saver / always-on behavior -->
+    <tizen:setting screen-orientation="landscape"
+                   context-menu="disable"
+                   background-support="disable"
+                   encryption="disable"
+                   install-location="auto"
+                   hwkey-event="enable" />
+
+    <tizen:profile name="tv" />
+
+    <description>
+        VIB3+ 4D Visualization Engine for Samsung Smart TV.
+        Audio-reactive geometric visualizations powered by real-time FFT analysis,
+        six-dimensional rotation mathematics, and WebGL shader rendering.
+        Features 3 visualization systems (Faceted, Quantum, Holographic),
+        24 geometry variants, and full TV remote control support.
+        Built with the VIB3+ SDK by Clear Seas Solutions LLC.
+    </description>
+
+    <author href="https://vib3.clearseas.io"
+            email="paul@clearseas.io">
+        Clear Seas Solutions LLC
+    </author>
+
+    <license>MIT License</license>
+
+</widget>

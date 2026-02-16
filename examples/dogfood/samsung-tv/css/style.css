@@ -1,0 +1,450 @@
+/* ==========================================================================
+   VIB3+ Samsung TV Visualizer -- 10-foot UI Stylesheet
+   Target: 1920x1080 display viewed at 3+ meters
+   All sizes in px (TV apps use fixed resolution, not responsive)
+   ========================================================================== */
+
+/* ── Reset & Base ── */
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background: #000;
+    font-family: 'Samsung Sharp Sans', 'SamsungOne', -apple-system, 'Segoe UI',
+                 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    color: #fff;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Prevent text selection on TV */
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: none;
+}
+
+/* ── Overscan-Safe Area ──
+   5% margins on all sides = 96px horizontal, 54px vertical */
+.overscan-safe {
+    position: absolute;
+    top: 54px;
+    right: 96px;
+    bottom: 54px;
+    left: 96px;
+}
+
+/* ── WebGL Canvas ── */
+#visualizer-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 1920px;
+    height: 1080px;
+    z-index: 0;
+}
+
+/* ── HUD Overlay ── */
+#hud {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 1920px;
+    height: 1080px;
+    z-index: 100;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+}
+
+#hud.hidden {
+    opacity: 0;
+}
+
+/* ── System Indicator (top-left) ── */
+#system-indicator {
+    position: absolute;
+    top: 54px;
+    left: 96px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+#system-name {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.5),
+                 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+#system-badge {
+    display: inline-block;
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+}
+
+.badge-faceted {
+    background: rgba(59, 130, 246, 0.3);
+    border: 2px solid rgba(59, 130, 246, 0.7);
+    color: #93c5fd;
+}
+
+.badge-quantum {
+    background: rgba(168, 85, 247, 0.3);
+    border: 2px solid rgba(168, 85, 247, 0.7);
+    color: #c4b5fd;
+}
+
+.badge-holographic {
+    background: rgba(16, 185, 129, 0.3);
+    border: 2px solid rgba(16, 185, 129, 0.7);
+    color: #6ee7b7;
+}
+
+/* ── Geometry Info (top-right) ── */
+#geometry-info {
+    position: absolute;
+    top: 54px;
+    right: 96px;
+    text-align: right;
+}
+
+#geometry-name {
+    font-size: 28px;
+    font-weight: 500;
+    text-shadow: 0 0 12px rgba(255, 255, 255, 0.4),
+                 0 2px 6px rgba(0, 0, 0, 0.7);
+}
+
+#geometry-index {
+    font-size: 22px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Audio Meter (bottom-left) ── */
+#audio-meter {
+    position: absolute;
+    bottom: 54px;
+    left: 96px;
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 80px;
+}
+
+.audio-bar {
+    width: 12px;
+    min-height: 4px;
+    border-radius: 2px;
+    background: linear-gradient(to top, #3b82f6, #8b5cf6, #ec4899);
+    transition: height 0.05s linear;
+    opacity: 0.8;
+}
+
+#audio-label {
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.4);
+    margin-left: 12px;
+    align-self: flex-end;
+}
+
+/* ── Status Bar (bottom-right) ── */
+#status-bar {
+    position: absolute;
+    bottom: 54px;
+    right: 96px;
+    text-align: right;
+}
+
+#status-mode {
+    font-size: 24px;
+    font-weight: 500;
+    text-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+}
+
+#status-fps {
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+}
+
+#status-sensitivity {
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 4px;
+}
+
+/* ── Color Button Legend (bottom-center) ── */
+#button-legend {
+    position: absolute;
+    bottom: 54px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 32px;
+    opacity: 0.6;
+    transition: opacity 0.3s ease;
+}
+
+#hud.legend-visible #button-legend {
+    opacity: 1;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.legend-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.legend-dot.red { background: #ef4444; }
+.legend-dot.green { background: #22c55e; }
+.legend-dot.yellow { background: #eab308; }
+.legend-dot.blue { background: #3b82f6; }
+
+.legend-label {
+    font-size: 22px;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+}
+
+/* ── Parameter Menu (center overlay) ── */
+#param-menu {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 40px 48px;
+    min-width: 600px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    display: none;
+    z-index: 200;
+}
+
+#param-menu.visible {
+    display: block;
+}
+
+#param-menu-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 28px;
+    text-align: center;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.param-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.param-row:last-child {
+    border-bottom: none;
+}
+
+.param-row.focused {
+    background: rgba(255, 255, 255, 0.08);
+    margin: 0 -16px;
+    padding: 14px 16px;
+    border-radius: 6px;
+}
+
+.param-label {
+    font-size: 26px;
+    color: rgba(255, 255, 255, 0.8);
+    min-width: 200px;
+}
+
+.param-value {
+    font-size: 26px;
+    font-weight: 600;
+    color: #fff;
+    min-width: 80px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.param-bar-track {
+    flex: 1;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    margin: 0 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.param-bar-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    transition: width 0.1s ease;
+}
+
+.param-row.focused .param-bar-fill {
+    background: linear-gradient(90deg, #60a5fa, #a78bfa);
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.5);
+}
+
+.param-row.focused .param-label {
+    color: #fff;
+}
+
+/* ── Startup Overlay ── */
+#startup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 1920px;
+    height: 1080px;
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at center,
+        rgba(15, 5, 30, 0.97),
+        rgba(0, 0, 0, 0.99));
+    transition: opacity 1s ease;
+}
+
+#startup-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#startup-title {
+    font-size: 72px;
+    font-weight: 800;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #a78bfa, #60a5fa, #34d399, #fbbf24);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: title-shimmer 4s ease-in-out infinite alternate;
+}
+
+@keyframes title-shimmer {
+    0% { filter: hue-rotate(0deg) brightness(1); }
+    100% { filter: hue-rotate(60deg) brightness(1.2); }
+}
+
+#startup-subtitle {
+    font-size: 28px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 24px;
+    letter-spacing: 0.15em;
+}
+
+#startup-prompt {
+    font-size: 32px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 60px;
+    animation: pulse-prompt 2s ease-in-out infinite;
+}
+
+@keyframes pulse-prompt {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+
+/* ── Notification Toast ── */
+#toast {
+    position: fixed;
+    top: 54px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background: rgba(0, 0, 0, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 16px 40px;
+    font-size: 28px;
+    font-weight: 500;
+    z-index: 300;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+#toast.visible {
+    transform: translateX(-50%) translateY(0);
+}
+
+/* ── Screensaver indicator ── */
+#screensaver-indicator {
+    position: absolute;
+    top: 54px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.3);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    display: none;
+}
+
+#screensaver-indicator.visible {
+    display: block;
+    animation: fade-pulse 3s ease-in-out infinite;
+}
+
+@keyframes fade-pulse {
+    0%, 100% { opacity: 0.15; }
+    50% { opacity: 0.4; }
+}
+
+/* ── Focus ring for accessibility ── */
+:focus {
+    outline: 3px solid rgba(99, 102, 241, 0.8);
+    outline-offset: 4px;
+}
+
+/* ── Transition helpers ── */
+.fade-in {
+    animation: fade-in 0.5s ease forwards;
+}
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.fade-out {
+    animation: fade-out 0.5s ease forwards;
+}
+
+@keyframes fade-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
