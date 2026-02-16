@@ -225,5 +225,61 @@ Initializes `VIB3Link` for a multi-user session.
 
 ---
 
+## VI. Deep Multilayer Architecture
+
+To support `VIB3Universe`, we need a robust system for managing interactions between multiple VIB3 instances. This is not just visual layering; it's logic layering.
+
+### 1. Visual Compositing (`VIB3Compositor`)
+Managing 10+ layers (e.g., 2 instances × 5 holographic layers) requires a dedicated compositor to avoid DOM explosion and Z-fighting.
+
+*   **Render Targets**: Instead of rendering directly to the DOM, each VIB3 instance renders to an offscreen canvas.
+*   **Unified Stage**: The Compositor draws these offscreen buffers onto a single `GlobalCanvas` using WebGL blending.
+*   **Depth Sorting**: Instances are sorted by their "World Z" coordinate.
+*   **Masking**: Instances can mask each other (e.g., a character standing behind a portal).
+
+```javascript
+class VIB3Compositor {
+    registerInstance(instanceId, textureSource) { ... }
+    setLayerOrder(instanceIds) { ... }
+    render() {
+        // Draw background instances
+        // Draw foreground instances with blending
+        // Apply global post-processing (unifying the look)
+    }
+}
+```
+
+### 2. Logic Layering (`LoopCoordinator`)
+We have three distinct loops running at different frequencies:
+1.  **Physics Loop (Fixed Step, 60hz)**: Collision detection, movement integration. Deterministic for multiplayer sync.
+2.  **Narrative Loop (Event Driven)**: Script execution, state machine transitions.
+3.  **Reactive Loop (Frame Rate)**: Audio analysis, visual parameter smoothing.
+
+The `VIB3Orchestrator` must prioritize these:
+*   Physics updates *must* happen before Visual updates.
+*   Narrative events trigger Physics state changes.
+
+### 3. State Hydration (`UniverseSerializer`)
+Saving a multi-instance universe is complex. We need a schema that captures the relationships, not just individual parameters.
+
+```json
+{
+  "universe_id": "u_8823",
+  "timestamp": 12044,
+  "entities": [
+    { "id": "hero", "type": "actor", "pos": [0,0,0], "params": {...} },
+    { "id": "world", "type": "environment", "params": {...} }
+  ],
+  "global_state": {
+    "gravity": 9.8,
+    "tension": 0.4
+  }
+}
+```
+
+This allows "save games" for HyperGame and "bookmarks" for HyperNarrative.
+
+---
+
 *VIB3+ Ultra — The Future of Emergent Media*
-*Draft v1.0 — Feb 16, 2026*
+*Draft v2.0 — Expanded Multilayer Architecture — Feb 16, 2026*
