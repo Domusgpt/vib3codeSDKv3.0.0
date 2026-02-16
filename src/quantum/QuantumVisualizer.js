@@ -6,6 +6,17 @@
 
 import { GeometryLibrary } from '../geometry/GeometryLibrary.js';
 
+// Role-specific intensity values for 5-layer canvas architecture.
+// IMPORTANT: Must stay in sync with shader epsilon comparisons in the fragment shader
+// at the "LAYER-BY-LAYER COLOR SYSTEM" section (search for layerIndex).
+const ROLE_INTENSITIES = {
+    'background': 0.4,
+    'shadow': 0.6,
+    'content': 1.0,
+    'highlight': 1.3,
+    'accent': 1.6
+};
+
 export class QuantumHolographicVisualizer {
     constructor(canvasIdOrElement, role, reactivity, variant) {
         this.canvas = (canvasIdOrElement instanceof HTMLCanvasElement)
@@ -689,11 +700,12 @@ void main() {
     
     // LAYER-BY-LAYER COLOR SYSTEM with user hue/saturation/intensity controls
     // Determine canvas layer from role/variant (0=background, 1=shadow, 2=content, 3=highlight, 4=accent)
+    // Values must match ROLE_INTENSITIES in JS: bg=0.4, shadow=0.6, content=1.0, highlight=1.3, accent=1.6
     int layerIndex = 0;
-    if (u_roleIntensity == 0.7) layerIndex = 1;      // shadow layer
-    else if (u_roleIntensity == 1.0) layerIndex = 2; // content layer  
-    else if (u_roleIntensity == 0.85) layerIndex = 3; // highlight layer
-    else if (u_roleIntensity == 0.6) layerIndex = 4;  // accent layer
+    if (abs(u_roleIntensity - 0.6) < 0.05) layerIndex = 1;       // shadow layer
+    else if (abs(u_roleIntensity - 1.0) < 0.05) layerIndex = 2;  // content layer
+    else if (abs(u_roleIntensity - 1.3) < 0.05) layerIndex = 3;  // highlight layer
+    else if (abs(u_roleIntensity - 1.6) < 0.05) layerIndex = 4;  // accent layer
     
     // Get layer-specific base color using user hue/saturation controls
     float colorTime = timeSpeed * 2.0 + value * 3.0;
@@ -1017,15 +1029,6 @@ void main() {
             this._renderParamsLogged = true;
         }
         
-        // Role-specific intensity for quantum effects
-        const roleIntensities = {
-            'background': 0.4,
-            'shadow': 0.6,
-            'content': 1.0,
-            'highlight': 1.3,
-            'accent': 1.6
-        };
-        
         const time = Date.now() - this.startTime;
         
         // Set uniforms
@@ -1069,7 +1072,7 @@ void main() {
         this.gl.uniform1f(this.uniforms.rot4dZW, this.params.rot4dZW || 0.0);
         this.gl.uniform1f(this.uniforms.mouseIntensity, this.mouseIntensity);
         this.gl.uniform1f(this.uniforms.clickIntensity, this.clickIntensity);
-        this.gl.uniform1f(this.uniforms.roleIntensity, roleIntensities[this.role] || 1.0);
+        this.gl.uniform1f(this.uniforms.roleIntensity, ROLE_INTENSITIES[this.role] || 1.0);
         this.gl.uniform1f(this.uniforms.breath, this.params.breath || 0.0);
         
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
