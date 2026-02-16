@@ -292,4 +292,53 @@ examples/dogfood/
 
 ---
 
+## Meta-Learning: What the Agents Missed
+
+### All agents converged on synesthesia.html as the ceiling
+
+Every agent that produced output treated `synesthesia.html` as the gold standard — a single-canvas, single-shader approach. This fundamentally misses what VIB3+ actually is.
+
+VIB3+ is a **5-layer compositing engine** where coordinated parameter sweeps across layers create spatial illusions (depth, lift, parallax, cast shadows). The real power is:
+
+1. **Multi-visualizer coordination** — Content + shadow + background canvases with DIFFERENT but congruent parameter animations creating composite physical illusions
+2. **Parameter sweeps with physical meaning** — density decrease = "lift off page", 4D rotation = "portal opening", shadow layer at parallax offset = grounding depth
+3. **CSS occlusion for shape-breaking** — overlay layers with cutouts/masks to break the square canvas form; the visualizer bleeds through negative space
+4. **Event-triggered state changes** — not just continuous parameter tweening, but discrete events: "when bass > 0.8, switch layer profile to storm for 3s"
+
+### Why this happened
+
+- `synesthesia.html` is the **only working standalone reference** in the repo
+- No existing demo shows multi-layer coordination in action
+- CLAUDE.md and the skill files **don't emphasize layer choreography as the differentiator**
+- The LayerRelationshipGraph, ChoreographyPlayer, and TransitionAnimator are documented in CLAUDE.md but their *combined power* is never demonstrated
+- There's no document that maps parameters to physical/visual meanings (e.g., "gridDensity decrease = visual lift")
+
+### What this tells the SDK team
+
+The documentation conveys VIB3+'s *capabilities* but not its *power*. An agent reading CLAUDE.md understands that 5 layers exist and that 6 relationship types are available. But it doesn't understand that combining `echo(densityScale: 1.5)` on the shadow layer with `complement` on the background while animating content `gridDensity` 40→14 creates a "card lifting off the page with a growing cast shadow" effect.
+
+**See `examples/dogfood/GOLD_STANDARD.md` for the parameter sweep vocabulary and multi-layer coordination patterns that demos should use instead.**
+
+**See `DOCS/EXPANSION_DESIGN.md` for the premium tier technical spec — the expanded control surface (`@vib3code/premium`) that opens up axis locking, per-layer geometry, CSS bridging, and event-triggered state changes.**
+
+---
+
+## Build Status (Updated Feb 16)
+
+### Completed This Session
+- [x] `examples/dogfood/GOLD_STANDARD.md` — Parameter sweep vocabulary, multi-layer patterns, CSS occlusion, choreography spec
+- [x] `DOCS/EXPANSION_DESIGN.md` — Premium tier technical blueprint for `@vib3code/premium` extension package
+
+### In Progress
+- [ ] Samsung TV: 5 JavaScript/HTML files (building)
+- [ ] Flutter Viz: 7 Dart/HTML files (building)
+
+### Bug Verification (Post 6-Commit Dev Branch)
+All 3 shader bugs confirmed **still present**:
+- `u_dimension` projection: BROKEN in all 3 systems (hardcoded 2.5)
+- Dead Faceted audio: `audioDensityMod`/`audioMorphMod` computed but never used
+- Hue encoding: Faceted=raw 0-360, Quantum=normalized 0-1, Holographic=mixed
+
+---
+
 *This document is the canonical record of the 4-agent dogfood experiment. It captures what was built, what it would look like, what SDK issues were found, and what remains to be done.*
