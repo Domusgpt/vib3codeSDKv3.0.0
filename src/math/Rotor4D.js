@@ -323,54 +323,108 @@ export class Rotor4D {
     /**
      * Rotate a 4D vector using sandwich product: v' = R v R†
      *
+     * Matrix math is inlined to avoid allocating a temporary Float32Array(16).
+     * Pass an optional target Vec4 to eliminate all allocations.
+     *
      * @param {Vec4} v - Vector to rotate
-     * @returns {Vec4} Rotated vector
+     * @param {Vec4} [target] - Optional pre-allocated Vec4 to write result into
+     * @returns {Vec4} Rotated vector (target if provided, otherwise new Vec4)
      */
-    rotate(v) {
-        // For efficiency, we expand the sandwich product directly
-        // rather than doing two rotor multiplications
-
+    rotate(v, target) {
         const x = v.x, y = v.y, z = v.z, w = v.w;
 
-        // Compute R v (rotor times vector)
-        // Vector in GA is: x*e1 + y*e2 + z*e3 + w*e4
-        // This produces a mixed multivector
+        // Normalize for numerical stability (same as toMatrix)
+        const n = this.norm();
+        const invN = n > 1e-10 ? 1 / n : 1;
 
-        // Then multiply by R† (reverse of rotor)
-        // Extract the vector part of the result
+        const s = this.s * invN;
+        const xy = this.xy * invN;
+        const xz = this.xz * invN;
+        const yz = this.yz * invN;
+        const xw = this.xw * invN;
+        const yw = this.yw * invN;
+        const zw = this.zw * invN;
+        const xyzw = this.xyzw * invN;
 
-        // Pre-compute some common terms
-        const s = this.s;
-        const xy = this.xy, xz = this.xz, yz = this.yz;
-        const xw = this.xw, yw = this.yw, zw = this.zw;
-        const xyzw = this.xyzw;
-
-        // Squared terms for the rotation formula
+        // Squared terms
         const s2 = s * s;
-        const xy2 = xy * xy, xz2 = xz * xz, yz2 = yz * yz;
-        const xw2 = xw * xw, yw2 = yw * yw, zw2 = zw * zw;
+        const xy2 = xy * xy;
+        const xz2 = xz * xz;
+        const yz2 = yz * yz;
+        const xw2 = xw * xw;
+        const yw2 = yw * yw;
+        const zw2 = zw * zw;
         const xyzw2 = xyzw * xyzw;
 
-        // The full rotation formula derived from R v R†
-        const newX =
-            x * (s2 + xy2 + xz2 - yz2 + xw2 - yw2 - zw2 - xyzw2) +
-            2 * y * (s * xy + xz * yz + xw * yw - s * xyzw * zw + xy * s - xyzw * zw) +
-            2 * z * (s * xz - xy * yz + xw * zw + xyzw * yw) +
-            2 * w * (s * xw - xy * yw - xz * zw - xyzw * yz);
+        // Cross terms (pre-multiplied by 2)
+        const sxy = 2 * s * xy;
+        const sxz = 2 * s * xz;
+        const syz = 2 * s * yz;
+        const sxw = 2 * s * xw;
+        const syw = 2 * s * yw;
+        const szw = 2 * s * zw;
 
-        // Simplified rotation using matrix form
-        // This is equivalent but clearer
+        const xzyz = 2 * xz * yz;
+        const xyyz = 2 * xy * yz;
+        const xyxz = 2 * xy * xz;
+        const xyxw = 2 * xy * xw;
+        const xyyw = 2 * xy * yw;
 
-        // Actually, let's use the direct matrix multiplication approach
-        // which is more numerically stable
+        const xzxw = 2 * xz * xw;
+        const xzyw = 2 * xz * yw;
+        const xzzw = 2 * xz * zw;
 
-        const m = this.toMatrix();
-        return new Vec4(
-            m[0] * x + m[4] * y + m[8] * z + m[12] * w,
-            m[1] * x + m[5] * y + m[9] * z + m[13] * w,
-            m[2] * x + m[6] * y + m[10] * z + m[14] * w,
-            m[3] * x + m[7] * y + m[11] * z + m[15] * w
-        );
+        const yzxw = 2 * yz * xw;
+        const yzyw = 2 * yz * yw;
+        const yzzw = 2 * yz * zw;
+
+        const xwyw = 2 * xw * yw;
+        const xwzw = 2 * xw * zw;
+        const ywzw = 2 * yw * zw;
+
+        const xyxyzw = 2 * xy * xyzw;
+        const xzxyzw = 2 * xz * xyzw;
+        const yzxyzw = 2 * yz * xyzw;
+        const xwxyzw = 2 * xw * xyzw;
+        const ywxyzw = 2 * yw * xyzw;
+        const zwxyzw = 2 * zw * xyzw;
+
+        // Column-major 4x4 rotation matrix entries (inlined from toMatrix)
+        // Column 0
+        const m0  = s2 - xy2 - xz2 + yz2 - xw2 + yw2 + zw2 - xyzw2;
+        const m1  = sxy + xzyz + xwyw - zwxyzw;
+        const m2  = sxz - xyyz + xwzw + ywxyzw;
+        const m3  = sxw - xyyw - xzzw - yzxyzw;
+        // Column 1
+        const m4  = -sxy + xzyz + xwyw + zwxyzw;
+        const m5  = s2 - xy2 + xz2 - yz2 + xw2 - yw2 + zw2 - xyzw2;
+        const m6  = syz + xyxz + ywzw - xwxyzw;
+        const m7  = syw + xyxw - yzzw + xzxyzw;
+        // Column 2
+        const m8  = -sxz - xyyz + xwzw - ywxyzw;
+        const m9  = -syz + xyxz + ywzw + xwxyzw;
+        const m10 = s2 + xy2 - xz2 - yz2 + xw2 + yw2 - zw2 - xyzw2;
+        const m11 = szw + xzxw + yzyw - xyxyzw;
+        // Column 3
+        const m12 = -sxw - xyyw - xzzw + yzxyzw;
+        const m13 = -syw + xyxw - yzzw - xzxyzw;
+        const m14 = -szw + xzxw + yzyw + xyxyzw;
+        const m15 = s2 + xy2 + xz2 + yz2 - xw2 - yw2 - zw2 - xyzw2;
+
+        // Matrix-vector multiply
+        const rx = m0 * x + m4 * y + m8  * z + m12 * w;
+        const ry = m1 * x + m5 * y + m9  * z + m13 * w;
+        const rz = m2 * x + m6 * y + m10 * z + m14 * w;
+        const rw = m3 * x + m7 * y + m11 * z + m15 * w;
+
+        if (target) {
+            target.x = rx;
+            target.y = ry;
+            target.z = rz;
+            target.w = rw;
+            return target;
+        }
+        return new Vec4(rx, ry, rz, rw);
     }
 
     /**
