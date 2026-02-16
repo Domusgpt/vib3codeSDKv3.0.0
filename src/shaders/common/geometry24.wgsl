@@ -47,6 +47,60 @@ fn hypertetrahedronCore(p: vec4<f32>, baseType: f32) -> f32 {
     return max(baseGeometry(p, baseType), tf);
 }
 
+// ── Polytope Core Warp Functions ──
+// Requires: rotation functions from rotation4d.wgsl and u: VIB3Uniforms
+
+fn warpHypersphereCore_common(p: vec3<f32>, geomIdx: i32) -> vec3<f32> {
+    let radius = length(p);
+    let morphBlend = clamp(u.morphFactor * 0.6 + (u.dimension - 3.0) * 0.25, 0.0, 2.0);
+    let w = sin(radius * (1.3 + f32(geomIdx) * 0.12) + u.time * 0.0008 * u.speed)
+          * (0.4 + morphBlend * 0.45);
+    var p4d = vec4<f32>(p * (1.0 + morphBlend * 0.2), w);
+    p4d = rotateXY(u.rot4dXY) * p4d;
+    p4d = rotateXZ(u.rot4dXZ) * p4d;
+    p4d = rotateYZ(u.rot4dYZ) * p4d;
+    p4d = rotateXW(u.rot4dXW) * p4d;
+    p4d = rotateYW(u.rot4dYW) * p4d;
+    p4d = rotateZW(u.rot4dZW) * p4d;
+    let proj = project4Dto3D(p4d);
+    return mix(p, proj, clamp(0.45 + morphBlend * 0.35, 0.0, 1.0));
+}
+
+fn warpHypertetraCore_common(p: vec3<f32>, geomIdx: i32) -> vec3<f32> {
+    let c1 = normalize(vec3<f32>(1.0, 1.0, 1.0));
+    let c2 = normalize(vec3<f32>(-1.0, -1.0, 1.0));
+    let c3 = normalize(vec3<f32>(-1.0, 1.0, -1.0));
+    let c4 = normalize(vec3<f32>(1.0, -1.0, -1.0));
+    let morphBlend = clamp(u.morphFactor * 0.8 + (u.dimension - 3.0) * 0.2, 0.0, 2.0);
+    let basisMix = dot(p, c1) * 0.14 + dot(p, c2) * 0.1 + dot(p, c3) * 0.08;
+    let w = sin(basisMix * 5.5 + u.time * 0.0009 * u.speed)
+          * cos(dot(p, c4) * 4.2 - u.time * 0.0007 * u.speed)
+          * (0.5 + morphBlend * 0.4);
+    let offset = vec3<f32>(dot(p, c1), dot(p, c2), dot(p, c3)) * 0.1 * morphBlend;
+    var p4d = vec4<f32>(p + offset, w);
+    p4d = rotateXY(u.rot4dXY) * p4d;
+    p4d = rotateXZ(u.rot4dXZ) * p4d;
+    p4d = rotateYZ(u.rot4dYZ) * p4d;
+    p4d = rotateXW(u.rot4dXW) * p4d;
+    p4d = rotateYW(u.rot4dYW) * p4d;
+    p4d = rotateZW(u.rot4dZW) * p4d;
+    let proj = project4Dto3D(p4d);
+    let planeInf = min(min(abs(dot(p, c1)), abs(dot(p, c2))),
+                       min(abs(dot(p, c3)), abs(dot(p, c4))));
+    let blended = mix(p, proj, clamp(0.45 + morphBlend * 0.35, 0.0, 1.0));
+    return mix(blended, blended * (1.0 - planeInf * 0.55), 0.2 + morphBlend * 0.2);
+}
+
+fn applyCoreWarp_common(p: vec3<f32>, geomType: f32) -> vec3<f32> {
+    let coreFloat = floor(geomType / 8.0);
+    let coreIndex = i32(clamp(coreFloat, 0.0, 2.0));
+    let baseFloat = geomType - floor(geomType / 8.0) * 8.0;
+    let geomIdx = i32(clamp(floor(baseFloat + 0.5), 0.0, 7.0));
+    if (coreIndex == 1) { return warpHypersphereCore_common(p, geomIdx); }
+    if (coreIndex == 2) { return warpHypertetraCore_common(p, geomIdx); }
+    return p;
+}
+
 fn geometry(p: vec4<f32>, t: f32) -> f32 {
     if (t < 8.0) { return baseGeometry(p, t); }
     else if (t < 16.0) { return hypersphereCore(p, t - 8.0); }

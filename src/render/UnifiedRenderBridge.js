@@ -25,7 +25,7 @@ import { createWebGPUBackend, isWebGPUSupported, WGSLShaderLib } from './backend
  * @returns {Float32Array}
  */
 function packVIB3Uniforms(uniforms) {
-    // Total: 32 floats = 128 bytes → aligned to 256 bytes in buffer
+    // Total: 33 floats (indices 0-32) = 132 bytes → padded to 256 bytes in buffer
     const data = new Float32Array(64); // 256 bytes
 
     data[0] = uniforms.u_time || 0;

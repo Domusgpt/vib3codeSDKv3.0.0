@@ -546,9 +546,9 @@ fn rotateXZ(angle: f32) -> mat4x4<f32> {
     let c = cos(angle);
     let s = sin(angle);
     return mat4x4<f32>(
-        vec4<f32>(c, 0.0, -s, 0.0),
+        vec4<f32>( c, 0.0, s, 0.0),
         vec4<f32>(0.0, 1.0, 0.0, 0.0),
-        vec4<f32>(s, 0.0, c, 0.0),
+        vec4<f32>(-s, 0.0, c, 0.0),
         vec4<f32>(0.0, 0.0, 0.0, 1.0)
     );
 }
