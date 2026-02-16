@@ -281,5 +281,44 @@ This allows "save games" for HyperGame and "bookmarks" for HyperNarrative.
 
 ---
 
+## VII. VIB3Link Protocol
+
+VIB3Link uses WebRTC DataChannels for low-latency state synchronization between clients in a `VIB3Universe`.
+
+### Protocol Message Format
+
+Messages are JSON-encoded packets:
+```json
+{
+  "t": "type",  // 'update', 'event', 'sync'
+  "s": 1023,    // sequence number (for ordering)
+  "p": { ... }  // payload
+}
+```
+
+### Core Message Types
+
+1.  **Entity Update (`upd`)**: High-frequency (20Hz) updates of position/rotation.
+    ```json
+    { "t": "upd", "id": "actor_1", "pos": [x,y,z], "rot": [x,y,z,w] }
+    ```
+2.  **Parameter Delta (`prm`)**: When a visual parameter changes.
+    ```json
+    { "t": "prm", "id": "actor_1", "k": "chaos", "v": 0.8 }
+    ```
+3.  **Universe Event (`evt`)**: Narrative triggers or game events.
+    ```json
+    { "t": "evt", "n": "explosion", "loc": [10, 0, 5], "pow": 0.9 }
+    ```
+
+### Synchronization Strategy
+
+*   **Authority**: One client is the **Host** (orchestrator). Others are **Peers**.
+*   **Prediction**: Peers predict entity movement based on velocity.
+*   **Reconciliation**: If Peer state diverges > threshold from Host state, snap to Host.
+*   **Interpolation**: Visuals render at `t - buffer` to ensure smooth interpolation between network packets.
+
+---
+
 *VIB3+ Ultra — The Future of Emergent Media*
-*Draft v2.0 — Expanded Multilayer Architecture — Feb 16, 2026*
+*Draft v3.0 — Added VIB3Link Protocol — Feb 16, 2026*
