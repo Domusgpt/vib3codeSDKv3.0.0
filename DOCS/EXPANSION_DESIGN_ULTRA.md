@@ -320,5 +320,47 @@ Messages are JSON-encoded packets:
 
 ---
 
+## VIII. HyperGame Engine
+
+The VIB3+ Ultra HyperGame Engine enables 4D First-Person View (FPV) experiences. It decouples the physics simulation from the render loop and provides a 4D-native player controller.
+
+### 1. The Game Loop (`GameLoop`)
+A fixed-timestep loop for physics and logic, separate from the variable-timestep render loop. This ensures deterministic physics and smooth rendering even under load.
+
+```javascript
+class GameLoop {
+    constructor(updateFn, renderFn) {
+        this.accumulator = 0;
+        this.step = 1 / 60; // 60hz physics
+    }
+    // ... accumulates time and calls update() multiple times if needed
+}
+```
+
+### 2. Lattice Physics (`LatticePhysics`)
+Physics in VIB3+ is not about mesh-mesh intersection. It is about **Point-Field intersection**. We define the world as a scalar field (density) and check if the player's 4D point is inside a high-density region.
+
+*   **Collision**: `getDensity(pos) > threshold`
+*   **Gravity**: Constant force in -Y (or arbitrary 4D vector)
+*   **Friction**: Velocity decay
+
+### 3. Player Controller 4D (`PlayerController4D`)
+Handles input mapping for 6-degree-of-freedom movement.
+
+*   **Input**: WASD (Translation), Mouse (Rotation), QE (Portal/4D Rotation).
+*   **State**: Position (Vec4), Rotation (Rotor4D/Quat).
+*   **Smoothing**: Inputs are smoothed to prevent motion sickness in 4D space.
+
+```javascript
+update(dt) {
+    // Apply inputs to velocity
+    // Apply physics (gravity, friction)
+    // Integrate position: pos += vel * dt
+    // Resolve collisions: if (collision) pos -= normal * penetration
+}
+```
+
+---
+
 *VIB3+ Ultra — The Future of Emergent Media*
-*Draft v3.0 — Added VIB3Link Protocol — Feb 16, 2026*
+*Draft v4.0 — Added HyperGame Engine — Feb 16, 2026*
