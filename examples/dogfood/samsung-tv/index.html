@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="description" content="VIB3+ 4D Visualizer for Tizen TV" />
+    <title>VIB3+ TV</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+    <!-- Main Render Canvas -->
+    <canvas id="c"></canvas>
+
+    <!-- Startup Overlay -->
+    <div id="startup-overlay" class="overlay visible">
+        <div class="logo">VIB3+</div>
+        <div class="subtitle">4D VISUALIZATION ENGINE</div>
+        <div class="prompt">Press ENTER to Begin</div>
+    </div>
+
+    <!-- Screensaver Overlay -->
+    <div id="screensaver-overlay" class="overlay hidden">
+        <div class="screensaver-badge">SCREENSAVER MODE</div>
+    </div>
+
+    <!-- HUD Overlay (Toggleable) -->
+    <div id="hud" class="hidden">
+        <div class="hud-top">
+            <div id="system-badge" class="badge">FACETED</div>
+            <div id="geometry-name" class="info-text">Hypercube • 1/24</div>
+        </div>
+
+        <div class="hud-bottom">
+            <div class="audio-meter">
+                <!-- 8 bars populated by JS -->
+                <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+            </div>
+
+            <div class="legend">
+                <span class="key red">SYSTEM</span>
+                <span class="key green">MODE</span>
+                <span class="key yellow">AUDIO</span>
+                <span class="key blue">HUD</span>
+            </div>
+
+            <div class="status-row">
+                <span id="fps">30 FPS</span>
+                <span id="mode-indicator">SYNTHETIC AUDIO</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="hidden">
+        <span id="toast-message">System Changed</span>
+    </div>
+
+    <!-- Application Logic -->
+    <script src="js/shaders.js"></script>
+    <script src="js/remote.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
