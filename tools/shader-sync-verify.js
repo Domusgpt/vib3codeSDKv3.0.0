@@ -602,6 +602,7 @@ const FACETED_GLSL_FRAGMENT = `
 precision highp float;
 uniform float u_time;
 uniform vec2 u_resolution;
+uniform vec2 u_mouse;
 uniform float u_geometry;
 uniform float u_rot4dXY;
 uniform float u_rot4dXZ;
@@ -619,6 +620,7 @@ uniform float u_saturation;
 uniform float u_speed;
 uniform float u_mouseIntensity;
 uniform float u_clickIntensity;
+uniform float u_roleIntensity;
 uniform float u_bass;
 uniform float u_mid;
 uniform float u_high;
@@ -667,7 +669,8 @@ struct VIB3Uniforms {
 
 /**
  * Holographic system GLSL fragment shader uniforms (from HolographicVisualizer.js).
- * This system uses non-standard names for several uniforms.
+ * Uses standard names (u_gridDensity, u_morphFactor, u_geometry) plus many
+ * system-specific uniforms for audio/touch/scroll reactivity.
  */
 const HOLOGRAPHIC_GLSL_FRAGMENT = `
 precision highp float;
@@ -675,7 +678,7 @@ uniform vec2 u_resolution;
 uniform float u_time;
 uniform vec2 u_mouse;
 uniform float u_geometry;
-uniform float u_density;
+uniform float u_gridDensity;
 uniform float u_speed;
 uniform vec3 u_color;
 uniform float u_intensity;
@@ -686,9 +689,8 @@ uniform float u_chaosIntensity;
 uniform float u_mouseIntensity;
 uniform float u_clickIntensity;
 uniform float u_densityVariation;
-uniform float u_geometryType;
 uniform float u_chaos;
-uniform float u_morph;
+uniform float u_morphFactor;
 uniform float u_touchMorph;
 uniform float u_touchChaos;
 uniform float u_scrollParallax;

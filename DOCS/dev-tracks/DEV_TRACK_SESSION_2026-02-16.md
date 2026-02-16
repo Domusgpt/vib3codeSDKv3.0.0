@@ -75,6 +75,7 @@
 | `CLAUDE.md` | Geometry docs, shipped items, session work, doc map notes |
 | `DOCS/SYSTEM_INVENTORY.md` | Tool count 12 → 36 |
 | `DOCS/MASTER_PLAN_2026-01-31.md` | Tool count 14 → 36, test count 693 → 1762 |
+| `tools/shader-sync-verify.js` | Fixed stale Holographic uniforms (u_density→u_gridDensity, removed u_geometryType, u_morph→u_morphFactor), added missing Faceted uniforms (u_mouse, u_roleIntensity), updated comments |
 
 ---
 
@@ -86,6 +87,8 @@
 | `5e1b4c5` | fix(quantum): align layer detection values with JS roleIntensities |
 | `9d73627` | refactor(holographic): remove mapParameterName() translation layer |
 | `3198645` | fix(shaders): align rotateXZ sign convention across all shader sources |
+| `2ce407d` | docs: update stale tool/test counts, add Feb 16 dev track |
+| (pending) | fix(tools): update stale embedded shaders in shader-sync-verify.js |
 
 ---
 
