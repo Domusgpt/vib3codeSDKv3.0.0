@@ -160,6 +160,8 @@ Don't dig through source code when there's already a doc for it. The `DOCS/` dir
 
 | What you need | Where to find it |
 |---|---|
+| **Gold Standard v3 (creative vocabulary)** | `examples/dogfood/GOLD_STANDARD.md` — 3-mode parameter model, EMA smoothing, composition principles |
+| **Codex (reference implementations)** | `examples/codex/` — Multiple annotated VIB3+ examples showing different creative approaches |
 | **Full architecture & module inventory** | `DOCS/SYSTEM_INVENTORY.md` — canonical reference (stale: says 12 tools, it's 31) |
 | **Product strategy & personas** | `DOCS/PRODUCT_STRATEGY.md` |
 | **Quarterly roadmap & milestones** | `DOCS/ROADMAP.md` |
@@ -349,6 +351,14 @@ Vib3-CORE-Documented01-/
 │   ├── controls/
 │   └── gallery/
 │
+├── examples/
+│   ├── codex/                   # Reference implementations (Gold Standard v3)
+│   │   ├── index.html           # Codex gallery page
+│   │   ├── synesthesia/         # Audio-reactive ambient (golden reference)
+│   │   └── README.md            # How to add codex entries
+│   └── dogfood/                 # Dogfood analysis + Gold Standard
+│       └── GOLD_STANDARD.md     # Creative vocabulary v3
+│
 ├── tests/                       # Test suite
 │   ├── sdk-browser.spec.js
 │   └── e2e/
@@ -446,6 +456,10 @@ Vib3-CORE-Documented01-/
 10. **36 MCP tools, not 12** — DOCS/SYSTEM_INVENTORY.md is stale. Check `src/agent/mcp/tools.js` for the real count.
 11. **Layer relationships default to 'holographic' profile** — The `legacy` profile replicates the old static multiplier behavior if you need it.
 12. **`initialize()` checks `switchSystem()` return** — As of Feb 15, `VIB3Engine.initialize()` returns `false` if the initial system fails to create. Check the return value.
+13. **Hue 0-360 (JS/API) vs 0-1 (GLSL)** — The JS API and MCP tools use hue 0-360. Shaders use hue 0-1 internally. Convert at the boundary: `u_hue = hue / 360.0`. Never pass 0-360 directly to a shader uniform.
+14. **4D rotation in synesthesia is audio-driven** — The reference synesthesia implementation has non-zero 4D base velocities but also modulates XW/YW/ZW through audio bands. If building without audio, ensure 4D axes still have non-zero rotation velocity or the 4th dimension won't be visible.
+15. **Gold Standard v3 defines 3 parameter modes** — Continuous Mapping (parameters as functions of input state), Event Choreography (discrete triggers with attack/sustain/release), and Ambient Drift (breathing/heartbeat on idle). All three should be present in any VIB3+ creative implementation. See `examples/dogfood/GOLD_STANDARD.md`.
+16. **EMA smoothing is the universal primitive** — Use `alpha = 1 - Math.exp(-dt / tau)` for all parameter transitions. Never use `setTimeout` for visual parameter changes. Reference tau values: speed 0.08s, chaos 0.12s, density 0.15s, morph 0.10s, hue 0.25s.
 
 ---
 
@@ -567,6 +581,41 @@ For AI agents controlling VIB3+ programmatically. Full definitions in `src/agent
 | `src/reactivity/index.js` | `console.log()` side effect removed from barrel |
 | `package.json` | Added `./creative`, `./export`, `./variations` entry points |
 | `types/` | Fixed mismatched export names, missing barrel re-exports |
+
+---
+
+## Gold Standard v3 & Codex (Feb 16, 2026)
+
+**Branch**: `claude/clause-code-skill-0PV33`
+
+### The Three Parameter Modes
+
+Every VIB3+ visualization should exhibit three simultaneous parameter behaviors:
+
+1. **Continuous Mapping (Mode 1)** — Parameters are functions of input state, evaluated every frame. Audio bands → visual params, touch position → rotation, tilt → dimension. Not transitions — living mappings.
+2. **Event Choreography (Mode 2)** — Discrete events trigger Attack/Sustain/Release sequences. Tap → chaos burst, system switch → drain/flood, beat detection → intensity flash.
+3. **Ambient Drift (Mode 3)** — Parameters breathe and drift without input. Heartbeat: `morphFactor += 0.15 * sin(t / 4)`, `intensity += 0.08 * sin(t / 2)`. Prime-number periods prevent mechanical feel.
+
+### Per-System Creative Personality
+
+| System | gridDensity | speed | chaos | dimension | Character |
+|--------|------------|-------|-------|-----------|-----------|
+| Faceted | 15-35 | 0.3-0.8 | 0.0-0.15 | 3.6-4.0 | Clean, precise, geometric |
+| Quantum | 25-60 | 0.5-1.5 | 0.1-0.4 | 3.2-3.8 | Dense, crystalline, mathematical |
+| Holographic | 20-50 | 0.4-1.2 | 0.05-0.3 | 3.4-4.2 | Atmospheric, layered, ethereal |
+
+### Design-Analyze-Enhance Loop
+
+Agents building VIB3+ experiences should follow this workflow:
+1. **Design** — After absorbing the Gold Standard vocabulary, plan parameter timeline and mappings for your platform
+2. **Analyze** — Self-evaluate: Is 4D rotation visible? Do events feel distinct from ambient? Is audio reactivity noticeable?
+3. **Enhance** — Find emergent combinations: What if audio onset triggers a burst while heartbeat is running? Layer the three modes together
+
+### Reference
+
+- Gold Standard v3: `examples/dogfood/GOLD_STANDARD.md`
+- Codex gallery: `examples/codex/`
+- Synesthesia (golden reference): `examples/codex/synesthesia/`
 
 ---
 

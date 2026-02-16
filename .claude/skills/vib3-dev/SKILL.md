@@ -7,6 +7,22 @@ description: VIB3+ SDK development and expansion. Use when extending the engine,
 
 Help extend, refactor, test, and build new features for the VIB3+ 4D visualization engine.
 
+## Gold Standard v3 & Codex Reference
+
+When building creative features or examples, follow the Gold Standard v3 creative vocabulary:
+
+- **Gold Standard v3**: `examples/dogfood/GOLD_STANDARD.md` — Defines 3 parameter modes (Continuous Mapping, Event Choreography, Ambient Drift), EMA smoothing as universal primitive, per-system personality, composition principles
+- **Codex**: `examples/codex/` — Collection of annotated reference implementations showing different creative approaches
+- **Synesthesia (golden reference)**: `examples/codex/synesthesia/` — Audio-reactive ambient with all 3 modes, all 6 rotation axes active, [WHY] annotations throughout
+
+Key technical patterns from Gold Standard:
+- EMA smoothing: `alpha = 1 - Math.exp(-dt / tau)` — never use setTimeout for visual parameter changes
+- Hue convention: JS/API uses 0-360, shaders use 0-1. Convert at boundary: `u_hue = hue / 360.0`
+- 4D rotation must have non-zero base velocity on XW/YW/ZW axes or the 4th dimension won't be visible
+- Per-system personality: switching systems should change parameter ranges, not just shaders
+
+---
+
 ## Development Workflow
 
 ### 1. Read Before Writing

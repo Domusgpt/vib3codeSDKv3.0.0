@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VIB3+ Synesthesia — Codex Entry</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;
+  font-family:system-ui,-apple-system,sans-serif;color:#fff;
+  -webkit-user-select:none;user-select:none;touch-action:none}
+canvas{display:block;width:100%;height:100%;position:fixed;top:0;left:0}
+#hud{position:fixed;top:12px;left:16px;z-index:10;pointer-events:none;
+  font-size:12px;opacity:0.5;line-height:1.6}
+#hud .label{font-weight:700;letter-spacing:0.08em;font-size:13px}
+#hud .dim{color:rgba(255,255,255,0.35)}
+#meter{position:fixed;bottom:12px;left:16px;z-index:10;display:flex;gap:3px;align-items:flex-end;height:40px;pointer-events:none}
+.bar{width:8px;background:rgba(168,85,247,0.6);border-radius:2px;min-height:2px;transition:height 0.05s}
+#hint{position:fixed;bottom:12px;right:16px;z-index:10;font-size:11px;color:rgba(255,255,255,0.2);pointer-events:none}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="label" id="sysLabel">FACETED</div>
+  <div id="geoLabel">Hypercube [1]</div>
+  <div class="dim" id="modeLabel">active</div>
+  <div class="dim" id="fpsLabel">-- fps</div>
+</div>
+
+<!-- Audio Meter -->
+<div id="meter">
+  <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+  <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+</div>
+
+<!-- Controls hint -->
+<div id="hint">tap:burst &bull; swipe:geo &bull; pinch:4D &bull; 1/2/3:system &bull; dbl:freeze</div>
+
+<script>
+/* ==========================================================================
+   VIB3+ Synesthesia — Golden Reference Implementation (Codex Entry)
+
+   Demonstrates all three Gold Standard parameter modes:
+   - Mode 1 (Continuous Mapping): Audio bands drive all parameters via EMA
+   - Mode 2 (Event Choreography): Tap=burst, onset=burst, idle=storm
+   - Mode 3 (Ambient Drift): Heartbeat on idle, prime-number frozen drift
+
+   Every creative decision is annotated with [WHY] comments explaining
+   the reasoning from the Gold Standard vocabulary.
+
+   See ../README.md for what this implementation CHOSE and what it DIDN'T.
+   ========================================================================== */
+
+(function() {
+'use strict';
+
+// ── Canvas + WebGL ──
+var canvas = document.getElementById('c'), gl;
+var programs = [], currentProgram = null, uniforms = {}, posBuffer = null;
+var startTime = performance.now();
+var animId = null;
+
+// ── State ──
+// [WHY] All parameters start at mid-range defaults. The audio pipeline
+// will shift them from here. Without audio, ambient drift keeps them alive.
+var S = {
+  system: 0, geometry: 1,
+  hue: 0.55, saturation: 0.7, intensity: 0.5, chaos: 0.1, speed: 0.6,
+  morphFactor: 0.8, gridDensity: 30, dimension: 3.5,
+  // [WHY] All 6 rotation axes have non-zero base velocity.
+  // 4D axes (indices 3-5) are slower for "hyperspace drift" character.
+  // Audio will modulate these — bass drives ZW, mid drives XY, upper-mid drives XW.
+  // If audio is silent, the base velocity keeps 4D alive.
+  rot: [0,0,0,0,0,0],
+  rotVel: [0.05, 0.03, 0.02, 0.025, 0.015, 0.02],
+  // Audio state
+  bands: new Float32Array(8),
+  rms: 0, spectralCentroid: 0.5,
+  spectralFlux: 0, spectralFluxAvg: 0,
+  onset: 0, lastOnsetTime: 0,
+  // [WHY] Click intensity for burst events. Decays via EMA, not setTimeout.
+  clickIntensity: 0,
+  // Mode tracking
+  mode: 'active', // active | frozen | autonomous
+  frozenAt: 0, frozenParams: null,
+  lastInputTime: 0, autonomousTime: 0,
+  // HUD
+  frameCount: 0, fps: 0, fpsAccum: 0, fpsTimer: 0
+};
+
+// ── Audio Context ──
+var audioCtx = null, analyser = null, micStream = null;
+var freqData = null, timeData = null, prevFreqData = null;
+var BAND_RANGES = [[1,3],[3,9],[9,23],[23,56],[56,139],[139,279],[279,558],[558,930]];
+var usingSynthetic = false;
+
+// ── Shared GLSL (identical to synesthesia.html shaders) ──
+var SHARED = [
+'precision highp float;',
+'uniform float u_time;',
+'uniform vec2 u_resolution;',
+'uniform float u_geometry;',
+'uniform float u_rot4dXY,u_rot4dXZ,u_rot4dYZ,u_rot4dXW,u_rot4dYW,u_rot4dZW;',
+'uniform float u_dimension,u_gridDensity,u_morphFactor,u_chaos,u_speed;',
+'uniform float u_hue,u_intensity,u_saturation;',
+'uniform float u_bass,u_mid,u_high;',
+'uniform float u_onset;',
+
+// 6D rotation matrices — applied in order XY,XZ,YZ,XW,YW,ZW
+'mat4 rotXY(float t){float c=cos(t),s=sin(t);return mat4(c,-s,0,0,s,c,0,0,0,0,1,0,0,0,0,1);}',
+'mat4 rotXZ(float t){float c=cos(t),s=sin(t);return mat4(c,0,s,0,0,1,0,0,-s,0,c,0,0,0,0,1);}',
+'mat4 rotYZ(float t){float c=cos(t),s=sin(t);return mat4(1,0,0,0,0,c,-s,0,0,s,c,0,0,0,0,1);}',
+'mat4 rotXW(float t){float c=cos(t),s=sin(t);return mat4(c,0,0,-s,0,1,0,0,0,0,1,0,s,0,0,c);}',
+'mat4 rotYW(float t){float c=cos(t),s=sin(t);return mat4(1,0,0,0,0,c,0,-s,0,0,1,0,0,s,0,c);}',
+'mat4 rotZW(float t){float c=cos(t),s=sin(t);return mat4(1,0,0,0,0,1,0,0,0,0,c,-s,0,0,s,c);}',
+
+'vec4 rot6D(vec4 p){',
+'  p=rotXY(u_rot4dXY)*p;p=rotXZ(u_rot4dXZ)*p;p=rotYZ(u_rot4dYZ)*p;',
+'  p=rotXW(u_rot4dXW)*p;p=rotYW(u_rot4dYW)*p;p=rotZW(u_rot4dZW)*p;',
+'  return p;}',
+
+'vec3 proj4D(vec4 p){float w=u_dimension/(u_dimension+p.w);return p.xyz*w;}',
+
+'vec3 hsl2rgb(float h,float s,float l){',
+'  float c2=(1.0-abs(2.0*l-1.0))*s,hp=h*6.0,x=c2*(1.0-abs(mod(hp,2.0)-1.0)),m=l-c2*0.5;',
+'  vec3 rgb;',
+'  if(hp<1.0)rgb=vec3(c2,x,0);else if(hp<2.0)rgb=vec3(x,c2,0);',
+'  else if(hp<3.0)rgb=vec3(0,c2,x);else if(hp<4.0)rgb=vec3(0,x,c2);',
+'  else if(hp<5.0)rgb=vec3(x,0,c2);else rgb=vec3(c2,0,x);',
+'  return rgb+m;}',
+
+// Core warp functions (hypersphere + hypertetrahedron)
+'vec3 warpHypersphere(vec3 p,int gi){',
+'  float r=length(p);',
+'  float mb=clamp(u_morphFactor*0.6+(u_dimension-3.0)*0.25,0.0,2.0);',
+'  float w=sin(r*(1.3+float(gi)*0.12)+u_time*0.0008*u_speed)*(0.4+mb*0.45);',
+'  vec4 p4=vec4(p*(1.0+mb*0.2),w);p4=rot6D(p4);vec3 pr=proj4D(p4);',
+'  return mix(p,pr,clamp(0.45+mb*0.35,0.0,1.0));}',
+
+'vec3 warpHypertetra(vec3 p,int gi){',
+'  vec3 c1=normalize(vec3(1,1,1)),c2=normalize(vec3(-1,-1,1)),c3=normalize(vec3(-1,1,-1)),c4=normalize(vec3(1,-1,-1));',
+'  float mb=clamp(u_morphFactor*0.8+(u_dimension-3.0)*0.2,0.0,2.0);',
+'  float bm=dot(p,c1)*0.14+dot(p,c2)*0.1+dot(p,c3)*0.08;',
+'  float w=sin(bm*5.5+u_time*0.0009*u_speed)*cos(dot(p,c4)*4.2-u_time*0.0007*u_speed)*(0.5+mb*0.4);',
+'  vec3 off=vec3(dot(p,c1),dot(p,c2),dot(p,c3))*0.1*mb;',
+'  vec4 p4=vec4(p+off,w);p4=rot6D(p4);vec3 pr=proj4D(p4);',
+'  float pi2=min(min(abs(dot(p,c1)),abs(dot(p,c2))),min(abs(dot(p,c3)),abs(dot(p,c4))));',
+'  vec3 bl=mix(p,pr,clamp(0.45+mb*0.35,0.0,1.0));',
+'  return mix(bl,bl*(1.0-pi2*0.55),0.2+mb*0.2);}',
+
+'vec3 applyCoreWarp(vec3 p,float gt){',
+'  float cf=floor(gt/8.0);int ci=int(clamp(cf,0.0,2.0));',
+'  int gi=int(clamp(floor(mod(gt,8.0)+0.5),0.0,7.0));',
+'  if(ci==1)return warpHypersphere(p,gi);',
+'  if(ci==2)return warpHypertetra(p,gi);return p;}',
+
+// 8 base geometry lattice functions
+'float tetraLattice(vec3 p,float gs){vec3 q=fract(p*gs)-0.5;float d1=length(q),d2=length(q-vec3(0.4,0,0)),d3=length(q-vec3(0,0.4,0)),d4=length(q-vec3(0,0,0.4));float v=1.0-smoothstep(0.0,0.04,min(min(d1,d2),min(d3,d4)));float e=max(max(1.0-smoothstep(0.0,0.02,abs(length(q.xy)-0.2)),1.0-smoothstep(0.0,0.02,abs(length(q.yz)-0.2))),1.0-smoothstep(0.0,0.02,abs(length(q.xz)-0.2)));return max(v,e*0.5);}',
+'float hypercubeLattice(vec3 p,float gs){vec3 g=fract(p*gs),ed=min(g,1.0-g);float me=min(min(ed.x,ed.y),ed.z);float l=1.0-smoothstep(0.0,0.03,me);vec3 cn=abs(g-0.5);float mc=max(max(cn.x,cn.y),cn.z);return max(l*0.7,1.0-smoothstep(0.45,0.5,mc));}',
+'float sphereLattice(vec3 p,float gs){vec3 c=fract(p*gs)-0.5;float s=1.0-smoothstep(0.15,0.25,length(c));float rr=length(c.xy);float r=max(1.0-smoothstep(0.0,0.02,abs(rr-0.3)),1.0-smoothstep(0.0,0.02,abs(rr-0.2)));return max(s,r*0.6);}',
+'float torusLattice(vec3 p,float gs){vec3 c=fract(p*gs)-0.5;float td=length(vec2(length(c.xy)-0.3,c.z));float t=1.0-smoothstep(0.08,0.12,td);float a=atan(c.y,c.x);return max(t,0.0)+sin(a*8.0)*0.02;}',
+'float kleinLattice(vec3 p,float gs){vec3 c=fract(p*gs)-0.5;float u2=atan(c.y,c.x)/3.14159+1.0,v2=c.z+0.5;float x2=(2.0+cos(u2*0.5))*cos(u2),y2=(2.0+cos(u2*0.5))*sin(u2),z2=sin(u2*0.5)+v2;return 1.0-smoothstep(0.1,0.15,length(c-vec3(x2,y2,z2)*0.1));}',
+'float fractalLattice(vec3 p,float gs){vec3 c=fract(p*gs);c=abs(c*2.0-1.0);float d=length(max(abs(c)-0.3,0.0));for(int i=0;i<3;i++){c=abs(c*2.0-1.0);d=min(d,length(max(abs(c)-0.3,0.0))/pow(2.0,float(i+1)));}return 1.0-smoothstep(0.0,0.05,d);}',
+'float waveLattice(vec3 p,float gs){float t2=u_time*0.001*u_speed;vec3 c=fract(p*gs)-0.5;float w1=sin(p.x*gs*2.0+t2*2.0),w2=sin(p.y*gs*1.8+t2*1.5),w3=sin(p.z*gs*2.2+t2*1.8);return max(0.0,(w1+w2+w3)/3.0*(1.0-length(c)*2.0));}',
+'float crystalLattice(vec3 p,float gs){vec3 c=fract(p*gs)-0.5;float cr=max(max(abs(c.x)+abs(c.y),abs(c.y)+abs(c.z)),abs(c.x)+abs(c.z));cr=1.0-smoothstep(0.3,0.4,cr);float f=max(max(1.0-smoothstep(0.0,0.02,abs(abs(c.x)-0.35)),1.0-smoothstep(0.0,0.02,abs(abs(c.y)-0.35))),1.0-smoothstep(0.0,0.02,abs(abs(c.z)-0.35)));return max(cr,f*0.5);}',
+
+'float geoFunc(vec4 p4){',
+'  int gt=int(clamp(floor(mod(u_geometry,8.0)+0.5),0.0,7.0));',
+'  vec3 p3=proj4D(p4);vec3 w=applyCoreWarp(p3,u_geometry);float gs=u_gridDensity*0.08;',
+'  if(gt==0)return tetraLattice(w,gs)*u_morphFactor;',
+'  if(gt==1)return hypercubeLattice(w,gs)*u_morphFactor;',
+'  if(gt==2)return sphereLattice(w,gs)*u_morphFactor;',
+'  if(gt==3)return torusLattice(w,gs)*u_morphFactor;',
+'  if(gt==4)return kleinLattice(w,gs)*u_morphFactor;',
+'  if(gt==5)return fractalLattice(w,gs)*u_morphFactor;',
+'  if(gt==6)return waveLattice(w,gs)*u_morphFactor;',
+'  if(gt==7)return crystalLattice(w,gs)*u_morphFactor;',
+'  return hypercubeLattice(w,gs)*u_morphFactor;}',
+''
+].join('\n');
+
+// ── 3 System Fragment Shaders ──
+var FRAG_FACETED = SHARED +
+'void main(){\n' +
+'  vec2 uv=(gl_FragCoord.xy-u_resolution*0.5)/min(u_resolution.x,u_resolution.y);\n' +
+'  float ts=u_time*0.0001*u_speed;\n' +
+'  vec4 pos=vec4(uv*3.0,sin(ts*3.0),cos(ts*2.0));\n' +
+'  pos=rot6D(pos);\n' +
+'  float val=geoFunc(pos);\n' +
+'  float noise=sin(pos.x*7.0)*cos(pos.y*11.0)*sin(pos.z*13.0);\n' +
+'  val+=noise*u_chaos;\n' +
+'  float gi=1.0-clamp(abs(val),0.0,1.0);\n' +
+'  gi+=u_onset*0.3;\n' +
+'  float fi=gi*u_intensity;\n' +
+'  float hue=u_hue+val*0.1+u_high*0.08;\n' +
+'  vec3 bc=vec3(sin(hue*6.28318),sin(hue*6.28318+2.0943),sin(hue*6.28318+4.1887))*0.5+0.5;\n' +
+'  float gray=(bc.r+bc.g+bc.b)/3.0;\n' +
+'  vec3 col=mix(vec3(gray),bc,u_saturation)*fi;\n' +
+'  gl_FragColor=vec4(col,1.0);\n' +
+'}';
+
+var FRAG_QUANTUM = SHARED +
+'void main(){\n' +
+'  vec2 uv=(gl_FragCoord.xy-u_resolution*0.5)/min(u_resolution.x,u_resolution.y);\n' +
+'  float ts=u_time*0.0001*u_speed;\n' +
+'  vec4 pos=vec4(uv*3.0,sin(ts*3.0),cos(ts*2.0));\n' +
+'  pos=rot6D(pos);\n' +
+'  float val=geoFunc(pos);\n' +
+'  float noise=sin(pos.x*7.0)*cos(pos.y*11.0)*sin(pos.z*13.0);\n' +
+'  val+=noise*u_chaos;\n' +
+'  float gi=1.0-clamp(abs(val*0.8),0.0,1.0);\n' +
+'  gi=pow(gi,1.5);\n' +
+'  gi+=u_onset*0.3;\n' +
+'  float fi=gi*u_intensity;\n' +
+'  float h=fract(u_hue+val*0.15+u_high*0.1+ts*0.05);\n' +
+'  float s=u_saturation;\n' +
+'  float l=0.1+fi*0.55;\n' +
+'  vec3 col=hsl2rgb(h,s,l);\n' +
+'  float edge=1.0-smoothstep(0.0,0.3,abs(gi-0.5)*2.0);\n' +
+'  col+=hsl2rgb(fract(h+0.33),s*0.8,0.6)*edge*fi*0.4;\n' +
+'  gl_FragColor=vec4(col,1.0);\n' +
+'}';
+
+var FRAG_HOLOGRAPHIC = SHARED +
+'void main(){\n' +
+'  vec2 uv=(gl_FragCoord.xy-u_resolution*0.5)/min(u_resolution.x,u_resolution.y);\n' +
+'  float ts=u_time*0.0001*u_speed;\n' +
+'  vec4 pos=vec4(uv*3.0,sin(ts*3.0),cos(ts*2.0));\n' +
+'  pos=rot6D(pos);\n' +
+'  float val=geoFunc(pos);\n' +
+'  float noise=sin(pos.x*7.0)*cos(pos.y*11.0)*sin(pos.z*13.0);\n' +
+'  val+=noise*u_chaos;\n' +
+'  float gi=1.0-clamp(abs(val*0.8),0.0,1.0);\n' +
+'  gi=pow(gi,1.5);\n' +
+'  float shimmer=sin(uv.x*20.0+ts*5.0)*cos(uv.y*15.0+ts*3.0)*0.1;\n' +
+'  gi+=shimmer*gi;\n' +
+'  gi+=u_onset*0.3;\n' +
+'  float fi=gi*u_intensity;\n' +
+'  float h0=u_hue;\n' +
+'  vec3 bg=hsl2rgb(fract(h0),u_saturation*0.7,0.15)*(0.3+gi*0.4);\n' +
+'  vec3 shadow=hsl2rgb(fract(h0+0.33),u_saturation*0.9,0.3)*pow(1.0-gi,2.0)*0.8;\n' +
+'  vec3 content=hsl2rgb(fract(h0),u_saturation,0.55)*gi*1.2;\n' +
+'  vec3 highlight=hsl2rgb(fract(h0+0.15),u_saturation,0.6)*pow(gi,3.0)*1.5;\n' +
+'  vec3 accent=hsl2rgb(fract(h0+0.67),u_saturation,0.5)*sin(val*50.0+ts*10.0)*0.5+0.5;\n' +
+'  accent*=gi*0.3;\n' +
+'  float dist=length(uv),angle=atan(uv.y,uv.x);\n' +
+'  content.r+=sin(dist*30.0+angle*10.0+u_time*0.004)*fi*0.12;\n' +
+'  content.b+=sin(dist*35.0+angle*12.0+u_time*0.0045)*fi*0.14;\n' +
+'  highlight.r+=sin(uv.x*80.0+u_time*0.008)*cos(uv.y*60.0+u_time*0.006)*fi*0.15;\n' +
+'  vec3 col=bg*0.6+shadow*0.4+content+highlight*0.8+accent;\n' +
+'  col*=fi;\n' +
+'  gl_FragColor=vec4(col,1.0);\n' +
+'}';
+
+var VERT = 'attribute vec2 a_position;void main(){gl_Position=vec4(a_position,0.0,1.0);}';
+var UNAMES = ['u_time','u_resolution','u_geometry',
+  'u_rot4dXY','u_rot4dXZ','u_rot4dYZ','u_rot4dXW','u_rot4dYW','u_rot4dZW',
+  'u_dimension','u_gridDensity','u_morphFactor','u_chaos','u_speed',
+  'u_hue','u_intensity','u_saturation','u_bass','u_mid','u_high','u_onset'];
+
+// ── WebGL Setup ──
+function compileShader(type, src) {
+  var s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); gl.deleteShader(s); return null; }
+  return s;
+}
+function createProgram(frag) {
+  var vs = compileShader(gl.VERTEX_SHADER, VERT), fs = compileShader(gl.FRAGMENT_SHADER, frag);
+  if (!vs || !fs) return null;
+  var p = gl.createProgram(); gl.attachShader(p, vs); gl.attachShader(p, fs); gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) { console.error(gl.getProgramInfoLog(p)); return null; }
+  gl.deleteShader(vs); gl.deleteShader(fs); return p;
+}
+function getUniforms(prog) {
+  var u = {}; for (var i = 0; i < UNAMES.length; i++) u[UNAMES[i]] = gl.getUniformLocation(prog, UNAMES[i]); return u;
+}
+function switchProgram(idx) {
+  idx = Math.max(0, Math.min(2, idx));
+  currentProgram = programs[idx]; gl.useProgram(currentProgram); uniforms = getUniforms(currentProgram);
+  var a = gl.getAttribLocation(currentProgram, 'a_position');
+  gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
+}
+
+// ── EMA Smoothing — the universal primitive ──
+// [WHY] Gold Standard Section A: "Every continuous mapping uses EMA to avoid jumps"
+// alpha = 1 - exp(-dt/tau). Lower tau = faster response.
+function ema(current, target, dt, tau) {
+  return current + (target - current) * (1 - Math.exp(-dt / tau));
+}
+function lerp(a, b, t) { return a + (b - a) * Math.max(0, Math.min(1, t)); }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// ── Audio Pipeline ──
+// [WHY] Gold Standard Section F: FFT 2048, 8 bands, spectral flux onset
+function initAudio() {
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0.8;
+    freqData = new Uint8Array(analyser.frequencyBinCount);
+    timeData = new Uint8Array(analyser.fftSize);
+    prevFreqData = new Float32Array(analyser.frequencyBinCount);
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+      micStream = stream;
+      var source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
+      usingSynthetic = false;
+    }).catch(function() {
+      usingSynthetic = true;
+    });
+  } catch (e) {
+    usingSynthetic = true;
+  }
+}
+
+function processAudio(dt, now) {
+  var t = now * 0.001;
+
+  if (usingSynthetic || !analyser) {
+    // [WHY] Gold Standard F: "Synthetic audio with evolving sine waves"
+    for (var b = 0; b < 8; b++) {
+      var target = 0.3 + 0.2 * Math.sin(t * (0.5 + b * 0.3) + b * 1.7);
+      target *= 0.8 + 0.2 * Math.sin(t * 0.1 + b);
+      S.bands[b] = ema(S.bands[b], target, dt, 0.1);
+    }
+    S.rms = 0.3 + 0.15 * Math.sin(t * 0.7);
+    S.spectralCentroid = 0.4 + 0.15 * Math.sin(t * 0.3);
+    // Synthetic onset every ~4 seconds
+    if (Math.sin(t * 0.8) > 0.95 && now - S.lastOnsetTime > 500) {
+      S.onset = 1.0;
+      S.lastOnsetTime = now;
+    }
+    return;
+  }
+
+  // Real audio processing
+  analyser.getByteFrequencyData(freqData);
+  analyser.getByteTimeDomainData(timeData);
+
+  // 8-band normalization with EMA
+  for (var b = 0; b < 8; b++) {
+    var sum = 0, range = BAND_RANGES[b];
+    for (var i = range[0]; i < range[1] && i < freqData.length; i++) sum += freqData[i];
+    var raw = sum / ((range[1] - range[0]) * 255);
+    S.bands[b] = ema(S.bands[b], raw, dt, 0.1);
+  }
+
+  // RMS from time-domain data
+  var rmsSum = 0;
+  for (var i = 0; i < timeData.length; i++) {
+    var v = (timeData[i] - 128) / 128;
+    rmsSum += v * v;
+  }
+  S.rms = ema(S.rms, Math.sqrt(rmsSum / timeData.length), dt, 0.1);
+
+  // Spectral centroid
+  var weightedSum = 0, totalWeight = 0;
+  for (var i = 0; i < freqData.length; i++) {
+    weightedSum += i * freqData[i];
+    totalWeight += freqData[i];
+  }
+  S.spectralCentroid = totalWeight > 0 ? (weightedSum / totalWeight) / freqData.length : 0.5;
+
+  // Onset detection via spectral flux
+  var flux = 0;
+  for (var i = 0; i < freqData.length; i++) {
+    var diff = freqData[i] / 255 - prevFreqData[i];
+    if (diff > 0) flux += diff;
+    prevFreqData[i] = freqData[i] / 255;
+  }
+  S.spectralFluxAvg = ema(S.spectralFluxAvg, flux, dt, 0.3);
+
+  // [WHY] Gold Standard F: "flux > 3x average AND absolute > 0.5, 100ms cooldown"
+  if (flux > S.spectralFluxAvg * 3.0 && flux > 0.5 && now - S.lastOnsetTime > 100) {
+    S.onset = 1.0;
+    S.lastOnsetTime = now;
+  }
+}
+
+// ── Mode 1: Continuous Mapping ──
+// [WHY] Gold Standard B: Audio-driven parameter table. Low freq = heavyweight params, high = lightweight.
+function applyContinuousMappings(dt) {
+  // Audio → parameters (each with its own EMA time constant)
+  var b = S.bands;
+
+  // [WHY] Sub-bass + bass → morphFactor. Heavy bass = heavy morph.
+  var morphTarget = lerp(0.2, 1.8, b[0]) + b[1] * 0.4;
+  S.morphFactor = ema(S.morphFactor, morphTarget, dt, 0.12);
+
+  // [WHY] Low-mid + presence → gridDensity. These bands carry "body" of sound.
+  var densityTarget = lerp(15, 60, b[2]) + b[5] * 20;
+  S.gridDensity = ema(S.gridDensity, densityTarget, dt, 0.10);
+
+  // [WHY] Mid → speed. Melody/energy drives movement. Fastest tau (0.08) = most responsive.
+  var speedTarget = lerp(0.3, 2.2, b[3]);
+  S.speed = ema(S.speed, speedTarget, dt, 0.08);
+
+  // [WHY] Upper-mid → chaos. Presence of complex harmonics = visual turbulence.
+  var chaosTarget = lerp(0, 0.5, b[4]) + b[4] * 0.15;
+  S.chaos = ema(S.chaos, chaosTarget, dt, 0.10);
+
+  // [WHY] Brilliance → saturation. Bright audio = vivid color.
+  var satTarget = lerp(0.5, 1.0, b[6]);
+  S.saturation = ema(S.saturation, satTarget, dt, 0.15);
+
+  // [WHY] RMS + brilliance → intensity. Overall volume = overall brightness.
+  var intTarget = lerp(0.3, 0.9, S.rms) + b[6] * 0.2;
+  S.intensity = ema(S.intensity, intTarget, dt, 0.12);
+
+  // [WHY] Air → dimension. Highest frequencies open 4D depth (slowest tau = most persistent).
+  var dimTarget = lerp(3.0, 3.3, b[7]) + 0.3;
+  S.dimension = ema(S.dimension, dimTarget, dt, 0.20);
+
+  // [WHY] Spectral centroid → hue. Not a band — the audio's "brightness" shifts color.
+  // Time-of-day provides 40% of hue base (warm dawn/dusk, cool noon).
+  var hour = new Date().getHours();
+  var todHue = 0.08 + 0.15 * Math.sin((hour - 6) / 24 * Math.PI * 2); // warm at 6am/6pm
+  var hueTarget = (1.0 - S.spectralCentroid) * 0.6 + todHue * 0.4;
+  S.hue = ema(S.hue, hueTarget, dt, 0.25);
+
+  // [WHY] Audio → rotation velocity. Bass=ZW, mid=XY, upper-mid=XW.
+  // Base velocity preserved (non-zero) so 4D rotation never stops completely.
+  S.rotVel[5] = ema(S.rotVel[5], 0.02 + b[1] * 0.8, dt, 0.20); // Bass → ZW
+  S.rotVel[0] = ema(S.rotVel[0], 0.05 + b[3] * 1.2, dt, 0.15); // Mid → XY
+  S.rotVel[3] = ema(S.rotVel[3], 0.025 + b[4] * 0.6, dt, 0.12); // Upper-mid → XW
+}
+
+// ── Mode 3: Ambient Drift ──
+// [WHY] Gold Standard A.3: "Stillness looks dead. Ambient drift is the life support system."
+function applyAmbientDrift(dt, now) {
+  var t = now * 0.001;
+
+  // [WHY] Heartbeat: morphFactor ±0.4 at 4s, intensity ±0.1 at 2s (2x harmonic).
+  // Only applies when audio is quiet (bands sum < 0.5) to avoid fighting Mode 1.
+  var audioLevel = 0;
+  for (var i = 0; i < 8; i++) audioLevel += S.bands[i];
+  var quietness = Math.max(0, 1 - audioLevel * 2); // 1 when silent, 0 when loud
+
+  var heartbeatMorph = Math.sin(t * Math.PI * 0.5) * 0.4 + 1.0;
+  var heartbeatIntensity = Math.sin(t * Math.PI) * 0.1 + 0.7;
+
+  // Blend heartbeat in when audio is quiet
+  if (quietness > 0.1) {
+    S.morphFactor = ema(S.morphFactor, heartbeatMorph, dt * quietness, 0.3);
+    S.intensity = ema(S.intensity, heartbeatIntensity, dt * quietness, 0.3);
+  }
+}
+
+// ── Mode 3b: Frozen Drift ──
+// [WHY] Gold Standard A.3: Prime-number periods for non-repeating slow evolution.
+var DRIFT_PRIMES = [7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59];
+function applyFrozenDrift(dt, now) {
+  if (S.mode !== 'frozen' || !S.frozenParams) return;
+  var elapsed = (now - S.frozenAt) * 0.001;
+  var TAU = Math.PI * 2;
+
+  // [WHY] Amplitude grows logarithmically: log(1 + t*0.1) * 0.05
+  var amp = Math.log(1 + elapsed * 0.1) * 0.05;
+  var fp = S.frozenParams;
+
+  S.hue = fp.hue + Math.sin(elapsed * TAU / DRIFT_PRIMES[0]) * amp * 0.1;
+  S.saturation = clamp(fp.saturation + Math.sin(elapsed * TAU / DRIFT_PRIMES[1]) * amp, 0, 1);
+  S.intensity = clamp(fp.intensity + Math.sin(elapsed * TAU / DRIFT_PRIMES[2]) * amp, 0, 1);
+  S.chaos = clamp(fp.chaos + Math.sin(elapsed * TAU / DRIFT_PRIMES[3]) * amp, 0, 1);
+  S.speed = clamp(fp.speed + Math.sin(elapsed * TAU / DRIFT_PRIMES[4]) * amp * 0.5, 0.1, 3);
+  S.morphFactor = clamp(fp.morphFactor + Math.sin(elapsed * TAU / DRIFT_PRIMES[5]) * amp, 0, 2);
+  S.gridDensity = clamp(fp.gridDensity + Math.sin(elapsed * TAU / DRIFT_PRIMES[6]) * amp * 20, 4, 100);
+  S.dimension = clamp(fp.dimension + Math.sin(elapsed * TAU / DRIFT_PRIMES[7]) * amp * 0.3, 3, 4.5);
+
+  for (var i = 0; i < 6; i++) {
+    S.rot[i] = fp.rot[i] + Math.sin(elapsed * TAU / DRIFT_PRIMES[8 + i]) * amp;
+  }
+}
+
+// ── Mode 2: Event Choreography ──
+function onBurst() {
+  // [WHY] Gold Standard A.2: "Burst: fast attack, long release, exponentialOut"
+  // chaos spike + intensity flash. EMA decay handles the release naturally.
+  S.clickIntensity = Math.min(1, S.clickIntensity + 0.5);
+  S.onset = 1.0;
+  S.chaos = Math.min(1, S.chaos + 0.3);
+  S.speed = Math.min(3, S.speed + 0.5);
+  markInput();
+}
+
+function toggleFreeze(now) {
+  if (S.mode === 'frozen') {
+    S.mode = 'active';
+    S.frozenParams = null;
+  } else {
+    S.mode = 'frozen';
+    S.frozenAt = now;
+    S.frozenParams = {
+      hue: S.hue, saturation: S.saturation, intensity: S.intensity,
+      chaos: S.chaos, speed: S.speed, morphFactor: S.morphFactor,
+      gridDensity: S.gridDensity, dimension: S.dimension,
+      rot: S.rot.slice()
+    };
+  }
+  updateHUD();
+}
+
+function markInput() { S.lastInputTime = performance.now(); if (S.mode === 'autonomous') S.mode = 'active'; }
+
+// ── Render Loop ──
+var prevTime = 0;
+function render(now) {
+  animId = requestAnimationFrame(render);
+  var dt = (now - prevTime) / 1000; if (dt > 0.1) dt = 0.033; prevTime = now;
+
+  // FPS
+  S.fpsAccum++; S.fpsTimer += dt;
+  if (S.fpsTimer >= 1.0) {
+    S.fps = Math.round(S.fpsAccum / S.fpsTimer);
+    S.fpsAccum = 0; S.fpsTimer = 0;
+    var el = document.getElementById('fpsLabel'); if (el) el.textContent = S.fps + ' fps';
+  }
+
+  // Process audio
+  processAudio(dt, now);
+
+  // Apply parameter modes based on current mode
+  if (S.mode === 'active') {
+    applyContinuousMappings(dt);   // Mode 1
+    applyAmbientDrift(dt, now);     // Mode 3
+  } else if (S.mode === 'frozen') {
+    applyFrozenDrift(dt, now);      // Mode 3b
+  } else if (S.mode === 'autonomous') {
+    applyContinuousMappings(dt);   // Mode 1 still runs
+    applyAmbientDrift(dt, now);     // Mode 3
+    S.autonomousTime += dt;
+  }
+
+  // [WHY] Onset + click decay via EMA, not setTimeout.
+  S.onset = ema(S.onset, 0, dt, 0.15);
+  S.clickIntensity = ema(S.clickIntensity, 0, dt, 0.2);
+
+  // [WHY] Idle detection: 30s → autonomous mode
+  var idle = (now - S.lastInputTime) / 1000;
+  if (S.mode === 'active' && idle > 30) {
+    S.mode = 'autonomous';
+    S.autonomousTime = 0;
+    updateHUD();
+  }
+
+  // Update rotations — ALL 6 axes
+  for (var i = 0; i < 6; i++) {
+    S.rot[i] = (S.rot[i] + S.rotVel[i] * dt) % (Math.PI * 2);
+  }
+
+  // Clamp parameters
+  S.hue = ((S.hue % 1) + 1) % 1;
+  S.saturation = clamp(S.saturation, 0, 1);
+  S.intensity = clamp(S.intensity + S.clickIntensity * 0.3, 0, 1);
+  S.chaos = clamp(S.chaos, 0, 1);
+  S.speed = clamp(S.speed, 0.1, 3);
+  S.morphFactor = clamp(S.morphFactor, 0, 2);
+  S.gridDensity = clamp(S.gridDensity, 4, 100);
+  S.dimension = clamp(S.dimension, 3.0, 4.5);
+
+  // Set uniforms
+  var t = now - startTime;
+  gl.uniform1f(uniforms.u_time, t);
+  gl.uniform2f(uniforms.u_resolution, canvas.width, canvas.height);
+  gl.uniform1f(uniforms.u_geometry, S.geometry);
+  gl.uniform1f(uniforms.u_rot4dXY, S.rot[0]);
+  gl.uniform1f(uniforms.u_rot4dXZ, S.rot[1]);
+  gl.uniform1f(uniforms.u_rot4dYZ, S.rot[2]);
+  gl.uniform1f(uniforms.u_rot4dXW, S.rot[3]);
+  gl.uniform1f(uniforms.u_rot4dYW, S.rot[4]);
+  gl.uniform1f(uniforms.u_rot4dZW, S.rot[5]);
+  gl.uniform1f(uniforms.u_dimension, S.dimension);
+  gl.uniform1f(uniforms.u_gridDensity, S.gridDensity);
+  gl.uniform1f(uniforms.u_morphFactor, S.morphFactor);
+  gl.uniform1f(uniforms.u_chaos, S.chaos);
+  gl.uniform1f(uniforms.u_speed, S.speed);
+  gl.uniform1f(uniforms.u_hue, S.hue);
+  gl.uniform1f(uniforms.u_intensity, S.intensity);
+  gl.uniform1f(uniforms.u_saturation, S.saturation);
+  gl.uniform1f(uniforms.u_bass, S.bands[1]);
+  gl.uniform1f(uniforms.u_mid, S.bands[3]);
+  gl.uniform1f(uniforms.u_high, S.bands[6]);
+  gl.uniform1f(uniforms.u_onset, S.onset);
+
+  gl.clearColor(0, 0, 0, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+  // Update audio meter
+  updateMeter();
+}
+
+// ── HUD ──
+var BASE_NAMES = ['Tetra', 'Cube', 'Sphere', 'Torus', 'Klein', 'Fractal', 'Wave', 'Crystal'];
+var CORE_NAMES = ['Base', 'Hyper-S', 'Hyper-T'];
+var SYS_NAMES = ['FACETED', 'QUANTUM', 'HOLOGRAPHIC'];
+var SYS_COLORS = ['#3b82f6', '#a855f7', '#10b981'];
+
+function updateHUD() {
+  var base = S.geometry % 8, core = Math.floor(S.geometry / 8);
+  var name = (core > 0 ? CORE_NAMES[core] + ' ' : '') + BASE_NAMES[base];
+  var el = document.getElementById('geoLabel'); if (el) el.textContent = name + ' [' + S.geometry + ']';
+  var sl = document.getElementById('sysLabel');
+  if (sl) { sl.textContent = SYS_NAMES[S.system]; sl.style.color = SYS_COLORS[S.system]; }
+  var ml = document.getElementById('modeLabel'); if (ml) ml.textContent = S.mode;
+}
+
+function updateMeter() {
+  var bars = document.querySelectorAll('.bar');
+  for (var i = 0; i < bars.length && i < 8; i++) {
+    bars[i].style.height = Math.max(2, Math.round(S.bands[i] * 36)) + 'px';
+  }
+}
+
+// ── Event Handlers ──
+// [WHY] Gold Standard A.2: Each discrete event triggers choreographed response
+
+// Tap/click → Burst
+canvas.addEventListener('click', function() { onBurst(); });
+canvas.addEventListener('touchstart', function(e) { e.preventDefault(); }, { passive: false });
+
+// Touch gestures
+var touchStartX = 0, touchStartY = 0, touchStartTime = 0, lastTapTime = 0;
+canvas.addEventListener('touchstart', function(e) {
+  var t = e.touches[0];
+  touchStartX = t.clientX; touchStartY = t.clientY; touchStartTime = Date.now();
+}, { passive: true });
+
+canvas.addEventListener('touchend', function(e) {
+  var t = e.changedTouches[0];
+  var dx = t.clientX - touchStartX, dy = t.clientY - touchStartY;
+  var dist = Math.sqrt(dx * dx + dy * dy);
+  var elapsed = Date.now() - touchStartTime;
+  var now = performance.now();
+
+  if (dist < 20 && elapsed < 300) {
+    // Double-tap → freeze toggle
+    if (now - lastTapTime < 400) {
+      toggleFreeze(now);
+    } else {
+      onBurst();
+    }
+    lastTapTime = now;
+  } else if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    // Horizontal swipe → cycle geometry
+    var base = S.geometry % 8, core = Math.floor(S.geometry / 8);
+    base = ((base + (dx > 0 ? 1 : -1)) % 8 + 8) % 8;
+    S.geometry = core * 8 + base;
+    S.onset = 0.4; // Brief flash on geometry change
+    markInput(); updateHUD();
+  } else if (Math.abs(dy) > 40 && Math.abs(dy) > Math.abs(dx) * 1.5) {
+    // Vertical swipe → cycle system
+    var next = dy < 0 ? (S.system + 1) % 3 : (S.system + 2) % 3;
+    S.system = next; switchProgram(S.system);
+    S.onset = 0.6; // Brighter flash on system switch
+    markInput(); updateHUD();
+  }
+}, { passive: true });
+
+// Scroll → ZW rotation
+// [WHY] The W axis responds to scroll depth — scrolling INTO the page
+canvas.addEventListener('wheel', function(e) {
+  e.preventDefault();
+  S.rot[5] += e.deltaY * 0.005; // ZW rotation
+  markInput();
+}, { passive: false });
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+  var now = performance.now();
+  markInput();
+  switch (e.key) {
+    case '1': S.system = 0; switchProgram(0); updateHUD(); break;
+    case '2': S.system = 1; switchProgram(1); updateHUD(); break;
+    case '3': S.system = 2; switchProgram(2); updateHUD(); break;
+    case 'ArrowRight': case 'l':
+      var b = S.geometry % 8, c = Math.floor(S.geometry / 8);
+      S.geometry = c * 8 + ((b + 1) % 8); S.onset = 0.3; updateHUD(); break;
+    case 'ArrowLeft': case 'h':
+      var b = S.geometry % 8, c = Math.floor(S.geometry / 8);
+      S.geometry = c * 8 + ((b + 7) % 8); S.onset = 0.3; updateHUD(); break;
+    case 'ArrowUp': case 'k':
+      var b = S.geometry % 8, c = Math.floor(S.geometry / 8);
+      S.geometry = ((c + 1) % 3) * 8 + b; S.onset = 0.3; updateHUD(); break;
+    case 'ArrowDown': case 'j':
+      var b = S.geometry % 8, c = Math.floor(S.geometry / 8);
+      S.geometry = ((c + 2) % 3) * 8 + b; S.onset = 0.3; updateHUD(); break;
+    case ' ': toggleFreeze(now); e.preventDefault(); break;
+    case 'r': case 'R':
+      S.geometry = Math.floor(Math.random() * 24);
+      S.onset = 1.0; updateHUD(); break;
+    case 'f': case 'F':
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen().catch(function() {});
+      break;
+  }
+});
+
+// Resize handler
+function resize() {
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  if (gl) gl.viewport(0, 0, canvas.width, canvas.height);
+}
+window.addEventListener('resize', resize);
+
+// Visibility change — pause when hidden
+// [WHY] Battery conservation
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden && animId) {
+    cancelAnimationFrame(animId); animId = null;
+  } else if (!document.hidden && !animId) {
+    prevTime = performance.now();
+    animId = requestAnimationFrame(render);
+  }
+});
+
+// ── Init ──
+function init() {
+  gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, preserveDrawingBuffer: false })
+    || canvas.getContext('experimental-webgl');
+  if (!gl) { console.error('WebGL unavailable'); return; }
+
+  programs = [createProgram(FRAG_FACETED), createProgram(FRAG_QUANTUM), createProgram(FRAG_HOLOGRAPHIC)];
+  if (!programs[0] || !programs[1] || !programs[2]) { console.error('Shader compile failed'); return; }
+
+  posBuffer = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]), gl.STATIC_DRAW);
+
+  resize();
+  switchProgram(S.system);
+  initAudio();
+
+  S.lastInputTime = performance.now();
+  prevTime = performance.now();
+  updateHUD();
+  requestAnimationFrame(render);
+
+  // Hide hint after 6s
+  setTimeout(function() {
+    var h = document.getElementById('hint'); if (h) h.style.opacity = '0';
+  }, 6000);
+}
+
+init();
+})();
+</script>
+</body>
+</html>
