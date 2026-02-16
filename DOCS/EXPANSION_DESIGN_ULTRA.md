@@ -362,5 +362,26 @@ update(dt) {
 
 ---
 
+## IX. Demo: The Crystal Labyrinth
+
+A vertical slice demo showcasing all Ultra capabilities in one cohesive experience.
+
+### Story & Premise
+The player is a **Lattice Runner** navigating a fractured 4D hyperspace maze. The goal is to collect **Resonance Crystals** (Facet engines) while avoiding **Void Shadows** (Holographic engines) that hunt based on noise (movement speed).
+
+### Gameplay Loop
+1.  **Explore**: Navigate the 4D maze using WASD+Mouse+QE.
+2.  **Collect**: Find blue crystals. Touching one triggers a `VIB3Actor` "Collection" animation (implosion + sound).
+3.  **Evade**: Red "Shadows" drift towards you. If they touch you, the screen glitches (`chromaticAberration` spike) and health drops.
+4.  **Win**: Collect 5 crystals to stabilize the universe (trigger "Victory" state).
+
+### Technical Integration
+*   **Universe**: One `VIB3Universe` managing the Player, 5 Crystal Actors, and 3 Shadow Actors.
+*   **Physics**: `LatticePhysics` handles wall collisions (fractal noise walls).
+*   **AI**: `LiveDirector` adjusts Shadow aggression based on player movement speed (stealth mechanic).
+*   **Networking**: (Optional) `VIB3Link` allows a spectator to watch the runner.
+
+---
+
 *VIB3+ Ultra — The Future of Emergent Media*
-*Draft v4.0 — Added HyperGame Engine — Feb 16, 2026*
+*Draft v5.0 — Added Crystal Labyrinth Demo Design — Feb 16, 2026*
