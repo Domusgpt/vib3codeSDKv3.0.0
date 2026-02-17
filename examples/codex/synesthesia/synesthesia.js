@@ -40,7 +40,17 @@ import { AestheticMapper } from '../../../src/creative/AestheticMapper.js';
 // ─────────────────────────────────────────────────────────────────────────
 
 // [WHY] Gold Standard F: Per-System Creative Personality
-// Switching systems should change parameter ranges, not just shaders.
+// Each system has a character. These ranges define where parameters "want" to be.
+// When switching systems, the engine transitions to the new personality's midpoint.
+//
+// EXPERIMENT: Add your own personality. Try a "dark" mode:
+//   dark: { gridDensity: [10, 25], speed: [0.1, 0.3], chaos: [0.3, 0.7],
+//           dimension: [3.0, 3.4], intensity: [0.1, 0.3], saturation: [0.0, 0.15],
+//           character: 'Dark, turbulent, desaturated' }
+// Then add a keyboard shortcut to switch to it. Horror game vibes.
+//
+// Or try widening Faceted's chaos range to [0.0, 0.6] — it breaks the "clean"
+// aesthetic but creates beautiful glitch art at high chaos values.
 const PERSONALITY = {
   faceted: {
     gridDensity: [15, 35], speed: [0.3, 0.8], chaos: [0.0, 0.15],
@@ -60,6 +70,13 @@ const PERSONALITY = {
 };
 
 // [WHY] Gold Standard F: EMA tau values (seconds). Lower = more responsive.
+// These define how "twitchy" vs "smooth" each parameter feels.
+//
+// EXPERIMENT: Set all taus to 0.02 — everything becomes instant and jittery,
+// like a VU meter. Or set them all to 1.0 — everything becomes glacial and
+// dreamy, ignoring rapid changes and only responding to sustained shifts.
+// Or swap speed and hue taus — color becomes instant while motion lags.
+// Each combination changes the emotional character dramatically.
 const TAU = {
   speed: 0.08, gridDensity: 0.10, chaos: 0.10, morphFactor: 0.12,
   intensity: 0.12, saturation: 0.15, rotation: 0.15, dimension: 0.20, hue: 0.25
@@ -78,10 +95,26 @@ const BASE_NAMES = ['Tetra', 'Cube', 'Sphere', 'Torus', 'Klein', 'Fractal', 'Wav
 const CORE_NAMES = ['Base', 'Hyper-S', 'Hyper-T'];
 const SYSTEM_NAMES = { faceted: 'FACETED', quantum: 'QUANTUM', holographic: 'HOLOGRAPHIC' };
 
-// [WHY] Gold Standard: Themed color presets for visual variety
+// [WHY] Gold Standard: Themed color presets for visual variety.
+// Press 'C' to cycle through these. The secondary engine gets an offset
+// preset (+3 positions), so primary and secondary always have contrasting color.
+//
+// EXPERIMENT: The SDK has 22 presets total. Try reordering for different arcs,
+// or use only warm presets ['Sunset Warm', 'Lava', 'Desert Sand'] for a
+// coherent warm palette, or only cool ones for an icy feel. You can also
+// call colorPresets.applyPreset() with transition=true and duration to
+// create slow color morphs between any two presets.
 const PRESET_CYCLE = ['Ocean Deep', 'Galaxy', 'Neon Pulse', 'Cyberpunk Neon', 'Aurora', 'Sunset Warm'];
 
-// [WHY] Gold Standard D: 8-scene autonomous choreography (120s cycle)
+// [WHY] Gold Standard D: 8-scene autonomous choreography (120s cycle).
+// This kicks in after 30s of no input. Any input breaks out immediately.
+//
+// EXPERIMENT: Edit the scenes below. Each scene is 15 seconds — try 5s for
+// frantic energy or 60s for slow meditation. Change the geometry indices
+// (0-23, where index = coreType*8 + baseGeometry). Add more track keyframes
+// for within-scene parameter evolution. Try all scenes with the same system
+// but different geometries for a geometry showcase. Or add chaos tracks that
+// arc from 0→0.4→0 within each scene for tension/release.
 const CHOREOGRAPHY_SPEC = {
   id: 'synesthesia-auto',
   name: 'Synesthesia Autonomous Cycle',
@@ -207,9 +240,17 @@ class Synesthesia {
     this.state = {
       hue: 200, saturation: 0.7, intensity: 0.5, chaos: 0.1, speed: 0.6,
       morphFactor: 0.8, gridDensity: 30, dimension: 3.5,
-      // [WHY] 4D axes FASTER than 3D — hyperspace rotation is the dominant visual effect.
-      // Base velocities: XW=0.08, YW=0.06, ZW=0.05 rad/s → full rotation in 12-20s.
-      // 3D axes are slower: XY=0.04, XZ=0.03, YZ=0.02.
+      // Rotation order: [XY, XZ, YZ, XW, YW, ZW]
+      // [WHY] 4D axes (indices 3-5) are FASTER than 3D (indices 0-2). This is
+      // deliberate — the 4D rotation is what makes VIB3+ unique. If 3D rotation
+      // dominates, you just see a spinning object. With 4D dominant, you see
+      // geometry folding through itself, impossible intersections, alien motion.
+      //
+      // EXPERIMENT: Set indices 0-2 to 0 and keep 3-5. Now there's NO 3D
+      // rotation — the object just morphs through the 4th dimension. Deeply
+      // strange. Or set all to the same value for uniform tumbling. Or make
+      // one 4D axis very fast (0.3) and others zero — the geometry flips
+      // through a single hyperplane.
       rot: [0, 0, 0, 0, 0, 0],
       rotVel: [0.04, 0.03, 0.02, 0.08, 0.06, 0.05],
       clickIntensity: 0, onset: 0
@@ -1122,18 +1163,33 @@ class Synesthesia {
     engine.setParameter('rot4dZW', s.rot[5]);
   }
 
+  // This is where coordination happens. Every frame, the secondary engine's
+  // parameters are derived from the primary's state. This is the heart of
+  // multi-instance composition.
+  //
+  // EXPERIMENT with different coordination rules:
+  //   - Parallel: use s.gridDensity * 0.5 instead of 70 - s.gridDensity.
+  //     Both engines breathe together (amplification, not opposition).
+  //   - Temporal offset: store s.gridDensity in a ring buffer, read from
+  //     N frames ago. The secondary echoes the primary with a delay.
+  //   - Threshold: if (s.gridDensity > 50) use s.gridDensity; else use 0.
+  //     Secondary only activates during high-density moments.
+  //   - Hue: try (s.hue + 120) % 360 for triadic, or (s.hue + 30) % 360
+  //     for analogous. Each creates a completely different color mood.
+  //   - Remove energy conservation: delete the 1.0 - s.intensity line.
+  //     Now both engines can hit full intensity simultaneously. Louder.
   pushSecondaryState(s) {
     const eng = this.secondaryEngine;
     const p = PERSONALITY[this.secondarySystem] || PERSONALITY.quantum;
 
-    // [WHY] Gold Standard B: Inverse Density Seesaw — secondary density inverts primary
+    // [WHY] Inverse Density Seesaw — total density ≈ 70
     const inverseDensity = clamp(70 - s.gridDensity, p.gridDensity[0], p.gridDensity[1]);
 
-    // [WHY] Gold Standard: "complement" relationship — hue + 180
+    // [WHY] Complement hue — secondary is always opposite on the color wheel
     eng.setParameter('hue', (s.hue + 180) % 360);
     eng.setParameter('saturation', s.saturation);
 
-    // [WHY] Energy conservation — total intensity ≈ constant
+    // [WHY] Energy conservation — when primary brightens, secondary dims
     eng.setParameter('intensity', clamp(1.0 - s.intensity + 0.3, 0.2, 0.9));
     eng.setParameter('chaos', clamp(s.chaos * 0.7, p.chaos[0], p.chaos[1]));
     eng.setParameter('speed', clamp(s.speed * 0.8, p.speed[0], p.speed[1]));
@@ -1141,7 +1197,8 @@ class Synesthesia {
     eng.setParameter('gridDensity', inverseDensity);
     eng.setParameter('dimension', s.dimension);
 
-    // [WHY] Gold Standard: "mirror" relationship — invert rotation on alternate planes
+    // [WHY] Mirror rotation — alternating planes are inverted, creating
+    // the effect of the secondary spinning "against" the primary
     eng.setParameter('rot4dXY', -s.rot[0]);
     eng.setParameter('rot4dXZ', s.rot[1]);
     eng.setParameter('rot4dYZ', -s.rot[2]);

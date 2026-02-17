@@ -1,16 +1,36 @@
 /*
  * synesthesia.css — VIB3+ Synesthesia Flagship Example
  *
- * CSS Variable Bridge + Layout + Approach/Retreat State Classes
+ * This file does two things:
+ * 1. Layouts the primary (full viewport) and secondary (floating panel) visualizers
+ * 2. Reacts to VIB3+ state through CSS custom properties updated every frame
  *
- * CSS custom properties driven by VIB3+ parameters every frame:
- *   --vib3-hue, --vib3-intensity, --vib3-density, --vib3-speed, --vib3-chaos
+ * The six custom properties below are set by synesthesia.js on every animation
+ * frame. Anything in this file (or any CSS on the page) can use them. This is
+ * how VIB3+ drives your entire UI — not just the canvas.
  *
- * [WHY] Gold Standard Section C: "VIB3 + CSS Integration Bridges"
- * The CSS bridge makes the visualization state visible to the entire DOM.
+ * TRY THIS: Add any element to index.html and style it with these variables.
+ * For example, a heading with color: hsl(var(--vib3-hue), 60%, 70%) will
+ * shift color in sync with the visualization. No JS needed for the element —
+ * the bridge handles it.
+ *
+ * You can also use calc() with these to create thresholds:
+ *   opacity: max(0, calc(var(--vib3-chaos) - 0.3) * 5);
+ * This makes an element invisible until chaos exceeds 0.3, then fades in.
+ *
+ * Or drive layout properties:
+ *   border-width: calc(1px + var(--vib3-intensity) * 4px);
+ *   letter-spacing: calc(0.02em + var(--vib3-speed) * 0.1em);
+ *   backdrop-filter: blur(calc(var(--vib3-chaos) * 15px));
+ *
+ * The variables are always in their native ranges (hue 0-360, others 0-1 or
+ * 4-100 for density), so you can map them to any CSS value with calc().
  */
 
 :root {
+  /* These defaults are overwritten by synesthesia.js every frame.
+   * They exist here so the page renders correctly before JS loads.
+   * Change these to adjust the "pre-load" appearance. */
   --vib3-hue: 200;
   --vib3-intensity: 0.5;
   --vib3-density: 30;
@@ -50,7 +70,23 @@ html, body {
   height: 100%;
 }
 
-/* ── Secondary Visualizer: Floating Panel ── */
+/*
+ * ── Secondary Visualizer: Floating Panel ──
+ *
+ * The second VIB3Engine renders here. It runs a different system (Quantum
+ * by default) and is coordinated with the primary through Inverse Density
+ * Seesaw — when primary gets denser, secondary gets sparser.
+ *
+ * TRY THIS: Change the position/size for different layouts:
+ *   - Top-left strip: top:0; left:0; width:100%; height:15vh; border-radius:0;
+ *   - Centered circle: top:50%; left:50%; transform:translate(-50%,-50%);
+ *     width:30vmin; height:30vmin; border-radius:50%;
+ *   - Full split: top:0; right:0; width:50vw; height:100vh; border-radius:0;
+ *
+ * The border-color uses --vib3-hue, so it automatically matches the
+ * visualization. Try adding border-width that responds to intensity:
+ *   border-width: calc(1px + var(--vib3-intensity) * 3px);
+ */
 #secondary-viz {
   position: fixed;
   bottom: 24px;
@@ -78,8 +114,23 @@ html, body {
 
 /*
  * [WHY] Gold Standard A.1: Approach — "object coming toward viewer"
- * Fast attack (400ms via CSS transition), scale up, sharpen, shadow deepens.
- * Timing asymmetry: approach 400ms, retreat 800ms.
+ *
+ * When you hover the secondary panel, it "approaches": scales up, sharpens,
+ * border brightens. The CSS transition is 400ms (fast attack). Meanwhile,
+ * synesthesia.js also changes the VIB3+ parameters — density drops, intensity
+ * rises. The CSS and JS changes happen simultaneously.
+ *
+ * This is the key pattern: CSS handles the DOM effects (scale, shadow, blur)
+ * while JS handles the visualization parameters (density, intensity, dimension).
+ * They reinforce each other.
+ *
+ * TRY THIS: Make the approach more dramatic:
+ *   transform: scale(1.15) translateY(-10px);  — lifts AND grows
+ *   box-shadow: 0 24px 64px hsla(var(--vib3-hue), 50%, 30%, 0.8);  — colored shadow
+ *   border-width: 2px;  — border thickens on approach
+ *
+ * Or try wiring approach to something other than hover — scroll position,
+ * audio level, or even a CSS animation that triggers on a class toggle.
  */
 #secondary-viz.approaching {
   transform: scale(1.06);
@@ -90,7 +141,16 @@ html, body {
 
 /*
  * [WHY] Gold Standard A.1: Retreat — "object moving away"
- * Slow release (800ms via CSS transition), scale down, slight blur, shadow softens.
+ *
+ * The reverse of approach, but SLOWER — 800ms vs 400ms. This timing asymmetry
+ * is critical. Fast approach says "pay attention." Slow retreat says "let go."
+ * The different speeds create emotional contrast even though the property values
+ * are just reversing.
+ *
+ * TRY THIS: Exaggerate the asymmetry even more:
+ *   transition-duration: 2s;  — very slow retreat, almost lazy
+ *   transform: scale(0.85);   — shrinks further away
+ *   filter: blur(3px) saturate(0.5);  — blurs AND desaturates on retreat
  */
 #secondary-viz.retreating {
   transform: scale(0.95);
@@ -180,8 +240,24 @@ html, body {
   opacity: 0;
 }
 
-/* ── Crystallize State ── */
-/* [WHY] Gold Standard: Crystallize — desaturate, brighten, freeze */
+/*
+ * ── Crystallize State ──
+ *
+ * When the user long-presses, synesthesia.js adds "crystallized" to <body>.
+ * This CSS responds by draining color from DOM elements — the visualization
+ * handles its own crystallize, but the CSS makes the HUD and panel match.
+ *
+ * This is a powerful pattern: use body classes as state toggles, and let
+ * CSS cascade handle the DOM changes while JS handles the canvas changes.
+ *
+ * TRY THIS: Add more elements that respond to crystallize:
+ *   body.crystallized #meter .bar { background: rgba(255,255,255,0.3); }
+ *   body.crystallized { background: #111; }  — lighten the page bg slightly
+ *
+ * Or create your own states:
+ *   body.storm .secondary-viz { animation: shake 0.1s infinite; }
+ *   body.zen #hud { opacity: 0; }  — hide HUD in zen mode
+ */
 body.crystallized #secondary-viz {
   filter: saturate(0.3) brightness(1.2);
   border-color: hsla(var(--vib3-hue), 15%, 70%, 0.5);
@@ -191,8 +267,19 @@ body.crystallized #hud .system-label {
   color: hsl(var(--vib3-hue), 15%, 75%);
 }
 
-/* ── System Switch Crossfade ── */
-/* [WHY] Gold Standard: Dimensional Crossfade — brief opacity pulse */
+/*
+ * ── System Switch Crossfade ──
+ *
+ * When switching systems (1/2/3 keys), synesthesia.js adds "crossfading"
+ * to #primary-viz. This triggers a brief opacity pulse — the visualization
+ * dips to 30% opacity at 40% of the animation, then recovers. The timing
+ * is coordinated with the JS drain/flood transition.
+ *
+ * TRY THIS: Replace with a more dramatic effect:
+ *   - Scale pulse: transform: scale(1.02) at 50%, back to 1 at 100%
+ *   - Hue shift: filter: hue-rotate(180deg) at 40%, back at 100%
+ *   - Glitch: translateX(5px) at 20%, translateX(-5px) at 40%, back at 100%
+ */
 #primary-viz.crossfading {
   animation: crossfade-pulse 0.6s ease-in-out;
 }
