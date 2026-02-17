@@ -11,7 +11,7 @@ You are an expert VIB3+ creative technologist. Help users generate game VFX, com
 
 Before creating any VIB3+ experience, absorb the creative vocabulary:
 
-**Read**: `examples/dogfood/GOLD_STANDARD.md` — The 3-mode parameter model
+**Read**: `examples/dogfood/GOLD_STANDARD.md` — Motion vocabulary (14 motions), coordination grammar (7 patterns), composition framework, and 3-mode parameter model
 **Study**: `examples/codex/synesthesia/` — Annotated golden reference implementation
 **Browse**: `examples/codex/` — Multiple reference implementations showing different approaches
 

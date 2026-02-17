@@ -160,7 +160,7 @@ Don't dig through source code when there's already a doc for it. The `DOCS/` dir
 
 | What you need | Where to find it |
 |---|---|
-| **Gold Standard v3 (creative vocabulary)** | `examples/dogfood/GOLD_STANDARD.md` — 3-mode parameter model, EMA smoothing, composition principles |
+| **Gold Standard v3 (creative vocabulary)** | `examples/dogfood/GOLD_STANDARD.md` — Motion vocabulary (14 motions), coordination grammar (7 patterns), composition framework (6 bridges), 3-mode parameter model, EMA smoothing |
 | **Codex (reference implementations)** | `examples/codex/` — Multiple annotated VIB3+ examples showing different creative approaches |
 | **Full architecture & module inventory** | `DOCS/SYSTEM_INVENTORY.md` — canonical reference (stale: says 12 tools, it's 31) |
 | **Product strategy & personas** | `DOCS/PRODUCT_STRATEGY.md` |

@@ -1,0 +1,224 @@
+/*
+ * synesthesia.css — VIB3+ Synesthesia Flagship Example
+ *
+ * CSS Variable Bridge + Layout + Approach/Retreat State Classes
+ *
+ * CSS custom properties driven by VIB3+ parameters every frame:
+ *   --vib3-hue, --vib3-intensity, --vib3-density, --vib3-speed, --vib3-chaos
+ *
+ * [WHY] Gold Standard Section C: "VIB3 + CSS Integration Bridges"
+ * The CSS bridge makes the visualization state visible to the entire DOM.
+ */
+
+:root {
+  --vib3-hue: 200;
+  --vib3-intensity: 0.5;
+  --vib3-density: 30;
+  --vib3-speed: 0.6;
+  --vib3-chaos: 0.1;
+  --vib3-saturation: 0.7;
+}
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: #fff;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+}
+
+/* ── Primary Visualizer: Full Viewport ── */
+#primary-viz {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+}
+
+#primary-viz canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Secondary Visualizer: Floating Panel ── */
+#secondary-viz {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 30vw;
+  height: 30vh;
+  min-width: 240px;
+  min-height: 180px;
+  z-index: 5;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid hsla(var(--vib3-hue), 50%, 40%, 0.6);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              box-shadow 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              filter 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              border-color 0.3s ease;
+}
+
+#secondary-viz canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * [WHY] Gold Standard A.1: Approach — "object coming toward viewer"
+ * Fast attack (400ms via CSS transition), scale up, sharpen, shadow deepens.
+ * Timing asymmetry: approach 400ms, retreat 800ms.
+ */
+#secondary-viz.approaching {
+  transform: scale(1.06);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+  filter: blur(0);
+  border-color: hsla(var(--vib3-hue), 70%, 60%, 0.9);
+}
+
+/*
+ * [WHY] Gold Standard A.1: Retreat — "object moving away"
+ * Slow release (800ms via CSS transition), scale down, slight blur, shadow softens.
+ */
+#secondary-viz.retreating {
+  transform: scale(0.95);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  filter: blur(1px);
+  border-color: hsla(var(--vib3-hue), 30%, 30%, 0.4);
+  transition-duration: 0.8s;
+}
+
+/* ── HUD ── */
+#hud {
+  position: fixed;
+  top: 16px;
+  left: 20px;
+  z-index: 10;
+  pointer-events: none;
+  font-size: 12px;
+  line-height: 1.7;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+
+#hud:hover {
+  opacity: 0.9;
+  pointer-events: auto;
+}
+
+#hud .system-label {
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  font-size: 14px;
+  color: hsl(var(--vib3-hue), 70%, 65%);
+  text-transform: uppercase;
+}
+
+#hud .geo-label {
+  color: hsl(var(--vib3-hue), 50%, 55%);
+}
+
+#hud .mode-label,
+#hud .fps-label {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 11px;
+}
+
+#hud .coordination-label {
+  color: hsl(calc(var(--vib3-hue) + 120), 40%, 50%);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+
+/* ── Audio Meter ── */
+#meter {
+  position: fixed;
+  bottom: 16px;
+  left: 20px;
+  z-index: 10;
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  height: 44px;
+  pointer-events: none;
+}
+
+#meter .bar {
+  width: 6px;
+  min-height: 2px;
+  border-radius: 2px;
+  background: hsla(var(--vib3-hue), 60%, 50%, 0.7);
+  transition: height 0.06s ease-out;
+}
+
+/* ── Controls Hint ── */
+#hint {
+  position: fixed;
+  bottom: 16px;
+  right: max(calc(30vw + 40px), 280px);
+  z-index: 10;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+  transition: opacity 3s ease;
+  white-space: nowrap;
+}
+
+#hint.hidden {
+  opacity: 0;
+}
+
+/* ── Crystallize State ── */
+/* [WHY] Gold Standard: Crystallize — desaturate, brighten, freeze */
+body.crystallized #secondary-viz {
+  filter: saturate(0.3) brightness(1.2);
+  border-color: hsla(var(--vib3-hue), 15%, 70%, 0.5);
+}
+
+body.crystallized #hud .system-label {
+  color: hsl(var(--vib3-hue), 15%, 75%);
+}
+
+/* ── System Switch Crossfade ── */
+/* [WHY] Gold Standard: Dimensional Crossfade — brief opacity pulse */
+#primary-viz.crossfading {
+  animation: crossfade-pulse 0.6s ease-in-out;
+}
+
+@keyframes crossfade-pulse {
+  0%  { opacity: 1; }
+  40% { opacity: 0.3; }
+  100% { opacity: 1; }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  #secondary-viz {
+    width: 40vw;
+    height: 25vh;
+    bottom: 60px;
+    right: 12px;
+    min-width: 160px;
+    min-height: 120px;
+  }
+
+  #hint {
+    display: none;
+  }
+
+  #hud {
+    font-size: 11px;
+  }
+}

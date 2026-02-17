@@ -14,7 +14,7 @@ Always determine which mode you're in at the start.
 
 Before designing any VIB3+ experience, absorb the creative vocabulary:
 
-- **Read**: `examples/dogfood/GOLD_STANDARD.md` — The 3-mode parameter model, EMA smoothing, composition principles
+- **Read**: `examples/dogfood/GOLD_STANDARD.md` — Motion vocabulary (14 motions), coordination grammar (7 patterns), EMA smoothing, and composition framework
 - **Study**: `examples/codex/synesthesia/` — Annotated golden reference (all 3 modes, all 6 rotation axes)
 - **Browse**: `examples/codex/` — Multiple reference implementations showing different approaches
 

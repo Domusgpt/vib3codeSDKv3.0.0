@@ -9,7 +9,7 @@ Help users create, choreograph, and export 4D visualizations.
 
 ## Gold Standard v3 — Creative Foundation
 
-Before designing, absorb the creative vocabulary in `examples/dogfood/GOLD_STANDARD.md` and study the annotated golden reference at `examples/codex/synesthesia/`.
+Before designing, absorb the creative vocabulary in `examples/dogfood/GOLD_STANDARD.md` — motion vocabulary (14 motions), coordination grammar (7 patterns), composition framework, and 3-mode parameter model — and study the flagship reference at `examples/codex/synesthesia/`.
 
 ### Three Parameter Modes (Every Design Must Have All Three)
 

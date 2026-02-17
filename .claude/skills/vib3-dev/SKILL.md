@@ -11,7 +11,7 @@ Help extend, refactor, test, and build new features for the VIB3+ 4D visualizati
 
 When building creative features or examples, follow the Gold Standard v3 creative vocabulary:
 
-- **Gold Standard v3**: `examples/dogfood/GOLD_STANDARD.md` — Defines 3 parameter modes (Continuous Mapping, Event Choreography, Ambient Drift), EMA smoothing as universal primitive, per-system personality, composition principles
+- **Gold Standard v3**: `examples/dogfood/GOLD_STANDARD.md` — Motion vocabulary (14 motions), coordination grammar (7 patterns), composition framework, 3-mode parameter model, EMA smoothing, per-system personality
 - **Codex**: `examples/codex/` — Collection of annotated reference implementations showing different creative approaches
 - **Synesthesia (golden reference)**: `examples/codex/synesthesia/` — Audio-reactive ambient with all 3 modes, all 6 rotation axes active, [WHY] annotations throughout
 

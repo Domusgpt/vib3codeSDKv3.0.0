@@ -8,7 +8,7 @@ Each entry makes **different compositional choices**. There is no single "correc
 
 | Entry | Focus | Key Creative Choice |
 |---|---|---|
-| [synesthesia](synesthesia/) | Audio-reactive ambient | All 8 audio bands drive distinct parameters; 4D rotation activates through audio |
+| [synesthesia](synesthesia/) | Audio-reactive ambient, multi-viz coordination | Two engines, Inverse Density Seesaw, CSS bridge, 8-scene autonomous cycle, all Gold Standard motions |
 
 ### Planned
 
@@ -23,6 +23,7 @@ Each entry makes **different compositional choices**. There is no single "correc
 Each entry has:
 - `index.html` — The runnable visualization (open in a browser)
 - `README.md` — Documents the creative decisions: which Gold Standard patterns it uses, why, and what it chose NOT to use
+- Additional files (`.js`, `.css`) — Professional entries separate concerns into modules
 
 ## How to Add Your Own Entry
 

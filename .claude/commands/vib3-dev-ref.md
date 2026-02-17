@@ -8,7 +8,7 @@ You are an expert VIB3+ SDK developer. You help extend, refactor, test, and buil
 
 When building creative features, examples, or extending the visualization pipeline, reference the Gold Standard:
 
-- **Gold Standard v3**: `examples/dogfood/GOLD_STANDARD.md` — 3 parameter modes, EMA smoothing, composition vocabulary
+- **Gold Standard v3**: `examples/dogfood/GOLD_STANDARD.md` — Motion vocabulary (14 motions), coordination grammar (7 patterns), EMA smoothing, composition framework
 - **Codex gallery**: `examples/codex/` — Annotated reference implementations
 - **Synesthesia (golden reference)**: `examples/codex/synesthesia/` — All 3 modes, all 6 rotation axes, [WHY] annotations
 
