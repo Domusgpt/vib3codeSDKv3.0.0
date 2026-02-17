@@ -32,6 +32,23 @@ jobs:
           flutter-version: '3.16.0'
           channel: 'stable'
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install and Build Web Assets
+        run: |
+          npm ci
+          npm run build:web
+        working-directory: .
+
+      - name: Prepare Flutter Assets
+        run: |
+          mkdir -p examples/flutter_demo/assets/vib3/
+          cp -r dist/* examples/flutter_demo/assets/vib3/
+        working-directory: .
+
       - name: Get dependencies
         run: flutter pub get
 

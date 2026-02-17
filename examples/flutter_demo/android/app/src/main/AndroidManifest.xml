@@ -3,7 +3,6 @@
         android:label="VIB3+ Demo"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/LaunchTheme"
         android:hardwareAccelerated="true"
         android:windowSoftInputMode="adjustResize">
