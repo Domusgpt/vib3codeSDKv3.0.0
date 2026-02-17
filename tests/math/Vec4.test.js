@@ -23,10 +23,30 @@ describe('Vec4', () => {
             expect(v.w).toBe(4);
         });
 
-        it('uses Float32Array internally', () => {
+        it('provides Float32Array via .data getter', () => {
             const v = new Vec4(1, 2, 3, 4);
             expect(v.data).toBeInstanceOf(Float32Array);
             expect(v.data.length).toBe(4);
+            expect(v.data[0]).toBeCloseTo(1);
+            expect(v.data[1]).toBeCloseTo(2);
+            expect(v.data[2]).toBeCloseTo(3);
+            expect(v.data[3]).toBeCloseTo(4);
+        });
+
+        it('supports index-based component access', () => {
+            const v = new Vec4(0, 0, 0, 0);
+            v.setComponent(0, 5);
+            v.setComponent(1, 6);
+            v.setComponent(2, 7);
+            v.setComponent(3, 8);
+            expect(v.x).toBe(5);
+            expect(v.y).toBe(6);
+            expect(v.z).toBe(7);
+            expect(v.w).toBe(8);
+            expect(v.getComponent(0)).toBe(5);
+            expect(v.getComponent(1)).toBe(6);
+            expect(v.getComponent(2)).toBe(7);
+            expect(v.getComponent(3)).toBe(8);
         });
     });
 

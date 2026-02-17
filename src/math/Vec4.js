@@ -2,7 +2,8 @@
  * Vec4 - 4D Vector Class
  *
  * Represents a point or direction in 4-dimensional space.
- * Uses Float32Array for GPU compatibility and potential SIMD optimization.
+ * Uses plain numeric properties internally for minimal allocation overhead.
+ * GPU-compatible Float32Array created on demand via toFloat32Array().
  *
  * @example
  * const v = new Vec4(1, 2, 3, 0.5);
@@ -19,26 +20,66 @@ export class Vec4 {
      * @param {number} w - W component (4th dimension)
      */
     constructor(x = 0, y = 0, z = 0, w = 0) {
-        // Use Float32Array for GPU compatibility
-        this.data = new Float32Array(4);
-        this.data[0] = x;
-        this.data[1] = y;
-        this.data[2] = z;
-        this.data[3] = w;
+        this._x = x;
+        this._y = y;
+        this._z = z;
+        this._w = w;
     }
 
-    // Property accessors for readability
-    get x() { return this.data[0]; }
-    set x(v) { this.data[0] = v; }
+    // Property accessors
+    get x() { return this._x; }
+    set x(v) { this._x = v; }
 
-    get y() { return this.data[1]; }
-    set y(v) { this.data[1] = v; }
+    get y() { return this._y; }
+    set y(v) { this._y = v; }
 
-    get z() { return this.data[2]; }
-    set z(v) { this.data[2] = v; }
+    get z() { return this._z; }
+    set z(v) { this._z = v; }
 
-    get w() { return this.data[3]; }
-    set w(v) { this.data[3] = v; }
+    get w() { return this._w; }
+    set w(v) { this._w = v; }
+
+    /**
+     * Backward-compatible .data getter.
+     * Returns a Float32Array snapshot of current values.
+     * Note: writes to the returned array do NOT propagate back.
+     * Use setComponent(index, value) for index-based mutation.
+     * @returns {Float32Array}
+     */
+    get data() {
+        return new Float32Array([this._x, this._y, this._z, this._w]);
+    }
+
+    /**
+     * Set a component by index (0=x, 1=y, 2=z, 3=w)
+     * @param {number} index - Component index (0-3)
+     * @param {number} value - New value
+     * @returns {Vec4} this
+     */
+    setComponent(index, value) {
+        switch (index) {
+            case 0: this._x = value; break;
+            case 1: this._y = value; break;
+            case 2: this._z = value; break;
+            case 3: this._w = value; break;
+        }
+        return this;
+    }
+
+    /**
+     * Get a component by index (0=x, 1=y, 2=z, 3=w)
+     * @param {number} index - Component index (0-3)
+     * @returns {number}
+     */
+    getComponent(index) {
+        switch (index) {
+            case 0: return this._x;
+            case 1: return this._y;
+            case 2: return this._z;
+            case 3: return this._w;
+            default: return 0;
+        }
+    }
 
     /**
      * Create a Vec4 from an array
@@ -54,7 +95,7 @@ export class Vec4 {
      * @returns {Vec4}
      */
     clone() {
-        return new Vec4(this.x, this.y, this.z, this.w);
+        return new Vec4(this._x, this._y, this._z, this._w);
     }
 
     /**
@@ -63,10 +104,10 @@ export class Vec4 {
      * @returns {Vec4} this (for chaining)
      */
     copy(v) {
-        this.data[0] = v.data[0];
-        this.data[1] = v.data[1];
-        this.data[2] = v.data[2];
-        this.data[3] = v.data[3];
+        this._x = v._x;
+        this._y = v._y;
+        this._z = v._z;
+        this._w = v._w;
         return this;
     }
 
@@ -79,10 +120,10 @@ export class Vec4 {
      * @returns {Vec4} this
      */
     set(x, y, z, w) {
-        this.data[0] = x;
-        this.data[1] = y;
-        this.data[2] = z;
-        this.data[3] = w;
+        this._x = x;
+        this._y = y;
+        this._z = z;
+        this._w = w;
         return this;
     }
 
@@ -93,10 +134,10 @@ export class Vec4 {
      */
     add(v) {
         return new Vec4(
-            this.x + v.x,
-            this.y + v.y,
-            this.z + v.z,
-            this.w + v.w
+            this._x + v._x,
+            this._y + v._y,
+            this._z + v._z,
+            this._w + v._w
         );
     }
 
@@ -106,10 +147,10 @@ export class Vec4 {
      * @returns {Vec4} this
      */
     addInPlace(v) {
-        this.data[0] += v.data[0];
-        this.data[1] += v.data[1];
-        this.data[2] += v.data[2];
-        this.data[3] += v.data[3];
+        this._x += v._x;
+        this._y += v._y;
+        this._z += v._z;
+        this._w += v._w;
         return this;
     }
 
@@ -120,10 +161,10 @@ export class Vec4 {
      */
     sub(v) {
         return new Vec4(
-            this.x - v.x,
-            this.y - v.y,
-            this.z - v.z,
-            this.w - v.w
+            this._x - v._x,
+            this._y - v._y,
+            this._z - v._z,
+            this._w - v._w
         );
     }
 
@@ -133,10 +174,10 @@ export class Vec4 {
      * @returns {Vec4} this
      */
     subInPlace(v) {
-        this.data[0] -= v.data[0];
-        this.data[1] -= v.data[1];
-        this.data[2] -= v.data[2];
-        this.data[3] -= v.data[3];
+        this._x -= v._x;
+        this._y -= v._y;
+        this._z -= v._z;
+        this._w -= v._w;
         return this;
     }
 
@@ -147,10 +188,10 @@ export class Vec4 {
      */
     scale(s) {
         return new Vec4(
-            this.x * s,
-            this.y * s,
-            this.z * s,
-            this.w * s
+            this._x * s,
+            this._y * s,
+            this._z * s,
+            this._w * s
         );
     }
 
@@ -160,10 +201,10 @@ export class Vec4 {
      * @returns {Vec4} this
      */
     scaleInPlace(s) {
-        this.data[0] *= s;
-        this.data[1] *= s;
-        this.data[2] *= s;
-        this.data[3] *= s;
+        this._x *= s;
+        this._y *= s;
+        this._z *= s;
+        this._w *= s;
         return this;
     }
 
@@ -174,10 +215,10 @@ export class Vec4 {
      */
     multiply(v) {
         return new Vec4(
-            this.x * v.x,
-            this.y * v.y,
-            this.z * v.z,
-            this.w * v.w
+            this._x * v._x,
+            this._y * v._y,
+            this._z * v._z,
+            this._w * v._w
         );
     }
 
@@ -186,7 +227,7 @@ export class Vec4 {
      * @returns {Vec4} New vector
      */
     negate() {
-        return new Vec4(-this.x, -this.y, -this.z, -this.w);
+        return new Vec4(-this._x, -this._y, -this._z, -this._w);
     }
 
     /**
@@ -194,10 +235,10 @@ export class Vec4 {
      * @returns {Vec4} this
      */
     negateInPlace() {
-        this.data[0] = -this.data[0];
-        this.data[1] = -this.data[1];
-        this.data[2] = -this.data[2];
-        this.data[3] = -this.data[3];
+        this._x = -this._x;
+        this._y = -this._y;
+        this._z = -this._z;
+        this._w = -this._w;
         return this;
     }
 
@@ -207,7 +248,7 @@ export class Vec4 {
      * @returns {number}
      */
     dot(v) {
-        return this.x * v.x + this.y * v.y + this.z * v.z + this.w * v.w;
+        return this._x * v._x + this._y * v._y + this._z * v._z + this._w * v._w;
     }
 
     /**
@@ -215,7 +256,7 @@ export class Vec4 {
      * @returns {number}
      */
     lengthSquared() {
-        return this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w;
+        return this._x * this._x + this._y * this._y + this._z * this._z + this._w * this._w;
     }
 
     /**
@@ -277,10 +318,10 @@ export class Vec4 {
      */
     lerp(v, t) {
         return new Vec4(
-            this.x + (v.x - this.x) * t,
-            this.y + (v.y - this.y) * t,
-            this.z + (v.z - this.z) * t,
-            this.w + (v.w - this.w) * t
+            this._x + (v._x - this._x) * t,
+            this._y + (v._y - this._y) * t,
+            this._z + (v._z - this._z) * t,
+            this._w + (v._w - this._w) * t
         );
     }
 
@@ -292,10 +333,10 @@ export class Vec4 {
      */
     equals(v, epsilon = 1e-6) {
         return (
-            Math.abs(this.x - v.x) < epsilon &&
-            Math.abs(this.y - v.y) < epsilon &&
-            Math.abs(this.z - v.z) < epsilon &&
-            Math.abs(this.w - v.w) < epsilon
+            Math.abs(this._x - v._x) < epsilon &&
+            Math.abs(this._y - v._y) < epsilon &&
+            Math.abs(this._z - v._z) < epsilon &&
+            Math.abs(this._w - v._w) < epsilon
         );
     }
 
@@ -321,10 +362,10 @@ export class Vec4 {
             d = options.distance ?? options.d ?? 2;
         }
         const epsilon = options.epsilon ?? 1e-5;
-        const denom = d - this.w;
+        const denom = d - this._w;
         const clamped = Math.abs(denom) < epsilon ? (denom >= 0 ? epsilon : -epsilon) : denom;
         const scale = 1 / clamped;
-        return new Vec4(this.x * scale, this.y * scale, this.z * scale, 0);
+        return new Vec4(this._x * scale, this._y * scale, this._z * scale, 0);
     }
 
     /**
@@ -335,10 +376,10 @@ export class Vec4 {
      */
     projectStereographic(options = {}) {
         const epsilon = options.epsilon ?? 1e-5;
-        const denom = 1 - this.w;
+        const denom = 1 - this._w;
         const clamped = Math.abs(denom) < epsilon ? (denom >= 0 ? epsilon : -epsilon) : denom;
         const scale = 1 / clamped;
-        return new Vec4(this.x * scale, this.y * scale, this.z * scale, 0);
+        return new Vec4(this._x * scale, this._y * scale, this._z * scale, 0);
     }
 
     /**
@@ -347,7 +388,7 @@ export class Vec4 {
      * @returns {Vec4} Projected point (w component is 0)
      */
     projectOrthographic() {
-        return new Vec4(this.x, this.y, this.z, 0);
+        return new Vec4(this._x, this._y, this._z, 0);
     }
 
     /**
@@ -355,7 +396,7 @@ export class Vec4 {
      * @returns {number[]}
      */
     toArray() {
-        return [this.x, this.y, this.z, this.w];
+        return [this._x, this._y, this._z, this._w];
     }
 
     /**
@@ -363,7 +404,7 @@ export class Vec4 {
      * @returns {Float32Array}
      */
     toFloat32Array() {
-        return new Float32Array(this.data);
+        return new Float32Array([this._x, this._y, this._z, this._w]);
     }
 
     /**
@@ -371,7 +412,7 @@ export class Vec4 {
      * @returns {number[]}
      */
     toArray3() {
-        return [this.x, this.y, this.z];
+        return [this._x, this._y, this._z];
     }
 
     /**
@@ -380,7 +421,7 @@ export class Vec4 {
      * @returns {string}
      */
     toString(precision = 3) {
-        return `Vec4(${this.x.toFixed(precision)}, ${this.y.toFixed(precision)}, ${this.z.toFixed(precision)}, ${this.w.toFixed(precision)})`;
+        return `Vec4(${this._x.toFixed(precision)}, ${this._y.toFixed(precision)}, ${this._z.toFixed(precision)}, ${this._w.toFixed(precision)})`;
     }
 
     /**
@@ -388,7 +429,7 @@ export class Vec4 {
      * @returns {object}
      */
     toJSON() {
-        return { x: this.x, y: this.y, z: this.z, w: this.w };
+        return { x: this._x, y: this._y, z: this._z, w: this._w };
     }
 
     // Static factory methods for common vectors
