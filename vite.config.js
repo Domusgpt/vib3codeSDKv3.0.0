@@ -53,6 +53,7 @@ export default defineConfig(({ mode }) => {
                     site: resolve(__dirname, 'site/index.html'),
                     gallery: resolve(__dirname, 'docs/index.html'),
                     testHub: resolve(__dirname, 'docs/test-hub.html'),
+                    crystalLabyrinth: resolve(__dirname, 'examples/dogfood/crystal_labyrinth.html'),
                 },
             },
         },
