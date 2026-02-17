@@ -121,7 +121,35 @@ Pre-compiled context files optimized for different agent types:
 | File | For | Content |
 |------|-----|---------|
 | `claude-agent-context.md` | Claude Code / Claude Desktop | Compact SDK reference + tool usage examples |
-| `openai-agent-context.md` | OpenAI Assistants / GPTs | Function calling schema + examples |
+| `openai-agent-context.md` | OpenAI Assistants / GPTs | Function calling schema + examples + copied Claude skill workflow |
+
+## How to use this in Codex and ChatGPT
+
+### 1) Codex (skills + local agent workflows)
+
+Codex skills are installed under `$CODEX_HOME/skills` (usually `~/.codex/skills`).
+
+```bash
+# List installable curated skills
+python3 /opt/codex/skills/.system/skill-installer/scripts/list-curated-skills.py
+
+# Install a skill from a GitHub repo/path
+python3 /opt/codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
+  --repo <owner>/<repo> \
+  --path <path/to/skill>
+```
+
+After install, restart Codex so the new skill is loaded.
+
+### 2) ChatGPT (custom GPT / Assistant setup)
+
+ChatGPT does not currently load Codex `SKILL.md` folders directly. To use the same behavior in ChatGPT:
+
+1. Put `agent-config/openai-agent-context.md` into your GPT/Assistant instructions or knowledge files.
+2. Register the functions from the **Function Calling Schema** section in that file as tools/actions.
+3. Run this MCP server (`src/agent/mcp/stdio-server.js`) behind your tool bridge so those functions call real SDK operations.
+
+In short: Codex uses installed skills directly, while ChatGPT generally uses instruction/context files + registered tools.
 
 ## Quick Test
 
