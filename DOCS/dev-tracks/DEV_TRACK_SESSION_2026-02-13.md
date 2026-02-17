@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Development Session — 2026-02-13
 
 **Session type**: Agent Harness Implementation — MCP tools, ChoreographyPlayer, aesthetic mapping, headless rendering

@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # VIB3+ SDK System Inventory
 
 **Document Version:** See `DOCS/STATUS.md`

@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Performance Upgrade Report — 2026-02-16
 
 **Type**: CPU-side math optimization (Rotor4D + Vec4)

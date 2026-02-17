@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Cross-Site Design Pattern Synthesis
 
 **Based on actual visual analysis of 4 reference sites via Playwright screenshots**

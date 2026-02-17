@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # VIB3+ Landing Page — Complete Scroll Timeline v3
 
 ## GPU-First Redesign: Real Visualizers Everywhere

@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # VIB3+ Landing Page Refactor Plan
 
 **Date:** 2026-02-13

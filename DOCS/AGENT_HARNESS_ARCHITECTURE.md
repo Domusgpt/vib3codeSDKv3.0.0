@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # VIB3+ Agent Harness Architecture
 
 **Purpose**: Close the feedback loop between AI agents and VIB3+ visualization, enabling agents to design ultra-intricate reactive choreographed visuals that would be impractical via manual UI.

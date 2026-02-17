@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Building VIB3+ Ultra for Android
 
 This guide explains how to build the "Crystal Labyrinth" demo as an Android APK using the existing Flutter integration.

@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Telemetry export manifests
 
 The telemetry export pipeline standardizes manifest payloads for downstream automation, QA, and observability. Each manifest is designed to be cache-friendly with deterministic hashes so CI can diff outputs without ambiguity.

@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # CI and testing guide
 
 This guide outlines the baseline CI/test expectations for the project and a recommended set of

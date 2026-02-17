@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # VIB3+ SDK Status
 
 This file is the single source of truth for high-level release status.

@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # VIB3+ CORE — Master Plan & Full Audit
 
 **Date**: January 31, 2026

@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Visual Analysis: tableside.com.au
 
 **Captured: 2026-02-10 via Playwright with wheel-based scrolling**

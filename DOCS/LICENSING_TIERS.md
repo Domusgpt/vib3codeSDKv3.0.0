@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Licensing tiers (draft)
 
 This document outlines the proposed licensing tiers for the VIB3+ SDK and agentic tooling. It is intended as a working draft for Phase 5.

@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # VIB3+ Premium Tier — Expansion Design Document
 
 **Purpose**: Technical specification for `@vib3code/premium`, a separate npm package that extends the free `@vib3code/sdk` with fine-grained shader control, axis locking, per-layer geometry, event-triggered state changes, and live CSS/framework integration.

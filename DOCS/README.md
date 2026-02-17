@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Documentation Index
 
 ## Strategy & Planning

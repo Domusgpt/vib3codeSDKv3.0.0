@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # GPU disposal patterns
 
 This guide documents safe GPU resource disposal patterns to prevent memory leaks across rendering backends.

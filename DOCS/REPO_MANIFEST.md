@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Repository Manifest
 
 This document enumerates the repository's directory structure and provides a high-level purpose for

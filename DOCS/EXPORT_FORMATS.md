@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Export formats
 
 This reference documents the target export formats supported by the agentic pipelines and how they are validated.

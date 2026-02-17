@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Reference Site Scroll Effect Analysis
 
 **Updated: 2026-02-10**

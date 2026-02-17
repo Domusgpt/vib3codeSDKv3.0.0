@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Visual Analysis: facetad.com
 
 **Captured: 2026-02-10 via Playwright with wheel-based scrolling**

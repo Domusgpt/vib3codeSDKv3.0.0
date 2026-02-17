@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Project setup (GCP + Firebase)
 
 This document provides a professional, repeatable setup flow for creating and configuring a new

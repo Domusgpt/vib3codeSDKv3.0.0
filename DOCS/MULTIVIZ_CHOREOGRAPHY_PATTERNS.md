@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # VIB3+ Multi-Visualizer Choreography Patterns
 
 **Generated: 2026-02-09**
