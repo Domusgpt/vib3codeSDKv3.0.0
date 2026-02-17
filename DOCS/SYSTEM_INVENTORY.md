@@ -31,7 +31,7 @@ The SDK provides 3 active visualization systems with shared 6D rotation mathemat
 | **Core Warp Types** | 3 (Base, Hypersphere, Hypertetrahedron) |
 | **Total Geometries** | 24 per system (8 base × 3 cores) |
 | **Canvas Layers** | 5 per system (background, shadow, content, highlight, accent) |
-| **MCP Tools** | 12 agent-accessible tools |
+| **MCP Tools** | 36 agent-accessible tools (14 core + 4 Phase 6.5 + 7 Phase 7 + 5 Phase 7.1 + 5 Phase 8 + 1 reactivity) |
 | **Spatial Input Sources** | 8 (deviceTilt, mouse, gyroscope, gamepad, perspective, programmatic, audio, MIDI) |
 | **Spatial Profiles** | 6 built-in (cardTilt, wearablePerspective, gameAsset, vjAudioSpatial, uiElement, immersiveXR) |
 | **Creative Effects** | 14 post-processing effects, 22 color presets, 14 easing functions |
@@ -245,7 +245,7 @@ All rotation parameters: `-6.28` to `6.28` (radians, ±2π)
 
 ## MCP Server & Agent Tools
 
-### Available Tools (12 total)
+### Available Tools (36 total — see CLAUDE.md for full breakdown by phase)
 
 | Tool | Description | Key Parameters |
 |------|-------------|----------------|

@@ -19,10 +19,10 @@ The codebase is complete. The product isn't. You have 95,000+ lines of working e
 - Creative Tooling (color presets, transitions, post-processing, timeline) — complete
 - Platform Integrations (React, Vue, Svelte, Figma, Three.js, TouchDesigner, OBS) — code complete
 - Advanced Features (WebXR, WebGPU Compute, MIDI, AI Presets, OffscreenWorker) — code complete
-- MCP Agentic Control (14 tools) — working
+- MCP Agentic Control (36 tools — 14 core + 22 added in Phases 6.5-8) — working
 - C++ WASM Core with JS fallback — working
 - Export System (SVG, CSS, Lottie, Shader, Trading Cards, VIB3Package) — working
-- 693+ tests passing, 34 test files
+- 1762 tests passing, 77 test files (as of Feb 15, 2026)
 - 6 CI/CD workflows active
 
 **What's not done**: Everything below.

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Fourth Dimension</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="vib3-container">
+        <canvas id="c"></canvas>
+    </div>
+
+    <!-- Section 1: Hero (Faceted) -->
+    <section class="scroll-section hero" data-system="0" data-geo="1">
+        <div class="content fade-in">
+            <h1 class="hero-title">THE FOURTH<br>DIMENSION</h1>
+            <p class="subtitle">A visual exploration of hyperspace geometry.</p>
+            <div class="scroll-prompt">
+                <span>SCROLL TO EXPLORE</span>
+                <div class="arrow-down"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 2: What is 4D? (Quantum) -->
+    <section class="scroll-section explainer" data-system="1" data-geo="5">
+        <div class="content fade-in">
+            <h2>BEYOND PERCEPTION</h2>
+            <div class="card-grid">
+                <div class="card glass">
+                    <h3>Hyperspace Rotation</h3>
+                    <p>Objects rotate freely in six independent planes: XY, XZ, YZ, XW, YW, ZW.</p>
+                </div>
+                <div class="card glass">
+                    <h3>Projection</h3>
+                    <p>We see only the 3D shadow of a 4D object as it passes through our slice of reality.</p>
+                </div>
+                <div class="card glass">
+                    <h3>Quantum Lattice</h3>
+                    <p>Complex interference patterns emerge from simple mathematical rules in higher dimensions.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 3: Playground (Holographic) -->
+    <section class="scroll-section playground" data-system="2" data-geo="8">
+        <div class="content fade-in">
+            <h2>TOUCH THE VOID</h2>
+            <p>Interactive holographic projection active.</p>
+            <div class="controls glass">
+                <div class="control-row">
+                    <label>HUE</label>
+                    <input type="range" id="u-hue" min="0" max="1" step="0.01" value="0.5">
+                </div>
+                <div class="control-row">
+                    <label>CHAOS</label>
+                    <input type="range" id="u-chaos" min="0" max="1" step="0.01" value="0.5">
+                </div>
+                <div class="control-row">
+                    <label>DENSITY</label>
+                    <input type="range" id="u-density" min="4" max="100" step="1" value="30">
+                </div>
+                <button id="audio-btn" class="action-btn">ENABLE AUDIO REACTIVITY</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 4: Gallery -->
+    <section class="scroll-section gallery" data-system="1" data-geo="12">
+        <div class="content fade-in">
+            <h2>GEOMETRY ARCHIVE</h2>
+            <div class="gallery-carousel">
+                <div class="gallery-item" data-geo="1">Hypercube</div>
+                <div class="gallery-item" data-geo="4">Klein Bottle</div>
+                <div class="gallery-item" data-geo="7">Crystal</div>
+                <div class="gallery-item" data-geo="16">Hypertetra</div>
+                <div class="gallery-item" data-geo="20">Fractal Field</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 5: Footer (Faceted) -->
+    <section class="scroll-section footer" data-system="0" data-geo="7">
+        <div class="content fade-in">
+            <h2>VIB3+ SDK</h2>
+            <p>Built autonomously by Claude 3.7 Opus Agents.</p>
+            <a href="https://github.com/vib3/sdk" class="cta-btn">GET THE SDK</a>
+        </div>
+    </section>
+
+    <script src="app.js"></script>
+</body>
+</html>

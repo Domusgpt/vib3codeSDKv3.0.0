@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIB3+ Weapon Skin Forge</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Left Panel: Controls -->
+        <aside class="panel left-panel">
+            <div class="panel-header">
+                <h2>FORGE CONTROLS</h2>
+            </div>
+            <div class="control-group">
+                <label>WEAPON TYPE</label>
+                <div class="weapon-selector">
+                    <button class="weapon-btn active" data-weapon="knife">KNIFE</button>
+                    <button class="weapon-btn" data-weapon="pistol">PISTOL</button>
+                    <button class="weapon-btn" data-weapon="rifle">RIFLE</button>
+                    <button class="weapon-btn" data-weapon="sniper">SNIPER</button>
+                    <button class="weapon-btn" data-weapon="sword">SWORD</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>SYSTEM</label>
+                <select id="system-select">
+                    <option value="0">FACETED (Geometric)</option>
+                    <option value="1">QUANTUM (Lattice)</option>
+                    <option value="2">HOLOGRAPHIC (Layered)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>GEOMETRY <span id="geo-val">1</span></label>
+                <input type="range" id="geometry" min="0" max="23" value="1" step="1">
+                <div class="value-display" id="geo-name">Hypercube</div>
+            </div>
+
+            <div class="control-group">
+                <label>HUE <span id="hue-val">0.75</span></label>
+                <input type="range" id="hue" min="0" max="1" value="0.75" step="0.01">
+                <div class="gradient-bar hue-bar"></div>
+            </div>
+
+            <div class="control-group">
+                <label>CHAOS <span id="chaos-val">0.05</span></label>
+                <input type="range" id="chaos" min="0" max="1" value="0.05" step="0.01">
+            </div>
+
+            <div class="control-group">
+                <label>DENSITY <span id="density-val">20</span></label>
+                <input type="range" id="density" min="4" max="100" value="20" step="1">
+            </div>
+
+            <div class="control-group">
+                <label>MORPH <span id="morph-val">0.3</span></label>
+                <input type="range" id="morph" min="0" max="2" value="0.3" step="0.01">
+            </div>
+
+            <div class="control-group">
+                <button id="compare-btn" class="action-btn">TOGGLE COMPARISON MODE</button>
+            </div>
+        </aside>
+
+        <!-- Center Panel: Preview -->
+        <main class="panel center-panel">
+            <div class="canvas-container">
+                <canvas id="gl-canvas"></canvas>
+                <div class="overlay-ui">
+                    <div class="weapon-label">ASSAULT RIFLE // DRAGON FIRE</div>
+                </div>
+                <div class="comparison-divider hidden"></div>
+            </div>
+        </main>
+
+        <!-- Right Panel: Presets -->
+        <aside class="panel right-panel">
+            <div class="panel-header">
+                <h2>PRESETS</h2>
+            </div>
+            <div class="presets-list" id="presets-container">
+                <!-- Populated by JS -->
+                <div class="preset-card" data-preset="dragon_fire">
+                    <div class="preset-preview" style="background: linear-gradient(45deg, #ff4d00, #ffcc00)"></div>
+                    <div class="preset-info">
+                        <h3>DRAGON FIRE</h3>
+                        <p>Faceted • Geom 9</p>
+                    </div>
+                </div>
+                <div class="preset-card" data-preset="void_crystal">
+                    <div class="preset-preview" style="background: linear-gradient(45deg, #4d00ff, #cc00ff)"></div>
+                    <div class="preset-info">
+                        <h3>VOID CRYSTAL</h3>
+                        <p>Quantum • Geom 5</p>
+                    </div>
+                </div>
+                <div class="preset-card" data-preset="neon_rain">
+                    <div class="preset-preview" style="background: linear-gradient(45deg, #00ffcc, #00ff4d)"></div>
+                    <div class="preset-info">
+                        <h3>NEON RAIN</h3>
+                        <p>Holographic • Geom 12</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="export-section">
+                <button id="save-preset-btn" class="action-btn secondary">SAVE PRESET</button>
+                <button id="export-skin-btn" class="action-btn primary">EXPORT SKIN</button>
+            </div>
+        </aside>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -152,10 +152,14 @@ struct VIB3Uniforms {
     layerScale: f32,
     layerOpacity: f32,
     _pad1: f32,
-    layerColor: vec3<f32>,
+    layerColorR: f32,
+    layerColorG: f32,
+    layerColorB: f32,
     densityMult: f32,
     speedMult: f32,
-    _pad2: vec3<f32>,
+
+    // Vitality
+    breath: f32,
 };
 `;
 
@@ -178,9 +182,9 @@ fn rotateXZ(angle: f32) -> mat4x4<f32> {
     let c = cos(angle);
     let s = sin(angle);
     return mat4x4<f32>(
-        vec4<f32>(c, 0.0, -s, 0.0),
+        vec4<f32>( c, 0.0, s, 0.0),
         vec4<f32>(0.0, 1.0, 0.0, 0.0),
-        vec4<f32>(s, 0.0, c, 0.0),
+        vec4<f32>(-s, 0.0, c, 0.0),
         vec4<f32>(0.0, 0.0, 0.0, 1.0)
     );
 }

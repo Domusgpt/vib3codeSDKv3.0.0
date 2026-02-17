@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIB3+ Dogfood Gallery</title>
+    <style>
+        body {
+            background-color: #050505;
+            color: #fff;
+            font-family: 'Inter', system-ui, sans-serif;
+            margin: 0;
+            padding: 2rem;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, #a78bfa, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        p.subtitle {
+            color: #94a3b8;
+            margin-bottom: 3rem;
+            font-size: 1.1rem;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        .card {
+            background: #161920;
+            border: 1px solid #2a2e38;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: transform 0.2s, border-color 0.2s;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: #6d28d9;
+        }
+        .preview {
+            height: 200px;
+            background: #0f1115;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+        }
+        .content {
+            padding: 1.5rem;
+        }
+        h2 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.25rem;
+        }
+        p {
+            margin: 0;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .tag {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 99px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 1rem;
+            background: rgba(255,255,255,0.1);
+        }
+        .tag.web { color: #60a5fa; background: rgba(96, 165, 250, 0.1); }
+        .tag.mobile { color: #34d399; background: rgba(52, 211, 153, 0.1); }
+        .tag.tv { color: #fbbf24; background: rgba(251, 191, 36, 0.1); }
+        .tag.tool { color: #f472b6; background: rgba(244, 114, 182, 0.1); }
+    </style>
+</head>
+<body>
+    <h1>Built with VIB3+</h1>
+    <p class="subtitle">Experimental artifacts built autonomously by AI agents using the VIB3+ SDK.</p>
+
+    <div class="grid">
+        <a href="weapon-skins/index.html" class="card">
+            <div class="preview">⚔️</div>
+            <div class="content">
+                <h2>Weapon Skin Forge</h2>
+                <p>A modding tool for gaming skins. Features SDF masking, edge glow, and preset management.</p>
+                <span class="tag tool">TOOLING</span>
+            </div>
+        </a>
+
+        <a href="scroll-site/index.html" class="card">
+            <div class="preview">📜</div>
+            <div class="content">
+                <h2>The Fourth Dimension</h2>
+                <p>Scroll-driven storytelling site. Features parallax parameter mapping and system transitions.</p>
+                <span class="tag web">CREATIVE WEB</span>
+            </div>
+        </a>
+
+        <a href="flutter-viz/REPORT_2_BUILD.md" class="card">
+            <div class="preview">📱</div>
+            <div class="content">
+                <h2>Flutter Music Viz</h2>
+                <p>Native mobile app with WebView renderer. Hybrid architecture for audio reactivity.</p>
+                <span class="tag mobile">MOBILE APP</span>
+            </div>
+        </a>
+
+        <a href="samsung-tv/index.html" class="card">
+            <div class="preview">📺</div>
+            <div class="content">
+                <h2>Samsung TV Visualizer</h2>
+                <p>Ambient display for Tizen. 10-foot UI optimized for remote control input.</p>
+                <span class="tag tv">SMART TV</span>
+            </div>
+        </a>
+    </div>
+</body>
+</html>

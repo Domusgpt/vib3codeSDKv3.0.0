@@ -48,7 +48,7 @@ The mathematical foundation using Clifford algebra Cl(4,0).
 | `cpp/tests/` | Unit tests (Rotor4D, Mat4x4, Vec4, Projection, Geometry) |
 ## The Three Visualization Systems
 
-VIB3+ has three active rendering systems. Each one takes the same 24 geometries and 6D rotation math but renders them with a completely different visual approach:
+VIB3+ has three active rendering systems. Each one takes the same 24 geometry variants and 6D rotation math but renders them with a completely different visual approach:
 
 ### Quantum (`src/quantum/`)
 **The dense, complex one.** Renders quantum-inspired lattice patterns — think crystalline interference, energy fields, particle grids. Uses a single procedural fragment shader that generates complex visual structures entirely on the GPU. Best for abstract, high-density visualizations with a scientific/mathematical feel.
@@ -65,14 +65,16 @@ VIB3+ has three active rendering systems. Each one takes the same 24 geometries 
 
 ## Core Concepts
 
-### 24 Geometries
-Every system renders 24 geometry variants, encoded as:
+### 24 Geometry Variants
+Every system renders 24 geometry variants — 8 base shapes × 3 4D warp modes:
 ```
 index = coreType * 8 + baseGeometry
 ```
-- **8 base geometries** (0-7): Tetrahedron, Hypercube, Sphere, Torus, Klein Bottle, Fractal, Wave, Crystal
-- **3 core warps** (0-2): Base (no warp), Hypersphere (S³ projection), Hypertetrahedron (pentatope warp)
-- Total: 8 bases × 3 warps = 24 variants per system
+- **8 base shapes** (0-7): Tetrahedron, Hypercube, Sphere, Torus, Klein Bottle, Fractal, Wave, Crystal
+- **3 warp modes** (0-2): Base (no warp), Hypersphere (S³ projection), Hypertetrahedron (pentatope warp)
+- Total: 8 shapes × 3 warps = 24 variants per system
+
+Each base shape uses a distinct lattice/SDF function. The warp modes apply continuous 4D deformations before projection, producing visually different results especially at higher morphFactor and dimension values.
 
 ### 6D Rotation
 Objects exist in 4D space (X, Y, Z, W). Rotation happens in six independent planes:
@@ -138,6 +140,13 @@ Build WASM core (requires Emscripten): `cd cpp && ./build.sh`
 - LayerPresetManager + LayerReactivityBridge for preset save/load/tune + input-driven modulation (Feb 15)
 - 5 new MCP layer control tools: set_layer_profile, set_layer_relationship, etc. (Feb 15)
 - Test expansion: 933 → 1762 tests (+89% increase, Feb 6-15)
+- Architecture fixes: QuantumVisualizer canvasId bug, Holographic uniform standardization (Feb 16)
+- Shader consistency: rotateXZ sign convention aligned across all shader sources (Feb 16)
+- Quantum layer detection: fixed 3/5 broken layers (role-intensity values mismatched) (Feb 16)
+- Holographic cleanup: removed mapParameterName() translation layer (Feb 16)
+- Tetrahedron lattice differentiation using tetrahedral symmetry planes (Feb 16)
+- ShaderLoader include resolution system for shader composition (Feb 16)
+- Documentation: SYSTEM_INVENTORY and MASTER_PLAN tool/test counts updated (Feb 16)
 
 ### Warp Functions (`src/geometry/warp/`)
 **What's shipping next** (Q1-Q2 2026):
@@ -147,8 +156,8 @@ Build WASM core (requires Emscripten): `cd cpp && ./build.sh`
 - WebGPU as primary renderer
 
 **Key gaps**:
-- WebGPU backend needs full shader pipeline
-- Some DOCS/ files are stale (MASTER_PLAN, SYSTEM_INVENTORY — see below)
+- WebGPU backend architecturally complete but needs end-to-end validation
+- Inline shader duplication (~240 lines rotation/warp) could be further consolidated via ShaderLib
 
 See `DOCS/ROADMAP.md` for the full quarterly plan and `DOCS/STATUS.md` for release metadata.
 
@@ -163,10 +172,11 @@ Don't dig through source code when there's already a doc for it. The `DOCS/` dir
 | **Gold Standard v3 (creative vocabulary)** | `examples/dogfood/GOLD_STANDARD.md` — Motion vocabulary (14 motions), coordination grammar (7 patterns), composition framework (6 bridges), 3-mode parameter model, EMA smoothing |
 | **Codex (reference implementations)** | `examples/codex/` — Multiple annotated VIB3+ examples showing different creative approaches |
 | **Full architecture & module inventory** | `DOCS/SYSTEM_INVENTORY.md` — canonical reference (stale: says 12 tools, it's 31) |
+| **Full architecture & module inventory** | `DOCS/SYSTEM_INVENTORY.md` — canonical reference (tool count updated to 36, Feb 16) |
 | **Product strategy & personas** | `DOCS/PRODUCT_STRATEGY.md` |
 | **Quarterly roadmap & milestones** | `DOCS/ROADMAP.md` |
 | **Licensing & commercial model** | `DOCS/LICENSING_TIERS.md` |
-| **Master plan (what's done, what's not)** | `DOCS/MASTER_PLAN_2026-01-31.md` (stale: pre-Feb completions) |
+| **Master plan (what's done, what's not)** | `DOCS/MASTER_PLAN_2026-01-31.md` (tool/test counts updated Feb 16) |
 | **All parameter details & UI controls** | `DOCS/CONTROL_REFERENCE.md` |
 | **Project setup from scratch** | `DOCS/PROJECT_SETUP.md` + `DOCS/ENV_SETUP.md` |
 | **CI/CD & testing** | `DOCS/CI_TESTING.md` |
@@ -453,7 +463,7 @@ Vib3-CORE-Documented01-/
 7. **WASM is optional** — Engine falls back to JS math if `.wasm` isn't available.
 8. **WebGPU is optional** — Falls back to WebGL.
 9. **ESM only** — `"type": "module"` in package.json. Do NOT use `require()` — it will throw `ReferenceError`.
-10. **36 MCP tools, not 12** — DOCS/SYSTEM_INVENTORY.md is stale. Check `src/agent/mcp/tools.js` for the real count.
+10. **36 MCP tools, not 12** — DOCS/SYSTEM_INVENTORY.md updated to 36 (Feb 16). Canonical source is `src/agent/mcp/tools.js`.
 11. **Layer relationships default to 'holographic' profile** — The `legacy` profile replicates the old static multiplier behavior if you need it.
 12. **`initialize()` checks `switchSystem()` return** — As of Feb 15, `VIB3Engine.initialize()` returns `false` if the initial system fails to create. Check the return value.
 13. **Hue 0-360 (JS/API) vs 0-1 (GLSL)** — The JS API and MCP tools use hue 0-360. Shaders use hue 0-1 internally. Convert at the boundary: `u_hue = hue / 360.0`. Never pass 0-360 directly to a shader uniform.
@@ -616,6 +626,20 @@ Agents building VIB3+ experiences should follow this workflow:
 - Gold Standard v3: `examples/dogfood/GOLD_STANDARD.md`
 - Codex gallery: `examples/codex/`
 - Synesthesia (golden reference): `examples/codex/synesthesia/`
+## Recent Session Work (Feb 16, 2026)
+
+**Branch**: `claude/vib3-sdk-handoff-p00R8`
+**Dev track**: `DOCS/dev-tracks/DEV_TRACK_SESSION_2026-02-16.md`
+
+### What was built/fixed
+1. **Quantum layer detection bug** — 3 of 5 canvas layers were broken (shader float comparisons used wrong values). Fixed with epsilon comparison and aligned values to JS ROLE_INTENSITIES constant.
+2. **Holographic uniform standardization** — Renamed `u_density`→`u_gridDensity`, `u_morph`→`u_morphFactor`, `u_geometryType`→`u_geometry` in shader, JS lookups, and variantParams. Removed `mapParameterName()` translation layer.
+3. **Tetrahedron lattice differentiation** — Geometry 0 (tetrahedron) now uses tetrahedral symmetry planes instead of the same lattice as geometry 1 (hypercube). Applied to GLSL, WGSL, and external shader files.
+4. **rotateXZ sign convention** — External shader files (ShaderLib, rotation4d.glsl/wgsl, WebGPUBackend, WebGPURenderer.ts) had opposite sign convention from inline code. Aligned all to match working inline convention.
+5. **Shader include infrastructure** — Added `resolveIncludes()` and `loadAndResolve()` to ShaderLoader. Added warp functions to external geometry24.glsl/wgsl.
+6. **QuantumVisualizer canvasId fix** — 6 references to undefined `canvasId` variable replaced with `this._canvasLabel`.
+7. **WebGPU WGSL uniform alignment** — Fixed vec3→3×f32 in all WGSL struct definitions to match `packVIB3Uniforms()` layout.
+8. **Documentation updates** — SYSTEM_INVENTORY tool count 12→36, MASTER_PLAN tool/test counts updated, CLAUDE.md refreshed.
 
 ---
 

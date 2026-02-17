@@ -160,10 +160,16 @@ const FRAGMENT_SHADER_GLSL = `
         int geomType = int(clamp(floor(baseGeomFloat + 0.5), 0.0, totalBase - 1.0));
 
         if (geomType == 0) {
-            // Tetrahedron lattice
-            vec4 pos = fract(p * u_gridDensity * 0.08);
-            vec4 dist = min(pos, 1.0 - pos);
-            return min(min(dist.x, dist.y), min(dist.z, dist.w)) * u_morphFactor;
+            // Tetrahedron lattice — tetrahedral symmetry planes
+            float d = u_gridDensity * 0.08;
+            vec3 c1 = normalize(vec3(1.0, 1.0, 1.0));
+            vec3 c2 = normalize(vec3(-1.0, -1.0, 1.0));
+            vec3 c3 = normalize(vec3(-1.0, 1.0, -1.0));
+            vec3 c4 = normalize(vec3(1.0, -1.0, -1.0));
+            vec3 q = fract(p.xyz * d + 0.5) - 0.5;
+            float minPlane = min(min(abs(dot(q, c1)), abs(dot(q, c2))),
+                                 min(abs(dot(q, c3)), abs(dot(q, c4))));
+            return (1.0 - smoothstep(0.0, 0.05, minPlane)) * u_morphFactor;
         }
         else if (geomType == 1) {
             // Hypercube lattice
@@ -429,8 +435,15 @@ fn geometryFunction_w(p: vec4<f32>) -> f32 {
     let gt = i32(clamp(floor(baseFloat + 0.5), 0.0, 7.0));
     let d = u.gridDensity * 0.08;
     if (gt == 0) {
-        let pos = fract(p * d); let dist = min(pos, 1.0 - pos);
-        return min(min(dist.x, dist.y), min(dist.z, dist.w)) * u.morphFactor;
+        // Tetrahedron — tetrahedral symmetry planes
+        let c1 = normalize(vec3<f32>(1.0, 1.0, 1.0));
+        let c2 = normalize(vec3<f32>(-1.0, -1.0, 1.0));
+        let c3 = normalize(vec3<f32>(-1.0, 1.0, -1.0));
+        let c4 = normalize(vec3<f32>(1.0, -1.0, -1.0));
+        let q = fract(p.xyz * d + 0.5) - 0.5;
+        let minPlane = min(min(abs(dot(q, c1)), abs(dot(q, c2))),
+                           min(abs(dot(q, c3)), abs(dot(q, c4))));
+        return (1.0 - smoothstep(0.0, 0.05, minPlane)) * u.morphFactor;
     } else if (gt == 1) {
         let pos = fract(p * d); let dist = min(pos, 1.0 - pos);
         return min(min(dist.x, dist.y), min(dist.z, dist.w)) * u.morphFactor;
