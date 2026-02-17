@@ -208,4 +208,75 @@ describe('Vec4', () => {
             expect(a.distanceTo(b)).toBe(1);
         });
     });
+
+    describe('memory optimization', () => {
+        it('add uses target vector', () => {
+            const a = new Vec4(1, 2, 3, 4);
+            const b = new Vec4(5, 6, 7, 8);
+            const target = new Vec4();
+            const result = a.add(b, target);
+            expect(result).toBe(target);
+            expect(result.x).toBe(6);
+            expect(result.y).toBe(8);
+        });
+
+        it('add handles aliasing', () => {
+            const a = new Vec4(1, 2, 3, 4);
+            const b = new Vec4(1, 1, 1, 1);
+            const result = a.add(b, a);
+            expect(result).toBe(a);
+            expect(a.x).toBe(2);
+        });
+
+        it('sub uses target vector', () => {
+            const a = new Vec4(5, 6, 7, 8);
+            const b = new Vec4(1, 2, 3, 4);
+            const target = new Vec4();
+            const result = a.sub(b, target);
+            expect(result).toBe(target);
+            expect(result.x).toBe(4);
+        });
+
+        it('multiply uses target vector', () => {
+            const a = new Vec4(2, 2, 2, 2);
+            const b = new Vec4(3, 3, 3, 3);
+            const target = new Vec4();
+            const result = a.multiply(b, target);
+            expect(result).toBe(target);
+            expect(result.x).toBe(6);
+        });
+
+        it('scale uses target vector', () => {
+            const v = new Vec4(1, 2, 3, 4);
+            const target = new Vec4();
+            const result = v.scale(2, target);
+            expect(result).toBe(target);
+            expect(result.x).toBe(2);
+        });
+
+        it('negate uses target vector', () => {
+            const v = new Vec4(1, 2, 3, 4);
+            const target = new Vec4();
+            const result = v.negate(target);
+            expect(result).toBe(target);
+            expect(result.x).toBe(-1);
+        });
+
+        it('normalize uses target vector', () => {
+            const v = new Vec4(10, 0, 0, 0);
+            const target = new Vec4();
+            const result = v.normalize(target);
+            expect(result).toBe(target);
+            expect(result.x).toBe(1);
+        });
+
+        it('lerp uses target vector', () => {
+            const a = new Vec4(0, 0, 0, 0);
+            const b = new Vec4(2, 4, 6, 8);
+            const target = new Vec4();
+            const result = a.lerp(b, 0.5, target);
+            expect(result).toBe(target);
+            expect(result.x).toBe(1);
+        });
+    });
 });

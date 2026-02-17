@@ -157,10 +157,11 @@ export class Mat4x4 {
     /**
      * Multiply two matrices
      * @param {Mat4x4} m - Right operand
+     * @param {Mat4x4} [target=null] - Optional target matrix to store result
      * @returns {Mat4x4} New matrix = this * m
      */
-    multiply(m) {
-        const out = new Mat4x4();
+    multiply(m, target = null) {
+        const out = target || new Mat4x4();
         const r = out.data;
         const a = this.data;
         const b = m.data;
@@ -259,16 +260,22 @@ export class Mat4x4 {
     /**
      * Transform a Vec4 by this matrix
      * @param {Vec4} v
+     * @param {Vec4} [target=null] - Optional target vector to store result
      * @returns {Vec4} Transformed vector
      */
-    multiplyVec4(v) {
+    multiplyVec4(v, target = null) {
         const m = this.data;
-        return new Vec4(
-            m[0] * v.x + m[4] * v.y + m[8] * v.z + m[12] * v.w,
-            m[1] * v.x + m[5] * v.y + m[9] * v.z + m[13] * v.w,
-            m[2] * v.x + m[6] * v.y + m[10] * v.z + m[14] * v.w,
-            m[3] * v.x + m[7] * v.y + m[11] * v.z + m[15] * v.w
-        );
+        const out = target || new Vec4();
+
+        // Cache components to support aliasing (target === v)
+        const x = v.x, y = v.y, z = v.z, w = v.w;
+
+        out.x = m[0] * x + m[4] * y + m[8] * z + m[12] * w;
+        out.y = m[1] * x + m[5] * y + m[9] * z + m[13] * w;
+        out.z = m[2] * x + m[6] * y + m[10] * z + m[14] * w;
+        out.w = m[3] * x + m[7] * y + m[11] * z + m[15] * w;
+
+        return out;
     }
 
     /**
@@ -310,27 +317,36 @@ export class Mat4x4 {
     /**
      * Add another matrix
      * @param {Mat4x4} m
+     * @param {Mat4x4} [target=null] - Optional target matrix
      * @returns {Mat4x4} New matrix
      */
-    add(m) {
-        const result = new Float32Array(16);
+    add(m, target = null) {
+        const out = target || new Mat4x4();
+        const r = out.data;
+        const a = this.data;
+        const b = m.data;
+
         for (let i = 0; i < 16; i++) {
-            result[i] = this.data[i] + m.data[i];
+            r[i] = a[i] + b[i];
         }
-        return new Mat4x4(result);
+        return out;
     }
 
     /**
      * Multiply by scalar
      * @param {number} s
+     * @param {Mat4x4} [target=null] - Optional target matrix
      * @returns {Mat4x4} New matrix
      */
-    scale(s) {
-        const result = new Float32Array(16);
+    scale(s, target = null) {
+        const out = target || new Mat4x4();
+        const r = out.data;
+        const a = this.data;
+
         for (let i = 0; i < 16; i++) {
-            result[i] = this.data[i] * s;
+            r[i] = a[i] * s;
         }
-        return new Mat4x4(result);
+        return out;
     }
 
     /**
