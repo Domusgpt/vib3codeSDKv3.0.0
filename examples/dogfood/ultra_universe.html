@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIB3+ Ultra: Universe Dogfood</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; color: white; font-family: sans-serif; }
+        #ui { position: absolute; top: 10px; left: 10px; z-index: 1000; }
+        button { padding: 8px 16px; margin: 4px; background: rgba(255,255,255,0.2); border: 1px solid white; color: white; cursor: pointer; }
+        button:hover { background: rgba(255,255,255,0.4); }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h1>VIB3+ Ultra Universe</h1>
+        <button id="spawn-hero">Spawn Hero</button>
+        <button id="spawn-villain">Spawn Villain</button>
+        <button id="drama">Trigger Drama</button>
+        <button id="reset">Reset</button>
+    </div>
+
+    <div id="vib3-universe"></div>
+
+    <script type="module">
+        import { VIB3Universe } from '../../src/experimental/VIB3Universe.js';
+
+        const universe = new VIB3Universe('vib3-universe');
+        let hero = null;
+        let villain = null;
+
+        // Start simulation loop
+        universe.start();
+
+        document.getElementById('spawn-hero').onclick = async () => {
+            if (hero) return;
+            hero = await universe.spawnActor({
+                personality: 'heroic',
+                system: 'holographic',
+                geometry: 8, // Hypersphere Core
+                layer: { zIndex: 10, blendMode: 'screen', opacity: 0.8 }
+            });
+            console.log('Hero spawned:', hero);
+        };
+
+        document.getElementById('spawn-villain').onclick = async () => {
+            if (villain) return;
+            villain = await universe.spawnActor({
+                personality: 'glitch',
+                system: 'quantum',
+                geometry: 16, // Hypertetrahedron Core
+                layer: { zIndex: 5, blendMode: 'multiply', opacity: 0.6 }
+            });
+            console.log('Villain spawned:', villain);
+        };
+
+        document.getElementById('drama').onclick = () => {
+            if (hero) hero.emote('anger', 1.0);
+            if (villain) villain.emote('panic', 1.0);
+        };
+
+        document.getElementById('reset').onclick = () => {
+            if (hero) hero.reset();
+            if (villain) villain.reset();
+        };
+
+        // Auto-spawn for immediate gratification
+        setTimeout(() => document.getElementById('spawn-hero').click(), 500);
+        setTimeout(() => document.getElementById('spawn-villain').click(), 1500);
+
+    </script>
+</body>
+</html>

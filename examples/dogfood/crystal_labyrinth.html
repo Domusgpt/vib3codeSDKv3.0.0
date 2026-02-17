@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIB3+ Ultra: Crystal Labyrinth</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; color: white; font-family: 'Courier New', monospace; }
+
+        #hud {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+
+        #top-bar { padding: 20px; display: flex; justify-content: space-between; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); }
+        #bottom-bar { padding: 20px; text-align: center; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); }
+
+        .stat { font-size: 24px; text-shadow: 0 0 10px cyan; }
+        .health-bar { width: 200px; height: 10px; background: #333; border: 1px solid #555; }
+        .health-fill { width: 100%; height: 100%; background: #0f0; transition: width 0.2s, background 0.2s; }
+
+        #reticle {
+            position: absolute; top: 50%; left: 50%;
+            width: 20px; height: 20px;
+            transform: translate(-50%, -50%);
+            border: 2px solid rgba(255,255,255,0.5);
+            border-radius: 50%;
+        }
+
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex; align-items: center; justify-content: center;
+            flex-direction: column;
+            pointer-events: auto;
+        }
+
+        button {
+            padding: 15px 30px; font-size: 20px; background: transparent; border: 2px solid cyan; color: cyan;
+            text-transform: uppercase; letter-spacing: 2px; cursor: pointer; transition: all 0.3s;
+        }
+        button:hover { background: cyan; color: black; box-shadow: 0 0 20px cyan; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <!-- The VIB3 Universe Container -->
+    <div id="vib3-universe"></div>
+
+    <!-- HUD -->
+    <div id="hud">
+        <div id="top-bar">
+            <div class="stat">CRYSTALS: <span id="score">0</span>/5</div>
+            <div>
+                <div class="health-bar"><div id="health" class="health-fill"></div></div>
+            </div>
+        </div>
+        <div id="reticle"></div>
+        <div id="bottom-bar">WASD to Move • Mouse to Look • QE to Rotate 4D</div>
+    </div>
+
+    <!-- Menu Overlay -->
+    <div id="overlay">
+        <h1 style="font-size: 60px; text-shadow: 0 0 20px cyan; margin-bottom: 10px;">CRYSTAL LABYRINTH</h1>
+        <p style="margin-bottom: 40px; color: #aaa;">A VIB3+ Ultra Experience</p>
+        <button id="start-btn">Enter Labyrinth</button>
+    </div>
+
+    <script type="module" src="../../src/experimental/demos/CrystalLabyrinth.js"></script>
+</body>
+</html>
