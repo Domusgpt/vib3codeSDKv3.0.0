@@ -15,7 +15,7 @@ dependencies:
     sdk: flutter
 
   # WebView for rendering VIB3+ WebGL shaders
-  webview_flutter: ^4.10.0
+  webview_flutter: ^4.8.0
 
   # Audio capture for microphone input
   record: ^5.1.2
