@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VIB3+ Synesthesia — Flagship SDK Example</title>
+  <link rel="stylesheet" href="synesthesia.css">
+</head>
+<body>
+
+  <!-- Primary Visualizer: Full viewport -->
+  <div id="primary-viz"></div>
+
+  <!-- Secondary Visualizer: Floating panel -->
+  <div id="secondary-viz"></div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="system-label" id="sysLabel">FACETED</div>
+    <div class="geo-label" id="geoLabel">Hypercube [1]</div>
+    <div class="coordination-label" id="secLabel">2nd: QUANTUM</div>
+    <div class="mode-label" id="modeLabel">active</div>
+    <div class="fps-label" id="fpsLabel">-- fps</div>
+  </div>
+
+  <!-- Audio Meter (8 bands) -->
+  <div id="meter">
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+  </div>
+
+  <!-- Controls Hint (auto-hides after 6s) -->
+  <div id="hint">
+    tap:burst &bull; long-press:crystallize &bull; swipe:geo &bull; scroll:4D &bull;
+    1/2/3:system &bull; 4:2nd-sys &bull; c:color &bull; space:freeze &bull; f:fullscreen &bull;
+    hover-panel:approach
+  </div>
+
+  <!-- Main Module — imports the actual VIB3+ SDK -->
+  <script type="module" src="synesthesia.js"></script>
+
+</body>
+</html>

@@ -14,6 +14,36 @@
 
 ---
 
+## The Three Parameter Modes
+
+Every VIB3+ parameter exists in **three simultaneous modes**. Understanding these modes is the philosophical foundation — Section A below provides the concrete vocabulary.
+
+### Mode 1: Continuous Mapping
+Parameters are **functions of input state**, evaluated every frame. Not transitions — living mappings.
+
+`parameter = f(input_state)` — Audio bands → visual params, touch position → rotation, tilt → dimension, scroll → 4D depth.
+
+**The universal smoothing primitive**: `alpha = 1 - Math.exp(-dt / tau)`. Every continuous mapping uses EMA to avoid jumps. Never use `setTimeout` for visual parameter changes.
+
+### Mode 2: Event Choreography
+Discrete events trigger **Attack/Sustain/Release** envelopes:
+- Tap → chaos burst (spike 0→0.9, decay over 500ms via EMA)
+- System switch → crossfade (drain old / flood new over 1200ms)
+- Beat detection → intensity flash (150ms attack, 2000ms release)
+
+**Timing asymmetry** is essential: approach is faster than retreat (1:2 ratio). Explosion attack is faster than settle (1:13 ratio). This is what makes motions feel physical.
+
+### Mode 3: Ambient Drift
+Parameters breathe and drift **without input**:
+- **Heartbeat**: `morphFactor += 0.15 * sin(t / 4)`, `intensity += 0.08 * sin(t / 2)` (2x harmonic)
+- **Phase diversity**: `phase = elementIndex * 2.399` (golden angle) prevents mechanical unison
+- **Frozen drift**: Prime-number periods (7s, 11s, 13s, 17s, 19s) create non-repeating slow evolution
+- **Resting state is never still**: Every element should have at minimum a Heartbeat when idle
+
+The motions in Section A below are the **vocabulary**. The coordination patterns in Section B are the **grammar**. Understanding these three modes tells you HOW to combine them.
+
+---
+
 ## A. The Motion Language — Multi-Parameter Compound Sweeps
 
 Every VIB3+ "motion" is a **coordinated multi-parameter sweep** that produces a recognizable physical effect. Single-parameter animation is meaningless — density without intensity is nothing. Rotation without speed is dead. These motions are the **words** of the VIB3+ language. Sections B–D are the grammar.
@@ -1438,6 +1468,43 @@ From MULTIVIZ §5 — the functions that create emergent patterns when applied a
 
 **Exponential Crescendo + Logarithmic Calm** (§5E): `build = progress³` (slow start, explosive finish). `calm = 1 - (1-progress)³` (fast relief, slow settle). For dramatic build-up sequences.
 
+### EMA Smoothing — The Universal Primitive
+
+Every continuous mapping (Mode 1) uses Exponential Moving Average to avoid jumps:
+
+```javascript
+alpha = 1 - Math.exp(-dt / tau)
+value = value + (target - value) * alpha
+```
+
+**Reference tau values** (seconds — lower = faster response):
+
+| Parameter | tau | Why |
+|-----------|-----|-----|
+| speed | 0.08 | Most responsive — speed changes should feel immediate |
+| gridDensity | 0.10 | Fast — density = distance metaphor, should track input |
+| chaos | 0.10 | Fast — turbulence responds quickly |
+| morphFactor | 0.12 | Medium — shape changes need smoothing |
+| intensity | 0.12 | Medium — brightness changes are noticeable |
+| saturation | 0.15 | Medium-slow — color vividness shifts gradually |
+| rotation | 0.12-0.20 | Medium — rotation velocity changes need momentum |
+| dimension | 0.20 | Slow — 4D projection distance is heavy, dramatic |
+| hue | 0.25 | Slowest — hue shifts should be gradual, never jarring |
+
+**Use EMA for continuous mappings (Mode 1). Use TransitionAnimator for event choreography (Mode 2).**
+
+### Per-System Creative Personality
+
+When switching systems, change parameter RANGES — not just the shader. Each system has a natural character:
+
+| System | gridDensity | speed | chaos | dimension | Character |
+|--------|------------|-------|-------|-----------|-----------|
+| Faceted | 15-35 | 0.3-0.8 | 0.0-0.15 | 3.6-4.0 | Clean, precise, geometric |
+| Quantum | 25-60 | 0.5-1.5 | 0.1-0.4 | 3.2-3.8 | Dense, crystalline, mathematical |
+| Holographic | 20-50 | 0.4-1.2 | 0.05-0.3 | 3.4-4.2 | Atmospheric, layered, ethereal |
+
+On system switch: transition base parameters to the new personality range over 800ms using TransitionAnimator. A system switch that only changes the shader looks broken — the quantum lattice at faceted's low chaos looks wrong.
+
 ---
 
 ## G. Agent Design Patterns
@@ -1513,8 +1580,28 @@ Before shipping, verify:
 - [ ] **Hierarchy maintained**: Does foreground react faster and stronger than background?
 - [ ] **Never still**: Does every idle element have a Heartbeat?
 
+### Design-Analyze-Enhance Loop
+
+Complementary to the 6-step narrative workflow above — this loop operates during implementation:
+
+1. **Design** — After absorbing the Gold Standard vocabulary, plan parameter timelines and input mappings for YOUR platform and audience. Choose which motions, coordination patterns, and bridges to use.
+
+2. **Analyze** — Self-evaluate the implementation:
+   - Is 4D rotation visible? (XW/YW/ZW axes should have non-zero base velocity)
+   - Do events feel distinct from ambient? (Burst vs Heartbeat should be clearly different)
+   - Is audio reactivity noticeable? (Parameters should visibly respond to audio input)
+   - Are the three modes visually distinguishable?
+   - Does timing asymmetry feel physical? (Approach faster than Retreat)
+
+3. **Enhance** — Find emergent combinations:
+   - What if audio onset triggers a burst while heartbeat is running?
+   - What if scroll depth drives 4D rotation while hover drives Approach?
+   - Layer the three modes together. The magic is in the interactions.
+
+**Reference implementations**: See `examples/codex/` for annotated examples that demonstrate different creative approaches. The synesthesia entry (`examples/codex/synesthesia/`) is the golden reference showing the full vocabulary in action.
+
 ---
 
 *VIB3+ SDK — Clear Seas Solutions LLC*
-*Gold Standard Specification v2.0 — Feb 16, 2026*
+*Gold Standard Specification v2.0+v3 — Feb 17, 2026*
 *Built on: MULTIVIZ_CHOREOGRAPHY_PATTERNS.md, EXPANSION_DESIGN.md, TransitionAnimator API*

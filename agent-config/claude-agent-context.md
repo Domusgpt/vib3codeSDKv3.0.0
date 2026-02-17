@@ -92,6 +92,43 @@ Geometry 11 = hypersphere(1) * 8 + torus(3) = index 11.
 {"tool": "control_timeline", "args": {"timeline_id": "<id>", "action": "play"}}
 ```
 
+## Creative Quality Framework (Gold Standard v3)
+
+Every VIB3+ visualization should exhibit **three simultaneous parameter modes**:
+
+### Mode 1: Continuous Mapping
+Parameters are functions of input state, evaluated every frame — not transitions.
+- Audio bands → visual params (bass→density, mid→chaos, high→speed)
+- Touch/tilt/scroll → rotation, dimension, morph
+- Use EMA smoothing: `alpha = 1 - Math.exp(-dt / tau)` (never setTimeout)
+
+### Mode 2: Event Choreography
+Discrete events trigger Attack/Sustain/Release sequences:
+- Tap → chaos spike (0→0.9→0.1 over 500ms)
+- System switch → opacity crossfade (1200ms)
+- Beat detection → intensity flash
+
+### Mode 3: Ambient Drift
+Parameters breathe without input:
+- Heartbeat: `morphFactor += 0.15 * sin(t / 4)`, `intensity += 0.08 * sin(t / 2)`
+- Frozen drift: prime-number periods (7s, 11s, 13s) prevent mechanical loops
+
+### Design-Analyze-Enhance Loop
+1. **Design** — Plan your parameter timeline and input mappings
+2. **Analyze** — Is 4D rotation visible? Do events feel distinct? Is audio reactivity noticeable?
+3. **Enhance** — Layer the three modes. Find emergent combinations
+
+### Per-System Personality
+| System | gridDensity | speed | chaos | Character |
+|--------|------------|-------|-------|-----------|
+| Faceted | 15-35 | 0.3-0.8 | 0.0-0.15 | Clean, precise |
+| Quantum | 25-60 | 0.5-1.5 | 0.1-0.4 | Dense, crystalline |
+| Holographic | 20-50 | 0.4-1.2 | 0.05-0.3 | Atmospheric, layered |
+
+**Full reference**: `examples/dogfood/GOLD_STANDARD.md` (Gold Standard v3)
+**Annotated example**: `examples/codex/synesthesia/` (golden reference implementation)
+**Codex gallery**: `examples/codex/` (multiple reference implementations)
+
 ## Aesthetic Vocabulary (for design_from_description)
 
 **Emotions**: serene, calm, peaceful, energetic, chaotic, mysterious, joyful, melancholic, angry, dreamy

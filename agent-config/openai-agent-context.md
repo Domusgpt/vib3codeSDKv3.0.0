@@ -151,6 +151,18 @@ These can be registered as tools in an OpenAI Assistant or GPT:
 
 Formula: `index = core * 8 + base`
 
+## Creative Quality Framework (Gold Standard v3)
+
+Every VIB3+ visualization should exhibit three simultaneous parameter modes:
+
+1. **Continuous Mapping** — Parameters as functions of input state every frame (audio→density, touch→rotation). Use EMA smoothing: `alpha = 1 - Math.exp(-dt / tau)`.
+2. **Event Choreography** — Discrete events trigger Attack/Sustain/Release sequences (tap→chaos spike, beat→intensity flash).
+3. **Ambient Drift** — Parameters breathe without input. Heartbeat: morph + intensity sine waves at different periods. Use prime-number periods to prevent mechanical loops.
+
+**Design-Analyze-Enhance Loop**: Design your mappings → Analyze (is 4D visible? do events feel distinct?) → Enhance (layer the three modes, find emergent combinations).
+
+**Reference docs**: `examples/dogfood/GOLD_STANDARD.md` (full vocabulary), `examples/codex/synesthesia/` (annotated golden reference).
+
 ## Integration Pattern
 
 ```python
