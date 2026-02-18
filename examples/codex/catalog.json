@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "slug": "synesthesia",
+      "title": "Synesthesia",
+      "status": "active",
+      "input_source": "audio",
+      "creative_direction": "Audio-reactive ambient with dual-engine coordination and autonomous choreography.",
+      "patterns_used": [
+        "Inverse Density Seesaw",
+        "Energy Conservation",
+        "Portal Open",
+        "Approach/Retreat",
+        "CSS Variable Bridge",
+        "Burst/Crystallize/Color Flood"
+      ],
+      "gold_standard_coverage": "high",
+      "difficulty": "intermediate",
+      "runtime_requirements": [
+        "WebGL/WebGPU capable browser",
+        "Microphone optional"
+      ],
+      "mcp_labs": "synesthesia/mcp-labs/",
+      "run_href": "synesthesia/",
+      "read_href": "synesthesia/README.md",
+      "coverage_href": "synesthesia/gold-standard-coverage.md"
+    },
+    {
+      "slug": "narrative-scroll",
+      "title": "Narrative Scroll",
+      "status": "active",
+      "input_source": "scroll",
+      "creative_direction": "Section-driven narrative choreography with pooled multi-system runtime transitions.",
+      "patterns_used": [
+        "Narrative Arc",
+        "Scroll Depth Tunnel",
+        "Section Veils",
+        "Phase Shift Bridges"
+      ],
+      "gold_standard_coverage": "medium",
+      "difficulty": "intermediate",
+      "runtime_requirements": [
+        "WebGL/WebGPU capable browser"
+      ],
+      "mcp_labs": null,
+      "run_href": "narrative-scroll/",
+      "read_href": "narrative-scroll/README.md",
+      "coverage_href": null
+    },
+    {
+      "slug": "storm-glass",
+      "title": "Storm Glass",
+      "status": "planned",
+      "input_source": "weather-api",
+      "creative_direction": "Forecast data drives hue, density, and dimensional drift.",
+      "patterns_used": [
+        "Continuous Mapping",
+        "Narrative Arc"
+      ],
+      "gold_standard_coverage": "planned",
+      "difficulty": "advanced",
+      "runtime_requirements": [
+        "Weather API key"
+      ],
+      "mcp_labs": null,
+      "run_href": null,
+      "read_href": null,
+      "coverage_href": null
+    },
+    {
+      "slug": "pulse-deck",
+      "title": "Pulse Deck",
+      "status": "planned",
+      "input_source": "midi",
+      "creative_direction": "Beat-quantized VJ choreography with hardware controls.",
+      "patterns_used": [
+        "Click Cascade",
+        "Energy Transfer",
+        "Timing Asymmetry"
+      ],
+      "gold_standard_coverage": "planned",
+      "difficulty": "advanced",
+      "runtime_requirements": [
+        "MIDI device"
+      ],
+      "mcp_labs": null,
+      "run_href": null,
+      "read_href": null,
+      "coverage_href": null
+    },
+    {
+      "slug": "meditation",
+      "title": "Meditation",
+      "status": "planned",
+      "input_source": "breath-timer",
+      "creative_direction": "Long-horizon minimalism with low-chaos breath cycles.",
+      "patterns_used": [
+        "Ambient Drift",
+        "Phase Diversity",
+        "Resting State"
+      ],
+      "gold_standard_coverage": "planned",
+      "difficulty": "beginner",
+      "runtime_requirements": [
+        "None"
+      ],
+      "mcp_labs": null,
+      "run_href": null,
+      "read_href": null,
+      "coverage_href": null
+    }
+  ]
+}
