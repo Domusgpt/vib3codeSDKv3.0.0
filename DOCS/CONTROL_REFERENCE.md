@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Control & API Reference
 
 This document walks through every control surface in `index.html` and the JavaScript entry points they call so you can quickly map UI inputs to runtime behavior.

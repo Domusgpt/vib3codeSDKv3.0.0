@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Environment setup (Firebase, gcloud, Flutter, Android, GH CLI)
 
 This doc provides a **copy/paste** bootstrap script to install and configure:

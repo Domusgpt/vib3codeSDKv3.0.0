@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # XR integration benchmarks (draft)
 
 This document captures baseline metrics, targets, and tooling for XR integration work.

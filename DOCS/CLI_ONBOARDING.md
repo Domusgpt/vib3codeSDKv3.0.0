@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Agentic CLI onboarding
 
 This guide aligns the current CLI surface (package scripts and telemetry helpers) with an agentic workflow. It is intentionally explicit so automation agents and humans can share the same runbook.

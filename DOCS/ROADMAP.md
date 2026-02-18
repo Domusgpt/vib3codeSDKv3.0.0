@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Strategic Roadmap
 
 This roadmap maps product strategy goals from [`DOCS/PRODUCT_STRATEGY.md`](./PRODUCT_STRATEGY.md) to technical epics and the primary module ownership areas.

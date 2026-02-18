@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Development Session — 2026-02-16
 
 **Session type**: Architecture Bug Fixes, Shader Consistency, Documentation Sweep

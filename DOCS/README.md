@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Documentation Index
 
 ## Strategy & Planning
@@ -54,7 +56,7 @@ Use these canonical documents first:
 | Architecture | [`DOCS/SYSTEM_INVENTORY.md`](./SYSTEM_INVENTORY.md) | ✅ System boundaries, modules, and capabilities | SDK Architecture | 2026-02-12 |
 | Product Strategy | [`DOCS/LICENSING_TIERS.md`](./LICENSING_TIERS.md) | ✅ Packaging, positioning, and commercial model | Product | 2026-02-12 |
 | Master Plan | [`DOCS/MASTER_PLAN_2026-01-31.md`](./MASTER_PLAN_2026-01-31.md) | ✅ Program-level priorities and sequencing | Program Management | 2026-02-12 |
-| Dev Track | [`DOCS/DEV_TRACK_SESSION_2026-02-06.md`](./DEV_TRACK_SESSION_2026-02-06.md) | ✅ Current implementation log and execution status | Engineering | 2026-02-12 |
+| Dev Track | [`DOCS/DEV_TRACK_SESSION_2026-02-06.md`](./dev-tracks/DEV_TRACK_SESSION_2026-02-06.md) | ✅ Current implementation log and execution status | Engineering | 2026-02-12 |
 
 ## Reading Paths by Persona
 
@@ -70,7 +72,7 @@ Use these canonical documents first:
 2. [`DOCS/REPO_MANIFEST.md`](./REPO_MANIFEST.md)
 3. [`DOCS/SYSTEM_INVENTORY.md`](./SYSTEM_INVENTORY.md)
 4. [`DOCS/MASTER_PLAN_2026-01-31.md`](./MASTER_PLAN_2026-01-31.md)
-5. Latest dev track session (currently [`DOCS/DEV_TRACK_SESSION_2026-02-06.md`](./DEV_TRACK_SESSION_2026-02-06.md))
+5. Latest dev track session (currently [`DOCS/DEV_TRACK_SESSION_2026-02-06.md`](./dev-tracks/DEV_TRACK_SESSION_2026-02-06.md))
 
 ### Product lead
 1. [`DOCS/LICENSING_TIERS.md`](./LICENSING_TIERS.md)
@@ -91,7 +93,7 @@ Use these canonical documents first:
 | Category | Scope | Primary files |
 |---|---|---|
 | Architecture | Runtime model, systems, lifecycles, controls | [`SYSTEM_INVENTORY.md`](./SYSTEM_INVENTORY.md) **(SOT)**, [`RENDERER_LIFECYCLE.md`](./RENDERER_LIFECYCLE.md), [`CONTROL_REFERENCE.md`](./CONTROL_REFERENCE.md), [`GPU_DISPOSAL_GUIDE.md`](./GPU_DISPOSAL_GUIDE.md) |
-| Planning | Strategy, roadmap, execution direction | [`MASTER_PLAN_2026-01-31.md`](./MASTER_PLAN_2026-01-31.md) **(SOT)**, [`DEV_TRACK_SESSION_2026-02-06.md`](./DEV_TRACK_SESSION_2026-02-06.md) **(SOT for active sprint log)**, [`DEV_TRACK_SESSION_2026-01-31.md`](./DEV_TRACK_SESSION_2026-01-31.md), [`LICENSING_TIERS.md`](./LICENSING_TIERS.md) **(SOT for product packaging)** |
+| Planning | Strategy, roadmap, execution direction | [`MASTER_PLAN_2026-01-31.md`](./MASTER_PLAN_2026-01-31.md) **(SOT)**, [`DEV_TRACK_SESSION_2026-02-06.md`](./dev-tracks/DEV_TRACK_SESSION_2026-02-06.md) **(SOT for active sprint log)**, [`DEV_TRACK_SESSION_2026-01-31.md`](./dev-tracks/DEV_TRACK_SESSION_2026-01-31.md), [`LICENSING_TIERS.md`](./LICENSING_TIERS.md) **(SOT for product packaging)** |
 | Operations | Setup, CI, runbooks, observability | [`PROJECT_SETUP.md`](./PROJECT_SETUP.md) **(SOT for project bootstrap)**, [`ENV_SETUP.md`](./ENV_SETUP.md), [`CI_TESTING.md`](./CI_TESTING.md), [`OBS_SETUP_GUIDE.md`](./OBS_SETUP_GUIDE.md), [`TELEMETRY_EXPORTS.md`](./TELEMETRY_EXPORTS.md) |
 | Analysis | Benchmarks, visual analysis, design studies | [`WEBGPU_STATUS.md`](./WEBGPU_STATUS.md), [`XR_BENCHMARKS.md`](./XR_BENCHMARKS.md), [`CROSS_SITE_DESIGN_PATTERNS.md`](./CROSS_SITE_DESIGN_PATTERNS.md), `VISUAL_ANALYSIS_*.md`, [`REFERENCE_SCROLL_ANALYSIS.md`](./REFERENCE_SCROLL_ANALYSIS.md) |
 | Archive | Historical plans and audits retained for traceability | [`archive/`](./archive/) including [`archive/SYSTEM_AUDIT_2026-01-30.md`](./archive/SYSTEM_AUDIT_2026-01-30.md), [`archive/STRATEGIC_BLUEPRINT_2026-01-07.md`](./archive/STRATEGIC_BLUEPRINT_2026-01-07.md), [`archive/SESSION_LOG_2026-01-07.md`](./archive/SESSION_LOG_2026-01-07.md) |

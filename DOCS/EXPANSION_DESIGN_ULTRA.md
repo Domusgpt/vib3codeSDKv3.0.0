@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # VIB3+ Ultra — The Emergent Media Engine
 
 **Purpose**: This document defines the **Ultra Tier** expansion for VIB3+. While the Premium Tier (`EXPANSION_DESIGN.md`) focuses on professional visualization tools, the Ultra Tier transforms the SDK into a **full-stack emergent media engine** capable of powering 4D video games, generative cartoons, and multi-user hallucinations.

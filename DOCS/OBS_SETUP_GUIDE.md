@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # VIB3+ OBS Setup Guide
 
 Use VIB3+ as a live visualization overlay in OBS Studio.

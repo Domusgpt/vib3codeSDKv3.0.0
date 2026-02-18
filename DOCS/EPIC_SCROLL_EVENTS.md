@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # EPIC SCROLL EVENTS — VIB3+ Landing Page Choreography Plan
 
 **20 scroll-driven events that combine GSAP, GPU visualizers, CSS effects, and masking layers

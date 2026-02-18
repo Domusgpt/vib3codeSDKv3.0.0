@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Development Session — 2026-02-06
 
 **Session type**: Full codebase audit + hygiene + MCP server + agent docs + testing

@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # VIB3+ Landing Page & Marketing Handoff Prompt
 
 **Copy this entire document as the initial prompt when starting a new session focused on the landing page, marketing site, and forward-facing aspects.**

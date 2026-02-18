@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # Renderer lifecycle guide
 
 This document describes the renderer lifecycle architecture used by the core visualization systems

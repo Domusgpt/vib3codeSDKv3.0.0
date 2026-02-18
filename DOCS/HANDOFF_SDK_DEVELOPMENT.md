@@ -1,3 +1,5 @@
+Last reviewed: 2026-02-17
+
 # VIB3+ SDK — Comprehensive Agent Handoff
 
 **Copy this entire document as the initial prompt when starting a new session focused on SDK development.**
