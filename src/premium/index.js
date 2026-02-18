@@ -82,60 +82,97 @@ export function enablePremium(engine, options = {}) {
         }
     };
 
+    // Each module is individually try/caught so one broken module doesn't
+    // prevent the rest from loading. Failed modules log a warning and are
+    // left as undefined on the premium context — callers should use
+    // optional chaining (premium.shaderSurface?.setParameters()).
+
     // Module 1: ShaderParameterSurface
     if (enableAll || features.includes('shaderSurface')) {
-        const shaderSurface = new ShaderParameterSurface(engine);
-        premium.shaderSurface = shaderSurface;
-        premium._modules.shaderSurface = shaderSurface;
+        try {
+            const shaderSurface = new ShaderParameterSurface(engine);
+            premium.shaderSurface = shaderSurface;
+            premium._modules.shaderSurface = shaderSurface;
+        } catch (e) {
+            console.warn('[VIB3+ Premium] ShaderParameterSurface failed to initialize:', e.message);
+        }
     }
 
     // Module 2: RotationLockSystem
     if (enableAll || features.includes('rotationLock')) {
-        const rotationLock = new RotationLockSystem(engine);
-        premium.rotationLock = rotationLock;
-        premium._modules.rotationLock = rotationLock;
+        try {
+            const rotationLock = new RotationLockSystem(engine);
+            premium.rotationLock = rotationLock;
+            premium._modules.rotationLock = rotationLock;
+        } catch (e) {
+            console.warn('[VIB3+ Premium] RotationLockSystem failed to initialize:', e.message);
+        }
     }
 
     // Module 3: LayerGeometryMixer
     if (enableAll || features.includes('layerGeometry')) {
-        const layerGeometry = new LayerGeometryMixer(engine);
-        premium.layerGeometry = layerGeometry;
-        premium._modules.layerGeometry = layerGeometry;
+        try {
+            const layerGeometry = new LayerGeometryMixer(engine);
+            premium.layerGeometry = layerGeometry;
+            premium._modules.layerGeometry = layerGeometry;
+        } catch (e) {
+            console.warn('[VIB3+ Premium] LayerGeometryMixer failed to initialize:', e.message);
+        }
     }
 
     // Module 4: VisualEventSystem
     if (enableAll || features.includes('events')) {
-        const events = new VisualEventSystem(engine, premium);
-        premium.events = events;
-        premium._modules.events = events;
+        try {
+            const events = new VisualEventSystem(engine, premium);
+            premium.events = events;
+            premium._modules.events = events;
+        } catch (e) {
+            console.warn('[VIB3+ Premium] VisualEventSystem failed to initialize:', e.message);
+        }
     }
 
     // Module 5: CSSBridge
     if (enableAll || features.includes('cssBridge')) {
-        const cssBridge = new CSSBridge(engine);
-        premium.cssBridge = cssBridge;
-        premium._modules.cssBridge = cssBridge;
+        try {
+            const cssBridge = new CSSBridge(engine);
+            premium.cssBridge = cssBridge;
+            premium._modules.cssBridge = cssBridge;
+        } catch (e) {
+            console.warn('[VIB3+ Premium] CSSBridge failed to initialize:', e.message);
+        }
     }
 
     // Module 6: ChoreographyExtensions
     if (enableAll || features.includes('choreography')) {
-        const choreography = new ChoreographyExtensions(engine, premium);
-        premium.choreography = choreography;
-        premium._modules.choreography = choreography;
+        try {
+            const choreography = new ChoreographyExtensions(engine, premium);
+            premium.choreography = choreography;
+            premium._modules.choreography = choreography;
+        } catch (e) {
+            console.warn('[VIB3+ Premium] ChoreographyExtensions failed to initialize:', e.message);
+        }
     }
 
     // Module 7: FrameworkSync
     if (enableAll || features.includes('frameworkSync')) {
-        const frameworkSync = new FrameworkSync(engine);
-        premium.frameworkSync = frameworkSync;
-        premium._modules.frameworkSync = frameworkSync;
+        try {
+            const frameworkSync = new FrameworkSync(engine);
+            premium.frameworkSync = frameworkSync;
+            premium._modules.frameworkSync = frameworkSync;
+        } catch (e) {
+            console.warn('[VIB3+ Premium] FrameworkSync failed to initialize:', e.message);
+        }
     }
 
     // Module 8: PremiumMCPServer
     if (enableAll || features.includes('mcp')) {
-        const mcp = new PremiumMCPServer(premium, options.baseMCPServer);
-        premium.mcp = mcp;
-        premium._modules.mcp = mcp;
+        try {
+            const mcp = new PremiumMCPServer(premium, options.baseMCPServer);
+            premium.mcp = mcp;
+            premium._modules.mcp = mcp;
+        } catch (e) {
+            console.warn('[VIB3+ Premium] PremiumMCPServer failed to initialize:', e.message);
+        }
     }
 
     // Register as a plugin on the engine
