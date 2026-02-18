@@ -89,15 +89,16 @@ export class Vec4 {
     /**
      * Add another vector (immutable)
      * @param {Vec4} v
-     * @returns {Vec4} New vector
+     * @param {Vec4} [target] - Optional target to write result to
+     * @returns {Vec4} Result vector
      */
-    add(v) {
-        return new Vec4(
-            this.x + v.x,
-            this.y + v.y,
-            this.z + v.z,
-            this.w + v.w
-        );
+    add(v, target = null) {
+        const out = target || new Vec4();
+        out.data[0] = this.data[0] + v.data[0];
+        out.data[1] = this.data[1] + v.data[1];
+        out.data[2] = this.data[2] + v.data[2];
+        out.data[3] = this.data[3] + v.data[3];
+        return out;
     }
 
     /**
@@ -116,15 +117,16 @@ export class Vec4 {
     /**
      * Subtract another vector (immutable)
      * @param {Vec4} v
-     * @returns {Vec4} New vector
+     * @param {Vec4} [target] - Optional target to write result to
+     * @returns {Vec4} Result vector
      */
-    sub(v) {
-        return new Vec4(
-            this.x - v.x,
-            this.y - v.y,
-            this.z - v.z,
-            this.w - v.w
-        );
+    sub(v, target = null) {
+        const out = target || new Vec4();
+        out.data[0] = this.data[0] - v.data[0];
+        out.data[1] = this.data[1] - v.data[1];
+        out.data[2] = this.data[2] - v.data[2];
+        out.data[3] = this.data[3] - v.data[3];
+        return out;
     }
 
     /**
@@ -143,15 +145,16 @@ export class Vec4 {
     /**
      * Multiply by scalar (immutable)
      * @param {number} s
-     * @returns {Vec4} New vector
+     * @param {Vec4} [target] - Optional target to write result to
+     * @returns {Vec4} Result vector
      */
-    scale(s) {
-        return new Vec4(
-            this.x * s,
-            this.y * s,
-            this.z * s,
-            this.w * s
-        );
+    scale(s, target = null) {
+        const out = target || new Vec4();
+        out.data[0] = this.data[0] * s;
+        out.data[1] = this.data[1] * s;
+        out.data[2] = this.data[2] * s;
+        out.data[3] = this.data[3] * s;
+        return out;
     }
 
     /**
@@ -170,23 +173,30 @@ export class Vec4 {
     /**
      * Component-wise multiply (Hadamard product)
      * @param {Vec4} v
-     * @returns {Vec4} New vector
+     * @param {Vec4} [target] - Optional target to write result to
+     * @returns {Vec4} Result vector
      */
-    multiply(v) {
-        return new Vec4(
-            this.x * v.x,
-            this.y * v.y,
-            this.z * v.z,
-            this.w * v.w
-        );
+    multiply(v, target = null) {
+        const out = target || new Vec4();
+        out.data[0] = this.data[0] * v.data[0];
+        out.data[1] = this.data[1] * v.data[1];
+        out.data[2] = this.data[2] * v.data[2];
+        out.data[3] = this.data[3] * v.data[3];
+        return out;
     }
 
     /**
      * Negate vector (immutable)
-     * @returns {Vec4} New vector
+     * @param {Vec4} [target] - Optional target to write result to
+     * @returns {Vec4} Result vector
      */
-    negate() {
-        return new Vec4(-this.x, -this.y, -this.z, -this.w);
+    negate(target = null) {
+        const out = target || new Vec4();
+        out.data[0] = -this.data[0];
+        out.data[1] = -this.data[1];
+        out.data[2] = -this.data[2];
+        out.data[3] = -this.data[3];
+        return out;
     }
 
     /**
@@ -246,14 +256,17 @@ export class Vec4 {
 
     /**
      * Normalize to unit length (immutable)
-     * @returns {Vec4} New normalized vector
+     * @param {Vec4} [target] - Optional target to write result to
+     * @returns {Vec4} Result vector
      */
-    normalize() {
+    normalize(target = null) {
         const len = this.length();
         if (len < 1e-10) {
-            return new Vec4(0, 0, 0, 0);
+            const out = target || new Vec4();
+            out.set(0, 0, 0, 0);
+            return out;
         }
-        return this.scale(1 / len);
+        return this.scale(1 / len, target);
     }
 
     /**
@@ -273,15 +286,16 @@ export class Vec4 {
      * Linear interpolation to another vector
      * @param {Vec4} v - Target vector
      * @param {number} t - Interpolation factor (0-1)
-     * @returns {Vec4} New interpolated vector
+     * @param {Vec4} [target] - Optional target to write result to
+     * @returns {Vec4} Result vector
      */
-    lerp(v, t) {
-        return new Vec4(
-            this.x + (v.x - this.x) * t,
-            this.y + (v.y - this.y) * t,
-            this.z + (v.z - this.z) * t,
-            this.w + (v.w - this.w) * t
-        );
+    lerp(v, t, target = null) {
+        const out = target || new Vec4();
+        out.data[0] = this.data[0] + (v.data[0] - this.data[0]) * t;
+        out.data[1] = this.data[1] + (v.data[1] - this.data[1]) * t;
+        out.data[2] = this.data[2] + (v.data[2] - this.data[2]) * t;
+        out.data[3] = this.data[3] + (v.data[3] - this.data[3]) * t;
+        return out;
     }
 
     /**
