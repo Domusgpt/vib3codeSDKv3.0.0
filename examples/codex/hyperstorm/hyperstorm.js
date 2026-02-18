@@ -2,19 +2,18 @@
  * HYPERSTORM — VIB3+ Premium Dogfood (Mobile-First)
  *
  * Touch gestures:
- *   tap (canvas)      → burst
- *   hold 600ms        → crystallize
- *   swipe horizontal  → cycle system
- *   swipe vertical    → cycle geometry
- *   two-finger tap    → portal
- *   pinch in/out      → dimension zoom
- *   dock buttons      → all 8 actions
+ *   tap (canvas)      -> burst
+ *   hold 600ms        -> crystallize
+ *   swipe horizontal  -> cycle system
+ *   swipe vertical    -> cycle geometry
+ *   two-finger tap    -> portal
+ *   pinch in/out      -> dimension zoom
+ *   dock buttons      -> all 8 actions
  *
  * Desktop fallback: keyboard still works (b/c/p/f/d/s/space/x)
  */
 
 import { VIB3Engine } from '../../../src/core/VIB3Engine.js';
-import { enablePremium } from '../../../src/premium/index.js';
 import { TransitionAnimator } from '../../../src/creative/TransitionAnimator.js';
 import { ColorPresetsSystem } from '../../../src/creative/ColorPresetsSystem.js';
 
@@ -63,77 +62,132 @@ function ema(current, target, dt, tau) {
     return current + (target - current) * (1 - Math.exp(-dt / tau));
 }
 function lerp(a, b, t) { return a + (b - a) * t; }
-function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function showError(msg) {
+    console.error('[Hyperstorm]', msg);
+    const el = document.getElementById('error-overlay');
+    if (el) {
+        el.style.display = 'block';
+        el.textContent = msg;
+    }
+}
 
 // ─── Init ───
 
 async function init() {
-    engine = new VIB3Engine({ system: currentSystem });
-    const ok = await engine.initialize('vib3-container');
-    if (!ok) {
-        document.body.innerHTML = '<h1 style="padding:40px;color:red">Engine init failed</h1>';
-        return;
+    try {
+        // Step 1: Create engine
+        engine = new VIB3Engine({ system: currentSystem, preferWebGPU: false });
+
+        // Step 2: Initialize — creates CanvasManager + 5 canvases + system
+        const ok = await engine.initialize('vib3-container');
+        if (!ok) {
+            showError('VIB3Engine.initialize() returned false.\nCheck console for WebGL errors.');
+            return;
+        }
+
+        console.log('[Hyperstorm] Engine initialized, system:', currentSystem);
+
+        // Step 3: Set starting parameters (quantum personality midpoint)
+        const p = PERSONALITY[currentSystem];
+        engine.setParameters({
+            hue: 200, saturation: 0.7, intensity: 0.7,
+            chaos: lerp(p.chaos[0], p.chaos[1], 0.3),
+            speed: lerp(p.speed[0], p.speed[1], 0.4),
+            gridDensity: lerp(p.gridDensity[0], p.gridDensity[1], 0.3),
+            morphFactor: 1.0,
+            dimension: lerp(p.dimension[0], p.dimension[1], 0.5),
+            geometry: 1
+        });
+
+        // Step 4: Creative modules (free SDK)
+        animator = new TransitionAnimator(
+            (name, value) => engine.setParameter(name, value),
+            (name) => engine.getParameter(name)
+        );
+        colorPresets = new ColorPresetsSystem(engine.createParameterCallback());
+
+        // Step 5: Premium — try to activate, but don't die if it fails
+        try {
+            const { enablePremium } = await import('../../../src/premium/index.js');
+            premium = enablePremium(engine, {
+                licenseKey: 'hyperstorm-dogfood-2026',
+                features: ['all']
+            });
+            console.log('[Hyperstorm] Premium activated:', premium.getEnabledFeatures());
+            initPremiumModules();
+        } catch (premErr) {
+            console.warn('[Hyperstorm] Premium modules unavailable:', premErr.message);
+            premium = null;
+        }
+
+        // Step 6: Wire up controls
+        setupDock();
+        setupGestures();
+        setupHUDToggle();
+
+        // Dismiss gesture hint after 4s or first touch
+        const hint = document.getElementById('gesture-hint');
+        const dismissHint = () => { if (hint) hint.classList.add('hidden'); };
+        setTimeout(dismissHint, 4000);
+        document.addEventListener('touchstart', dismissHint, { once: true });
+
+        // Step 7: Start ambient drift (Gold Standard Mode 3)
+        lastFrameTime = performance.now();
+        requestAnimationFrame(tick);
+        console.log('[Hyperstorm] Running. Premium:', !!premium);
+
+    } catch (err) {
+        showError('Init failed: ' + err.message + '\n\n' + err.stack);
     }
+}
 
-    const p = PERSONALITY[currentSystem];
-    engine.setParameters({
-        hue: 200, saturation: 0.7, intensity: 0.7,
-        chaos: lerp(p.chaos[0], p.chaos[1], 0.3),
-        speed: lerp(p.speed[0], p.speed[1], 0.4),
-        gridDensity: lerp(p.gridDensity[0], p.gridDensity[1], 0.3),
-        morphFactor: 1.0,
-        dimension: lerp(p.dimension[0], p.dimension[1], 0.5),
-        geometry: 1
-    });
+// ─── Premium Module Setup (fail-safe) ───
 
-    // ═══ PREMIUM ═══
-    premium = enablePremium(engine, { licenseKey: 'hyperstorm-dogfood-2026', features: ['all'] });
+function initPremiumModules() {
+    if (!premium) return;
 
-    premium.shaderSurface.setParameters({
-        projectionType: 1, uvScale: 4.0, lineThickness: 0.025,
-        noiseFrequency: [7, 11, 13], breathStrength: 0.4,
-        autoRotationSpeed: [0.05, 0.06, 0.04, 0.15, 0.12, 0.18],
-        particleSize: 0.15,
-        layerAlpha: { background: 0.4, shadow: 0.25, content: 1.0, highlight: 0.85, accent: 0.2 }
-    });
+    // Module 1: ShaderParameterSurface
+    try {
+        premium.shaderSurface.setParameters({
+            projectionType: 1, uvScale: 4.0, lineThickness: 0.025,
+            noiseFrequency: [7, 11, 13], breathStrength: 0.4,
+            autoRotationSpeed: [0.05, 0.06, 0.04, 0.15, 0.12, 0.18],
+            particleSize: 0.15,
+            layerAlpha: { background: 0.4, shadow: 0.25, content: 1.0, highlight: 0.85, accent: 0.2 }
+        });
+    } catch (e) { console.warn('[Hyperstorm] ShaderSurface setup failed:', e.message); }
 
-    premium.layerGeometry.setLayerGeometry('background', 9);
-    premium.layerGeometry.setGeometryOffset('accent', 8);
-    premium.layerGeometry.setGeometryOffset('shadow', 16);
+    // Module 3: LayerGeometryMixer
+    try {
+        premium.layerGeometry.setLayerGeometry('background', 9);
+        premium.layerGeometry.setGeometryOffset('accent', 8);
+        premium.layerGeometry.setGeometryOffset('shadow', 16);
+    } catch (e) { console.warn('[Hyperstorm] LayerGeometry setup failed:', e.message); }
 
-    setupTriggers();
+    // Module 4: VisualEventSystem
+    try { setupTriggers(); }
+    catch (e) { console.warn('[Hyperstorm] Triggers setup failed:', e.message); }
 
-    premium.cssBridge.start({
-        outbound: true, normalize: true, throttle: 16,
-        parameters: ['hue', 'intensity', 'chaos', 'speed', 'saturation',
-                     'gridDensity', 'morphFactor', 'dimension', 'rot4dXW']
-    });
+    // Module 5: CSSBridge
+    try {
+        premium.cssBridge.start({
+            outbound: true, normalize: true, throttle: 16,
+            parameters: ['hue', 'intensity', 'chaos', 'speed', 'saturation',
+                         'gridDensity', 'morphFactor', 'dimension', 'rot4dXW']
+        });
+    } catch (e) { console.warn('[Hyperstorm] CSSBridge setup failed:', e.message); }
 
-    premium.frameworkSync.onSync(updateReadout);
+    // Module 7: FrameworkSync
+    try {
+        premium.frameworkSync.onSync(updateReadout);
+    } catch (e) { console.warn('[Hyperstorm] FrameworkSync setup failed:', e.message); }
 
-    const toolCount = premium.mcp.getToolDefinitions().length;
-    console.log(`[Hyperstorm] Premium MCP: ${toolCount} tools`);
-
-    animator = new TransitionAnimator(
-        (name, value) => engine.setParameter(name, value),
-        (name) => engine.getParameter(name)
-    );
-    colorPresets = new ColorPresetsSystem(engine.createParameterCallback());
-
-    // Wire up controls
-    setupDock();
-    setupGestures();
-    setupHUDToggle();
-
-    // Dismiss gesture hint after 4s or first touch
-    const hint = document.getElementById('gesture-hint');
-    const dismissHint = () => { if (hint) hint.classList.add('hidden'); };
-    setTimeout(dismissHint, 4000);
-    document.addEventListener('touchstart', dismissHint, { once: true });
-
-    lastFrameTime = performance.now();
-    requestAnimationFrame(tick);
-    console.log('[Hyperstorm] Mobile-first init complete');
+    // Module 8: PremiumMCPServer
+    try {
+        const toolCount = premium.mcp.getToolDefinitions().length;
+        console.log(`[Hyperstorm] Premium MCP: ${toolCount} tools`);
+    } catch (e) { console.warn('[Hyperstorm] PremiumMCP check failed:', e.message); }
 }
 
 // ─── Triggers (Module 4) ───
@@ -193,14 +247,30 @@ function tick(now) {
             engine.setParameter(param, smoothed);
         }
     }
+
+    // Manual CSS var update when premium CSSBridge is unavailable
+    if (!premium) updateCSSVars();
+
+    // Manual readout update when premium FrameworkSync is unavailable
+    if (!premium) updateReadout(engine.getAllParameters());
+
     requestAnimationFrame(tick);
+}
+
+// Fallback CSS vars when CSSBridge premium module isn't active
+function updateCSSVars() {
+    const root = document.documentElement.style;
+    const hue = engine.getParameter('hue') ?? 200;
+    root.setProperty('--vib3-hue', (hue / 360).toFixed(3));
+    root.setProperty('--vib3-intensity', (engine.getParameter('intensity') ?? 0.7).toFixed(3));
+    root.setProperty('--vib3-chaos', (engine.getParameter('chaos') ?? 0.15).toFixed(3));
+    root.setProperty('--vib3-speed', (engine.getParameter('speed') ?? 0.8).toFixed(3));
+    root.setProperty('--vib3-saturation', (engine.getParameter('saturation') ?? 0.7).toFixed(3));
 }
 
 // ════════════════════════════════════════════════════
 //  TOUCH / MOBILE CONTROLS
 // ════════════════════════════════════════════════════
-
-// ─── Dock buttons ───
 
 function setupDock() {
     const ACTIONS = {
@@ -212,22 +282,17 @@ function setupDock() {
         const action = btn.dataset.action;
         if (!action || !ACTIONS[action]) return;
 
-        // Use touchend (not click) so it fires immediately, no 300ms delay
         btn.addEventListener('touchend', (e) => {
             e.preventDefault();
             ACTIONS[action]();
         }, { passive: false });
 
-        // Desktop fallback
         btn.addEventListener('click', (e) => {
-            // Only fire if not already handled by touchend
             if (e.sourceCapabilities?.firesTouchEvents) return;
             ACTIONS[action]();
         });
     });
 }
-
-// ─── Canvas gestures ───
 
 function setupGestures() {
     const container = document.getElementById('vib3-container');
@@ -237,13 +302,10 @@ function setupGestures() {
     let gestureHandled = false;
 
     container.addEventListener('touchstart', (e) => {
-        // Don't interfere with dock
         if (e.target.closest('#dock') || e.target.closest('#hud')) return;
-
         gestureHandled = false;
 
         if (e.touches.length === 2) {
-            // Two-finger: start pinch tracking
             clearTimeout(holdTimer);
             pinchStartDist = getTouchDistance(e.touches);
             return;
@@ -252,13 +314,10 @@ function setupGestures() {
         if (e.touches.length === 1) {
             const t = e.touches[0];
             touchStart = { x: t.clientX, y: t.clientY, time: performance.now() };
-
-            // Hold detection — 600ms
             holdTimer = setTimeout(() => {
                 if (!gestureHandled) {
                     gestureHandled = true;
                     crystallize();
-                    // Haptic feedback if available
                     if (navigator.vibrate) navigator.vibrate(40);
                 }
             }, 600);
@@ -269,19 +328,13 @@ function setupGestures() {
         if (e.target.closest('#dock') || e.target.closest('#hud')) return;
 
         if (e.touches.length === 2 && pinchStartDist > 0) {
-            // Pinch zoom → dimension
             const dist = getTouchDistance(e.touches);
             const ratio = dist / pinchStartDist;
             if (Math.abs(ratio - 1) > 0.15 && !gestureHandled) {
                 gestureHandled = true;
                 clearTimeout(holdTimer);
-                if (ratio < 0.85) {
-                    // Pinch in → zoom into 4D
-                    dimensionalZoom();
-                } else if (ratio > 1.15) {
-                    // Pinch out → portal
-                    portalOpen();
-                }
+                if (ratio < 0.85) dimensionalZoom();
+                else if (ratio > 1.15) portalOpen();
             }
             return;
         }
@@ -290,19 +343,12 @@ function setupGestures() {
             const t = e.touches[0];
             const dx = t.clientX - touchStart.x;
             const dy = t.clientY - touchStart.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            // If moved enough, it's a swipe — cancel hold
-            if (dist > 40) {
+            if (Math.sqrt(dx * dx + dy * dy) > 40) {
                 clearTimeout(holdTimer);
                 gestureHandled = true;
-
-                if (Math.abs(dx) > Math.abs(dy)) {
-                    // Horizontal swipe → cycle system
-                    cycleSystem();
-                } else {
-                    // Vertical swipe → cycle geometry
-                    const geom = (engine.getParameter('geometry') + (dy > 0 ? 1 : -1) + 24) % 24;
+                if (Math.abs(dx) > Math.abs(dy)) cycleSystem();
+                else {
+                    const geom = ((engine.getParameter('geometry') || 0) + (dy > 0 ? 1 : -1) + 24) % 24;
                     engine.setParameter('geometry', geom);
                 }
             }
@@ -313,7 +359,6 @@ function setupGestures() {
         if (e.target.closest('#dock') || e.target.closest('#hud')) return;
         clearTimeout(holdTimer);
 
-        // Two-finger tap (both fingers lifted quickly)
         if (e.touches.length === 0 && e.changedTouches.length === 2 && !gestureHandled) {
             portalOpen();
             gestureHandled = true;
@@ -322,12 +367,8 @@ function setupGestures() {
 
         if (!gestureHandled && touchStart && e.changedTouches.length === 1) {
             const elapsed = performance.now() - touchStart.time;
-            if (elapsed < 300) {
-                // Quick tap → burst
-                burst();
-            }
+            if (elapsed < 300) burst();
         }
-
         touchStart = null;
         pinchStartDist = 0;
     }, { passive: true });
@@ -338,8 +379,6 @@ function setupGestures() {
         return Math.sqrt(dx * dx + dy * dy);
     }
 }
-
-// ─── HUD toggle ───
 
 function setupHUDToggle() {
     const toggle = document.getElementById('hud-toggle');
@@ -373,25 +412,35 @@ function crystallize() {
         intensity: 0.85, morphFactor: 0.0, gridDensity: 15
     }, 3000, 'easeInOut');
 
-    premium.shaderSurface.setParameters({
-        noiseFrequency: [30, 37, 41], lineThickness: 0.01, breathStrength: 0.05
-    });
-    setTimeout(() => {
-        premium.shaderSurface.setParameters({
-            noiseFrequency: [7, 11, 13], lineThickness: 0.025, breathStrength: 0.4
-        });
-    }, 4000);
+    if (premium?.shaderSurface) {
+        try {
+            premium.shaderSurface.setParameters({
+                noiseFrequency: [30, 37, 41], lineThickness: 0.01, breathStrength: 0.05
+            });
+            setTimeout(() => {
+                premium.shaderSurface.setParameters({
+                    noiseFrequency: [7, 11, 13], lineThickness: 0.025, breathStrength: 0.4
+                });
+            }, 4000);
+        } catch (_) { /* premium unavailable */ }
+    }
     if (navigator.vibrate) navigator.vibrate([20, 50, 20]);
 }
 
 function portalOpen() {
-    premium.rotationLock.setFlightMode(true);
-    premium.shaderSurface.setParameter('projectionType', 1);
+    if (premium?.rotationLock) {
+        try {
+            premium.rotationLock.setFlightMode(true);
+            setTimeout(() => premium.rotationLock.setFlightMode(false), 2500);
+        } catch (_) { /* premium unavailable */ }
+    }
+    if (premium?.shaderSurface) {
+        try { premium.shaderSurface.setParameter('projectionType', 1); } catch (_) {}
+    }
     animator.transition({
-        hue: (engine.getParameter('hue') + 40) % 360,
-        speed: engine.getParameter('speed') + 0.3,
+        hue: ((engine.getParameter('hue') || 200) + 40) % 360,
+        speed: (engine.getParameter('speed') || 0.8) + 0.3,
     }, 1200, 'easeInOut');
-    setTimeout(() => premium.rotationLock.setFlightMode(false), 2500);
     if (navigator.vibrate) navigator.vibrate([10, 30, 10, 30, 10]);
 }
 
@@ -401,18 +450,26 @@ function flyThrough() {
     if (btn) btn.classList.toggle('active-toggle', isFlyThrough);
 
     if (isFlyThrough) {
-        premium.rotationLock.setFlightMode(true);
-        premium.shaderSurface.setParameters({
-            autoRotationSpeed: [0.0, 0.0, 0.0, 0.35, 0.28, 0.42],
-            uvScale: 2.0, lineThickness: 0.015
-        });
+        if (premium?.rotationLock) try { premium.rotationLock.setFlightMode(true); } catch (_) {}
+        if (premium?.shaderSurface) {
+            try {
+                premium.shaderSurface.setParameters({
+                    autoRotationSpeed: [0.0, 0.0, 0.0, 0.35, 0.28, 0.42],
+                    uvScale: 2.0, lineThickness: 0.015
+                });
+            } catch (_) {}
+        }
         engine.setParameters({ gridDensity: 10, speed: 2.2, chaos: 0.05, dimension: 3.2 });
     } else {
-        premium.rotationLock.setFlightMode(false);
-        premium.shaderSurface.setParameters({
-            autoRotationSpeed: [0.05, 0.06, 0.04, 0.15, 0.12, 0.18],
-            uvScale: 4.0, lineThickness: 0.025
-        });
+        if (premium?.rotationLock) try { premium.rotationLock.setFlightMode(false); } catch (_) {}
+        if (premium?.shaderSurface) {
+            try {
+                premium.shaderSurface.setParameters({
+                    autoRotationSpeed: [0.05, 0.06, 0.04, 0.15, 0.12, 0.18],
+                    uvScale: 4.0, lineThickness: 0.025
+                });
+            } catch (_) {}
+        }
         animator.transition({
             gridDensity: drift.gridDensity.base, speed: drift.speed.base,
             chaos: drift.chaos.base, dimension: 3.5
@@ -422,22 +479,34 @@ function flyThrough() {
 
 function dimensionalZoom() {
     animator.transition({ dimension: 3.0, speed: 0.3, gridDensity: 55, intensity: 0.9 }, 2000, 'easeInOut');
-    premium.shaderSurface.setParameters({ uvScale: 1.5, lineThickness: 0.08, breathStrength: 0.8 });
 
-    premium.layerGeometry.setLayerGeometry('background', 0);
-    premium.layerGeometry.setLayerGeometry('shadow', 4);
-    premium.layerGeometry.setLayerGeometry('highlight', 2);
-    premium.layerGeometry.setLayerGeometry('accent', 7);
+    if (premium?.shaderSurface) {
+        try { premium.shaderSurface.setParameters({ uvScale: 1.5, lineThickness: 0.08, breathStrength: 0.8 }); } catch (_) {}
+    }
+    if (premium?.layerGeometry) {
+        try {
+            premium.layerGeometry.setLayerGeometry('background', 0);
+            premium.layerGeometry.setLayerGeometry('shadow', 4);
+            premium.layerGeometry.setLayerGeometry('highlight', 2);
+            premium.layerGeometry.setLayerGeometry('accent', 7);
+        } catch (_) {}
+    }
 
     setTimeout(() => {
         animator.transition({
             dimension: 3.5, speed: drift.speed.base,
             gridDensity: drift.gridDensity.base, intensity: drift.intensity.base
         }, 2500, 'easeInOut');
-        premium.shaderSurface.setParameters({ uvScale: 4.0, lineThickness: 0.025, breathStrength: 0.4 });
-        premium.layerGeometry.setLayerGeometry('background', 9);
-        premium.layerGeometry.setGeometryOffset('accent', 8);
-        premium.layerGeometry.setGeometryOffset('shadow', 16);
+        if (premium?.shaderSurface) {
+            try { premium.shaderSurface.setParameters({ uvScale: 4.0, lineThickness: 0.025, breathStrength: 0.4 }); } catch (_) {}
+        }
+        if (premium?.layerGeometry) {
+            try {
+                premium.layerGeometry.setLayerGeometry('background', 9);
+                premium.layerGeometry.setGeometryOffset('accent', 8);
+                premium.layerGeometry.setGeometryOffset('shadow', 16);
+            } catch (_) {}
+        }
     }, 3000);
     if (navigator.vibrate) navigator.vibrate(30);
 }
@@ -448,17 +517,25 @@ function stormMode() {
     if (btn) btn.classList.toggle('active-toggle', isStorming);
 
     if (isStorming) {
-        premium.shaderSurface.setParameters({
-            noiseFrequency: [3, 5, 7], breathStrength: 0.9,
-            autoRotationSpeed: [0.2, 0.25, 0.15, 0.4, 0.35, 0.45]
-        });
+        if (premium?.shaderSurface) {
+            try {
+                premium.shaderSurface.setParameters({
+                    noiseFrequency: [3, 5, 7], breathStrength: 0.9,
+                    autoRotationSpeed: [0.2, 0.25, 0.15, 0.4, 0.35, 0.45]
+                });
+            } catch (_) {}
+        }
         stormWalk();
         if (navigator.vibrate) navigator.vibrate([15, 40, 15, 40, 15, 40, 15]);
     } else {
-        premium.shaderSurface.setParameters({
-            noiseFrequency: [7, 11, 13], breathStrength: 0.4,
-            autoRotationSpeed: [0.05, 0.06, 0.04, 0.15, 0.12, 0.18]
-        });
+        if (premium?.shaderSurface) {
+            try {
+                premium.shaderSurface.setParameters({
+                    noiseFrequency: [7, 11, 13], breathStrength: 0.4,
+                    autoRotationSpeed: [0.05, 0.06, 0.04, 0.15, 0.12, 0.18]
+                });
+            } catch (_) {}
+        }
         animator.transition({
             chaos: drift.chaos.base, speed: drift.speed.base,
             gridDensity: drift.gridDensity.base, intensity: drift.intensity.base, hue: drift.hue.base
@@ -486,11 +563,10 @@ function cycleSystem() {
 
     animator.transition({ intensity: 0.15, saturation: 0.1 }, 400, 'easeOut');
 
-    setTimeout(() => {
+    setTimeout(async () => {
         currentSystem = next;
-        engine.switchSystem(next);
+        await engine.switchSystem(next);
 
-        // Update HUD label
         const label = document.getElementById('hud-system');
         if (label) label.textContent = SYSTEM_LABELS[next] || next.toUpperCase();
 
@@ -512,107 +588,61 @@ function cycleSystem() {
 }
 
 function choreographyGo() {
-    const spec = premium.choreography.createExtendedChoreography({
-        name: 'Hyperstorm Sequence', mode: 'once',
-        scenes: [
-            {
-                system: 'quantum', geometry: 1, duration: 4000,
-                color_preset: 'Cyberpunk Neon',
-                transition_in: { duration: 800, easing: 'easeInOut' },
-                tracks: {
-                    chaos: { keyframes: [{ time: 0, value: 0.1 }, { time: 0.5, value: 0.7 }, { time: 1, value: 0.2 }] },
-                    speed: { keyframes: [{ time: 0, value: 0.5 }, { time: 0.5, value: 2.0 }, { time: 1, value: 0.8 }] }
-                },
-                layer_profile: 'storm',
-                rotation_locks: { rot4dXY: 0.0, rot4dXZ: 0.0, rot4dYZ: 0.0 },
-                layer_geometries: { background: 9, accent: 17 }
-            },
-            {
-                system: 'faceted', geometry: 5, duration: 3000,
-                color_preset: 'Ocean Deep',
-                transition_in: { duration: 600, easing: 'easeOut' },
-                tracks: {
-                    gridDensity: { keyframes: [{ time: 0, value: 15 }, { time: 1, value: 35 }] },
-                    morphFactor: { keyframes: [{ time: 0, value: 0 }, { time: 0.5, value: 1.8 }, { time: 1, value: 1.0 }] }
-                },
-                layer_geometries: { background: 2, shadow: 10, accent: 18 }
-            },
-            {
-                system: 'holographic', geometry: 16, duration: 5000,
-                color_preset: 'Aurora Borealis',
-                transition_in: { duration: 1000, easing: 'easeInOut' },
-                tracks: {
-                    dimension: { keyframes: [{ time: 0, value: 4.2 }, { time: 0.3, value: 3.0 }, { time: 1, value: 3.8 }] },
-                    intensity: { keyframes: [{ time: 0, value: 0.5 }, { time: 0.5, value: 1.0 }, { time: 1, value: 0.6 }] }
-                },
-                rotation_locks: { rot4dXY: 0.0, rot4dXZ: 0.0, rot4dYZ: 0.0 },
-                layer_geometries: { background: 0, shadow: 4, highlight: 7, accent: 20 }
-            },
-            {
-                system: 'quantum', geometry: 1, duration: 3000,
-                transition_in: { duration: 500, easing: 'easeOut' },
-                tracks: {
-                    chaos: { keyframes: [{ time: 0, value: 0.8 }, { time: 1, value: 0.15 }] },
-                    speed: { keyframes: [{ time: 0, value: 2.0 }, { time: 1, value: 0.8 }] }
-                }
-            }
-        ]
-    });
+    // Run through 3 systems with timed parameter sweeps — works with or without premium
+    const scenes = [
+        { system: 'quantum', geometry: 1, duration: 4000, preset: 'Cyberpunk Neon',
+          params: { chaos: 0.6, speed: 1.8, gridDensity: 45, intensity: 0.9 } },
+        { system: 'faceted', geometry: 5, duration: 3000, preset: 'Ocean Deep',
+          params: { chaos: 0.05, speed: 0.5, gridDensity: 20, morphFactor: 1.5 } },
+        { system: 'holographic', geometry: 16, duration: 5000, preset: 'Aurora Borealis',
+          params: { dimension: 3.2, intensity: 0.95, chaos: 0.2, speed: 1.0 } },
+        { system: 'quantum', geometry: 1, duration: 3000,
+          params: { chaos: drift.chaos.base, speed: drift.speed.base, intensity: drift.intensity.base } }
+    ];
 
-    // Execute scenes sequentially
-    const scenes = spec.scenes;
     let i = 0;
-
     function playScene() {
-        if (i >= scenes.length) {
-            premium.rotationLock.unlockAll();
-            currentSystem = 'quantum';
-            const label = document.getElementById('hud-system');
-            if (label) label.textContent = 'QUANTUM';
-            return;
-        }
+        if (i >= scenes.length) return;
         const s = scenes[i];
-        if (s.system) {
-            currentSystem = s.system;
-            engine.switchSystem(s.system);
+
+        currentSystem = s.system;
+        engine.switchSystem(s.system).then(() => {
+            engine.setParameter('geometry', s.geometry);
+            if (s.preset && colorPresets) {
+                try { colorPresets.applyPreset(s.preset, true, 800); } catch (_) {}
+            }
+            animator.transition(s.params, 800, 'easeInOut');
+
             const label = document.getElementById('hud-system');
             if (label) label.textContent = SYSTEM_LABELS[s.system] || s.system.toUpperCase();
-        }
-        if (s.geometry !== undefined) engine.setParameter('geometry', s.geometry);
-        if (s.color_preset && colorPresets) colorPresets.applyPreset(s.color_preset, true, 800);
-        if (s.rotation_locks) {
-            premium.rotationLock.unlockAll();
-            for (const [axis, val] of Object.entries(s.rotation_locks))
-                premium.rotationLock.lockAxis(axis, val);
-        }
-        if (s.layer_geometries) {
-            for (const [layer, geom] of Object.entries(s.layer_geometries))
-                premium.layerGeometry.setLayerGeometry(layer, geom);
-        }
+        });
+
         i++;
-        setTimeout(playScene, s.duration);
+        if (i < scenes.length) setTimeout(playScene, s.duration);
     }
     playScene();
-
     if (navigator.vibrate) navigator.vibrate([10, 20, 10, 20, 10, 20, 10]);
 }
 
-// ─── Readout (Module 7) ───
+// ─── Readout ───
 
 function updateReadout(params) {
     const $ = (id) => document.getElementById(id);
+    if (!$('r-hue')) return;
     if (params.hue !== undefined) $('r-hue').textContent = Math.round(params.hue) + '\u00B0';
-    if (params.chaos !== undefined) $('r-chaos').textContent = params.chaos.toFixed(2);
-    if (params.speed !== undefined) $('r-speed').textContent = params.speed.toFixed(2);
-    if (params.dimension !== undefined) $('r-dim').textContent = params.dimension.toFixed(2);
+    if (params.chaos !== undefined) $('r-chaos').textContent = (params.chaos ?? 0).toFixed(2);
+    if (params.speed !== undefined) $('r-speed').textContent = (params.speed ?? 0).toFixed(2);
+    if (params.dimension !== undefined) $('r-dim').textContent = (params.dimension ?? 0).toFixed(2);
     if (params.geometry !== undefined) $('r-geom').textContent = params.geometry;
 
     if (premium) {
-        const proj = premium.shaderSurface.getParameter('projectionType');
-        $('r-proj').textContent = PROJ_NAMES[proj] || proj;
-        $('r-flight').textContent = premium.rotationLock.isFlightMode() ? 'ON' : 'off';
-        $('r-triggers').textContent = triggerFireCount;
+        try {
+            const proj = premium.shaderSurface?.getParameter('projectionType');
+            $('r-proj').textContent = PROJ_NAMES[proj] || String(proj ?? '—');
+            $('r-flight').textContent = premium.rotationLock?.isFlightMode() ? 'ON' : 'off';
+        } catch (_) {}
     }
+    $('r-triggers').textContent = triggerFireCount;
 }
 
 // ─── Desktop keyboard fallback ───

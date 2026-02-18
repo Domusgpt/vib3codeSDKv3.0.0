@@ -10,8 +10,11 @@
     <link rel="stylesheet" href="hyperstorm.css">
 </head>
 <body>
-    <!-- Main visualization — full viewport -->
-    <div id="vib3-container"></div>
+    <!--
+      VIB3+ container: must be position:relative with explicit size.
+      CanvasManager creates 5 absolutely-positioned canvases inside it.
+    -->
+    <div id="vib3-container" style="position:relative; width:100vw; height:100vh; overflow:hidden;"></div>
 
     <!-- Compact HUD — top bar, collapsible on mobile -->
     <div id="hud">
@@ -79,6 +82,9 @@
         <div>tap = burst &nbsp; hold = freeze &nbsp; swipe = switch</div>
         <div>two-finger = portal &nbsp; pinch = zoom</div>
     </div>
+
+    <!-- Error overlay for debugging -->
+    <div id="error-overlay" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:999; background:rgba(0,0,0,0.9); color:#f44; padding:24px; border-radius:12px; font-family:monospace; font-size:13px; max-width:90vw; white-space:pre-wrap;"></div>
 
     <script type="module" src="hyperstorm.js"></script>
 </body>
