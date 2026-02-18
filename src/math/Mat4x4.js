@@ -54,11 +54,37 @@ export class Mat4x4 {
     }
 
     /**
+     * Get read-only identity matrix
+     * @returns {Mat4x4}
+     */
+    static get IDENTITY() {
+        if (!this._IDENTITY) {
+            this._IDENTITY = Mat4x4.identity();
+            Object.freeze(this._IDENTITY);
+            // Cannot freeze Float32Array in some environments/strict modes directly
+            // but we freeze the wrapper object.
+        }
+        return this._IDENTITY;
+    }
+
+    /**
      * Create zero matrix
      * @returns {Mat4x4}
      */
     static zero() {
         return new Mat4x4(new Float32Array(16));
+    }
+
+    /**
+     * Get read-only zero matrix
+     * @returns {Mat4x4}
+     */
+    static get ZERO() {
+        if (!this._ZERO) {
+            this._ZERO = Mat4x4.zero();
+            Object.freeze(this._ZERO);
+        }
+        return this._ZERO;
     }
 
     /**
