@@ -278,7 +278,7 @@ export class HolographicVisualizer {
                 return mat4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, c, -s, 0, 0, s, c);
             }
             
-            // 4D to 3D projection - BREATHING EFFECT
+            // 4D to 3D projection - BREATHING EFFECT + dimension control
             vec3 project4Dto3D(vec4 p) {
                 // Modulate projection distance with breath for "exhale" effect (expansion/contraction)
                 float baseDim = 2.5;
