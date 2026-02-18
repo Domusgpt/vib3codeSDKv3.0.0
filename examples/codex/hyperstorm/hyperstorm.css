@@ -1,11 +1,9 @@
 /* ================================================================
-   HYPERSTORM — Premium Dogfood CSS
+   HYPERSTORM — Mobile-First Premium Dogfood CSS
    All styling driven by VIB3+ CSSBridge custom properties.
-   No JS DOM manipulation needed for visual updates.
    ================================================================ */
 
 :root {
-    /* CSSBridge will populate these — defaults for pre-load */
     --vib3-hue: 0.55;
     --vib3-intensity: 0.7;
     --vib3-chaos: 0.15;
@@ -14,8 +12,9 @@
     --vib3-grid-density: 0.27;
     --vib3-morph-factor: 0.25;
     --vib3-dimension: 0.33;
-    --vib3-hue-raw: 200;
-    --vib3-rot4d-x-w: 0.5;
+
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -23,12 +22,16 @@
 body {
     background: #000;
     color: white;
-    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-family: -apple-system, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
     overflow: hidden;
-    cursor: crosshair;
+    touch-action: none;              /* we handle all gestures */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;       /* kill pull-to-refresh */
 }
 
-/* ---- Main viz ---- */
+/* ── Full viewport viz ── */
 
 #vib3-container {
     position: fixed;
@@ -38,140 +41,90 @@ body {
     z-index: 0;
 }
 
-/* ---- HUD — driven by CSSBridge ---- */
+/* ── HUD — compact top bar ── */
 
 #hud {
     position: fixed;
     top: 0;
     left: 0;
-    width: 280px;
-    height: 100vh;
-    padding: 24px;
-    z-index: 10;
+    right: 0;
+    padding-top: var(--safe-top);
+    z-index: 30;
     pointer-events: none;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-
-    /* Glassmorphic panel — intensity drives opacity */
-    background: linear-gradient(
-        180deg,
-        rgba(0, 0, 0, calc(0.6 + var(--vib3-chaos) * 0.2)) 0%,
-        rgba(0, 0, 0, calc(0.3 + var(--vib3-chaos) * 0.15)) 100%
+    backdrop-filter: blur(calc(6px + var(--vib3-chaos) * 8px));
+    background: rgba(0, 0, 0, calc(0.5 + var(--vib3-chaos) * 0.15));
+    border-bottom: 1px solid hsla(
+        calc(var(--vib3-hue) * 360), 50%, 50%,
+        calc(0.08 + var(--vib3-intensity) * 0.12)
     );
-    border-right: 1px solid hsla(
-        calc(var(--vib3-hue) * 360), 60%, 50%,
-        calc(0.1 + var(--vib3-intensity) * 0.2)
-    );
-    backdrop-filter: blur(calc(4px + var(--vib3-chaos) * 12px));
 }
 
-.hud-header h1 {
-    font-size: 22px;
-    font-weight: 800;
-    letter-spacing: 4px;
-    /* Hue-driven text color */
-    color: hsl(calc(var(--vib3-hue) * 360), 80%, calc(60% + var(--vib3-intensity) * 20%));
-    /* Glow driven by chaos */
-    text-shadow:
-        0 0 calc(var(--vib3-chaos) * 20px) hsla(calc(var(--vib3-hue) * 360), 80%, 50%, calc(var(--vib3-chaos) * 0.8)),
-        0 0 calc(var(--vib3-chaos) * 40px) hsla(calc(var(--vib3-hue) * 360), 60%, 50%, calc(var(--vib3-chaos) * 0.4));
-}
-
-.hud-subtitle {
-    font-size: 10px;
-    letter-spacing: 1px;
-    opacity: 0.4;
-    margin-top: 4px;
-}
-
-/* ---- Module status indicators ---- */
-
-.module-status {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-}
-
-.mod {
-    font-size: 10px;
-    letter-spacing: 0.5px;
-    padding: 3px 8px;
-    border-radius: 3px;
-    background: rgba(255, 255, 255, 0.03);
-    border-left: 2px solid rgba(255, 255, 255, 0.1);
-    opacity: 0.4;
-    transition: all 0.3s;
-}
-
-.mod.active {
-    opacity: 1.0;
-    border-left-color: hsl(calc(var(--vib3-hue) * 360), 70%, 55%);
-    background: hsla(calc(var(--vib3-hue) * 360), 40%, 20%, 0.2);
-    color: hsl(calc(var(--vib3-hue) * 360), 60%, 75%);
-}
-
-/* ---- Trigger panel ---- */
-
-.trigger-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.trigger-label {
-    font-size: 9px;
-    letter-spacing: 2px;
-    opacity: 0.3;
-    margin-bottom: 4px;
-}
-
-.trigger {
-    font-size: 11px;
+.hud-top {
     display: flex;
     align-items: center;
-    gap: 8px;
-    opacity: 0.35;
-    transition: opacity 0.15s;
+    padding: 10px 16px;
+    gap: 10px;
 }
 
-.trigger.fired {
-    opacity: 1.0;
+.hud-title {
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    color: hsl(calc(var(--vib3-hue) * 360), 80%, calc(60% + var(--vib3-intensity) * 20%));
+    text-shadow:
+        0 0 calc(var(--vib3-chaos) * 15px) hsla(calc(var(--vib3-hue) * 360), 80%, 50%, calc(var(--vib3-chaos) * 0.7));
 }
 
-.tdot {
-    width: 6px;
-    height: 6px;
+.hud-system {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: hsla(calc(var(--vib3-hue) * 360), 30%, 25%, 0.4);
+    border: 1px solid hsla(calc(var(--vib3-hue) * 360), 40%, 40%, 0.3);
+    color: hsl(calc(var(--vib3-hue) * 360), 50%, 70%);
+}
+
+.hud-toggle {
+    margin-left: auto;
+    pointer-events: all;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.15);
-    transition: all 0.15s;
+    border: 1px solid hsla(calc(var(--vib3-hue) * 360), 40%, 40%, 0.3);
+    background: hsla(calc(var(--vib3-hue) * 360), 20%, 15%, 0.5);
+    color: hsl(calc(var(--vib3-hue) * 360), 50%, 70%);
+    font-size: 13px;
+    font-weight: 700;
+    font-style: italic;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.trigger.fired .tdot {
-    background: hsl(calc(var(--vib3-hue) * 360), 90%, 60%);
-    box-shadow:
-        0 0 6px hsl(calc(var(--vib3-hue) * 360), 80%, 50%),
-        0 0 12px hsla(calc(var(--vib3-hue) * 360), 60%, 50%, 0.5);
-}
-
-/* ---- Parameter readout ---- */
-
-.param-readout {
-    display: flex;
+/* Detail panel — collapsed by default on mobile */
+.hud-detail {
+    display: none;
+    padding: 8px 16px 12px;
+    gap: 3px;
     flex-direction: column;
-    gap: 2px;
-    margin-top: auto;
 }
 
-.readout-row {
+.hud-detail.open {
+    display: flex;
+}
+
+.hud-row {
     display: flex;
     justify-content: space-between;
     font-size: 11px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
 .rlabel {
     opacity: 0.35;
     letter-spacing: 1px;
+    font-size: 10px;
 }
 
 .rval {
@@ -179,54 +132,132 @@ body {
     color: hsl(calc(var(--vib3-hue) * 360), 50%, 70%);
 }
 
-/* ---- Control bar ---- */
-
-#controls {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
+.trigger-dots {
     display: flex;
     gap: 8px;
-    z-index: 20;
+    padding-top: 6px;
+    justify-content: center;
 }
 
-#controls button {
-    padding: 8px 14px;
-    font-family: inherit;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 1px;
+.tdot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    transition: all 0.15s;
+}
+
+.tdot.fired {
+    background: hsl(calc(var(--vib3-hue) * 360), 90%, 60%);
+    box-shadow:
+        0 0 6px hsl(calc(var(--vib3-hue) * 360), 80%, 50%),
+        0 0 14px hsla(calc(var(--vib3-hue) * 360), 60%, 50%, 0.5);
+}
+
+/* ── Touch Dock — fat finger friendly ── */
+
+#dock {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    padding: 8px 8px calc(8px + var(--safe-bottom));
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+
+    backdrop-filter: blur(calc(6px + var(--vib3-chaos) * 8px));
+    background: rgba(0, 0, 0, calc(0.5 + var(--vib3-chaos) * 0.15));
+    border-top: 1px solid hsla(
+        calc(var(--vib3-hue) * 360), 50%, 50%,
+        calc(0.08 + var(--vib3-intensity) * 0.12)
+    );
+}
+
+#dock::-webkit-scrollbar { display: none; }
+
+.dock-btn {
+    flex: 0 0 auto;
+    scroll-snap-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 60px;
+    height: 56px;
+    padding: 6px 10px;
+    border-radius: 12px;
+    border: 1px solid hsla(calc(var(--vib3-hue) * 360), 35%, 35%, 0.25);
+    background: hsla(calc(var(--vib3-hue) * 360), 15%, 12%, 0.5);
+    color: hsl(calc(var(--vib3-hue) * 360), 45%, 72%);
     cursor: pointer;
-    border-radius: 6px;
-    transition: all 0.2s;
-    pointer-events: all;
-
-    /* Button styling driven by VIB3+ */
-    background: hsla(calc(var(--vib3-hue) * 360), 20%, 15%, 0.6);
-    border: 1px solid hsla(calc(var(--vib3-hue) * 360), 40%, 40%, 0.3);
-    color: hsl(calc(var(--vib3-hue) * 360), 50%, 75%);
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.1s, background 0.15s, border-color 0.15s;
 }
 
-#controls button:hover {
-    background: hsla(calc(var(--vib3-hue) * 360), 30%, 25%, 0.8);
+.dock-btn:active {
+    transform: scale(0.92);
+    background: hsla(calc(var(--vib3-hue) * 360), 40%, 25%, 0.7);
     border-color: hsla(calc(var(--vib3-hue) * 360), 60%, 50%, 0.5);
-    box-shadow: 0 0 12px hsla(calc(var(--vib3-hue) * 360), 60%, 50%, 0.2);
 }
 
-#controls button:active {
-    transform: scale(0.95);
-    background: hsla(calc(var(--vib3-hue) * 360), 40%, 30%, 0.9);
+.dock-btn.active-toggle {
+    background: hsla(calc(var(--vib3-hue) * 360), 50%, 30%, 0.6);
+    border-color: hsla(calc(var(--vib3-hue) * 360), 70%, 55%, 0.6);
+    box-shadow: 0 0 10px hsla(calc(var(--vib3-hue) * 360), 60%, 50%, 0.2);
 }
 
-/* ---- Ambient pulse on the whole page (breathing) ---- */
+.dock-icon {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.dock-label {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    opacity: 0.7;
+}
+
+/* ── Gesture hint ── */
+
+#gesture-hint {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 25;
+    text-align: center;
+    font-size: 11px;
+    line-height: 1.6;
+    padding: 10px 18px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.5);
+    opacity: 1;
+    transition: opacity 2s;
+    pointer-events: none;
+}
+
+#gesture-hint.hidden {
+    opacity: 0;
+}
+
+/* ── Breathing vignette ── */
 body::after {
     content: '';
     position: fixed;
     inset: 0;
     z-index: 1;
     pointer-events: none;
-    /* Vignette that breathes with intensity */
     background: radial-gradient(
         ellipse at center,
         transparent 40%,
@@ -234,7 +265,7 @@ body::after {
     );
 }
 
-/* ---- Scanline aesthetic overlay ---- */
+/* ── Scanlines ── */
 body::before {
     content: '';
     position: fixed;
@@ -245,8 +276,46 @@ body::before {
         0deg,
         transparent,
         transparent 2px,
-        rgba(0, 0, 0, calc(0.02 + var(--vib3-chaos) * 0.05)) 2px,
-        rgba(0, 0, 0, calc(0.02 + var(--vib3-chaos) * 0.05)) 4px
+        rgba(0, 0, 0, calc(0.02 + var(--vib3-chaos) * 0.04)) 2px,
+        rgba(0, 0, 0, calc(0.02 + var(--vib3-chaos) * 0.04)) 4px
     );
-    opacity: calc(0.3 + var(--vib3-chaos) * 0.4);
+    opacity: calc(0.25 + var(--vib3-chaos) * 0.35);
+}
+
+/* ── Desktop: widen dock buttons, show detail by default ── */
+@media (min-width: 768px) {
+    .dock-btn {
+        min-width: 72px;
+        height: 60px;
+        padding: 8px 14px;
+    }
+
+    .dock-icon { font-size: 22px; }
+    .dock-label { font-size: 9px; }
+
+    #dock {
+        justify-content: center;
+        padding: 10px 16px calc(10px + var(--safe-bottom));
+    }
+
+    .hud-detail {
+        display: flex;
+    }
+
+    #gesture-hint { display: none; }
+}
+
+/* ── Landscape phone ── */
+@media (max-height: 500px) and (orientation: landscape) {
+    #dock {
+        padding: 4px 8px calc(4px + var(--safe-bottom));
+    }
+
+    .dock-btn {
+        min-width: 52px;
+        height: 44px;
+    }
+
+    .dock-icon { font-size: 16px; }
+    .dock-label { font-size: 7px; }
 }

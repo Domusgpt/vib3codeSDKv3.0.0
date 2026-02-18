@@ -2,62 +2,82 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIB3+ Premium Dogfood — Hyperstorm</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>HYPERSTORM — VIB3+ Premium</title>
     <link rel="stylesheet" href="hyperstorm.css">
 </head>
 <body>
     <!-- Main visualization — full viewport -->
     <div id="vib3-container"></div>
 
-    <!-- HUD overlay -->
+    <!-- Compact HUD — top bar, collapsible on mobile -->
     <div id="hud">
-        <div class="hud-header">
-            <h1>HYPERSTORM</h1>
-            <div class="hud-subtitle">Premium Dogfood — All 8 Modules Active</div>
+        <div class="hud-top">
+            <span class="hud-title">HYPERSTORM</span>
+            <span class="hud-system" id="hud-system">QUANTUM</span>
+            <button class="hud-toggle" id="hud-toggle" aria-label="Toggle info panel">i</button>
         </div>
-
-        <div class="module-status" id="module-status">
-            <div class="mod" id="mod-shader">1. ShaderSurface</div>
-            <div class="mod" id="mod-lock">2. RotationLock</div>
-            <div class="mod" id="mod-geom">3. LayerGeometry</div>
-            <div class="mod" id="mod-events">4. EventSystem</div>
-            <div class="mod" id="mod-css">5. CSSBridge</div>
-            <div class="mod" id="mod-choreo">6. Choreography</div>
-            <div class="mod" id="mod-sync">7. FrameworkSync</div>
-            <div class="mod" id="mod-mcp">8. PremiumMCP</div>
-        </div>
-
-        <div class="trigger-panel" id="trigger-panel">
-            <div class="trigger-label">EVENT TRIGGERS</div>
-            <div class="trigger" id="t-chaos-burst"><span class="tdot"></span>Chaos Burst</div>
-            <div class="trigger" id="t-intensity-flash"><span class="tdot"></span>Intensity Flash</div>
-            <div class="trigger" id="t-dimension-dive"><span class="tdot"></span>Dimension Dive</div>
-            <div class="trigger" id="t-storm-peak"><span class="tdot"></span>Storm Peak</div>
-        </div>
-
-        <div class="param-readout" id="readout">
-            <div class="readout-row"><span class="rlabel">HUE</span><span class="rval" id="r-hue">—</span></div>
-            <div class="readout-row"><span class="rlabel">CHAOS</span><span class="rval" id="r-chaos">—</span></div>
-            <div class="readout-row"><span class="rlabel">SPEED</span><span class="rval" id="r-speed">—</span></div>
-            <div class="readout-row"><span class="rlabel">DIM</span><span class="rval" id="r-dim">—</span></div>
-            <div class="readout-row"><span class="rlabel">GEOM</span><span class="rval" id="r-geom">—</span></div>
-            <div class="readout-row"><span class="rlabel">PROJ</span><span class="rval" id="r-proj">—</span></div>
-            <div class="readout-row"><span class="rlabel">FLIGHT</span><span class="rval" id="r-flight">—</span></div>
-            <div class="readout-row"><span class="rlabel">TRIGGERS</span><span class="rval" id="r-triggers">—</span></div>
+        <div class="hud-detail" id="hud-detail">
+            <div class="hud-row"><span class="rlabel">HUE</span><span class="rval" id="r-hue">—</span></div>
+            <div class="hud-row"><span class="rlabel">CHAOS</span><span class="rval" id="r-chaos">—</span></div>
+            <div class="hud-row"><span class="rlabel">SPEED</span><span class="rval" id="r-speed">—</span></div>
+            <div class="hud-row"><span class="rlabel">DIM</span><span class="rval" id="r-dim">—</span></div>
+            <div class="hud-row"><span class="rlabel">GEOM</span><span class="rval" id="r-geom">—</span></div>
+            <div class="hud-row"><span class="rlabel">PROJ</span><span class="rval" id="r-proj">—</span></div>
+            <div class="hud-row"><span class="rlabel">FLIGHT</span><span class="rval" id="r-flight">—</span></div>
+            <div class="hud-row"><span class="rlabel">TRIGGERS</span><span class="rval" id="r-triggers">0</span></div>
+            <div class="trigger-dots">
+                <span class="tdot" id="t-chaos-burst" title="Chaos Burst"></span>
+                <span class="tdot" id="t-intensity-flash" title="Intensity Flash"></span>
+                <span class="tdot" id="t-dimension-dive" title="Dimension Dive"></span>
+                <span class="tdot" id="t-storm-peak" title="Storm Peak"></span>
+            </div>
         </div>
     </div>
 
-    <!-- Control bar -->
-    <div id="controls">
-        <button onclick="burst()">BURST</button>
-        <button onclick="crystallize()">CRYSTALLIZE</button>
-        <button onclick="portalOpen()">PORTAL</button>
-        <button onclick="flyThrough()">FLY-THROUGH</button>
-        <button onclick="dimensionalZoom()">DIM ZOOM</button>
-        <button onclick="stormMode()">STORM</button>
-        <button onclick="cycleSystem()">SYSTEM</button>
-        <button onclick="choreographyGo()">CHOREOGRAPHY</button>
+    <!-- Touch control dock — bottom, scrollable, fat fingers -->
+    <div id="dock">
+        <button class="dock-btn" data-action="burst">
+            <span class="dock-icon">&#x1F4A5;</span>
+            <span class="dock-label">BURST</span>
+        </button>
+        <button class="dock-btn" data-action="crystallize">
+            <span class="dock-icon">&#x2744;</span>
+            <span class="dock-label">FREEZE</span>
+        </button>
+        <button class="dock-btn" data-action="portal">
+            <span class="dock-icon">&#x1F300;</span>
+            <span class="dock-label">PORTAL</span>
+        </button>
+        <button class="dock-btn" data-action="fly">
+            <span class="dock-icon">&#x1F680;</span>
+            <span class="dock-label">FLY</span>
+        </button>
+        <button class="dock-btn" data-action="dimzoom">
+            <span class="dock-icon">&#x1F52D;</span>
+            <span class="dock-label">ZOOM</span>
+        </button>
+        <button class="dock-btn" data-action="storm">
+            <span class="dock-icon">&#x26A1;</span>
+            <span class="dock-label">STORM</span>
+        </button>
+        <button class="dock-btn" data-action="system">
+            <span class="dock-icon">&#x1F504;</span>
+            <span class="dock-label">SWITCH</span>
+        </button>
+        <button class="dock-btn" data-action="choreo">
+            <span class="dock-icon">&#x1F3AC;</span>
+            <span class="dock-label">SHOW</span>
+        </button>
+    </div>
+
+    <!-- Gesture hint — shown on first load, fades away -->
+    <div id="gesture-hint">
+        <div>tap = burst &nbsp; hold = freeze &nbsp; swipe = switch</div>
+        <div>two-finger = portal &nbsp; pinch = zoom</div>
     </div>
 
     <script type="module" src="hyperstorm.js"></script>
