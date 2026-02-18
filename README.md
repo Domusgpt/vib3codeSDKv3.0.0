@@ -40,8 +40,21 @@ The main documentation entrypoint is [`DOCS/README.md`](./DOCS/README.md), which
 - **Universal Spatial Input:** 8 input sources (tilt, gyroscope, gamepad, mouse, MIDI, audio, programmatic, perspective) with 6 built-in profiles (card tilt, wearable, game, VJ, UI, XR)
 - **Creative Tooling:** 22 color presets, 14 easing transitions, 14 post-processing effects, keyframe timeline with BPM sync
 - **Platform Integrations:** React, Vue, Svelte components; Figma plugin; Three.js ShaderMaterial; TouchDesigner GLSL export; OBS transparent background
-- **Advanced Features:** WebXR VR/AR, WebGPU compute shaders, MIDI controller mapping, AI preset generation, OffscreenCanvas worker rendering
+- **Advanced Features:** WebXR VR/AR, WebGPU compute shaders, MIDI controller mapping, AI preset generation, OffscreenWorker rendering
 - **Shader Sync Tool:** Verifies inline shaders match external files across all systems
+
+---
+
+## Built with VIB3+
+
+The Dogfood Gallery demonstrates production-ready artifacts built autonomously using the SDK.
+
+| | | | |
+|:---:|:---:|:---:|:---:|
+| [**Weapon Skin Forge**](examples/dogfood/weapon-skins/) | [**The Fourth Dimension**](examples/dogfood/scroll-site/) | [**Flutter Music Viz**](examples/dogfood/flutter-viz/REPORT_2_BUILD.md) | [**Samsung TV Visualizer**](examples/dogfood/samsung-tv/) |
+| Gaming VFX Tooling | Creative Web Experience | Native Mobile App | Smart TV Ambient Display |
+
+[**View the full Dogfood Gallery**](examples/dogfood/index.html)
 
 ---
 
