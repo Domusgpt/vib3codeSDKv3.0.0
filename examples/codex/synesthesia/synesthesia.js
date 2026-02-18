@@ -34,6 +34,13 @@ import { ColorPresetsSystem } from '../../../src/creative/ColorPresetsSystem.js'
 import { ChoreographyPlayer } from '../../../src/creative/ChoreographyPlayer.js';
 import { PostProcessingPipeline } from '../../../src/creative/PostProcessingPipeline.js';
 import { AestheticMapper } from '../../../src/creative/AestheticMapper.js';
+import {
+  LEARNING_MODES,
+  normalizeLearningMode,
+  persistLearningMode,
+  resolveLearningModeFromEnvironment
+} from './src/learning-mode-config.js';
+import { wireLearningModePanel } from './src/mode-panel-controller.js';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Constants
@@ -94,6 +101,7 @@ const BAND_RANGES = [
 const BASE_NAMES = ['Tetra', 'Cube', 'Sphere', 'Torus', 'Klein', 'Fractal', 'Wave', 'Crystal'];
 const CORE_NAMES = ['Base', 'Hyper-S', 'Hyper-T'];
 const SYSTEM_NAMES = { faceted: 'FACETED', quantum: 'QUANTUM', holographic: 'HOLOGRAPHIC' };
+
 
 // [WHY] Gold Standard: Themed color presets for visual variety.
 // Press 'C' to cycle through these. The secondary engine gets an offset
@@ -229,6 +237,7 @@ class Synesthesia {
     this.primaryGeometry = 1;
     this.secondaryGeometry = 11;
     this.mode = 'active'; // active | frozen | autonomous
+    this.learningMode = this.resolveLearningMode();
     this.lastInputTime = 0;
     this.frozenAt = 0;
     this.frozenParams = null;
@@ -271,11 +280,38 @@ class Synesthesia {
     this.fps = { count: 0, timer: 0, value: 0 };
   }
 
+
+  resolveLearningMode() {
+    return resolveLearningModeFromEnvironment();
+  }
+
+  setLearningMode(modeKey) {
+    const next = normalizeLearningMode(modeKey, 'l4');
+    this.learningMode = next;
+    this.modeFlags = LEARNING_MODES[next];
+    document.body.classList.remove('mode-l1', 'mode-l2', 'mode-l3', 'mode-l4');
+    document.body.classList.add(`mode-${next}`);
+    persistLearningMode(next);
+  }
+
+  setupModeControls() {
+    wireLearningModePanel({
+      modeKey: this.learningMode,
+      onModeChange: (modeKey) => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('mode', normalizeLearningMode(modeKey, 'l4'));
+        window.location.href = url.toString();
+      }
+    });
+  }
+
   // ───────────────────────────────────────────────────────────────────────
   // Initialization
   // ───────────────────────────────────────────────────────────────────────
 
   async init() {
+    this.setLearningMode(this.learningMode);
+
     // ── Create Primary Engine (full viewport, Faceted) ──
     this.primaryEngine = new VIB3Engine({ system: this.primarySystem });
     const primaryOk = await this.primaryEngine.initialize('primary-viz');
@@ -285,11 +321,16 @@ class Synesthesia {
     }
 
     // ── Create Secondary Engine (floating panel, Quantum) ──
-    this.secondaryEngine = new VIB3Engine({ system: this.secondarySystem });
-    const secondaryOk = await this.secondaryEngine.initialize('secondary-viz');
-    if (!secondaryOk) {
-      console.warn('[Synesthesia] Secondary engine failed — running single-engine mode');
-      this.secondaryEngine = null;
+    if (this.modeFlags.secondary) {
+      this.secondaryEngine = new VIB3Engine({ system: this.secondarySystem });
+      const secondaryOk = await this.secondaryEngine.initialize('secondary-viz');
+      if (!secondaryOk) {
+        console.warn('[Synesthesia] Secondary engine failed — running single-engine mode');
+        this.secondaryEngine = null;
+      }
+    } else {
+      const secEl = document.getElementById('secondary-viz');
+      if (secEl) secEl.style.display = 'none';
     }
 
     // ── TransitionAnimator per engine ──
@@ -318,13 +359,15 @@ class Synesthesia {
 
     // ── ChoreographyPlayer for autonomous mode ──
     // [WHY] Gold Standard D: 8-scene autonomous cycle after 30s idle
-    this.choreographyPlayer = new ChoreographyPlayer(this.primaryEngine, {
-      onSceneChange: (idx, scene) => this.onChoreographyScene(idx, scene),
-      onComplete: () => this.onChoreographyComplete(),
-      onTick: (time, duration) => this.onChoreographyTick(time, duration)
-    });
-    this.choreographyPlayer.loopMode = 'loop';
-    this.choreographyPlayer.load(CHOREOGRAPHY_SPEC);
+    if (this.modeFlags.choreography) {
+      this.choreographyPlayer = new ChoreographyPlayer(this.primaryEngine, {
+        onSceneChange: (idx, scene) => this.onChoreographyScene(idx, scene),
+        onComplete: () => this.onChoreographyComplete(),
+        onTick: (time, duration) => this.onChoreographyTick(time, duration)
+      });
+      this.choreographyPlayer.loopMode = 'loop';
+      this.choreographyPlayer.load(CHOREOGRAPHY_SPEC);
+    }
 
     // ── PostProcessingPipeline ──
     // [WHY] Gold Standard: Bloom + chromatic aberration for depth
@@ -357,6 +400,7 @@ class Synesthesia {
 
     // ── Setup subsystems ──
     this.setupAudio();
+    this.setupModeControls();
     this.setupEvents();
     this.setupCoordination();
 
@@ -372,7 +416,7 @@ class Synesthesia {
     }, 6000);
 
     this.updateHUD();
-    console.log('[Synesthesia] Initialized — 2 engines, all 3 modes active');
+    console.log(`[Synesthesia] Initialized — mode ${this.learningMode.toUpperCase()} (${this.modeFlags.label})`);
     return true;
   }
 
@@ -1044,9 +1088,11 @@ class Synesthesia {
 
     if (sysLabel) sysLabel.textContent = SYSTEM_NAMES[this.primarySystem] || 'FACETED';
     if (geoLabel) geoLabel.textContent = `${geoName} [${this.primaryGeometry}]`;
-    if (modeLabel) modeLabel.textContent = this.mode;
-    if (secLabel && this.secondaryEngine) {
-      secLabel.textContent = `2nd: ${SYSTEM_NAMES[this.secondarySystem] || 'QUANTUM'}`;
+    if (modeLabel) modeLabel.textContent = `${this.mode} · ${this.learningMode.toUpperCase()}`;
+    if (secLabel) {
+      secLabel.textContent = this.secondaryEngine
+        ? `2nd: ${SYSTEM_NAMES[this.secondarySystem] || 'QUANTUM'}`
+        : '2nd: disabled in current learning mode';
     }
   }
 
@@ -1108,7 +1154,7 @@ class Synesthesia {
     // ── Idle detection → autonomous mode ──
     // [WHY] Gold Standard: 30s idle → autonomous choreography
     const idle = (now - this.lastInputTime) / 1000;
-    if (this.mode === 'active' && idle > 30) {
+    if (this.modeFlags.choreography && this.mode === 'active' && idle > 30) {
       this.mode = 'autonomous';
       this.choreographyPlayer?.play();
       this.updateHUD();
