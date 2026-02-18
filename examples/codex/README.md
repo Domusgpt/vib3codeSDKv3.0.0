@@ -65,3 +65,10 @@ The full creative vocabulary is defined in `examples/dogfood/GOLD_STANDARD.md`. 
 - **Section G**: Agent design patterns — the 6-step workflow for AI agents creating VIB3+ experiences, plus the Design-Analyze-Enhance loop.
 
 You don't have to use everything. But you should know everything exists before deciding what to leave out.
+
+## Codex Metadata & Validation
+
+- Catalog source: `examples/codex/catalog.json`
+- Active entry coverage matrix: `examples/codex/synesthesia/gold-standard-coverage.md`
+- Coverage validator: `node examples/codex/tools/validate-gold-standard-coverage.mjs`
+- Migration roadmap: `DOCS/CODEX_MIGRATION_PLAN.md`

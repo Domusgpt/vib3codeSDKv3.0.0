@@ -7,56 +7,108 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:system-ui,-apple-system,sans-serif;background:#0a0a0f;color:#e0e0e0;min-height:100vh;padding:40px 20px}
-.container{max-width:800px;margin:0 auto}
-h1{font-size:28px;font-weight:300;letter-spacing:0.05em;margin-bottom:8px;color:#fff}
-.subtitle{font-size:14px;color:rgba(255,255,255,0.4);margin-bottom:40px;line-height:1.5}
-.entries{display:grid;gap:20px}
-.entry{display:block;text-decoration:none;color:inherit;padding:24px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;background:rgba(255,255,255,0.03);transition:all 0.2s}
-.entry:hover{border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);transform:translateY(-2px)}
-.entry-title{font-size:18px;font-weight:600;margin-bottom:6px;color:#fff}
-.entry-focus{font-size:13px;color:rgba(168,85,247,0.8);margin-bottom:8px}
-.entry-desc{font-size:13px;color:rgba(255,255,255,0.5);line-height:1.5}
-.entry.planned{opacity:0.4;pointer-events:none}
-.entry.planned .entry-title::after{content:" (planned)";font-size:11px;color:rgba(255,255,255,0.3);font-weight:400}
-.footer{margin-top:60px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.06);font-size:12px;color:rgba(255,255,255,0.25);text-align:center}
-.footer a{color:rgba(168,85,247,0.6);text-decoration:none}
+.container{max-width:980px;margin:0 auto}
+h1{font-size:28px;font-weight:300;letter-spacing:.05em;margin-bottom:8px;color:#fff}
+.subtitle{font-size:14px;color:rgba(255,255,255,.5);margin-bottom:18px;line-height:1.5}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px}
+select,input{background:#11131c;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:8px 10px}
+.entries{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.entry{padding:18px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.03);display:flex;flex-direction:column;gap:8px}
+.entry[data-status="planned"]{opacity:.55}
+.entry-title{font-size:17px;font-weight:600;color:#fff}
+.meta{font-size:12px;color:rgba(255,255,255,.45)}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:11px;padding:2px 6px;border-radius:999px;background:rgba(168,85,247,.14);color:rgba(210,170,255,.9);border:1px solid rgba(168,85,247,.3)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.btn{font-size:12px;padding:6px 9px;border-radius:8px;text-decoration:none;border:1px solid rgba(255,255,255,.15);color:#fff;background:rgba(255,255,255,.04)}
+.btn.disabled{pointer-events:none;opacity:.35}
+.footer{margin-top:40px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08);font-size:12px;color:rgba(255,255,255,.3);text-align:center}
 </style>
 </head>
 <body>
 <div class="container">
   <h1>VIB3+ Codex</h1>
-  <p class="subtitle">Reference implementations demonstrating different creative approaches with the VIB3+ parameter vocabulary. Each entry makes different compositional choices — there is no single "correct" way.</p>
+  <p class="subtitle">Metadata-driven catalog of prime examples. Filter by status, input type, and pattern to find implementation references for both humans and agents.</p>
 
-  <div class="entries">
-    <a href="synesthesia/" class="entry">
-      <div class="entry-title">Synesthesia</div>
-      <div class="entry-focus">Audio-Reactive Ambient</div>
-      <div class="entry-desc">All 8 audio bands drive distinct parameters. 4D rotation activates through audio. Autonomous choreography on idle. The original reference implementation, rebuilt and annotated.</div>
-    </a>
-
-    <div class="entry planned">
-      <div class="entry-title">Storm Glass</div>
-      <div class="entry-focus">Weather-Data-Driven</div>
-      <div class="entry-desc">External weather API as continuous input instead of audio. Temperature drives hue, wind drives chaos, pressure drives density.</div>
-    </div>
-
-    <div class="entry planned">
-      <div class="entry-title">Pulse Deck</div>
-      <div class="entry-focus">DJ/VJ Tool</div>
-      <div class="entry-desc">Beat-synced transitions with BPM as master clock. Every parameter change snaps to the grid. Designed for live performance.</div>
-    </div>
-
-    <div class="entry planned">
-      <div class="entry-title">Meditation</div>
-      <div class="entry-focus">Breath-Synced Minimal</div>
-      <div class="entry-desc">Slow breath input drives everything. Minimal events. Long time constants. The visualization breathes with you.</div>
-    </div>
+  <div class="toolbar">
+    <select id="statusFilter">
+      <option value="all">All Statuses</option>
+      <option value="active">Active</option>
+      <option value="planned">Planned</option>
+    </select>
+    <select id="inputFilter">
+      <option value="all">All Inputs</option>
+    </select>
+    <input id="patternFilter" type="search" placeholder="Filter pattern (e.g. Portal Open)">
   </div>
+
+  <div id="entries" class="entries"></div>
 
   <div class="footer">
-    <a href="../dogfood/GOLD_STANDARD.md">Gold Standard v3</a> &middot;
-    VIB3+ SDK &middot; Clear Seas Solutions LLC
+    <a href="../dogfood/GOLD_STANDARD.md" class="btn">Gold Standard</a>
+    <a href="../../DOCS/CODEX_MIGRATION_PLAN.md" class="btn">Codex Migration Plan</a>
   </div>
 </div>
+
+<script type="module">
+const entriesContainer = document.getElementById('entries');
+const statusFilter = document.getElementById('statusFilter');
+const inputFilter = document.getElementById('inputFilter');
+const patternFilter = document.getElementById('patternFilter');
+
+const catalog = await fetch('./catalog.json').then(r => r.json());
+const entries = catalog.entries || [];
+
+const inputs = [...new Set(entries.map(e => e.input_source))].sort();
+for (const input of inputs) {
+  const opt = document.createElement('option');
+  opt.value = input;
+  opt.textContent = input;
+  inputFilter.appendChild(opt);
+}
+
+function action(href, label) {
+  if (!href) return `<span class="btn disabled">${label}</span>`;
+  return `<a class="btn" href="${href}">${label}</a>`;
+}
+
+function render() {
+  const s = statusFilter.value;
+  const i = inputFilter.value;
+  const p = patternFilter.value.trim().toLowerCase();
+
+  const filtered = entries.filter(e => {
+    if (s !== 'all' && e.status !== s) return false;
+    if (i !== 'all' && e.input_source !== i) return false;
+    if (p && !e.patterns_used.some(tag => tag.toLowerCase().includes(p))) return false;
+    return true;
+  });
+
+  entriesContainer.innerHTML = filtered.map(e => `
+    <article class="entry" data-status="${e.status}">
+      <div class="entry-title">${e.title}</div>
+      <div class="meta">status: ${e.status} · input: ${e.input_source} · difficulty: ${e.difficulty}</div>
+      <div>${e.creative_direction}</div>
+      <div class="tags">${e.patterns_used.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+      <div class="meta">coverage: ${e.gold_standard_coverage}</div>
+      <div class="actions">
+        ${action(e.run_href, 'Run')}
+        ${action(e.read_href, 'Read')}
+        ${action(e.coverage_href, 'Patterns')}
+        ${action(e.mcp_labs, 'Agent Lab')}
+      </div>
+    </article>
+  `).join('');
+
+  if (!filtered.length) {
+    entriesContainer.innerHTML = '<div class="entry">No entries matched the current filters.</div>';
+  }
+}
+
+statusFilter.addEventListener('change', render);
+inputFilter.addEventListener('change', render);
+patternFilter.addEventListener('input', render);
+render();
+</script>
 </body>
 </html>
