@@ -317,3 +317,11 @@ When synesthesia is running with audio, here's what's happening simultaneously o
 11. Any user input immediately breaks autonomous mode and takes control
 
 All of this is ~1189 lines of JavaScript importing 6 SDK modules. No raw WebGL, no inline shaders, no manual canvas management. That's the point — VIB3+ handles the rendering. You handle the creative logic.
+
+## Validation & Agent Labs
+
+- Gold Standard coverage matrix: `gold-standard-coverage.md`
+- Machine-readable coverage: `gold-standard-coverage.json`
+- Deterministic QA protocol: `QA_PROTOCOL.md`
+- MCP labs: `mcp-labs/`
+- Handoff schema: `mcp-labs/handoff.schema.json`
