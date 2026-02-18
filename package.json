@@ -326,7 +326,7 @@
     "dev": "vite --open",
     "dev:web": "vite --open",
     "prepublishOnly": "npm test && npm run build:web",
-    "build:web": "vite build",
+    "build:web": "vite build && node scripts/copy-dogfood-assets.js",
     "build:lib": "vite build --mode lib",
     "lint": "eslint \"src/**/*.{js,ts}\"",
     "test": "vitest run",
