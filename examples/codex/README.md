@@ -9,6 +9,7 @@ Every entry is a complete, working application. Open it in a browser, interact w
 | Entry | What It Is | What Makes It Different |
 |---|---|---|
 | [synesthesia](synesthesia/) | Audio-reactive ambient with two coordinated engines | Full Gold Standard vocabulary: 8 motions, density seesaw, CSS variable bridge, 8-scene autonomous choreography, per-system personality. The flagship — everything connected. |
+| [narrative-scroll](narrative-scroll/) | Scroll-driven narrative choreography mounted from site runtime | Phase 3 transition entry: section veils, pooled context choreography, and codex-first discovery path for the production narrative stack. |
 
 ### What's Coming
 
@@ -65,3 +66,10 @@ The full creative vocabulary is defined in `examples/dogfood/GOLD_STANDARD.md`. 
 - **Section G**: Agent design patterns — the 6-step workflow for AI agents creating VIB3+ experiences, plus the Design-Analyze-Enhance loop.
 
 You don't have to use everything. But you should know everything exists before deciding what to leave out.
+
+## Codex Metadata & Validation
+
+- Catalog source: `examples/codex/catalog.json`
+- Active entry coverage matrix: `examples/codex/synesthesia/gold-standard-coverage.md`
+- Coverage validator: `node examples/codex/tools/validate-gold-standard-coverage.mjs`
+- Migration roadmap: `DOCS/CODEX_MIGRATION_PLAN.md`

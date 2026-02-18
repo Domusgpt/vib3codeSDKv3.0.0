@@ -277,6 +277,40 @@ Add HTML sliders that call `engine.setParameter()` directly. You can override an
 
 ---
 
+
+## Progressive Learning Modes (L1–L4)
+
+
+Synesthesia now supports progressive mode boot profiles to make this flagship example teachable for both people and agents.
+
+| Mode | What It Enables | Best For |
+|---|---|---|
+| L1 | Primary engine only (single-canvas foundations) | First-time parameter and rotation learning |
+| L2 | Dual engines + inverse density coordination | Multi-instance composition fundamentals |
+| L3 | L2 + autonomous choreography | Narrative motion timing and idle arcs |
+| L4 | Full flagship stack + docs/labs integration | Agent handoff and production-like behavior |
+
+### How to use
+
+- Use the **Learning Mode** selector in the top-right panel.
+- Deep-link by URL query, e.g.:
+  - `index.html?mode=l1`
+  - `index.html?mode=l2`
+  - `index.html?mode=l3`
+  - `index.html?mode=l4`
+- Current mode persists via localStorage (`vib3.synesthesia.learningMode`).
+
+
+## Runtime Module Boundaries
+
+The learning-mode subsystem is now split into focused modules to keep orchestration code clean:
+
+- `src/learning-mode-config.js` — canonical mode definitions + resolve/normalize/persist helpers
+- `src/mode-panel-controller.js` — thin DOM wiring for the learning mode panel
+- `synesthesia.js` — runtime orchestration and feature gates using those modules
+
+This split keeps policy/configuration separate from UI wiring and render orchestration, making the entry easier to evolve for agent-driven edits.
+
 ## Controls Quick Reference
 
 | Input | What Happens |
@@ -317,3 +351,23 @@ When synesthesia is running with audio, here's what's happening simultaneously o
 11. Any user input immediately breaks autonomous mode and takes control
 
 All of this is ~1189 lines of JavaScript importing 6 SDK modules. No raw WebGL, no inline shaders, no manual canvas management. That's the point — VIB3+ handles the rendering. You handle the creative logic.
+
+
+## Environment Fallback Behavior
+
+When GPU/WebGL initialization fails, Synesthesia now renders a structured fallback view that preserves orientation links:
+
+- current requested learning mode (L1–L4)
+- direct link to Synesthesia README
+- direct link to MCP Labs
+- direct link back to the Codex index
+
+This keeps agent and human workflows unblocked in constrained CI/browser environments.
+
+## Validation & Agent Labs
+
+- Gold Standard coverage matrix: `gold-standard-coverage.md`
+- Machine-readable coverage: `gold-standard-coverage.json`
+- Deterministic QA protocol: `QA_PROTOCOL.md`
+- MCP labs: `mcp-labs/`
+- Handoff schema: `mcp-labs/handoff.schema.json`
