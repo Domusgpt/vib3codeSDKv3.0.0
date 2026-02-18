@@ -183,16 +183,14 @@ export class Mat4x4 {
     /**
      * Multiply two matrices
      * @param {Mat4x4} m - Right operand
-     * @param {Mat4x4} [target] - Optional target to write result to
-     * @returns {Mat4x4} Result matrix (target or new)
+     * @returns {Mat4x4} New matrix = this * m
      */
-    multiply(m, target = null) {
-        const out = target || new Mat4x4();
+    multiply(m) {
+        const out = new Mat4x4();
         const r = out.data;
         const a = this.data;
         const b = m.data;
 
-        // Cache inputs in local variables to support aliasing (out === a or out === b)
         const a00 = a[0], a01 = a[4], a02 = a[8], a03 = a[12];
         const a10 = a[1], a11 = a[5], a12 = a[9], a13 = a[13];
         const a20 = a[2], a21 = a[6], a22 = a[10], a23 = a[14];
@@ -287,28 +285,15 @@ export class Mat4x4 {
     /**
      * Transform a Vec4 by this matrix
      * @param {Vec4} v
-     * @param {Vec4} [target] - Optional target to write result to
-     * @returns {Vec4} Transformed vector (target or new)
+     * @returns {Vec4} Transformed vector
      */
-    multiplyVec4(v, target = null) {
+    multiplyVec4(v) {
         const m = this.data;
-        const x = v.x, y = v.y, z = v.z, w = v.w;
-
-        if (target) {
-            target.set(
-                m[0] * x + m[4] * y + m[8] * z + m[12] * w,
-                m[1] * x + m[5] * y + m[9] * z + m[13] * w,
-                m[2] * x + m[6] * y + m[10] * z + m[14] * w,
-                m[3] * x + m[7] * y + m[11] * z + m[15] * w
-            );
-            return target;
-        }
-
         return new Vec4(
-            m[0] * x + m[4] * y + m[8] * z + m[12] * w,
-            m[1] * x + m[5] * y + m[9] * z + m[13] * w,
-            m[2] * x + m[6] * y + m[10] * z + m[14] * w,
-            m[3] * x + m[7] * y + m[11] * z + m[15] * w
+            m[0] * v.x + m[4] * v.y + m[8] * v.z + m[12] * v.w,
+            m[1] * v.x + m[5] * v.y + m[9] * v.z + m[13] * v.w,
+            m[2] * v.x + m[6] * v.y + m[10] * v.z + m[14] * v.w,
+            m[3] * v.x + m[7] * v.y + m[11] * v.z + m[15] * v.w
         );
     }
 
@@ -351,29 +336,27 @@ export class Mat4x4 {
     /**
      * Add another matrix
      * @param {Mat4x4} m
-     * @param {Mat4x4} [target]
-     * @returns {Mat4x4} Result matrix
+     * @returns {Mat4x4} New matrix
      */
-    add(m, target = null) {
-        const out = target || new Mat4x4();
+    add(m) {
+        const result = new Float32Array(16);
         for (let i = 0; i < 16; i++) {
-            out.data[i] = this.data[i] + m.data[i];
+            result[i] = this.data[i] + m.data[i];
         }
-        return out;
+        return new Mat4x4(result);
     }
 
     /**
      * Multiply by scalar
      * @param {number} s
-     * @param {Mat4x4} [target]
-     * @returns {Mat4x4} Result matrix
+     * @returns {Mat4x4} New matrix
      */
-    scale(s, target = null) {
-        const out = target || new Mat4x4();
+    scale(s) {
+        const result = new Float32Array(16);
         for (let i = 0; i < 16; i++) {
-            out.data[i] = this.data[i] * s;
+            result[i] = this.data[i] * s;
         }
-        return out;
+        return new Mat4x4(result);
     }
 
     /**
@@ -438,79 +421,61 @@ export class Mat4x4 {
 
     /**
      * Calculate inverse matrix
-     * @param {Mat4x4} [target] - Optional target to write result to
      * @returns {Mat4x4|null} Inverse matrix or null if singular
      */
-    inverse(target = null) {
-        const out = target || new Mat4x4();
+    inverse() {
         const m = this.data;
-        const inv = out.data;
+        const inv = new Float32Array(16);
 
-        // Cache values if target is this (aliasing)
-        let m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13, m14, m15;
-        if (out === this) {
-            m0=m[0]; m1=m[1]; m2=m[2]; m3=m[3];
-            m4=m[4]; m5=m[5]; m6=m[6]; m7=m[7];
-            m8=m[8]; m9=m[9]; m10=m[10]; m11=m[11];
-            m12=m[12]; m13=m[13]; m14=m[14]; m15=m[15];
-            // Use local vars for calculation
-        } else {
-             // Direct access is safe
-             m0=m[0]; m1=m[1]; m2=m[2]; m3=m[3];
-             m4=m[4]; m5=m[5]; m6=m[6]; m7=m[7];
-             m8=m[8]; m9=m[9]; m10=m[10]; m11=m[11];
-             m12=m[12]; m13=m[13]; m14=m[14]; m15=m[15];
-        }
+        inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] +
+            m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
 
-        inv[0] = m5 * m10 * m15 - m5 * m11 * m14 - m9 * m6 * m15 +
-            m9 * m7 * m14 + m13 * m6 * m11 - m13 * m7 * m10;
+        inv[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] -
+            m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
 
-        inv[4] = -m4 * m10 * m15 + m4 * m11 * m14 + m8 * m6 * m15 -
-            m8 * m7 * m14 - m12 * m6 * m11 + m12 * m7 * m10;
+        inv[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] +
+            m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
 
-        inv[8] = m4 * m9 * m15 - m4 * m11 * m13 - m8 * m5 * m15 +
-            m8 * m7 * m13 + m12 * m5 * m11 - m12 * m7 * m9;
+        inv[12] = -m[4] * m[9] * m[14] + m[4] * m[10] * m[13] + m[8] * m[5] * m[14] -
+            m[8] * m[6] * m[13] - m[12] * m[5] * m[10] + m[12] * m[6] * m[9];
 
-        inv[12] = -m4 * m9 * m14 + m4 * m10 * m13 + m8 * m5 * m14 -
-            m8 * m6 * m13 - m12 * m5 * m10 + m12 * m6 * m9;
+        inv[1] = -m[1] * m[10] * m[15] + m[1] * m[11] * m[14] + m[9] * m[2] * m[15] -
+            m[9] * m[3] * m[14] - m[13] * m[2] * m[11] + m[13] * m[3] * m[10];
 
-        inv[1] = -m1 * m10 * m15 + m1 * m11 * m14 + m9 * m2 * m15 -
-            m9 * m3 * m14 - m13 * m2 * m11 + m13 * m3 * m10;
+        inv[5] = m[0] * m[10] * m[15] - m[0] * m[11] * m[14] - m[8] * m[2] * m[15] +
+            m[8] * m[3] * m[14] + m[12] * m[2] * m[11] - m[12] * m[3] * m[10];
 
-        inv[5] = m0 * m10 * m15 - m0 * m11 * m14 - m8 * m2 * m15 +
-            m8 * m3 * m14 + m12 * m2 * m11 - m12 * m3 * m10;
+        inv[9] = -m[0] * m[9] * m[15] + m[0] * m[11] * m[13] + m[8] * m[1] * m[15] -
+            m[8] * m[3] * m[13] - m[12] * m[1] * m[11] + m[12] * m[3] * m[9];
 
-        inv[9] = -m0 * m9 * m15 + m0 * m11 * m13 + m8 * m1 * m15 -
-            m8 * m3 * m13 - m12 * m1 * m11 + m12 * m3 * m9;
+        inv[13] = m[0] * m[9] * m[14] - m[0] * m[10] * m[13] - m[8] * m[1] * m[14] +
+            m[8] * m[2] * m[13] + m[12] * m[1] * m[10] - m[12] * m[2] * m[9];
 
-        inv[13] = m0 * m9 * m14 - m0 * m10 * m13 - m8 * m1 * m14 +
-            m8 * m2 * m13 + m12 * m1 * m10 - m12 * m2 * m9;
+        inv[2] = m[1] * m[6] * m[15] - m[1] * m[7] * m[14] - m[5] * m[2] * m[15] +
+            m[5] * m[3] * m[14] + m[13] * m[2] * m[7] - m[13] * m[3] * m[6];
 
-        inv[2] = m1 * m6 * m15 - m1 * m7 * m14 - m5 * m2 * m15 +
-            m5 * m3 * m14 + m13 * m2 * m7 - m13 * m3 * m6;
+        inv[6] = -m[0] * m[6] * m[15] + m[0] * m[7] * m[14] + m[4] * m[2] * m[15] -
+            m[4] * m[3] * m[14] - m[12] * m[2] * m[7] + m[12] * m[3] * m[6];
 
-        inv[6] = -m0 * m6 * m15 + m0 * m7 * m14 + m4 * m2 * m15 -
-            m4 * m3 * m14 - m12 * m2 * m7 + m12 * m3 * m6;
+        inv[10] = m[0] * m[5] * m[15] - m[0] * m[7] * m[13] - m[4] * m[1] * m[15] +
+            m[4] * m[3] * m[13] + m[12] * m[1] * m[7] - m[12] * m[3] * m[5];
 
-        inv[10] = m0 * m5 * m15 - m0 * m7 * m13 - m4 * m1 * m15 +
-            m4 * m3 * m13 + m12 * m1 * m7 - m12 * m3 * m5;
+        inv[14] = -m[0] * m[5] * m[14] + m[0] * m[6] * m[13] + m[4] * m[1] * m[14] -
+            m[4] * m[2] * m[13] - m[12] * m[1] * m[6] + m[12] * m[2] * m[5];
 
-        inv[14] = -m0 * m5 * m14 + m0 * m6 * m13 + m4 * m1 * m14 -
-            m4 * m2 * m13 - m12 * m1 * m6 + m12 * m2 * m5;
+        inv[3] = -m[1] * m[6] * m[11] + m[1] * m[7] * m[10] + m[5] * m[2] * m[11] -
+            m[5] * m[3] * m[10] - m[9] * m[2] * m[7] + m[9] * m[3] * m[6];
 
-        inv[3] = -m1 * m6 * m11 + m1 * m7 * m10 + m5 * m2 * m11 -
-            m5 * m3 * m10 - m9 * m2 * m7 + m9 * m3 * m6;
+        inv[7] = m[0] * m[6] * m[11] - m[0] * m[7] * m[10] - m[4] * m[2] * m[11] +
+            m[4] * m[3] * m[10] + m[8] * m[2] * m[7] - m[8] * m[3] * m[6];
 
-        inv[7] = m0 * m6 * m11 - m0 * m7 * m10 - m4 * m2 * m11 +
-            m4 * m3 * m10 + m8 * m2 * m7 - m8 * m3 * m6;
+        inv[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9] + m[4] * m[1] * m[11] -
+            m[4] * m[3] * m[9] - m[8] * m[1] * m[7] + m[8] * m[3] * m[5];
 
-        inv[11] = -m0 * m5 * m11 + m0 * m7 * m9 + m4 * m1 * m11 -
-            m4 * m3 * m9 - m8 * m1 * m7 + m8 * m3 * m5;
+        inv[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] +
+            m[4] * m[2] * m[9] + m[8] * m[1] * m[6] - m[8] * m[2] * m[5];
 
-        inv[15] = m0 * m5 * m10 - m0 * m6 * m9 - m4 * m1 * m10 +
-            m4 * m2 * m9 + m8 * m1 * m6 - m8 * m2 * m5;
-
-        const det = m0 * inv[0] + m1 * inv[4] + m2 * inv[8] + m3 * inv[12];
+        const det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
 
         if (Math.abs(det) < 1e-10) {
             return null; // Singular matrix
@@ -521,7 +486,7 @@ export class Mat4x4 {
             inv[i] *= invDet;
         }
 
-        return out;
+        return new Mat4x4(inv);
     }
 
     /**
