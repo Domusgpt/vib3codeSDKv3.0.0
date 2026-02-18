@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Codex MCP Handoff",
+  "type": "object",
+  "required": ["entry", "timestamp", "scene", "notes"],
+  "properties": {
+    "entry": { "type": "string", "const": "synesthesia" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "scene": {
+      "type": "object",
+      "required": ["system", "geometry", "parameters", "rotation"],
+      "properties": {
+        "system": { "type": "string" },
+        "geometry": { "type": "integer", "minimum": 0, "maximum": 23 },
+        "parameters": { "type": "object", "additionalProperties": true },
+        "rotation": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "notes": { "type": "string" },
+    "next_actions": { "type": "array", "items": { "type": "string" } }
+  }
+}
