@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VIB3+ Codex</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0a0a0f;color:#e0e0e0;min-height:100vh;padding:40px 20px}
+.container{max-width:800px;margin:0 auto}
+h1{font-size:28px;font-weight:300;letter-spacing:0.05em;margin-bottom:8px;color:#fff}
+.subtitle{font-size:14px;color:rgba(255,255,255,0.4);margin-bottom:40px;line-height:1.5}
+.entries{display:grid;gap:20px}
+.entry{display:block;text-decoration:none;color:inherit;padding:24px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;background:rgba(255,255,255,0.03);transition:all 0.2s}
+.entry:hover{border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);transform:translateY(-2px)}
+.entry-title{font-size:18px;font-weight:600;margin-bottom:6px;color:#fff}
+.entry-focus{font-size:13px;color:rgba(168,85,247,0.8);margin-bottom:8px}
+.entry-desc{font-size:13px;color:rgba(255,255,255,0.5);line-height:1.5}
+.entry.planned{opacity:0.4;pointer-events:none}
+.entry.planned .entry-title::after{content:" (planned)";font-size:11px;color:rgba(255,255,255,0.3);font-weight:400}
+.footer{margin-top:60px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.06);font-size:12px;color:rgba(255,255,255,0.25);text-align:center}
+.footer a{color:rgba(168,85,247,0.6);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>VIB3+ Codex</h1>
+  <p class="subtitle">Reference implementations demonstrating different creative approaches with the VIB3+ parameter vocabulary. Each entry makes different compositional choices — there is no single "correct" way.</p>
+
+  <div class="entries">
+    <a href="synesthesia/" class="entry">
+      <div class="entry-title">Synesthesia</div>
+      <div class="entry-focus">Audio-Reactive Ambient</div>
+      <div class="entry-desc">All 8 audio bands drive distinct parameters. 4D rotation activates through audio. Autonomous choreography on idle. The original reference implementation, rebuilt and annotated.</div>
+    </a>
+
+    <div class="entry planned">
+      <div class="entry-title">Storm Glass</div>
+      <div class="entry-focus">Weather-Data-Driven</div>
+      <div class="entry-desc">External weather API as continuous input instead of audio. Temperature drives hue, wind drives chaos, pressure drives density.</div>
+    </div>
+
+    <div class="entry planned">
+      <div class="entry-title">Pulse Deck</div>
+      <div class="entry-focus">DJ/VJ Tool</div>
+      <div class="entry-desc">Beat-synced transitions with BPM as master clock. Every parameter change snaps to the grid. Designed for live performance.</div>
+    </div>
+
+    <div class="entry planned">
+      <div class="entry-title">Meditation</div>
+      <div class="entry-focus">Breath-Synced Minimal</div>
+      <div class="entry-desc">Slow breath input drives everything. Minimal events. Long time constants. The visualization breathes with you.</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="../dogfood/GOLD_STANDARD.md">Gold Standard v3</a> &middot;
+    VIB3+ SDK &middot; Clear Seas Solutions LLC
+  </div>
+</div>
+</body>
+</html>

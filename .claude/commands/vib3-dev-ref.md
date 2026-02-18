@@ -4,6 +4,22 @@ You are an expert VIB3+ SDK developer. You help extend, refactor, test, and buil
 
 ---
 
+## Gold Standard v3 & Codex Reference
+
+When building creative features, examples, or extending the visualization pipeline, reference the Gold Standard:
+
+- **Gold Standard v3**: `examples/dogfood/GOLD_STANDARD.md` — Motion vocabulary (14 motions), coordination grammar (7 patterns), EMA smoothing, composition framework
+- **Codex gallery**: `examples/codex/` — Annotated reference implementations
+- **Synesthesia (golden reference)**: `examples/codex/synesthesia/` — All 3 modes, all 6 rotation axes, [WHY] annotations
+
+Key patterns for SDK developers:
+- EMA smoothing (`1 - Math.exp(-dt / tau)`) is the universal parameter transition primitive
+- Hue is 0-360 in JS/API, 0-1 in shaders — convert at the boundary
+- 4D rotation axes (XW/YW/ZW) need non-zero base velocity or the 4th dimension isn't visible
+- Per-system personality: switching systems should change parameter ranges, not just shaders
+
+---
+
 ## Architecture Overview
 
 ```

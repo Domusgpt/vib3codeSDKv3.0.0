@@ -157,10 +157,11 @@ export class Mat4x4 {
     /**
      * Multiply two matrices
      * @param {Mat4x4} m - Right operand
+     * @param {Mat4x4} [target=null] - Optional target matrix to store result
      * @returns {Mat4x4} New matrix = this * m
      */
-    multiply(m) {
-        const out = new Mat4x4();
+    multiply(m, target = null) {
+        const out = target || new Mat4x4();
         const r = out.data;
         const a = this.data;
         const b = m.data;
@@ -259,16 +260,22 @@ export class Mat4x4 {
     /**
      * Transform a Vec4 by this matrix
      * @param {Vec4} v
+     * @param {Vec4} [target=null] - Optional target vector to store result
      * @returns {Vec4} Transformed vector
      */
-    multiplyVec4(v) {
+    multiplyVec4(v, target = null) {
         const m = this.data;
-        return new Vec4(
-            m[0] * v.x + m[4] * v.y + m[8] * v.z + m[12] * v.w,
-            m[1] * v.x + m[5] * v.y + m[9] * v.z + m[13] * v.w,
-            m[2] * v.x + m[6] * v.y + m[10] * v.z + m[14] * v.w,
-            m[3] * v.x + m[7] * v.y + m[11] * v.z + m[15] * v.w
-        );
+        const out = target || new Vec4();
+
+        // Cache components to support aliasing (target === v)
+        const x = v.x, y = v.y, z = v.z, w = v.w;
+
+        out.x = m[0] * x + m[4] * y + m[8] * z + m[12] * w;
+        out.y = m[1] * x + m[5] * y + m[9] * z + m[13] * w;
+        out.z = m[2] * x + m[6] * y + m[10] * z + m[14] * w;
+        out.w = m[3] * x + m[7] * y + m[11] * z + m[15] * w;
+
+        return out;
     }
 
     /**
@@ -310,27 +317,36 @@ export class Mat4x4 {
     /**
      * Add another matrix
      * @param {Mat4x4} m
+     * @param {Mat4x4} [target=null] - Optional target matrix
      * @returns {Mat4x4} New matrix
      */
-    add(m) {
-        const result = new Float32Array(16);
+    add(m, target = null) {
+        const out = target || new Mat4x4();
+        const r = out.data;
+        const a = this.data;
+        const b = m.data;
+
         for (let i = 0; i < 16; i++) {
-            result[i] = this.data[i] + m.data[i];
+            r[i] = a[i] + b[i];
         }
-        return new Mat4x4(result);
+        return out;
     }
 
     /**
      * Multiply by scalar
      * @param {number} s
+     * @param {Mat4x4} [target=null] - Optional target matrix
      * @returns {Mat4x4} New matrix
      */
-    scale(s) {
-        const result = new Float32Array(16);
+    scale(s, target = null) {
+        const out = target || new Mat4x4();
+        const r = out.data;
+        const a = this.data;
+
         for (let i = 0; i < 16; i++) {
-            result[i] = this.data[i] * s;
+            r[i] = a[i] * s;
         }
-        return new Mat4x4(result);
+        return out;
     }
 
     /**
@@ -547,6 +563,122 @@ export class Mat4x4 {
         return new Mat4x4(json.data);
     }
 
+    // ========== IN-PLACE ROTATIONS ==========
+
+    /**
+     * Rotate in XY plane in place
+     * @param {number} angle
+     * @returns {Mat4x4} this
+     */
+    rotateXY(angle) {
+        const c = Math.cos(angle);
+        const s = Math.sin(angle);
+        const m = this.data;
+
+        for (let i = 0; i < 4; i++) {
+            const a0 = m[i];      // Col 0
+            const a1 = m[i + 4];  // Col 1
+            m[i]     = a0 * c + a1 * s;
+            m[i + 4] = -a0 * s + a1 * c;
+        }
+        return this;
+    }
+
+    /**
+     * Rotate in XZ plane in place
+     * @param {number} angle
+     * @returns {Mat4x4} this
+     */
+    rotateXZ(angle) {
+        const c = Math.cos(angle);
+        const s = Math.sin(angle);
+        const m = this.data;
+
+        for (let i = 0; i < 4; i++) {
+            const a0 = m[i];      // Col 0
+            const a2 = m[i + 8];  // Col 2
+            m[i]     = a0 * c - a2 * s;
+            m[i + 8] = a0 * s + a2 * c;
+        }
+        return this;
+    }
+
+    /**
+     * Rotate in YZ plane in place
+     * @param {number} angle
+     * @returns {Mat4x4} this
+     */
+    rotateYZ(angle) {
+        const c = Math.cos(angle);
+        const s = Math.sin(angle);
+        const m = this.data;
+
+        for (let i = 0; i < 4; i++) {
+            const a1 = m[i + 4];  // Col 1
+            const a2 = m[i + 8];  // Col 2
+            m[i + 4] = a1 * c + a2 * s;
+            m[i + 8] = -a1 * s + a2 * c;
+        }
+        return this;
+    }
+
+    /**
+     * Rotate in XW plane in place
+     * @param {number} angle
+     * @returns {Mat4x4} this
+     */
+    rotateXW(angle) {
+        const c = Math.cos(angle);
+        const s = Math.sin(angle);
+        const m = this.data;
+
+        for (let i = 0; i < 4; i++) {
+            const a0 = m[i];       // Col 0
+            const a3 = m[i + 12];  // Col 3
+            m[i]      = a0 * c + a3 * s;
+            m[i + 12] = -a0 * s + a3 * c;
+        }
+        return this;
+    }
+
+    /**
+     * Rotate in YW plane in place
+     * @param {number} angle
+     * @returns {Mat4x4} this
+     */
+    rotateYW(angle) {
+        const c = Math.cos(angle);
+        const s = Math.sin(angle);
+        const m = this.data;
+
+        for (let i = 0; i < 4; i++) {
+            const a1 = m[i + 4];   // Col 1
+            const a3 = m[i + 12];  // Col 3
+            m[i + 4]  = a1 * c + a3 * s;
+            m[i + 12] = -a1 * s + a3 * c;
+        }
+        return this;
+    }
+
+    /**
+     * Rotate in ZW plane in place
+     * @param {number} angle
+     * @returns {Mat4x4} this
+     */
+    rotateZW(angle) {
+        const c = Math.cos(angle);
+        const s = Math.sin(angle);
+        const m = this.data;
+
+        for (let i = 0; i < 4; i++) {
+            const a2 = m[i + 8];   // Col 2
+            const a3 = m[i + 12];  // Col 3
+            m[i + 8]  = a2 * c + a3 * s;
+            m[i + 12] = -a2 * s + a3 * c;
+        }
+        return this;
+    }
+
     // ========== ROTATION MATRICES FOR ALL 6 PLANES ==========
 
     /**
@@ -681,12 +813,12 @@ export class Mat4x4 {
     static rotationFromAngles(angles) {
         let result = Mat4x4.identity();
 
-        if (angles.xy) result = result.multiply(Mat4x4.rotationXY(angles.xy));
-        if (angles.xz) result = result.multiply(Mat4x4.rotationXZ(angles.xz));
-        if (angles.yz) result = result.multiply(Mat4x4.rotationYZ(angles.yz));
-        if (angles.xw) result = result.multiply(Mat4x4.rotationXW(angles.xw));
-        if (angles.yw) result = result.multiply(Mat4x4.rotationYW(angles.yw));
-        if (angles.zw) result = result.multiply(Mat4x4.rotationZW(angles.zw));
+        if (angles.xy) result.rotateXY(angles.xy);
+        if (angles.xz) result.rotateXZ(angles.xz);
+        if (angles.yz) result.rotateYZ(angles.yz);
+        if (angles.xw) result.rotateXW(angles.xw);
+        if (angles.yw) result.rotateYW(angles.yw);
+        if (angles.zw) result.rotateZW(angles.zw);
 
         return result;
     }

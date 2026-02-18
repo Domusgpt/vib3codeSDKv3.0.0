@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>VIB3+ Visualizer</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- WebGL Canvas (renders at 960x540, CSS stretches to viewport) -->
+  <canvas id="visualizer-canvas"></canvas>
+
+  <!-- HUD Overlay -->
+  <div id="hud">
+
+    <!-- Top-Left: System Indicator -->
+    <div id="system-indicator">
+      <span id="system-name">FACETED</span>
+      <span id="system-badge" class="badge-faceted">FACETED</span>
+    </div>
+
+    <!-- Top-Right: Geometry Info -->
+    <div id="geometry-info">
+      <div id="geometry-name">Hypercube</div>
+      <div id="geometry-index">Index 1 (Base)</div>
+    </div>
+
+    <!-- Bottom-Left: Audio Meter (8 bars) -->
+    <div id="audio-meter">
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+      <span id="audio-label">AUDIO</span>
+    </div>
+
+    <!-- Bottom-Right: Status Bar -->
+    <div id="status-bar">
+      <div id="status-mode">STARTUP</div>
+      <div id="status-fps">-- FPS</div>
+      <div id="status-sensitivity">SENS 1.0</div>
+    </div>
+
+    <!-- Bottom-Center: Color Button Legend -->
+    <div id="button-legend">
+      <div class="legend-item">
+        <span class="legend-dot red"></span>
+        <span class="legend-label">Faceted</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot green"></span>
+        <span class="legend-label">Quantum</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot yellow"></span>
+        <span class="legend-label">Holographic</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot blue"></span>
+        <span class="legend-label">Menu</span>
+      </div>
+    </div>
+
+    <!-- Screensaver Indicator -->
+    <div id="screensaver-indicator">SCREENSAVER</div>
+
+  </div>
+
+  <!-- Parameter Menu (center overlay, toggled by Enter/Blue) -->
+  <div id="param-menu">
+    <div id="param-menu-title">Parameters</div>
+    <!-- Param rows are built dynamically by app.js -->
+  </div>
+
+  <!-- Startup Overlay -->
+  <div id="startup-overlay">
+    <div id="startup-title">VIB3+</div>
+    <div id="startup-subtitle">4D VISUALIZATION ENGINE</div>
+    <div id="startup-prompt">PRESS ANY KEY</div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast"></div>
+
+  <!-- Scripts (load order matters — no ES modules for Tizen compat) -->
+  <script src="js/shaders.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/remote.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>

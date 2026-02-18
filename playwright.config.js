@@ -22,7 +22,7 @@ const HEADLESS_ARGS = [
   '--disable-software-rasterizer',
   '--disable-extensions',
   '--disable-background-networking',
-  `--crash-dumps-dir=${process.env.TMPDIR || '/home/user/tmp'}`,
+  `--crash-dumps-dir=${process.env.TMPDIR || '/tmp'}`,
 ];
 
 // Chrome flags for GPU-accelerated rendering (requires NVIDIA GPU + drivers)
@@ -85,11 +85,10 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {
-          executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
-            '/root/.cache/ms-playwright/chromium-1194/chrome-linux/chrome',
+          executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
           env: {
             ...process.env,
-            TMPDIR: process.env.TMPDIR || '/home/user/tmp',
+            TMPDIR: process.env.TMPDIR || '/tmp',
           },
           args: GPU_ENABLED ? GPU_ARGS : HEADLESS_ARGS,
         },
