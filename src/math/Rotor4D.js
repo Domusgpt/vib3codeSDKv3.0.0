@@ -429,9 +429,10 @@ export class Rotor4D {
 
     /**
      * Convert rotor to 4x4 rotation matrix (column-major for WebGL)
+     * @param {Float32Array|Array} [target] - Optional target array to write into
      * @returns {Float32Array} 16-element array in column-major order
      */
-    toMatrix() {
+    toMatrix(target = null) {
         // Normalize first for numerical stability
         const n = this.norm();
         const invN = n > 1e-10 ? 1 / n : 1;
@@ -495,6 +496,35 @@ export class Rotor4D {
         // Formula derived from sandwich product R v R†
         // Diagonal: s² minus bivectors containing that axis, plus others
         // Off-diagonal: 2*s*bivector terms for single-plane contributions
+
+        if (target) {
+            // Column 0 (transformed X axis)
+            target[0] = s2 - xy2 - xz2 + yz2 - xw2 + yw2 + zw2 - xyzw2;
+            target[1] = sxy + xzyz + xwyw - zwxyzw;
+            target[2] = sxz - xyyz + xwzw + ywxyzw;
+            target[3] = sxw - xyyw - xzzw - yzxyzw;
+
+            // Column 1 (transformed Y axis)
+            target[4] = -sxy + xzyz + xwyw + zwxyzw;
+            target[5] = s2 - xy2 + xz2 - yz2 + xw2 - yw2 + zw2 - xyzw2;
+            target[6] = syz + xyxz + ywzw - xwxyzw;
+            target[7] = syw + xyxw - yzzw + xzxyzw;
+
+            // Column 2 (transformed Z axis)
+            target[8] = -sxz - xyyz + xwzw - ywxyzw;
+            target[9] = -syz + xyxz + ywzw + xwxyzw;
+            target[10] = s2 + xy2 - xz2 - yz2 + xw2 + yw2 - zw2 - xyzw2;
+            target[11] = szw + xzxw + yzyw - xyxyzw;
+
+            // Column 3 (transformed W axis)
+            target[12] = -sxw - xyyw - xzzw + yzxyzw;
+            target[13] = -syw + xyxw - yzzw - xzxyzw;
+            target[14] = -szw + xzxw + yzyw + xyxyzw;
+            target[15] = s2 + xy2 + xz2 + yz2 - xw2 - yw2 - zw2 - xyzw2;
+
+            return target;
+        }
+
         return new Float32Array([
             // Column 0 (transformed X axis)
             s2 - xy2 - xz2 + yz2 - xw2 + yw2 + zw2 - xyzw2,
