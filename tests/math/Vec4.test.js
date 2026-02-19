@@ -179,6 +179,52 @@ describe('Vec4', () => {
             expect(p.w).toBe(0);
         });
 
+        it('handles division by zero in perspective projection', () => {
+            const v = new Vec4(1, 1, 1, 2);
+            const p = v.projectPerspective(2);
+            // Default epsilon is 1e-5. denom = 2 - 2 = 0 -> 1e-5. scale = 1/1e-5 = 100000.
+            expect(p.x).toBeCloseTo(100000);
+            expect(p.y).toBeCloseTo(100000);
+            expect(p.z).toBeCloseTo(100000);
+        });
+
+        it('clamps near-zero denominators in perspective projection', () => {
+            const vNearPos = new Vec4(1, 1, 1, 1.999999);
+            const pNearPos = vNearPos.projectPerspective(2);
+            expect(pNearPos.x).toBeCloseTo(100000);
+
+            const vNearNeg = new Vec4(1, 1, 1, 2.000001);
+            const pNearNeg = vNearNeg.projectPerspective(2);
+            expect(pNearNeg.x).toBeCloseTo(-100000);
+        });
+
+        it('supports custom epsilon in perspective projection', () => {
+            const v = new Vec4(1, 1, 1, 2);
+            const p = v.projectPerspective(2, { epsilon: 1e-3 });
+            expect(p.x).toBeCloseTo(1000);
+        });
+
+        it('supports options as first argument in perspective projection', () => {
+            const v = new Vec4(2, 2, 2, 0);
+            const p = v.projectPerspective({ distance: 4 });
+            expect(p.x).toBeCloseTo(0.5);
+        });
+
+        it('projects with stereographic projection', () => {
+            const v = new Vec4(0.5, 0.5, 0.5, 0);
+            const p = v.projectStereographic();
+            // d=1, w=0, denom=1, scale=1.
+            expect(p.x).toBeCloseTo(0.5);
+            expect(p.w).toBe(0);
+        });
+
+        it('handles division by zero in stereographic projection', () => {
+            const v = new Vec4(1, 1, 1, 1);
+            const p = v.projectStereographic();
+            // Default epsilon is 1e-5. denom = 1 - 1 = 0 -> 1e-5. scale = 1/1e-5 = 100000.
+            expect(p.x).toBeCloseTo(100000);
+        });
+
         it('projects orthographically', () => {
             const v = new Vec4(1, 2, 3, 4);
             const p = v.projectOrthographic();
