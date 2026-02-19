@@ -2,6 +2,12 @@
 
 Based on the repository configuration, here are the live GitHub Pages links for the Dogfood artifacts:
 
+> **Note on Naming:**
+> The GitHub Pages URL is derived from the repository name (**`vib34d-xr-quaternion-sdk`**), which differs from the npm package name (**`@vib3code/sdk`**).
+>
+> **Repo:** `github.com/Domusgpt/vib34d-xr-quaternion-sdk`
+> **Site:** `domusgpt.github.io/vib34d-xr-quaternion-sdk`
+
 ## 🎮 Central Gallery
 **[Dogfood Gallery](https://domusgpt.github.io/vib34d-xr-quaternion-sdk/examples/dogfood/index.html)**
 *The main landing page linking to all demos.*
@@ -23,7 +29,3 @@ Based on the repository configuration, here are the live GitHub Pages links for 
 ### 4. Flutter Music Viz (Agent C)
 **[View Build Report](https://domusgpt.github.io/vib34d-xr-quaternion-sdk/examples/dogfood/flutter-viz/REPORT_2_BUILD.md)**
 *Native mobile app source code. Requires Flutter build.*
-
----
-
-*Note: These links assume the standard GitHub Pages URL structure `https://<user>.github.io/<repo>/`.*
