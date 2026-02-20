@@ -19,12 +19,20 @@ import { Vec4 } from './Vec4.js';
 
 export class Mat4x4 {
     /**
+     * Internal token to skip initialization during construction
+     * @private
+     */
+    static UNINITIALIZED = {};
+
+    /**
      * Create a new 4x4 matrix
      * Default is identity matrix
      * @param {Float32Array|number[]} [elements] - 16 elements in column-major order
      */
     constructor(elements = null) {
         this.data = new Float32Array(16);
+
+        if (elements === Mat4x4.UNINITIALIZED) return;
 
         if (elements) {
             if (elements.length !== 16) {
@@ -45,12 +53,7 @@ export class Mat4x4 {
      * @returns {Mat4x4}
      */
     static identity() {
-        return new Mat4x4([
-            1, 0, 0, 0,
-            0, 1, 0, 0,
-            0, 0, 1, 0,
-            0, 0, 0, 1
-        ]);
+        return new Mat4x4();
     }
 
     /**
@@ -58,7 +61,7 @@ export class Mat4x4 {
      * @returns {Mat4x4}
      */
     static zero() {
-        return new Mat4x4(new Float32Array(16));
+        return new Mat4x4(Mat4x4.UNINITIALIZED);
     }
 
     /**
@@ -161,7 +164,7 @@ export class Mat4x4 {
      * @returns {Mat4x4} New matrix = this * m
      */
     multiply(m, target = null) {
-        const out = target || new Mat4x4();
+        const out = target || new Mat4x4(Mat4x4.UNINITIALIZED);
         const r = out.data;
         const a = this.data;
         const b = m.data;
@@ -321,7 +324,7 @@ export class Mat4x4 {
      * @returns {Mat4x4} New matrix
      */
     add(m, target = null) {
-        const out = target || new Mat4x4();
+        const out = target || new Mat4x4(Mat4x4.UNINITIALIZED);
         const r = out.data;
         const a = this.data;
         const b = m.data;
@@ -339,7 +342,7 @@ export class Mat4x4 {
      * @returns {Mat4x4} New matrix
      */
     scale(s, target = null) {
-        const out = target || new Mat4x4();
+        const out = target || new Mat4x4(Mat4x4.UNINITIALIZED);
         const r = out.data;
         const a = this.data;
 
@@ -355,12 +358,13 @@ export class Mat4x4 {
      */
     transpose() {
         const m = this.data;
-        return new Mat4x4([
-            m[0], m[4], m[8], m[12],
-            m[1], m[5], m[9], m[13],
-            m[2], m[6], m[10], m[14],
-            m[3], m[7], m[11], m[15]
-        ]);
+        const out = new Mat4x4(Mat4x4.UNINITIALIZED);
+        const r = out.data;
+        r[0] = m[0]; r[4] = m[1]; r[8] = m[2]; r[12] = m[3];
+        r[1] = m[4]; r[5] = m[5]; r[9] = m[6]; r[13] = m[7];
+        r[2] = m[8]; r[6] = m[9]; r[10] = m[10]; r[14] = m[11];
+        r[3] = m[12]; r[7] = m[13]; r[11] = m[14]; r[15] = m[15];
+        return out;
     }
 
     /**
@@ -415,7 +419,8 @@ export class Mat4x4 {
      */
     inverse() {
         const m = this.data;
-        const inv = new Float32Array(16);
+        const out = new Mat4x4(Mat4x4.UNINITIALIZED);
+        const inv = out.data;
 
         inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] +
             m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
@@ -476,7 +481,7 @@ export class Mat4x4 {
             inv[i] *= invDet;
         }
 
-        return new Mat4x4(inv);
+        return out;
     }
 
     /**
@@ -689,12 +694,13 @@ export class Mat4x4 {
     static rotationXY(angle) {
         const c = Math.cos(angle);
         const s = Math.sin(angle);
-        return new Mat4x4([
-            c, s, 0, 0,
-            -s, c, 0, 0,
-            0, 0, 1, 0,
-            0, 0, 0, 1
-        ]);
+        const out = new Mat4x4(Mat4x4.UNINITIALIZED);
+        const r = out.data;
+        r[0] = c; r[1] = s;
+        r[4] = -s; r[5] = c;
+        r[10] = 1;
+        r[15] = 1;
+        return out;
     }
 
     /**
@@ -705,12 +711,13 @@ export class Mat4x4 {
     static rotationXZ(angle) {
         const c = Math.cos(angle);
         const s = Math.sin(angle);
-        return new Mat4x4([
-            c, 0, -s, 0,
-            0, 1, 0, 0,
-            s, 0, c, 0,
-            0, 0, 0, 1
-        ]);
+        const out = new Mat4x4(Mat4x4.UNINITIALIZED);
+        const r = out.data;
+        r[0] = c; r[2] = -s;
+        r[5] = 1;
+        r[8] = s; r[10] = c;
+        r[15] = 1;
+        return out;
     }
 
     /**
@@ -721,12 +728,13 @@ export class Mat4x4 {
     static rotationYZ(angle) {
         const c = Math.cos(angle);
         const s = Math.sin(angle);
-        return new Mat4x4([
-            1, 0, 0, 0,
-            0, c, s, 0,
-            0, -s, c, 0,
-            0, 0, 0, 1
-        ]);
+        const out = new Mat4x4(Mat4x4.UNINITIALIZED);
+        const r = out.data;
+        r[0] = 1;
+        r[5] = c; r[6] = s;
+        r[9] = -s; r[10] = c;
+        r[15] = 1;
+        return out;
     }
 
     /**
@@ -738,12 +746,13 @@ export class Mat4x4 {
     static rotationXW(angle) {
         const c = Math.cos(angle);
         const s = Math.sin(angle);
-        return new Mat4x4([
-            c, 0, 0, s,
-            0, 1, 0, 0,
-            0, 0, 1, 0,
-            -s, 0, 0, c
-        ]);
+        const out = new Mat4x4(Mat4x4.UNINITIALIZED);
+        const r = out.data;
+        r[0] = c; r[3] = s;
+        r[5] = 1;
+        r[10] = 1;
+        r[12] = -s; r[15] = c;
+        return out;
     }
 
     /**
@@ -754,12 +763,13 @@ export class Mat4x4 {
     static rotationYW(angle) {
         const c = Math.cos(angle);
         const s = Math.sin(angle);
-        return new Mat4x4([
-            1, 0, 0, 0,
-            0, c, 0, s,
-            0, 0, 1, 0,
-            0, -s, 0, c
-        ]);
+        const out = new Mat4x4(Mat4x4.UNINITIALIZED);
+        const r = out.data;
+        r[0] = 1;
+        r[5] = c; r[7] = s;
+        r[10] = 1;
+        r[13] = -s; r[15] = c;
+        return out;
     }
 
     /**
@@ -770,12 +780,13 @@ export class Mat4x4 {
     static rotationZW(angle) {
         const c = Math.cos(angle);
         const s = Math.sin(angle);
-        return new Mat4x4([
-            1, 0, 0, 0,
-            0, 1, 0, 0,
-            0, 0, c, s,
-            0, 0, -s, c
-        ]);
+        const out = new Mat4x4(Mat4x4.UNINITIALIZED);
+        const r = out.data;
+        r[0] = 1;
+        r[5] = 1;
+        r[10] = c; r[11] = s;
+        r[14] = -s; r[15] = c;
+        return out;
     }
 
     /**
@@ -847,12 +858,13 @@ export class Mat4x4 {
      * @returns {Mat4x4}
      */
     static uniformScale(s) {
-        return new Mat4x4([
-            s, 0, 0, 0,
-            0, s, 0, 0,
-            0, 0, s, 0,
-            0, 0, 0, s
-        ]);
+        const out = new Mat4x4(Mat4x4.UNINITIALIZED);
+        const r = out.data;
+        r[0] = s;
+        r[5] = s;
+        r[10] = s;
+        r[15] = s;
+        return out;
     }
 
     /**
@@ -864,12 +876,13 @@ export class Mat4x4 {
      * @returns {Mat4x4}
      */
     static scale(sx, sy, sz, sw = 1) {
-        return new Mat4x4([
-            sx, 0, 0, 0,
-            0, sy, 0, 0,
-            0, 0, sz, 0,
-            0, 0, 0, sw
-        ]);
+        const out = new Mat4x4(Mat4x4.UNINITIALIZED);
+        const r = out.data;
+        r[0] = sx;
+        r[5] = sy;
+        r[10] = sz;
+        r[15] = sw;
+        return out;
     }
 
     /**
@@ -885,12 +898,13 @@ export class Mat4x4 {
     static translation(tx, ty, tz, tw = 0) {
         // For true 4D translation, you need 5D homogeneous coordinates
         // This is a placeholder that adds the translation to the W column
-        return new Mat4x4([
-            1, 0, 0, 0,
-            0, 1, 0, 0,
-            0, 0, 1, 0,
-            tx, ty, tz, 1 + tw
-        ]);
+        const out = new Mat4x4(Mat4x4.UNINITIALIZED);
+        const r = out.data;
+        r[0] = 1;
+        r[5] = 1;
+        r[10] = 1;
+        r[12] = tx; r[13] = ty; r[14] = tz; r[15] = 1 + tw;
+        return out;
     }
 }
 
