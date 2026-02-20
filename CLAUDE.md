@@ -1,6 +1,6 @@
 # CLAUDE.md — VIB3+ SDK Project Brief
 
-**Last updated**: 2026-02-15 (session: `claude/vib3-sdk-handoff-p00R8`)
+**Last updated**: 2026-02-18 (session: `claude/setup-vib3-sdk-NFEzp`)
 
 ## What is VIB3+?
 
@@ -120,6 +120,73 @@ pnpm run verify:shaders  # Check inline/external shader sync
 ```
 
 Build WASM core (requires Emscripten): `cd cpp && ./build.sh`
+
+---
+
+## Rendering Quick Start (CRITICAL — Read Before Building Any Demo)
+
+**Every VIB3+ visualization requires exactly two things to get pixels on screen:**
+
+### 1. A container div with position + dimensions
+
+```html
+<!-- CORRECT: positioned, sized, canvases will fill this -->
+<div id="vib3-container" style="position:relative; width:100vw; height:100vh;"></div>
+
+<!-- WRONG: no position, no size — canvases escape the container, zero-size rendering -->
+<div id="vib3-container"></div>
+```
+
+**Why**: `CanvasManager` creates 5 child canvases with `position: absolute`. Without `position: relative` on the parent, they position relative to `<body>` and stack invisibly. Without explicit dimensions, the container collapses to 0×0 and all canvases render at zero size.
+
+`CanvasManager` now auto-fixes `position: static` → `position: relative` and logs a warning, but **you should always set it explicitly**.
+
+### 2. Engine init with the container ID
+
+```javascript
+import { VIB3Engine } from './src/core/VIB3Engine.js';
+
+const engine = new VIB3Engine({ system: 'quantum' });
+const ok = await engine.initialize('vib3-container');
+// ok === false means something is broken — check console for specific error
+```
+
+**That's it.** The engine creates canvases, compiles shaders, starts the render loop. You don't create `<canvas>` elements yourself — `CanvasManager` handles it.
+
+### What NOT to do
+
+```javascript
+// WRONG: don't create canvas elements manually
+// CanvasManager creates them with the right IDs, sizing, and z-order
+
+// WRONG: don't import premium at top level if you want fallback rendering
+import { enablePremium } from './src/premium/index.js'; // if this throws, nothing renders
+// CORRECT: dynamic import with try/catch
+try {
+    const { enablePremium } = await import('./src/premium/index.js');
+    premium = enablePremium(engine, { licenseKey: 'key', features: ['all'] });
+} catch (e) {
+    console.warn('Premium unavailable:', e.message);
+    // visualization still works without premium
+}
+
+// WRONG: calling premium methods without checking they exist
+premium.shaderSurface.setParameters({...}); // crashes if shaderSurface failed to init
+// CORRECT: optional chaining
+premium?.shaderSurface?.setParameters({...});
+```
+
+### Canvas ID Convention
+
+Each system prefixes the 5 layer IDs differently:
+
+| System | Canvas IDs |
+|--------|-----------|
+| Faceted | `background-canvas`, `shadow-canvas`, `content-canvas`, `highlight-canvas`, `accent-canvas` |
+| Quantum | `quantum-background-canvas`, `quantum-shadow-canvas`, etc. |
+| Holographic | `holo-background-canvas`, `holo-shadow-canvas`, etc. |
+
+You don't need to know these unless you're doing advanced per-layer work — `VIB3Engine` handles it all.
 
 ---
 
@@ -470,6 +537,11 @@ Vib3-CORE-Documented01-/
 14. **4D rotation in synesthesia is audio-driven** — The reference synesthesia implementation has non-zero 4D base velocities but also modulates XW/YW/ZW through audio bands. If building without audio, ensure 4D axes still have non-zero rotation velocity or the 4th dimension won't be visible.
 15. **Gold Standard v3 defines 3 parameter modes** — Continuous Mapping (parameters as functions of input state), Event Choreography (discrete triggers with attack/sustain/release), and Ambient Drift (breathing/heartbeat on idle). All three should be present in any VIB3+ creative implementation. See `examples/dogfood/GOLD_STANDARD.md`.
 16. **EMA smoothing is the universal primitive** — Use `alpha = 1 - Math.exp(-dt / tau)` for all parameter transitions. Never use `setTimeout` for visual parameter changes. Reference tau values: speed 0.08s, chaos 0.12s, density 0.15s, morph 0.10s, hue 0.25s.
+17. **Container div MUST have `position: relative` and non-zero size** — CanvasManager creates 5 `position: absolute` child canvases. Without a positioned parent with dimensions, canvases are invisible. The SDK now auto-fixes `position: static` and logs warnings, but always set it explicitly: `<div id="vib3-container" style="position:relative; width:100vw; height:100vh;">`. See "Rendering Quick Start" section above.
+18. **Never top-level import premium if you want fallback rendering** — Use `await import()` inside a try/catch. A broken premium import at the top of a file kills the entire script before the engine even initializes. Premium modules also init with individual try/catch now, so one broken module won't take down the other 7.
+19. **Use optional chaining on premium module calls** — `premium?.shaderSurface?.setParameters()`. Individual premium modules can fail to construct (e.g. missing DOM, unsupported API). They'll be `undefined` on the premium context — calling methods directly will throw.
+20. **Mobile: set `preferWebGPU: false`** — WebGPU probe can hang or fail on mobile browsers. Use `new VIB3Engine({ system: 'quantum', preferWebGPU: false })` for mobile-first demos. The engine falls back to WebGL automatically, but the probe itself can delay init.
+21. **Touch controls: `touch-action: none` on body** — VIB3+ demos should prevent browser default gestures (pull-to-refresh, back-swipe, pinch-zoom). Set `touch-action: none; overscroll-behavior: none; -webkit-user-select: none;` on `body`.
 
 ---
 

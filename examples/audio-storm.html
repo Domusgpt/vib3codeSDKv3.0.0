@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIB3+ Premium — Audio Storm</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #000;
+            color: white;
+            font-family: system-ui, -apple-system, sans-serif;
+            overflow: hidden;
+        }
+
+        #vib3-container {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .hud {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            font-size: 13px;
+            pointer-events: none;
+        }
+
+        .hud h1 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
+
+        .trigger-status {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 12px;
+        }
+
+        .trigger-dot {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            opacity: 0.6;
+        }
+
+        .trigger-dot .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #333;
+            transition: background 0.3s;
+        }
+
+        .trigger-dot.fired .dot {
+            background: #0f0;
+            box-shadow: 0 0 8px #0f0;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            z-index: 10;
+        }
+
+        .controls button {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+            pointer-events: all;
+        }
+
+        .controls button:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .controls button.active {
+            background: rgba(100, 150, 255, 0.3);
+            border-color: rgba(100, 150, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="vib3-container"></div>
+
+    <div class="hud">
+        <h1>Audio Storm</h1>
+        <div>Premium visual event triggers + audio reactivity</div>
+        <div class="trigger-status" id="trigger-status">
+            <div class="trigger-dot" id="trigger-bass"><span class="dot"></span> Bass Burst</div>
+            <div class="trigger-dot" id="trigger-mid"><span class="dot"></span> Mid Shift</div>
+            <div class="trigger-dot" id="trigger-treble"><span class="dot"></span> Treble Flash</div>
+            <div class="trigger-dot" id="trigger-chaos"><span class="dot"></span> Chaos Overflow</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="btn-mic" onclick="toggleMic()">Enable Mic</button>
+        <button onclick="simulateBass()">Sim Bass</button>
+        <button onclick="simulateMid()">Sim Mid</button>
+        <button onclick="simulateTreble()">Sim Treble</button>
+        <button onclick="toggleStorm()">Storm Mode</button>
+    </div>
+
+    <script type="module">
+        import { VIB3Engine } from '../src/core/VIB3Engine.js';
+        import { enablePremium } from '../src/premium/index.js';
+
+        const engine = new VIB3Engine({ system: 'quantum' });
+        let premium = null;
+        let stormMode = false;
+
+        async function init() {
+            const ok = await engine.initialize('vib3-container');
+            if (!ok) {
+                console.error('Engine init failed');
+                return;
+            }
+
+            // Base state — calm
+            engine.setParameters({
+                hue: 200,
+                chaos: 0.15,
+                speed: 0.8,
+                intensity: 0.6,
+                gridDensity: 35,
+                dimension: 3.5,
+                geometry: 5
+            });
+
+            premium = enablePremium(engine, {
+                licenseKey: 'demo-audio-storm-key123'
+            });
+
+            // --- Set up triggers ---
+
+            // Bass: red burst with intensity spike
+            premium.events.addTrigger('bass_burst', {
+                source: 'parameter.intensity',
+                condition: 'exceeds',
+                threshold: 0.85,
+                cooldown: 500,
+                action: {
+                    type: 'set_parameters',
+                    value: { hue: 0, chaos: 0.8, speed: 2.5 },
+                    duration: 400,
+                    revertTo: { hue: 200, chaos: 0.15, speed: 0.8 }
+                }
+            });
+            premium.events.on('bass_burst', () => flashTrigger('trigger-bass'));
+
+            // Mid: profile switch
+            premium.events.addTrigger('mid_shift', {
+                source: 'parameter.morphFactor',
+                condition: 'exceeds',
+                threshold: 1.2,
+                cooldown: 2000,
+                action: {
+                    type: 'set_parameters',
+                    value: { hue: 120, gridDensity: 60 },
+                    duration: 1500,
+                    revertTo: { hue: 200, gridDensity: 35 }
+                }
+            });
+            premium.events.on('mid_shift', () => flashTrigger('trigger-mid'));
+
+            // Treble: white flash
+            premium.events.addTrigger('treble_flash', {
+                source: 'parameter.saturation',
+                condition: 'drops_below',
+                threshold: 0.3,
+                cooldown: 300,
+                action: {
+                    type: 'set_parameters',
+                    value: { intensity: 1.0, saturation: 0.0 },
+                    duration: 150,
+                    revertTo: { intensity: 0.6, saturation: 0.7 }
+                }
+            });
+            premium.events.on('treble_flash', () => flashTrigger('trigger-treble'));
+
+            // Chaos overflow: geometry switch
+            premium.events.addTrigger('chaos_overflow', {
+                source: 'parameter.chaos',
+                condition: 'exceeds',
+                threshold: 0.7,
+                cooldown: 3000,
+                action: {
+                    type: 'set_parameters',
+                    value: { geometry: Math.floor(Math.random() * 24) }
+                }
+            });
+            premium.events.on('chaos_overflow', () => flashTrigger('trigger-chaos'));
+
+            // Shader tuning for storm aesthetic
+            premium.shaderSurface.setParameters({
+                noiseFrequency: [5, 7, 11],
+                breathStrength: 0.4,
+                particleSize: 0.15
+            });
+        }
+
+        function flashTrigger(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.add('fired');
+            setTimeout(() => el.classList.remove('fired'), 500);
+        }
+
+        window.simulateBass = () => {
+            engine.setParameter('intensity', 0.95);
+            setTimeout(() => engine.setParameter('intensity', 0.6), 200);
+        };
+
+        window.simulateMid = () => {
+            engine.setParameter('morphFactor', 1.5);
+            setTimeout(() => engine.setParameter('morphFactor', 0.5), 300);
+        };
+
+        window.simulateTreble = () => {
+            engine.setParameter('saturation', 0.1);
+            setTimeout(() => engine.setParameter('saturation', 0.7), 200);
+        };
+
+        window.toggleMic = () => {
+            const btn = document.getElementById('btn-mic');
+            btn.classList.toggle('active');
+            // In production, this would toggle AudioReactivity
+            btn.textContent = btn.classList.contains('active') ? 'Mic Active' : 'Enable Mic';
+        };
+
+        window.toggleStorm = () => {
+            stormMode = !stormMode;
+            if (!premium) return;
+
+            if (stormMode) {
+                premium.shaderSurface.setParameters({
+                    noiseFrequency: [3, 5, 7],
+                    breathStrength: 0.9,
+                    autoRotationSpeed: [0.2, 0.25, 0.15, 0.4, 0.35, 0.45]
+                });
+                engine.setParameters({ chaos: 0.5, speed: 1.5 });
+            } else {
+                premium.shaderSurface.setParameters({
+                    noiseFrequency: [7, 11, 13],
+                    breathStrength: 0.3,
+                    autoRotationSpeed: [0.1, 0.12, 0.08, 0.2, 0.15, 0.25]
+                });
+                engine.setParameters({ chaos: 0.15, speed: 0.8 });
+            }
+        };
+
+        init();
+    </script>
+</body>
+</html>
