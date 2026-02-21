@@ -1,0 +1,86 @@
+{
+  "entry": "synesthesia",
+  "version": 1,
+  "coverage": [
+    {
+      "section": "A",
+      "pattern": "Approach/Retreat",
+      "status": "full",
+      "implementation": "onSecondaryApproach/onSecondaryRetreat",
+      "activation": "secondary panel hover",
+      "validation_hint": "Panel scales up quickly on enter and eases back slower on leave."
+    },
+    {
+      "section": "A",
+      "pattern": "Burst",
+      "status": "full",
+      "implementation": "onBurst",
+      "activation": "click/tap and onset detection",
+      "validation_hint": "Chaos and speed spike rapidly then decay."
+    },
+    {
+      "section": "A",
+      "pattern": "Crystallize / Color Flood",
+      "status": "full",
+      "implementation": "onCrystallize/onColorFlood",
+      "activation": "long press + release",
+      "validation_hint": "Motion freezes with lower saturation, then color returns in a surge."
+    },
+    {
+      "section": "B",
+      "pattern": "Inverse Density Seesaw",
+      "status": "full",
+      "implementation": "pushSecondaryState inverse grid density mapping",
+      "activation": "continuous",
+      "validation_hint": "Primary/secondary density shift in opposite directions while total remains near constant."
+    },
+    {
+      "section": "B",
+      "pattern": "Energy Conservation",
+      "status": "full",
+      "implementation": "pushSecondaryState inverse intensity mapping",
+      "activation": "continuous",
+      "validation_hint": "Secondary brightness recedes as primary gets brighter."
+    },
+    {
+      "section": "C",
+      "pattern": "VIB3 → CSS custom properties",
+      "status": "full",
+      "implementation": "updateCSSBridge",
+      "activation": "per-frame",
+      "validation_hint": "HUD, meter, and panel border hue track current state."
+    },
+    {
+      "section": "D",
+      "pattern": "Autonomous Narrative Arc",
+      "status": "full",
+      "implementation": "ChoreographyPlayer with 8 scenes",
+      "activation": "30s idle timeout",
+      "validation_hint": "Mode label switches to autonomous and scene index increments."
+    },
+    {
+      "section": "F",
+      "pattern": "Timing Asymmetry",
+      "status": "full",
+      "implementation": "approach and retreat durations differ",
+      "activation": "secondary panel hover in/out",
+      "validation_hint": "Enter reacts quickly; exit feels slower and softer."
+    },
+    {
+      "section": "F",
+      "pattern": "EMA smoothing",
+      "status": "full",
+      "implementation": "ema() utility and TAU mapping",
+      "activation": "all continuous parameter updates",
+      "validation_hint": "No hard jumps on audio transitions."
+    },
+    {
+      "section": "G",
+      "pattern": "Design-Analyze-Enhance loop",
+      "status": "partial",
+      "implementation": "README + QA protocol + MCP labs",
+      "activation": "development workflow",
+      "validation_hint": "Iterative documentation and test checkpoints exist alongside runtime code."
+    }
+  ]
+}

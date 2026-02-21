@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VIB3+ Codex — Narrative Scroll</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      background: #07090f;
+      color: #f3f6ff;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 10px;
+      padding: 12px;
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 10px;
+      background: rgba(255,255,255,.03);
+      padding: 10px 12px;
+    }
+    h1 { font-size: 16px; font-weight: 600; letter-spacing: .04em; }
+    .meta { font-size: 12px; color: rgba(255,255,255,.62); }
+    .actions { margin-left: auto; display: flex; gap: 8px; }
+    a.btn, button.btn {
+      text-decoration: none;
+      color: #fff;
+      font-size: 12px;
+      border: 1px solid rgba(255,255,255,.22);
+      border-radius: 8px;
+      padding: 6px 8px;
+      background: rgba(255,255,255,.06);
+      cursor: pointer;
+    }
+    .status-bar {
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 10px;
+      background: rgba(255,255,255,.02);
+      padding: 8px 12px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+    }
+    .status-pill {
+      border-radius: 999px;
+      padding: 3px 8px;
+      border: 1px solid rgba(255,255,255,.25);
+      background: rgba(255,255,255,.06);
+    }
+    .status-pill.ok { border-color: rgba(80, 200, 120, .8); color: #97f4b5; }
+    .status-pill.warn { border-color: rgba(245, 195, 75, .8); color: #ffd98a; }
+    iframe {
+      width: 100%;
+      height: calc(100vh - 140px);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 12px;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>NARRATIVE-SCROLL</h1>
+    <div class="meta">Codex prime example (Phase 3 transitional): site choreography mounted as a codex entry shell.</div>
+    <div class="actions">
+      <a class="btn" href="../index.html">Back to Codex</a>
+      <a class="btn" href="./README.md">Entry Notes</a>
+      <a class="btn" href="./mcp-labs/README.md">MCP Labs</a>
+      <a class="btn" href="../../../site/index.html" target="_blank" rel="noopener">Open Raw Site</a>
+    </div>
+  </header>
+
+  <div class="status-bar">
+    <span id="loadState" class="status-pill warn">Runtime: loading…</span>
+    <span class="status-pill">Mode: transitional-shell</span>
+    <button id="reloadFrame" class="btn">Reload Runtime</button>
+    <span id="hint" class="meta">If runtime fails to load, use “Open Raw Site” and report section checkpoint where it fails.</span>
+  </div>
+
+  <iframe id="runtimeFrame" src="../../../site/index.html" title="VIB3+ Narrative Scroll"></iframe>
+
+  <script>
+    const frame = document.getElementById('runtimeFrame');
+    const state = document.getElementById('loadState');
+    const reload = document.getElementById('reloadFrame');
+
+    function setState(text, ok) {
+      state.textContent = text;
+      state.classList.toggle('ok', ok);
+      state.classList.toggle('warn', !ok);
+    }
+
+    frame.addEventListener('load', () => setState('Runtime: loaded', true));
+    frame.addEventListener('error', () => setState('Runtime: failed to load', false));
+
+    reload.addEventListener('click', () => {
+      setState('Runtime: reloading…', false);
+      frame.src = frame.src;
+    });
+
+    setTimeout(() => {
+      if (!state.classList.contains('ok')) {
+        setState('Runtime: load timeout (check Open Raw Site)', false);
+      }
+    }, 12000);
+  </script>
+</body>
+</html>
