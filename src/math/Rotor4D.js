@@ -276,48 +276,54 @@ export class Rotor4D {
      * The result applies this rotation, then r's rotation
      *
      * @param {Rotor4D} r - Right operand
+     * @param {Rotor4D} [target=null] - Optional target rotor to write result into
      * @returns {Rotor4D} Composed rotor
      */
-    multiply(r) {
+    multiply(r, target = null) {
         // Full geometric product of two rotors in 4D
         // This is derived from the geometric algebra product rules
 
         const a = this;
         const b = r;
 
-        return new Rotor4D(
-            // Scalar component
-            a.s * b.s - a.xy * b.xy - a.xz * b.xz - a.yz * b.yz -
-            a.xw * b.xw - a.yw * b.yw - a.zw * b.zw - a.xyzw * b.xyzw,
+        // Compute all components first to ensure safety if target aliases a or b
+        const s = a.s * b.s - a.xy * b.xy - a.xz * b.xz - a.yz * b.yz -
+            a.xw * b.xw - a.yw * b.yw - a.zw * b.zw - a.xyzw * b.xyzw;
 
-            // XY bivector
-            a.s * b.xy + a.xy * b.s + a.xz * b.yz - a.yz * b.xz +
-            a.xw * b.yw - a.yw * b.xw - a.zw * b.xyzw - a.xyzw * b.zw,
+        const xy = a.s * b.xy + a.xy * b.s + a.xz * b.yz - a.yz * b.xz +
+            a.xw * b.yw - a.yw * b.xw - a.zw * b.xyzw - a.xyzw * b.zw;
 
-            // XZ bivector
-            a.s * b.xz + a.xz * b.s - a.xy * b.yz + a.yz * b.xy +
-            a.xw * b.zw + a.yw * b.xyzw - a.zw * b.xw + a.xyzw * b.yw,
+        const xz = a.s * b.xz + a.xz * b.s - a.xy * b.yz + a.yz * b.xy +
+            a.xw * b.zw + a.yw * b.xyzw - a.zw * b.xw + a.xyzw * b.yw;
 
-            // YZ bivector
-            a.s * b.yz + a.yz * b.s + a.xy * b.xz - a.xz * b.xy -
-            a.xw * b.xyzw + a.yw * b.zw - a.zw * b.yw - a.xyzw * b.xw,
+        const yz = a.s * b.yz + a.yz * b.s + a.xy * b.xz - a.xz * b.xy -
+            a.xw * b.xyzw + a.yw * b.zw - a.zw * b.yw - a.xyzw * b.xw;
 
-            // XW bivector
-            a.s * b.xw + a.xw * b.s - a.xy * b.yw + a.xz * b.zw +
-            a.yz * b.xyzw + a.yw * b.xy - a.zw * b.xz + a.xyzw * b.yz,
+        const xw = a.s * b.xw + a.xw * b.s - a.xy * b.yw + a.xz * b.zw +
+            a.yz * b.xyzw + a.yw * b.xy - a.zw * b.xz + a.xyzw * b.yz;
 
-            // YW bivector
-            a.s * b.yw + a.yw * b.s + a.xy * b.xw - a.xz * b.xyzw -
-            a.yz * b.zw - a.xw * b.xy + a.zw * b.yz - a.xyzw * b.xz,
+        const yw = a.s * b.yw + a.yw * b.s + a.xy * b.xw - a.xz * b.xyzw -
+            a.yz * b.zw - a.xw * b.xy + a.zw * b.yz - a.xyzw * b.xz;
 
-            // ZW bivector
-            a.s * b.zw + a.zw * b.s + a.xy * b.xyzw + a.xz * b.xw +
-            a.yz * b.yw - a.xw * b.xz - a.yw * b.yz + a.xyzw * b.xy,
+        const zw = a.s * b.zw + a.zw * b.s + a.xy * b.xyzw + a.xz * b.xw +
+            a.yz * b.yw - a.xw * b.xz - a.yw * b.yz + a.xyzw * b.xy;
 
-            // Pseudoscalar XYZW
-            a.s * b.xyzw + a.xyzw * b.s + a.xy * b.zw - a.xz * b.yw +
-            a.yz * b.xw + a.xw * b.yz - a.yw * b.xz + a.zw * b.xy
-        );
+        const xyzw = a.s * b.xyzw + a.xyzw * b.s + a.xy * b.zw - a.xz * b.yw +
+            a.yz * b.xw + a.xw * b.yz - a.yw * b.xz + a.zw * b.xy;
+
+        if (target) {
+            target.s = s;
+            target.xy = xy;
+            target.xz = xz;
+            target.yz = yz;
+            target.xw = xw;
+            target.yw = yw;
+            target.zw = zw;
+            target.xyzw = xyzw;
+            return target;
+        }
+
+        return new Rotor4D(s, xy, xz, yz, xw, yw, zw, xyzw);
     }
 
     /**
