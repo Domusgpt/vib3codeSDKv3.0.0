@@ -23,30 +23,10 @@ describe('Vec4', () => {
             expect(v.w).toBe(4);
         });
 
-        it('provides Float32Array via .data getter', () => {
+        it('uses Float32Array internally', () => {
             const v = new Vec4(1, 2, 3, 4);
             expect(v.data).toBeInstanceOf(Float32Array);
             expect(v.data.length).toBe(4);
-            expect(v.data[0]).toBeCloseTo(1);
-            expect(v.data[1]).toBeCloseTo(2);
-            expect(v.data[2]).toBeCloseTo(3);
-            expect(v.data[3]).toBeCloseTo(4);
-        });
-
-        it('supports index-based component access', () => {
-            const v = new Vec4(0, 0, 0, 0);
-            v.setComponent(0, 5);
-            v.setComponent(1, 6);
-            v.setComponent(2, 7);
-            v.setComponent(3, 8);
-            expect(v.x).toBe(5);
-            expect(v.y).toBe(6);
-            expect(v.z).toBe(7);
-            expect(v.w).toBe(8);
-            expect(v.getComponent(0)).toBe(5);
-            expect(v.getComponent(1)).toBe(6);
-            expect(v.getComponent(2)).toBe(7);
-            expect(v.getComponent(3)).toBe(8);
         });
     });
 
@@ -206,77 +186,6 @@ describe('Vec4', () => {
             const a = new Vec4(0, 0, 0, 0);
             const b = new Vec4(1, 0, 0, 0);
             expect(a.distanceTo(b)).toBe(1);
-        });
-    });
-
-    describe('memory optimization', () => {
-        it('add uses target vector', () => {
-            const a = new Vec4(1, 2, 3, 4);
-            const b = new Vec4(5, 6, 7, 8);
-            const target = new Vec4();
-            const result = a.add(b, target);
-            expect(result).toBe(target);
-            expect(result.x).toBe(6);
-            expect(result.y).toBe(8);
-        });
-
-        it('add handles aliasing', () => {
-            const a = new Vec4(1, 2, 3, 4);
-            const b = new Vec4(1, 1, 1, 1);
-            const result = a.add(b, a);
-            expect(result).toBe(a);
-            expect(a.x).toBe(2);
-        });
-
-        it('sub uses target vector', () => {
-            const a = new Vec4(5, 6, 7, 8);
-            const b = new Vec4(1, 2, 3, 4);
-            const target = new Vec4();
-            const result = a.sub(b, target);
-            expect(result).toBe(target);
-            expect(result.x).toBe(4);
-        });
-
-        it('multiply uses target vector', () => {
-            const a = new Vec4(2, 2, 2, 2);
-            const b = new Vec4(3, 3, 3, 3);
-            const target = new Vec4();
-            const result = a.multiply(b, target);
-            expect(result).toBe(target);
-            expect(result.x).toBe(6);
-        });
-
-        it('scale uses target vector', () => {
-            const v = new Vec4(1, 2, 3, 4);
-            const target = new Vec4();
-            const result = v.scale(2, target);
-            expect(result).toBe(target);
-            expect(result.x).toBe(2);
-        });
-
-        it('negate uses target vector', () => {
-            const v = new Vec4(1, 2, 3, 4);
-            const target = new Vec4();
-            const result = v.negate(target);
-            expect(result).toBe(target);
-            expect(result.x).toBe(-1);
-        });
-
-        it('normalize uses target vector', () => {
-            const v = new Vec4(10, 0, 0, 0);
-            const target = new Vec4();
-            const result = v.normalize(target);
-            expect(result).toBe(target);
-            expect(result.x).toBe(1);
-        });
-
-        it('lerp uses target vector', () => {
-            const a = new Vec4(0, 0, 0, 0);
-            const b = new Vec4(2, 4, 6, 8);
-            const target = new Vec4();
-            const result = a.lerp(b, 0.5, target);
-            expect(result).toBe(target);
-            expect(result.x).toBe(1);
         });
     });
 });

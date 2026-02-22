@@ -10,38 +10,6 @@ Always determine which mode you're in at the start.
 
 ---
 
-## Gold Standard v3 — Creative Foundation
-
-Before designing any VIB3+ experience, absorb the creative vocabulary:
-
-- **Read**: `examples/dogfood/GOLD_STANDARD.md` — Motion vocabulary (14 motions), coordination grammar (7 patterns), EMA smoothing, and composition framework
-- **Study**: `examples/codex/synesthesia/` — Annotated golden reference (all 3 modes, all 6 rotation axes)
-- **Browse**: `examples/codex/` — Multiple reference implementations showing different approaches
-
-### Three Parameter Modes (ESSENTIAL)
-
-Every VIB3+ design must exhibit all three simultaneously:
-
-1. **Continuous Mapping** — Parameters = f(input_state) every frame. Audio→density, touch→rotation, tilt→dimension. Use EMA: `alpha = 1 - Math.exp(-dt / tau)`. Tau values: speed 0.08s, chaos 0.12s, density 0.15s, morph 0.10s, hue 0.25s.
-
-2. **Event Choreography** — Discrete events trigger Attack/Sustain/Release envelopes. Tap = chaos burst (spike + 500ms decay). System switch = crossfade (1200ms). Beat detection = intensity flash. Timing asymmetry: approach faster than retreat (1:2 ratio).
-
-3. **Ambient Drift** — Parameters breathe without input. Heartbeat: `morphFactor += 0.15 * sin(t/4)`, `intensity += 0.08 * sin(t/2)`. Frozen drift: prime-number periods (7s, 11s, 13s, 17s). Energy conservation: Σ(intensity) ≈ constant.
-
-### Design-Analyze-Enhance Loop
-1. **Design** — Plan your parameter timeline and input mappings for YOUR platform
-2. **Analyze** — Is 4D rotation visible? Do events feel distinct from ambient? Is audio reactivity noticeable?
-3. **Enhance** — Layer the three modes. Find emergent combinations
-
-### Per-System Creative Personality
-| System | gridDensity | speed | chaos | dimension | Character |
-|--------|------------|-------|-------|-----------|-----------|
-| Faceted | 15-35 | 0.3-0.8 | 0.0-0.15 | 3.6-4.0 | Clean, precise, geometric |
-| Quantum | 25-60 | 0.5-1.5 | 0.1-0.4 | 3.2-3.8 | Dense, crystalline, mathematical |
-| Holographic | 20-50 | 0.4-1.2 | 0.05-0.3 | 3.4-4.2 | Atmospheric, layered, ethereal |
-
----
-
 ## System Architecture (Internalized)
 
 ### Three Active Visualization Systems

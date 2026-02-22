@@ -61,8 +61,8 @@ export function generate24CellVertices(size = 1) {
             ];
             for (const [s1, s2] of signs) {
                 const v = new Vec4(0, 0, 0, 0);
-                v.setComponent(i, s1 * s);
-                v.setComponent(j, s2 * s);
+                v.data[i] = s1 * s;
+                v.data[j] = s2 * s;
                 vertices.push(v);
             }
         }

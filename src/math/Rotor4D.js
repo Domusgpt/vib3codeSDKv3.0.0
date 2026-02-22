@@ -323,17 +323,14 @@ export class Rotor4D {
     /**
      * Rotate a 4D vector using sandwich product: v' = R v R†
      *
-     * Matrix math is inlined to avoid allocating a temporary Float32Array(16).
-     * Pass an optional target Vec4 to eliminate all allocations.
-     *
      * @param {Vec4} v - Vector to rotate
-     * @param {Vec4} [target] - Optional pre-allocated Vec4 to write result into
-     * @returns {Vec4} Rotated vector (target if provided, otherwise new Vec4)
+     * @param {Vec4} [target] - Optional target vector to write result to
+     * @returns {Vec4} Rotated vector
      */
     rotate(v, target) {
-        const x = v.x, y = v.y, z = v.z, w = v.w;
+        // Direct matrix multiplication without allocation
 
-        // Normalize for numerical stability (same as toMatrix)
+        // Normalize components for stability (same as toMatrix)
         const n = this.norm();
         const invN = n > 1e-10 ? 1 / n : 1;
 
@@ -346,7 +343,7 @@ export class Rotor4D {
         const zw = this.zw * invN;
         const xyzw = this.xyzw * invN;
 
-        // Squared terms
+        // Pre-compute products
         const s2 = s * s;
         const xy2 = xy * xy;
         const xz2 = xz * xz;
@@ -356,20 +353,22 @@ export class Rotor4D {
         const zw2 = zw * zw;
         const xyzw2 = xyzw * xyzw;
 
-        // Cross terms (pre-multiplied by 2)
+        // Cross terms
         const sxy = 2 * s * xy;
         const sxz = 2 * s * xz;
         const syz = 2 * s * yz;
         const sxw = 2 * s * xw;
         const syw = 2 * s * yw;
         const szw = 2 * s * zw;
+        // const sxyzw = 2 * s * xyzw; // Unused in rotation matrix
 
-        const xzyz = 2 * xz * yz;
-        const xyyz = 2 * xy * yz;
         const xyxz = 2 * xy * xz;
+        const xyyz = 2 * xy * yz;
         const xyxw = 2 * xy * xw;
         const xyyw = 2 * xy * yw;
+        // const xyzw_c = 2 * xy * zw; // Unused in rotation matrix
 
+        const xzyz = 2 * xz * yz;
         const xzxw = 2 * xz * xw;
         const xzyw = 2 * xz * yw;
         const xzzw = 2 * xz * zw;
@@ -389,33 +388,40 @@ export class Rotor4D {
         const ywxyzw = 2 * yw * xyzw;
         const zwxyzw = 2 * zw * xyzw;
 
-        // Column-major 4x4 rotation matrix entries (inlined from toMatrix)
-        // Column 0
-        const m0  = s2 - xy2 - xz2 + yz2 - xw2 + yw2 + zw2 - xyzw2;
-        const m1  = sxy + xzyz + xwyw - zwxyzw;
-        const m2  = sxz - xyyz + xwzw + ywxyzw;
-        const m3  = sxw - xyyw - xzzw - yzxyzw;
-        // Column 1
-        const m4  = -sxy + xzyz + xwyw + zwxyzw;
-        const m5  = s2 - xy2 + xz2 - yz2 + xw2 - yw2 + zw2 - xyzw2;
-        const m6  = syz + xyxz + ywzw - xwxyzw;
-        const m7  = syw + xyxw - yzzw + xzxyzw;
-        // Column 2
-        const m8  = -sxz - xyyz + xwzw - ywxyzw;
-        const m9  = -syz + xyxz + ywzw + xwxyzw;
-        const m10 = s2 + xy2 - xz2 - yz2 + xw2 + yw2 - zw2 - xyzw2;
-        const m11 = szw + xzxw + yzyw - xyxyzw;
-        // Column 3
-        const m12 = -sxw - xyyw - xzzw + yzxyzw;
-        const m13 = -syw + xyxw - yzzw - xzxyzw;
-        const m14 = -szw + xzxw + yzyw + xyxyzw;
-        const m15 = s2 + xy2 + xz2 + yz2 - xw2 - yw2 - zw2 - xyzw2;
+        // Matrix elements
+        // Col 0
+        const m00 = s2 - xy2 - xz2 + yz2 - xw2 + yw2 + zw2 - xyzw2;
+        const m01 = sxy + xzyz + xwyw - zwxyzw;
+        const m02 = sxz - xyyz + xwzw + ywxyzw;
+        const m03 = sxw - xyyw - xzzw - yzxyzw;
 
-        // Matrix-vector multiply
-        const rx = m0 * x + m4 * y + m8  * z + m12 * w;
-        const ry = m1 * x + m5 * y + m9  * z + m13 * w;
-        const rz = m2 * x + m6 * y + m10 * z + m14 * w;
-        const rw = m3 * x + m7 * y + m11 * z + m15 * w;
+        // Col 1
+        const m10 = -sxy + xzyz + xwyw + zwxyzw;
+        const m11 = s2 - xy2 + xz2 - yz2 + xw2 - yw2 + zw2 - xyzw2;
+        const m12 = syz + xyxz + ywzw - xwxyzw;
+        const m13 = syw + xyxw - yzzw + xzxyzw;
+
+        // Col 2
+        const m20 = -sxz - xyyz + xwzw - ywxyzw;
+        const m21 = -syz + xyxz + ywzw + xwxyzw;
+        const m22 = s2 + xy2 - xz2 - yz2 + xw2 + yw2 - zw2 - xyzw2;
+        const m23 = szw + xzxw + yzyw - xyxyzw;
+
+        // Col 3
+        const m30 = -sxw - xyyw - xzzw + yzxyzw;
+        const m31 = -syw + xyxw - yzzw - xzxyzw;
+        const m32 = -szw + xzxw + yzyw + xyxyzw;
+        const m33 = s2 + xy2 + xz2 + yz2 - xw2 - yw2 - zw2 - xyzw2;
+
+        const x = v.x;
+        const y = v.y;
+        const z = v.z;
+        const w = v.w;
+
+        const rx = m00 * x + m10 * y + m20 * z + m30 * w;
+        const ry = m01 * x + m11 * y + m21 * z + m31 * w;
+        const rz = m02 * x + m12 * y + m22 * z + m32 * w;
+        const rw = m03 * x + m13 * y + m23 * z + m33 * w;
 
         if (target) {
             target.x = rx;
@@ -424,6 +430,7 @@ export class Rotor4D {
             target.w = rw;
             return target;
         }
+
         return new Vec4(rx, ry, rz, rw);
     }
 
