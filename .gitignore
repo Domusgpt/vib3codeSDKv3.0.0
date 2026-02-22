@@ -36,3 +36,7 @@ test-results/
 .env.local
 build_verify_full/
 build_verify_partial/
+examples/flutter_demo/android/.gradle/
+examples/flutter_demo/.dart_tool/
+examples/flutter_demo/.flutter-plugins-dependencies
+examples/flutter_demo/.flutter-plugins

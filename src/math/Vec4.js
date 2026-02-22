@@ -232,11 +232,7 @@ export class Vec4 {
      * @returns {number}
      */
     distanceTo(v) {
-        const dx = this._x - v._x;
-        const dy = this._y - v._y;
-        const dz = this._z - v._z;
-        const dw = this._w - v._w;
-        return Math.sqrt(dx * dx + dy * dy + dz * dz + dw * dw);
+        return this.sub(v).length();
     }
 
     /**
@@ -245,11 +241,7 @@ export class Vec4 {
      * @returns {number}
      */
     distanceToSquared(v) {
-        const dx = this._x - v._x;
-        const dy = this._y - v._y;
-        const dz = this._z - v._z;
-        const dw = this._w - v._w;
-        return dx * dx + dy * dy + dz * dz + dw * dw;
+        return this.sub(v).lengthSquared();
     }
 
     /**
@@ -319,30 +311,15 @@ export class Vec4 {
     /**
      * Project 4D point to 3D using perspective projection
      * Projects from 4D to 3D by dividing by (d - w)
-     * @param {number|object} d - Distance parameter (usually 2-5) or options object
-     * @param {object|Vec4} [options] - Projection options or target vector
-     * @param {Vec4} [target] - Target vector to store result
+     * @param {number} d - Distance parameter (usually 2-5)
+     * @param {object} [options] - Projection options (epsilon, distance)
      * @returns {Vec4} Projected point (w component is 0)
      */
-    projectPerspective(d = 2, options = {}, target = null) {
+    projectPerspective(d = 2, options = {}) {
         if (typeof d === 'object') {
-            // usage: projectPerspective({ distance: 2, ... }, target?)
-            if (options instanceof Vec4) {
-                target = options;
-            }
             options = d;
             d = options.distance ?? options.d ?? 2;
-        } else {
-            // usage: projectPerspective(d, options?, target?)
-            // usage: projectPerspective(d, target?)
-            if (options instanceof Vec4) {
-                target = options;
-                options = {};
-            }
         }
-
-        options = options || {};
-
         const epsilon = options.epsilon ?? 1e-5;
         const denom = d - this.w;
         const clamped = Math.abs(denom) < epsilon ? (denom >= 0 ? epsilon : -epsilon) : denom;
@@ -353,18 +330,10 @@ export class Vec4 {
     /**
      * Project 4D point to 3D using stereographic projection
      * Maps 4D hypersphere to 3D space
-     * @param {object|Vec4} [options] - Projection options or target vector
-     * @param {Vec4} [target] - Target vector to store result
+     * @param {object} [options] - Projection options (epsilon)
      * @returns {Vec4} Projected point (w component is 0)
      */
-    projectStereographic(options = {}, target = null) {
-        if (options instanceof Vec4) {
-            target = options;
-            options = {};
-        }
-
-        options = options || {};
-
+    projectStereographic(options = {}) {
         const epsilon = options.epsilon ?? 1e-5;
         const denom = 1 - this.w;
         const clamped = Math.abs(denom) < epsilon ? (denom >= 0 ? epsilon : -epsilon) : denom;
@@ -375,7 +344,6 @@ export class Vec4 {
     /**
      * Project 4D point to 3D using orthographic projection
      * Simply drops the W component
-     * @param {Vec4} [target=null] - Optional target vector
      * @returns {Vec4} Projected point (w component is 0)
      */
     projectOrthographic() {

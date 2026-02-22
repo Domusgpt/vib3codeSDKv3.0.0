@@ -355,21 +355,17 @@ function projectPoints(points, rotor, dimension, width, height) {
     const centerY = height / 2;
     const scale = Math.min(width, height) * 0.4;
 
-    // Reuse vectors to minimize allocation
-    const rotatedBuffer = new Vec4();
-    const projectedBuffer = new Vec4();
-
     for (const point of points) {
         // Apply 4D rotation
-        rotor.rotate(point, rotatedBuffer);
+        const rotated = rotor.rotate(point);
 
         // Project to 3D (perspective from W)
-        rotatedBuffer.projectPerspective(dimension, projectedBuffer);
+        const proj3d = rotated.projectPerspective(dimension);
 
         // Project to 2D (simple orthographic for clean SVG)
-        const x = centerX + projectedBuffer.x * scale;
-        const y = centerY - projectedBuffer.y * scale; // Flip Y for SVG coordinates
-        const depth = projectedBuffer.z; // Keep depth for styling
+        const x = centerX + proj3d.x * scale;
+        const y = centerY - proj3d.y * scale; // Flip Y for SVG coordinates
+        const depth = proj3d.z; // Keep depth for styling
 
         projected.push({ x, y, depth, original: point });
     }
