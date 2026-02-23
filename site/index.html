@@ -32,6 +32,7 @@
     });
     </script>
     <link rel="stylesheet" href="./styles/main.css">
+    <link rel="stylesheet" href="../src/accent/accent.css">
 </head>
 <body>
     <a href="#main" class="sr-only">Skip to content</a>
@@ -174,21 +175,21 @@
 
             <!-- Three voice labels (stage 3) -->
             <div class="morph-voices" id="morphVoices">
-                <div class="morph-voice" data-voice="quantum">
+                <div class="morph-voice vib3-badge" data-voice="quantum">
                     <span class="morph-voice-label">Quantum</span>
                 </div>
-                <div class="morph-voice" data-voice="holographic">
+                <div class="morph-voice vib3-badge" data-voice="holographic">
                     <span class="morph-voice-label">Holographic</span>
                 </div>
-                <div class="morph-voice" data-voice="faceted">
+                <div class="morph-voice vib3-badge" data-voice="faceted">
                     <span class="morph-voice-label">Faceted</span>
                 </div>
             </div>
 
             <!-- Stage label -->
             <div class="morph-label" id="morphLabel">
-                <h2 id="morphTitle"></h2>
-                <p id="morphSub"></p>
+                <h2 class="vib3-heading" id="morphTitle"></h2>
+                <p class="vib3-text--muted" id="morphSub"></p>
             </div>
 
             <!-- Stage counter -->
@@ -227,9 +228,16 @@
          All 6 rotation planes: XY, XZ, YZ (3D) + XW, YW, ZW (4D)
          ═══════════════════════════════════════════════════ -->
     <section class="playground" id="playgroundSection">
-        <div class="playground-header section-reveal" data-animate>
-            <h2>Parameters Playground</h2>
-            <p>Every parameter exposed. All six rotation planes. Drag sliders to sculpt 4D geometry in real time.</p>
+        <div class="playground-header vib3-glass section-reveal" data-animate>
+            <h2 class="vib3-heading">Parameters Playground</h2>
+            <p class="vib3-text--muted">Every parameter exposed. All six rotation planes. Drag sliders to sculpt 4D geometry in real time.</p>
+        </div>
+        <div class="playground-cta vib3-text--bright" id="playgroundCTA">
+            <span>Try Making Your Own</span>
+            <svg width="24" height="48" viewBox="0 0 24 48">
+                <path d="M12 0 L12 40 M4 32 L12 44 L20 32" stroke="currentColor"
+                      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
         </div>
         <div class="playground-layout">
             <div class="playground-canvas">
@@ -238,7 +246,7 @@
                 </div>
                 <div class="pg-error" id="pgError">GPU context unavailable.<br>Try reloading the page.</div>
             </div>
-            <div class="playground-controls" id="playgroundControls">
+            <div class="playground-controls vib3-glass" id="playgroundControls">
                 <div class="ctrl-group">
                     <label><span>System</span></label>
                     <div class="system-btns">
@@ -393,9 +401,9 @@
                     <canvas class="vib3-canvas" id="tri-center-canvas"></canvas>
                     <div class="viz-vignette" id="triVignetteCenter" aria-hidden="true"></div>
                 </div>
-                <div class="triptych-content">
-                    <h2 class="triptych-title section-reveal" data-animate>Three Systems.<br>One C++ Core.</h2>
-                    <p class="triptych-desc section-reveal" data-animate>Quantum, Holographic, and Faceted &mdash; powered by Cl(4,0) Clifford algebra rotors in C++ WASM, dual WebGPU/WebGL backends, and TypeScript definitions.</p>
+                <div class="triptych-content vib3-glass">
+                    <h2 class="triptych-title vib3-heading section-reveal" data-animate>Three Systems.<br>One C++ Core.</h2>
+                    <p class="triptych-desc vib3-text--muted section-reveal" data-animate>Quantum, Holographic, and Faceted &mdash; powered by Cl(4,0) Clifford algebra rotors in C++ WASM, dual WebGPU/WebGL backends, and TypeScript definitions.</p>
                     <div class="triptych-stats section-reveal" data-animate>
                         <div class="triptych-stat">
                             <span class="stat-number">C++</span>
@@ -456,9 +464,9 @@
                 <div class="viz-seam" id="cascadeSeam" aria-hidden="true"></div>
                 <div class="viz-vignette" id="cascadeVignette" aria-hidden="true"></div>
             </div>
-            <div class="cascade-header section-reveal" data-animate>
-                <h2>Geometry Cascade</h2>
-                <p>24 geometry variants across three core types</p>
+            <div class="cascade-header vib3-glass section-reveal" data-animate>
+                <h2 class="vib3-heading">Geometry Cascade</h2>
+                <p class="vib3-text--muted">24 geometry variants across three core types</p>
             </div>
             <div class="cascade-track" id="cascadeTrack">
                 <div class="cascade-card tilt-card tilt-holo" data-geo="0" data-hue="190">
@@ -551,30 +559,30 @@
             </div>
         </div>
         <div class="agent-content">
-            <div class="agent-header section-reveal" data-animate>
-                <h2>Agent Integration</h2>
-                <p>19-tool MCP server with JSON-RPC 2.0. Pre-built context packs for Claude, OpenAI. Full programmatic control of the C++ WASM core.</p>
+            <div class="agent-header vib3-glass section-reveal" data-animate>
+                <h2 class="vib3-heading">Agent Integration</h2>
+                <p class="vib3-text--muted">19-tool MCP server with JSON-RPC 2.0. Pre-built context packs for Claude, OpenAI. Full programmatic control of the C++ WASM core.</p>
             </div>
             <div class="agent-grid section-reveal" data-animate>
-                <a class="agent-card" href="agent-config/mcp-config.json" download>
+                <a class="agent-card vib3-glass--light" href="agent-config/mcp-config.json" download>
                     <span class="agent-card-icon" aria-hidden="true">&#x1f517;</span>
                     <h3>MCP Config</h3>
                     <p>Model Context Protocol server configuration. Connect any MCP-compatible agent.</p>
                     <span class="dl-badge">Download JSON</span>
                 </a>
-                <a class="agent-card" href="agent-config/claude-agent-context.md" download>
+                <a class="agent-card vib3-glass--light" href="agent-config/claude-agent-context.md" download>
                     <span class="agent-card-icon" aria-hidden="true">&#x1f9e0;</span>
                     <h3>Claude Context</h3>
                     <p>Full SDK context pack for Claude. Drop into CLAUDE.md or system prompts.</p>
                     <span class="dl-badge">Download MD</span>
                 </a>
-                <a class="agent-card" href="agent-config/openai-agent-context.md" download>
+                <a class="agent-card vib3-glass--light" href="agent-config/openai-agent-context.md" download>
                     <span class="agent-card-icon" aria-hidden="true">&#x2699;</span>
                     <h3>OpenAI Context</h3>
                     <p>SDK context formatted for OpenAI assistants and custom GPTs.</p>
                     <span class="dl-badge">Download MD</span>
                 </a>
-                <a class="agent-card" href="../CLAUDE.md" download="VIB3-CLAUDE.md">
+                <a class="agent-card vib3-glass--light" href="../CLAUDE.md" download="VIB3-CLAUDE.md">
                     <span class="agent-card-icon" aria-hidden="true">&#x1f4d6;</span>
                     <h3>Full Technical Ref</h3>
                     <p>Complete CLAUDE.md technical reference. All APIs, shader uniforms, architecture.</p>
@@ -614,8 +622,8 @@
             <div class="viz-seam" id="ctaSeam" style="transform:rotate(var(--cta-seam-angle, -45deg));transform-origin:center;width:200%;left:-50%;" aria-hidden="true"></div>
             <div class="viz-vignette" id="ctaVignette" aria-hidden="true"></div>
         </div>
-        <div class="cta-content section-reveal" data-animate>
-            <h2 class="text-shimmer">Start Building</h2>
+        <div class="cta-content vib3-glass section-reveal" data-animate>
+            <h2 class="vib3-heading">Start Building</h2>
             <p>C++ Clifford algebra core (Cl(4,0) rotors) compiled to WASM. WebGPU primary, WebGL fallback. TypeScript definitions. MCP agentic control. React/Vue/Svelte integrations.</p>
             <div class="cta-row">
                 <a class="cta cta-primary" href="docs/webgpu-live.html">Launch Live Demo</a>

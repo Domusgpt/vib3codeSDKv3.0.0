@@ -1111,7 +1111,10 @@ export function initCascade(pool, c2d) {
         const vw = window.innerWidth / 100;
         const cardW = 80 * vw;
         const totalScroll = (N - 1) * cardW;
-        cascadeTrack.style.transform = `translateX(${-p * totalScroll}px)`;
+        // Mobile: CSS handles vertical stack (transform: none !important)
+        if (window.innerWidth > 768) {
+          cascadeTrack.style.transform = `translateX(${-p * totalScroll}px)`;
+        }
 
         const activeIdx = Math.min(Math.floor(p * N), N - 1);
         const activeHue = parseInt(cascadeCards[activeIdx].dataset.hue);

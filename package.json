@@ -200,6 +200,13 @@
     "./reactivity/config": {
       "import": "./src/reactivity/ReactivityConfig.js"
     },
+    "./accent": {
+      "types": "./types/accent.d.ts",
+      "import": "./src/accent/index.js"
+    },
+    "./accent/css": {
+      "import": "./src/accent/accent.css"
+    },
     "./creative": {
       "import": "./src/creative/index.js"
     },

@@ -45,12 +45,14 @@ import {
 } from './choreography.js';
 import { initOverlayChoreography } from './overlay-choreography.js';
 import { initRevealChoreography } from './reveal-choreography.js';
+import { AccentSystem } from '../../src/accent/AccentSystem.js';
 
 // ─── State ────────────────────────────────────────────────────
 
 const pool = new ContextPool(3);
 const c2d = new Map();
 let tiltSystem = null;
+const accentSystem = new AccentSystem();
 
 // ─── Playground GPU State ─────────────────────────────────────
 
@@ -301,6 +303,20 @@ function initPlaygroundScrollTrigger() {
     onEnterBack: acquirePlayground,
     onLeaveBack: releasePlayground,
   });
+
+  // "Try Making Your Own" CTA — fades in approaching playground
+  const ctaEl = document.getElementById('playgroundCTA');
+  if (ctaEl) {
+    ScrollTrigger.create({
+      trigger: '#playgroundSection',
+      start: 'top 95%',
+      end: 'top 40%',
+      onEnter: () => ctaEl.classList.add('visible'),
+      onLeave: () => ctaEl.classList.remove('visible'),
+      onEnterBack: () => ctaEl.classList.add('visible'),
+      onLeaveBack: () => ctaEl.classList.remove('visible'),
+    });
+  }
 }
 
 // ─── Global Mouse/Touch Reactivity ─────────────────────────────
@@ -364,8 +380,18 @@ function feedMouseToRenderers() {
 
 // ─── Render Loop (AmbientLattice + mouse reactivity) ──
 
+// Priority order for accent system: playground (user-controlled) → hero → morph → opening
+const _accentKeys = ['playground', 'hero', 'opening', 'triCenter', 'energyBg', 'agent', 'ctaL'];
+
 function renderLoop(ts) {
   feedMouseToRenderers();
+  // AccentSystem: find the best active adapter and derive CSS vars
+  let activeAdapter = null;
+  for (const key of _accentKeys) {
+    activeAdapter = pool.get(key);
+    if (activeAdapter) break;
+  }
+  accentSystem.update(activeAdapter, ts);
   for (const inst of c2d.values()) inst.render(ts);
   requestAnimationFrame(renderLoop);
 }
