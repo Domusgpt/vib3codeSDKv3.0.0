@@ -1183,80 +1183,144 @@
             transition: opacity 0.3s ease-out;
         }
 
+        /* ─── Tablet (768–1024px) ─── */
+        @media (max-width: 1024px) {
+            /* Triptych negative margin causes layout collapse on tablets */
+            .triptych-center-canvas { margin-bottom: -60vh; }
+            .opening { min-height: 500vh; }
+            .morph { min-height: 600vh; }
+            /* Vignette too heavy on smaller viewports */
+            .morph .viz-vignette { --vignette-strength: 0.3; --vignette-inner: 30%; }
+            .energy .energy-bg .viz-vignette { --vignette-strength: 0.35; --vignette-inner: 25%; }
+        }
+
         /* ─── Mobile ─── */
         @media (max-width: 768px) {
-            /* Scroll-snap for clean mobile sectioning */
-            html { scroll-snap-type: y proximity; }
-            .hero, .playground, .agent-section, .cta-section { scroll-snap-align: start; }
+            /* Body: prevent mobile browser gestures on VIB3+ page */
+            body { touch-action: pan-y; overscroll-behavior-y: contain; }
 
             /* Reduce scroll heights significantly on mobile */
-            .opening { min-height: 300vh; }
-            .morph { min-height: 400vh; }
-            .triptych { min-height: auto; }
+            .opening { min-height: 200vh; }
+            .morph { min-height: 300vh; }
+            .triptych { min-height: auto; overflow: visible; }
             .triptych-inner { min-height: auto; }
             .cascade { min-height: auto; }
             .energy { min-height: auto; }
 
             .morph-dots { display: none; }
+            .morph-counter { top: 20px; right: 20px; }
             .morph-voices { gap: 12px; flex-wrap: wrap; }
             .morph-voice { padding: 8px 14px; }
-            /* Playground: stack controls below canvas */
+
+            /* ── Text visibility fixes ── */
+            .hero-sub { color: rgba(200,200,212,0.75); }
+            .hero-system-label { color: rgba(0,240,255,0.6); }
+            .hero-scroll span { color: rgba(255,255,255,0.4); }
+            .ctrl-section-label { color: rgba(255,255,255,0.4); }
+            .opening-sub span { color: rgba(255,255,255,0.4); }
+            .stat-label { color: rgba(255,255,255,0.5); }
+            .morph-counter { color: rgba(255,255,255,0.3); }
+            /* Text shimmer fallback: if gradient-clip fails, show white text */
+            .text-shimmer {
+                color: #fff; /* fallback if background-clip: text unsupported */
+            }
+
+            /* ── Playground: stack controls below canvas ── */
+            .playground { padding: 60px 16px; }
             .playground-controls {
                 position: relative; top: auto; right: auto;
                 width: 100%; max-height: none; margin-top: 16px;
             }
-            .playground-canvas { min-height: 280px; max-height: 50vh; aspect-ratio: auto; }
+            .playground-canvas {
+                width: 100%; min-height: 240px; max-height: 50vh;
+                aspect-ratio: auto; background: transparent;
+            }
+            .playground-canvas .canvas-wrap { background: transparent; }
 
-            /* Mobile: stack triptych columns vertically */
+            /* ── Triptych: stack columns vertically ── */
             .triptych-col {
                 position: relative !important; clip-path: none !important;
-                width: 100%; min-height: 60vh;
+                width: 100%; min-height: auto;
             }
-            .triptych-canvas-wrap { height: 60vh; }
-            .triptych-center-col { min-height: 60vh; padding: 0; }
-            .triptych-center-canvas { margin-bottom: 0; height: 60vh; }
+            .triptych-canvas-wrap {
+                position: relative; height: 50vh;
+            }
+            .triptych-center-col { min-height: auto; padding: 0; overflow: visible; }
+            .triptych-center-canvas { margin-bottom: 0; height: 50vh; opacity: 0.7; }
             .triptych-content {
-                position: relative;
+                position: relative; top: auto; transform: none;
                 text-align: center; padding: 32px 20px;
             }
-            .triptych-desc { margin: 0 auto 24px; }
-            .triptych-stats { justify-content: center; }
+            .triptych-desc { margin: 0 auto 24px; max-width: none; }
+            .triptych-stats { justify-content: center; flex-wrap: wrap; }
             .triptych-divider { display: none; }
+            .triptych-tag-wrap { position: relative; bottom: auto; left: auto;
+                transform: none; text-align: center; padding: 12px 0; }
+            .viz-seam { display: none; }
 
-            /* Cascade: vertical stack instead of horizontal scroll */
-            .cascade-pinned { height: auto; }
+            /* ── Cascade: vertical stack instead of horizontal scroll ── */
+            .cascade-pinned { height: auto; min-height: auto; }
             .cascade-track {
                 flex-direction: column;
                 gap: 24px; padding: 80px 5vw 40px;
                 align-items: center;
-                transform: none !important; /* disable JS horizontal scroll on mobile */
+                transform: none !important; /* disable JS horizontal scroll */
             }
             .cascade-card {
-                width: 90vw; height: 55vh; flex-shrink: 0;
+                width: 90vw; height: 50vh; flex-shrink: 0;
                 opacity: 1; transform: none;
             }
-            /* Reset organic clip-paths on mobile for readability */
+            /* Reset organic clip-paths on mobile for cleaner cards */
             .cascade-card .canvas-wrap,
             .cascade-card .card-frame,
             .cascade-card .cascade-overlay {
                 --card-shape: inset(0% round 16px) !important;
             }
-            /* Energy card: reset blob shape on mobile */
-            .energy-card { clip-path: none; }
 
-            .agent-grid { grid-template-columns: 1fr 1fr; }
+            /* ── Energy: no blob clip, no pin scroll ── */
+            .energy-card { clip-path: none; padding: 36px 24px; }
+            .energy-pinned { height: auto; min-height: auto; padding: 80px 0; }
 
-            /* Reduce decorative overlay complexity */
+            /* ── Agent grid: 2 cols → 1 col handled at 480px ── */
+            .agent-section { padding: 80px 16px; }
+            .agent-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+            .agent-card { padding: 20px 16px; }
+
+            /* ── CTA ── */
+            .cta-section { padding: 60px 16px; min-height: auto; }
+
+            /* ── Vignette: reduced on mobile ── */
+            .morph .viz-vignette { --vignette-strength: 0.25; --vignette-inner: 35%; }
+            .cascade .viz-vignette { --vignette-strength: 0.15; }
+            .energy .energy-bg .viz-vignette { --vignette-strength: 0.3; --vignette-inner: 25%; }
+
+            /* ── Reduce decorative overlay complexity ── */
             .parallax-field { display: none; }
             .mouse-glow-overlay { display: none; }
+            .lattice-layer { display: none; }
+            .section-divider { display: none; }
+            .noise-overlay { opacity: 0.012; }
+            .ambient-bg { animation: none; opacity: 0.7; }
+
+            /* ── Code blocks: scroll horizontal on mobile ── */
+            .code-block, .agent-tools { font-size: 11px; padding: 20px 16px; overflow-x: auto; }
+            .link-grid { grid-template-columns: 1fr; }
         }
         @media (max-width: 480px) {
+            .opening { min-height: 150vh; }
+            .morph { min-height: 200vh; }
             .agent-grid { grid-template-columns: 1fr; }
+            .ctrl-row { grid-template-columns: 1fr; }
             .ctrl-row-3 { grid-template-columns: 1fr; }
             .triptych-stats { flex-direction: column; gap: 16px; }
-            .cascade-card { width: 94vw; height: 50vh; }
-            .energy-card { padding: 32px 24px; }
-            .hero-badge { font-size: 9px; letter-spacing: 1px; }
+            .cascade-card { width: 94vw; height: 45vh; }
+            .energy-card { padding: 28px 20px; }
+            .hero-badge { font-size: 9px; letter-spacing: 1px; padding: 4px 12px; }
+            .hero-title { letter-spacing: 4px; }
+            .playground-header { padding: 16px 20px; }
+            .playground-header p { font-size: 13px; }
+            .cascade-header h2 { font-size: 18px; }
+            .cta-row { flex-direction: column; align-items: center; }
         }
         /* ═══════════════════════════════════════════════════════════
            DEPTH ILLUSION ENGINE — CSS Depth Helpers v3

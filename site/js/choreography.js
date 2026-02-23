@@ -993,6 +993,7 @@ export function initTriptych(pool) {
 // Shared rotation phase ties all cards to a common 4D rhythm.
 
 export function initCascade(pool, c2d) {
+  const isMobile = window.innerWidth <= 768;
   const cascadeCards = document.querySelectorAll('.cascade-card');
   const cascadeTrack = document.getElementById('cascadeTrack');
   const gpuLeftWrap = document.getElementById('cascadeGpuLeft');
@@ -1101,6 +1102,12 @@ export function initCascade(pool, c2d) {
   if (cascadeTrack && cascadeCards.length > 0) {
     const N = cascadeCards.length;
 
+    // Mobile: no pin, no horizontal scroll — CSS stacks cards vertically
+    if (isMobile) {
+      // Simple entrance animation only — cards are already visible via CSS
+      return;
+    }
+
     ScrollTrigger.create({
       trigger: '#cascadeSection', start: 'top top', end: 'bottom bottom',
       pin: '#cascadePinned', scrub: 0.5,
@@ -1111,10 +1118,7 @@ export function initCascade(pool, c2d) {
         const vw = window.innerWidth / 100;
         const cardW = 80 * vw;
         const totalScroll = (N - 1) * cardW;
-        // Mobile: CSS handles vertical stack (transform: none !important)
-        if (window.innerWidth > 768) {
-          cascadeTrack.style.transform = `translateX(${-p * totalScroll}px)`;
-        }
+        cascadeTrack.style.transform = `translateX(${-p * totalScroll}px)`;
 
         const activeIdx = Math.min(Math.floor(p * N), N - 1);
         const activeHue = parseInt(cascadeCards[activeIdx].dataset.hue);
@@ -1297,6 +1301,7 @@ export function initCascade(pool, c2d) {
 // ─── ENERGY TRANSFER ────────────────────────────────────────
 
 export function initEnergy(pool) {
+  const isMobile = window.innerWidth <= 768;
   const energyBgInitParams = {
     geometry: 6, hue: 270, gridDensity: 24, speed: 0.5,
     intensity: 0.6, chaos: 0.15, dimension: 3.4, morphFactor: 0.8, saturation: 0.9,
@@ -1317,9 +1322,10 @@ export function initEnergy(pool) {
     onLeaveBack: () => { pool.release('energyBg'); pool.release('energyCard'); },
   });
 
-  // 7-Step Pinned 3D Card Timeline
+  // 7-Step Pinned 3D Card Timeline — desktop only
+  // Mobile: simple reveal, no pin (CSS sets height: auto on .energy-pinned)
   const energyCard = document.getElementById('energyCard');
-  if (energyCard) {
+  if (energyCard && !isMobile) {
     const pinnedTl = gsap.timeline({
       scrollTrigger: {
         trigger: '#energySection', start: 'top top', end: 'bottom bottom',
@@ -1353,6 +1359,15 @@ export function initEnergy(pool) {
     pinnedTl.to(energyCard, {
       rotation: 360, scale: 0.7, y: -150, opacity: 0,
       duration: 0.12, ease: 'power2.in',
+    });
+  } else if (energyCard && isMobile) {
+    // Mobile: simple fade-in reveal, no pinning
+    gsap.set(energyCard, { opacity: 1, y: 0 });
+    ScrollTrigger.create({
+      trigger: '#energySection', start: 'top 80%', once: true,
+      onEnter: () => {
+        gsap.from(energyCard, { y: 60, opacity: 0, duration: 0.8, ease: 'power3.out' });
+      },
     });
   }
 
