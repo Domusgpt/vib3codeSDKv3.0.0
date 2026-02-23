@@ -49,6 +49,19 @@ export class Mat4x4 {
     }
 
     /**
+     * Reset to identity matrix
+     * @returns {Mat4x4} this
+     */
+    identity() {
+        const d = this.data;
+        d[0] = 1; d[1] = 0; d[2] = 0; d[3] = 0;
+        d[4] = 0; d[5] = 1; d[6] = 0; d[7] = 0;
+        d[8] = 0; d[9] = 0; d[10] = 1; d[11] = 0;
+        d[12] = 0; d[13] = 0; d[14] = 0; d[15] = 1;
+        return this;
+    }
+
+    /**
      * Create identity matrix
      * @returns {Mat4x4}
      */
@@ -718,51 +731,78 @@ export class Mat4x4 {
     /**
      * Create XY plane rotation matrix (standard Z-axis rotation in 3D)
      * @param {number} angle - Rotation angle in radians
+     * @param {Mat4x4} [target=null] - Optional target matrix
      * @returns {Mat4x4}
      */
-    static rotationXY(angle) {
+    static rotationXY(angle, target = null) {
         const c = Math.cos(angle);
         const s = Math.sin(angle);
-        const out = new Mat4x4(Mat4x4.UNINITIALIZED);
+        const out = target || new Mat4x4(Mat4x4.UNINITIALIZED);
         const r = out.data;
-        r[0] = c; r[1] = s;
-        r[4] = -s; r[5] = c;
-        r[10] = 1;
-        r[15] = 1;
+
+        if (target) {
+            r[0] = c; r[1] = s; r[2] = 0; r[3] = 0;
+            r[4] = -s; r[5] = c; r[6] = 0; r[7] = 0;
+            r[8] = 0; r[9] = 0; r[10] = 1; r[11] = 0;
+            r[12] = 0; r[13] = 0; r[14] = 0; r[15] = 1;
+        } else {
+            r[0] = c; r[1] = s;
+            r[4] = -s; r[5] = c;
+            r[10] = 1;
+            r[15] = 1;
+        }
         return out;
     }
 
     /**
      * Create XZ plane rotation matrix (standard Y-axis rotation in 3D)
      * @param {number} angle - Rotation angle in radians
+     * @param {Mat4x4} [target=null] - Optional target matrix
      * @returns {Mat4x4}
      */
-    static rotationXZ(angle) {
+    static rotationXZ(angle, target = null) {
         const c = Math.cos(angle);
         const s = Math.sin(angle);
-        const out = new Mat4x4(Mat4x4.UNINITIALIZED);
+        const out = target || new Mat4x4(Mat4x4.UNINITIALIZED);
         const r = out.data;
-        r[0] = c; r[2] = -s;
-        r[5] = 1;
-        r[8] = s; r[10] = c;
-        r[15] = 1;
+
+        if (target) {
+            r[0] = c; r[1] = 0; r[2] = -s; r[3] = 0;
+            r[4] = 0; r[5] = 1; r[6] = 0; r[7] = 0;
+            r[8] = s; r[9] = 0; r[10] = c; r[11] = 0;
+            r[12] = 0; r[13] = 0; r[14] = 0; r[15] = 1;
+        } else {
+            r[0] = c; r[2] = -s;
+            r[5] = 1;
+            r[8] = s; r[10] = c;
+            r[15] = 1;
+        }
         return out;
     }
 
     /**
      * Create YZ plane rotation matrix (standard X-axis rotation in 3D)
      * @param {number} angle - Rotation angle in radians
+     * @param {Mat4x4} [target=null] - Optional target matrix
      * @returns {Mat4x4}
      */
-    static rotationYZ(angle) {
+    static rotationYZ(angle, target = null) {
         const c = Math.cos(angle);
         const s = Math.sin(angle);
-        const out = new Mat4x4(Mat4x4.UNINITIALIZED);
+        const out = target || new Mat4x4(Mat4x4.UNINITIALIZED);
         const r = out.data;
-        r[0] = 1;
-        r[5] = c; r[6] = s;
-        r[9] = -s; r[10] = c;
-        r[15] = 1;
+
+        if (target) {
+            r[0] = 1; r[1] = 0; r[2] = 0; r[3] = 0;
+            r[4] = 0; r[5] = c; r[6] = s; r[7] = 0;
+            r[8] = 0; r[9] = -s; r[10] = c; r[11] = 0;
+            r[12] = 0; r[13] = 0; r[14] = 0; r[15] = 1;
+        } else {
+            r[0] = 1;
+            r[5] = c; r[6] = s;
+            r[9] = -s; r[10] = c;
+            r[15] = 1;
+        }
         return out;
     }
 
@@ -770,51 +810,78 @@ export class Mat4x4 {
      * Create XW plane rotation matrix (4D hyperspace rotation)
      * Creates "inside-out" effect when w approaches viewer
      * @param {number} angle - Rotation angle in radians
+     * @param {Mat4x4} [target=null] - Optional target matrix
      * @returns {Mat4x4}
      */
-    static rotationXW(angle) {
+    static rotationXW(angle, target = null) {
         const c = Math.cos(angle);
         const s = Math.sin(angle);
-        const out = new Mat4x4(Mat4x4.UNINITIALIZED);
+        const out = target || new Mat4x4(Mat4x4.UNINITIALIZED);
         const r = out.data;
-        r[0] = c; r[3] = s;
-        r[5] = 1;
-        r[10] = 1;
-        r[12] = -s; r[15] = c;
+
+        if (target) {
+            r[0] = c; r[1] = 0; r[2] = 0; r[3] = s;
+            r[4] = 0; r[5] = 1; r[6] = 0; r[7] = 0;
+            r[8] = 0; r[9] = 0; r[10] = 1; r[11] = 0;
+            r[12] = -s; r[13] = 0; r[14] = 0; r[15] = c;
+        } else {
+            r[0] = c; r[3] = s;
+            r[5] = 1;
+            r[10] = 1;
+            r[12] = -s; r[15] = c;
+        }
         return out;
     }
 
     /**
      * Create YW plane rotation matrix (4D hyperspace rotation)
      * @param {number} angle - Rotation angle in radians
+     * @param {Mat4x4} [target=null] - Optional target matrix
      * @returns {Mat4x4}
      */
-    static rotationYW(angle) {
+    static rotationYW(angle, target = null) {
         const c = Math.cos(angle);
         const s = Math.sin(angle);
-        const out = new Mat4x4(Mat4x4.UNINITIALIZED);
+        const out = target || new Mat4x4(Mat4x4.UNINITIALIZED);
         const r = out.data;
-        r[0] = 1;
-        r[5] = c; r[7] = s;
-        r[10] = 1;
-        r[13] = -s; r[15] = c;
+
+        if (target) {
+            r[0] = 1; r[1] = 0; r[2] = 0; r[3] = 0;
+            r[4] = 0; r[5] = c; r[6] = 0; r[7] = s;
+            r[8] = 0; r[9] = 0; r[10] = 1; r[11] = 0;
+            r[12] = 0; r[13] = -s; r[14] = 0; r[15] = c;
+        } else {
+            r[0] = 1;
+            r[5] = c; r[7] = s;
+            r[10] = 1;
+            r[13] = -s; r[15] = c;
+        }
         return out;
     }
 
     /**
      * Create ZW plane rotation matrix (4D hyperspace rotation)
      * @param {number} angle - Rotation angle in radians
+     * @param {Mat4x4} [target=null] - Optional target matrix
      * @returns {Mat4x4}
      */
-    static rotationZW(angle) {
+    static rotationZW(angle, target = null) {
         const c = Math.cos(angle);
         const s = Math.sin(angle);
-        const out = new Mat4x4(Mat4x4.UNINITIALIZED);
+        const out = target || new Mat4x4(Mat4x4.UNINITIALIZED);
         const r = out.data;
-        r[0] = 1;
-        r[5] = 1;
-        r[10] = c; r[11] = s;
-        r[14] = -s; r[15] = c;
+
+        if (target) {
+            r[0] = 1; r[1] = 0; r[2] = 0; r[3] = 0;
+            r[4] = 0; r[5] = 1; r[6] = 0; r[7] = 0;
+            r[8] = 0; r[9] = 0; r[10] = c; r[11] = s;
+            r[12] = 0; r[13] = 0; r[14] = -s; r[15] = c;
+        } else {
+            r[0] = 1;
+            r[5] = 1;
+            r[10] = c; r[11] = s;
+            r[14] = -s; r[15] = c;
+        }
         return out;
     }
 
@@ -841,24 +908,58 @@ export class Mat4x4 {
      * Create combined rotation matrix from all 6 angles
      * Order: XY, XZ, YZ, XW, YW, ZW
      *
-     * @param {object} angles - Rotation angles
-     * @param {number} [angles.xy=0] - XY plane rotation
-     * @param {number} [angles.xz=0] - XZ plane rotation
-     * @param {number} [angles.yz=0] - YZ plane rotation
-     * @param {number} [angles.xw=0] - XW plane rotation
-     * @param {number} [angles.yw=0] - YW plane rotation
-     * @param {number} [angles.zw=0] - ZW plane rotation
+     * Supports two signatures:
+     * 1. rotationFromAngles(angles, target?)
+     * 2. rotationFromAngles(xy, xz, yz, xw, yw, zw, target?)
+     *
+     * @param {object|number} anglesOrXY - Rotation angles object OR XY angle
+     * @param {number|Mat4x4} [xzOrTarget] - XZ angle OR target matrix
+     * @param {number} [yz=0] - YZ angle
+     * @param {number} [xw=0] - XW angle
+     * @param {number} [yw=0] - YW angle
+     * @param {number} [zw=0] - ZW angle
+     * @param {Mat4x4} [target=null] - Target matrix (if using 6-arg signature)
      * @returns {Mat4x4}
      */
-    static rotationFromAngles(angles) {
-        let result = Mat4x4.identity();
+    static rotationFromAngles(anglesOrXY, xzOrTarget, yz, xw, yw, zw, target) {
+        let xy = 0, xz = 0;
+        let _yz = 0, _xw = 0, _yw = 0, _zw = 0;
+        let out = null;
 
-        if (angles.xy) result.rotateXY(angles.xy);
-        if (angles.xz) result.rotateXZ(angles.xz);
-        if (angles.yz) result.rotateYZ(angles.yz);
-        if (angles.xw) result.rotateXW(angles.xw);
-        if (angles.yw) result.rotateYW(angles.yw);
-        if (angles.zw) result.rotateZW(angles.zw);
+        if (typeof anglesOrXY === 'number') {
+            // Signature: (xy, xz, yz, xw, yw, zw, target)
+            xy = anglesOrXY;
+            xz = typeof xzOrTarget === 'number' ? xzOrTarget : 0;
+            _yz = yz || 0;
+            _xw = xw || 0;
+            _yw = yw || 0;
+            _zw = zw || 0;
+            out = target || null;
+        } else {
+            // Signature: (angles, target)
+            const angles = anglesOrXY || {};
+            xy = angles.xy || 0;
+            xz = angles.xz || 0;
+            _yz = angles.yz || 0;
+            _xw = angles.xw || 0;
+            _yw = angles.yw || 0;
+            _zw = angles.zw || 0;
+            // The second argument is the target in this case
+            // Use duck typing or check constructor name to avoid circular dependency issues if any
+            if (xzOrTarget && typeof xzOrTarget === 'object' && xzOrTarget.data) {
+                out = xzOrTarget;
+            }
+        }
+
+        const result = out || new Mat4x4(); // Default constructor is identity
+        if (out) result.identity(); // Reset if reused
+
+        if (xy) result.rotateXY(xy);
+        if (xz) result.rotateXZ(xz);
+        if (_yz) result.rotateYZ(_yz);
+        if (_xw) result.rotateXW(_xw);
+        if (_yw) result.rotateYW(_yw);
+        if (_zw) result.rotateZW(_zw);
 
         return result;
     }
