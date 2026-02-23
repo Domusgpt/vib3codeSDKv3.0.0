@@ -101,18 +101,6 @@ Or if installed globally via npm:
 | `vib3://docs/control-reference` | Parameter ranges and controls |
 | `vib3://state/current` | Live engine state |
 
-## Creative Quality Reference
-
-Before building VIB3+ experiences, agents should absorb:
-
-| Resource | What It Teaches |
-|----------|----------------|
-| `examples/dogfood/GOLD_STANDARD.md` | Gold Standard v3 — 3 parameter modes, composition vocabulary, EMA smoothing |
-| `examples/codex/synesthesia/` | Golden reference implementation — annotated, all 3 modes, all 6 rotation axes |
-| `examples/codex/` | Codex gallery — multiple reference implementations showing different creative approaches |
-
-The Gold Standard v3 defines three simultaneous parameter modes that every VIB3+ creative implementation should exhibit: Continuous Mapping (input→params every frame), Event Choreography (discrete trigger sequences), and Ambient Drift (breathing/heartbeat on idle).
-
 ## Claude Code Skills
 
 Two Claude Code skills are available in `.claude/commands/`:
@@ -133,7 +121,7 @@ Pre-compiled context files optimized for different agent types:
 | File | For | Content |
 |------|-----|---------|
 | `claude-agent-context.md` | Claude Code / Claude Desktop | Compact SDK reference + tool usage examples |
-| `openai-agent-context.md` | OpenAI Assistants / GPTs | Function calling schema + examples + copied Claude skill workflow |
+| `openai-agent-context.md` | OpenAI Assistants / GPTs | Function calling schema + examples |
 
 ## Quick Test
 

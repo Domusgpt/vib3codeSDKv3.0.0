@@ -16,14 +16,13 @@ import { Vec4 } from '../../math/Vec4.js';
  * @param {number} radius - Hypersphere radius
  * @returns {Vec4} Point on hypersphere
  */
-export function projectToHypersphere(point, radius = 1, target = null) {
+export function projectToHypersphere(point, radius = 1) {
     const len = point.length();
     if (len < 0.0001) {
         // Handle origin - project to north pole
-        if (target) return target.set(0, 0, 0, radius);
         return new Vec4(0, 0, 0, radius);
     }
-    return point.scale(radius / len, target);
+    return point.scale(radius / len);
 }
 
 /**
@@ -31,25 +30,15 @@ export function projectToHypersphere(point, radius = 1, target = null) {
  * Maps all of 3D space onto the 4D hypersphere
  * @param {Vec4} point - Input point (uses x, y, z)
  * @param {number} radius - Hypersphere radius
- * @param {Vec4} [target=null] - Optional target vector
  * @returns {Vec4} Point on hypersphere
  */
-export function stereographicToHypersphere(point, radius = 1, target = null) {
+export function stereographicToHypersphere(point, radius = 1) {
     const x = point.x;
     const y = point.y;
     const z = point.z;
 
     const sumSq = x * x + y * y + z * z;
     const denom = sumSq + 1;
-
-    if (target) {
-        return target.set(
-            (2 * x) / denom * radius,
-            (2 * y) / denom * radius,
-            (2 * z) / denom * radius,
-            (sumSq - 1) / denom * radius
-        );
-    }
 
     return new Vec4(
         (2 * x) / denom * radius,
@@ -67,21 +56,11 @@ export function stereographicToHypersphere(point, radius = 1, target = null) {
  * @param {number} phi - Azimuth on base S² (0 to 2π)
  * @param {number} psi - Fiber angle (0 to 2π)
  * @param {number} radius - Hypersphere radius
- * @param {Vec4} [target=null] - Optional target vector
  * @returns {Vec4} Point on hypersphere
  */
-export function hopfFibration(theta, phi, psi, radius = 1, target = null) {
+export function hopfFibration(theta, phi, psi, radius = 1) {
     const cosTheta2 = Math.cos(theta / 2);
     const sinTheta2 = Math.sin(theta / 2);
-
-    if (target) {
-        return target.set(
-            cosTheta2 * Math.cos((phi + psi) / 2) * radius,
-            cosTheta2 * Math.sin((phi + psi) / 2) * radius,
-            sinTheta2 * Math.cos((phi - psi) / 2) * radius,
-            sinTheta2 * Math.sin((phi - psi) / 2) * radius
-        );
-    }
 
     return new Vec4(
         cosTheta2 * Math.cos((phi + psi) / 2) * radius,
@@ -99,9 +78,8 @@ export function hopfFibration(theta, phi, psi, radius = 1, target = null) {
  * @returns {Vec4[]} Warped vertices
  */
 export function warpRadial(vertices, radius = 1, blendFactor = 1) {
-    const onSphere = new Vec4();
     return vertices.map(v => {
-        projectToHypersphere(v, radius, onSphere);
+        const onSphere = projectToHypersphere(v, radius);
         return v.lerp(onSphere, blendFactor);
     });
 }
@@ -115,9 +93,8 @@ export function warpRadial(vertices, radius = 1, blendFactor = 1) {
  * @returns {Vec4[]} Warped vertices
  */
 export function warpStereographic(vertices, radius = 1, scale = 1) {
-    const scaled = new Vec4();
     return vertices.map(v => {
-        v.scale(scale, scaled);
+        const scaled = v.scale(scale);
         return stereographicToHypersphere(scaled, radius);
     });
 }
@@ -169,31 +146,25 @@ export function warpHypersphereCore(geometry, options = {}) {
         twist = 1
     } = options;
 
-    const temp = new Vec4();
-    const warpedVertices = geometry.vertices.map(v => {
-        // Combined scaling and warping to minimize allocations
-        const result = v.scale(scale);
+    let warpedVertices;
 
-        if (method === 'stereographic') {
-            stereographicToHypersphere(result, radius, result);
-        } else if (method === 'hopf') {
-            const r = result.length();
-            if (r < 0.0001) {
-                result.set(0, 0, 0, radius);
-            } else {
-                const theta = Math.acos(result.z / r);
-                const phi = Math.atan2(result.y, result.x);
-                const psi = result.w * twist + phi * 0.5;
-                hopfFibration(theta, phi, psi, radius, result);
-            }
-        } else {
-            // Radial (default)
-            projectToHypersphere(result, radius, temp);
-            result.lerp(temp, blend, result);
-        }
+    // Pre-scale vertices
+    const scaledVertices = geometry.vertices.map(v => v.scale(scale));
 
-        return result;
-    });
+    switch (method) {
+        case 'stereographic':
+            warpedVertices = warpStereographic(scaledVertices, radius, 1);
+            break;
+
+        case 'hopf':
+            warpedVertices = warpHopf(scaledVertices, radius, twist);
+            break;
+
+        case 'radial':
+        default:
+            warpedVertices = warpRadial(scaledVertices, radius, blend);
+            break;
+    }
 
     return {
         ...geometry,

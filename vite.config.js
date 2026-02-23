@@ -54,6 +54,7 @@ export default defineConfig(({ mode }) => {
                     gallery: resolve(__dirname, 'docs/index.html'),
                     testHub: resolve(__dirname, 'docs/test-hub.html'),
                     crystalLabyrinth: resolve(__dirname, 'examples/dogfood/crystal_labyrinth.html'),
+                    ultraUniverse: resolve(__dirname, 'examples/dogfood/ultra_universe.html'),
                 },
             },
         },

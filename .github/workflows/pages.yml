@@ -76,9 +76,6 @@ jobs:
           # Example pages (layer dynamics demo, standalone demos)
           cp -r examples/ _site/examples/
 
-          # Dogfood landing page (links to samsung-tv + flutter-viz demos)
-          cp -r dogfood/ _site/dogfood/ 2>/dev/null || true
-
           # C++ WASM core (needed by SDK runtime)
           cp -r cpp/ _site/cpp/ 2>/dev/null || true
 
@@ -100,11 +97,6 @@ jobs:
           echo "=== Examples ==="
           ls _site/examples/*.html 2>/dev/null && echo "Examples: OK" || echo "Examples: MISSING"
           echo "Source modules: $(find _site/src -name '*.js' | wc -l) JS files"
-          echo ""
-          echo "=== Dogfood Demos ==="
-          ls -la _site/dogfood/index.html 2>/dev/null && echo "Dogfood landing: OK" || echo "Dogfood landing: MISSING"
-          ls -la _site/examples/dogfood/samsung-tv/index.html 2>/dev/null && echo "Samsung TV: OK" || echo "Samsung TV: MISSING"
-          ls -la _site/examples/dogfood/flutter-viz/assets/vib3_visualization.html 2>/dev/null && echo "Flutter Viz: OK" || echo "Flutter Viz: MISSING"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

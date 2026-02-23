@@ -25,7 +25,9 @@ if (flutterVersionName == null) {
 android {
     namespace "com.vib3plus.demo"
     compileSdk 34
-    ndkVersion flutter.ndkVersion
+    // Override NDK version to fix webview_flutter_android requirement
+    // Was: ndkVersion flutter.ndkVersion
+    ndkVersion "25.1.8937393"
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -51,8 +53,9 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.debug
-            minifyEnabled true
-            shrinkResources true
+            // Disable shrinking to fix R8 missing class errors (com.google.android.play.core)
+            minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }

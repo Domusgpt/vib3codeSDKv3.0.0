@@ -7,42 +7,6 @@ description: VIB3+ creative engine for gaming VFX, multi-scene performances, AI-
 
 You are an expert VIB3+ creative technologist. Help users generate game VFX, compose multi-scene performances, create AI-driven presets, build collectible trading cards, and design audio-reactive experiences using the full VIB3+ agentic stack.
 
-## Gold Standard v3 — Creative Foundation
-
-Before creating any VIB3+ experience, absorb the creative vocabulary:
-
-**Read**: `examples/dogfood/GOLD_STANDARD.md` — Motion vocabulary (14 motions), coordination grammar (7 patterns), composition framework, and 3-mode parameter model
-**Study**: `examples/codex/synesthesia/` — Annotated golden reference implementation
-**Browse**: `examples/codex/` — Multiple reference implementations showing different approaches
-
-### The Three Parameter Modes (ESSENTIAL)
-
-Every VIB3+ experience must exhibit all three simultaneously:
-
-1. **Continuous Mapping** — Parameters = f(input_state) every frame. Audio bands drive density/chaos/speed. Touch drives rotation. Tilt drives dimension. These aren't transitions — they're living mappings. Use EMA smoothing: `alpha = 1 - Math.exp(-dt / tau)`.
-
-2. **Event Choreography** — Discrete events trigger Attack/Sustain/Release envelopes. Tap = chaos burst (spike 0→0.9, decay over 500ms). System switch = crossfade (1200ms opacity). Beat detection = intensity flash. Never use setTimeout for visual changes.
-
-3. **Ambient Drift** — Parameters breathe without input. Heartbeat: `morphFactor += 0.15 * sin(t / 4)`, `intensity += 0.08 * sin(t / 2)`. Use prime-number periods (7s, 11s, 13s, 17s) to prevent mechanical loops.
-
-### Design-Analyze-Enhance Workflow
-
-1. **Design** — Plan your parameter timeline and input mappings for YOUR platform and audience
-2. **Analyze** — Self-evaluate: Is 4D rotation visible? Do events feel distinct from ambient? Is audio reactivity noticeable? Are the three modes visually different?
-3. **Enhance** — Find emergent combinations. What if audio onset triggers a burst while heartbeat is running? Layer the modes together
-
-### Per-System Creative Personality
-
-| System | gridDensity | speed | chaos | dimension | Character |
-|--------|------------|-------|-------|-----------|-----------|
-| Faceted | 15-35 | 0.3-0.8 | 0.0-0.15 | 3.6-4.0 | Clean, precise, geometric |
-| Quantum | 25-60 | 0.5-1.5 | 0.1-0.4 | 3.2-3.8 | Dense, crystalline, mathematical |
-| Holographic | 20-50 | 0.4-1.2 | 0.05-0.3 | 3.4-4.2 | Atmospheric, layered, ethereal |
-
-Switch systems AND change parameter ranges — don't just swap the shader.
-
----
-
 ## What This Skill Enables
 
 This skill leverages the complete VIB3+ technology stack for creative production:

@@ -5,33 +5,8 @@
  */
 
 import { performance } from 'node:perf_hooks';
-import path from 'node:path';
 import { mcpServer, toolDefinitions } from '../agent/index.js';
 import { schemaRegistry } from '../schemas/index.js';
-
-/**
- * Resolves a file path and ensures it is within the current working directory.
- * @param {string} filePath The path to validate
- * @returns {string} The resolved absolute path
- * @throws {Error} If the path is outside the allowed directory
- */
-function getSafePath(filePath) {
-    if (!filePath) return filePath;
-
-    const cwd = process.cwd();
-    const resolvedPath = path.resolve(cwd, filePath);
-    const relative = path.relative(cwd, resolvedPath);
-
-    const isOutside = relative.startsWith('..') || path.isAbsolute(relative);
-
-    if (isOutside) {
-        const error = new Error('Security Error: Path traversal detected. Access denied.');
-        error.code = 'EACCES';
-        throw error;
-    }
-
-    return resolvedPath;
-}
 
 /**
  * CLI Configuration
@@ -471,7 +446,7 @@ async function handleTools(parsed, startTime) {
  */
 async function handleValidate(parsed, startTime) {
     const subcommand = parsed.subcommand || 'pack';
-    let filePath = parsed.options.file || parsed.options.f || parsed.positional[0];
+    const filePath = parsed.options.file || parsed.options.f || parsed.positional[0];
 
     if (!filePath && subcommand !== 'schema') {
         return wrapResponse('validate', {
@@ -485,10 +460,6 @@ async function handleValidate(parsed, startTime) {
     }
 
     try {
-        if (filePath) {
-            filePath = getSafePath(filePath);
-        }
-
         switch (subcommand) {
             case 'pack': {
                 // Validate a .vib3 scene pack file
@@ -562,17 +533,6 @@ async function handleValidate(parsed, startTime) {
                 }, false, performance.now() - startTime);
         }
     } catch (error) {
-        if (error.code === 'EACCES') {
-            return wrapResponse('validate', {
-                error: {
-                    type: 'SecurityError',
-                    code: 'ACCESS_DENIED',
-                    message: error.message,
-                    suggestion: 'Ensure the file path is within the project directory'
-                }
-            }, false, performance.now() - startTime);
-        }
-
         if (error.code === 'ENOENT') {
             return wrapResponse('validate', {
                 error: {
@@ -699,6 +659,7 @@ async function main() {
  */
 async function handleInit(parsed, startTime) {
     const { writeFileSync, mkdirSync, existsSync } = await import('node:fs');
+    const { join } = await import('node:path');
 
     const projectName = parsed.subcommand || parsed.positional[0] || 'my-vib3-app';
     const template = parsed.options.template || parsed.options.t || 'vanilla';
@@ -716,22 +677,7 @@ async function handleInit(parsed, startTime) {
         }, false, performance.now() - startTime);
     }
 
-    let projectDir;
-    try {
-        projectDir = getSafePath(projectName);
-    } catch (error) {
-        if (error.code === 'EACCES') {
-            return wrapResponse('init', {
-                error: {
-                    type: 'SecurityError',
-                    code: 'ACCESS_DENIED',
-                    message: error.message,
-                    suggestion: 'Choose a project name that results in a valid subdirectory'
-                }
-            }, false, performance.now() - startTime);
-        }
-        throw error;
-    }
+    const projectDir = join(process.cwd(), projectName);
 
     if (existsSync(projectDir)) {
         return wrapResponse('init', {
@@ -749,8 +695,8 @@ async function handleInit(parsed, startTime) {
     const files = getTemplateFiles(template, projectName);
 
     for (const [filename, content] of Object.entries(files)) {
-        const filepath = path.join(projectDir, filename);
-        const dir = path.join(projectDir, filename.split('/').slice(0, -1).join('/'));
+        const filepath = join(projectDir, filename);
+        const dir = join(projectDir, filename.split('/').slice(0, -1).join('/'));
         if (dir !== projectDir) {
             mkdirSync(dir, { recursive: true });
         }

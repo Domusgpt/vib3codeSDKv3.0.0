@@ -9,7 +9,9 @@
     "vib3": "./src/cli/index.js",
     "vib3-mcp": "./src/agent/mcp/stdio-server.js"
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "./src/geometry/builders/*.js"
+  ],
   "exports": {
     ".": {
       "types": "./types/adaptive-sdk.d.ts",

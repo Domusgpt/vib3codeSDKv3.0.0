@@ -1,119 +1,62 @@
-Last reviewed: 2026-02-17
-# Optimization Plan: Core Math Library
+# Optimization Plan: Math Library (Mat4x4 / Vec4)
 
-## 1. Add `target` Parameters for Allocation-Free Operations
+**Status**: Active Investigation
+**Goal**: Eliminate per-frame object allocations in critical render loops.
 
-**Status:** High Impact / Medium Effort
-**Currently:** `Mat4x4.multiply(m)` and `Mat4x4.multiplyVec4(v)` always return a `new` instance.
-**Proposed:** Add an optional `target` parameter to write the result into an existing object.
+## Current State Analysis (Regression)
+The current implementation of `src/math/Mat4x4.js` relies on naive object-oriented patterns that allocate new `Mat4x4` and `Float32Array` instances for every operation:
 
-### Implementation
 ```javascript
-// Before
+// Current Implementation (Naive)
 multiply(m) {
-    const out = new Mat4x4();
-    // ... compute ...
+    // Allocates new Float32Array(16) implicitly
+    // Allocates new Mat4x4 wrapper
+    return new Mat4x4(out);
+}
+```
+
+This creates significant Garbage Collection (GC) pressure, causing frame drops during complex animations (especially in multi-instance "Ultra" scenarios).
+
+## Proposed Optimization Strategy
+
+### Phase 1: Static Allocation-Free Methods (Immediate)
+Refactor `Mat4x4` to support a "static-style" API where output buffers are reused. This mimics the high-performance `gl-matrix` library approach.
+
+```javascript
+// Proposed Implementation (Optimized)
+static multiply(out, a, b) {
+    const a00 = a.data[0], a01 = a.data[1], ...
+    const b00 = b.data[0], b01 = b.data[1], ...
+
+    out.data[0] = b00 * a00 + b01 * a04 + ...
+    // ... unrolled loop ...
     return out;
 }
-
-// After
-multiply(m, target = null) {
-    const out = target || new Mat4x4();
-    // ... compute ...
-    return out;
-}
 ```
 
-### Cascading Changes
-*   **Scene Graph (`Node4D.js`):** Update `updateWorldMatrix` to reuse a cached matrix instance instead of creating a new one every frame.
-*   **Physics/Animation:** Update loops to reuse vector/matrix instances.
+**Actions:**
+1.  Add `static multiply(out, a, b)` to `Mat4x4`.
+2.  Add `static rotationXY(out, angle)`, `static rotationXW(out, angle)`, etc.
+3.  Update render loops (e.g., `VIB3Engine.js`, `Renderer.js`) to use pre-allocated scratch matrices.
 
-### Watch Outs
-*   **Aliasing:** If `a.multiply(b, a)` is called (writing result back to operand), ensure the implementation handles this correctly. The current `multiplyInPlace` implementation handles this by caching values in local variables before writing to the array. Ensure new methods do the same.
-*   **API Consistency:** Ensure `target` is consistently the last argument or follows a predictable pattern.
+### Phase 2: Rotor4D Integration
+Shift rotation logic from Matrices to Rotors (Geometric Algebra). Rotors interpolate smoother (slerp) and compose cheaper than 4x4 matrices.
 
-## 2. Implement `Vec4` Object Pooling (or Lightweight Structure)
+**Actions:**
+1.  Ensure `Rotor4D` is used for all object orientation accumulation.
+2.  Only convert Rotor -> Matrix at the final step before uploading to the GPU uniform.
 
-**Status:** High Impact / High Complexity
-**Currently:** `Vec4` allocates a `Float32Array(4)` per instance. This is heavy for the JS engine and GC.
-**Proposed:**
-1.  **Object Pool:** `Vec4.create()` grabs from a pool, `Vec4.release(v)` returns it.
-2.  **Lightweight Class:** Use plain object `{x, y, z, w}` for intermediate math, only converting to `Float32Array` when uploading to GPU.
+### Phase 3: WASM / SIMD (Future)
+For "Ultra Tier" physics (Lattice Physics), JS math may bottleneck.
+**Plan:** Port core 4D math (collision detection, raymarching) to AssemblyScript (WASM) to utilize SIMD instructions if available.
 
-### Implementation (Object Pool)
-```javascript
-class Vec4Pool {
-    static get() { return pool.pop() || new Vec4(); }
-    static release(v) { pool.push(v); }
-}
-```
+## Implementation Details
 
-### Cascading Changes
-*   **Usage:** Requires changing *every* `new Vec4()` call to `Vec4Pool.get()` and ensuring `release()` is called when done.
-*   **Lifecycle Management:** Extremely error-prone in JS. Missing a release leaks memory; double-release corrupts data.
+### `Mat4x4.js` Refactor
+-   **Storage**: Keep `this.data` as `Float32Array(16)`.
+-   **Static API**: All operations available as static functions taking `(out, ...args)`.
+-   **Instance API**: Refactor to use static methods internally: `multiply(m) { return Mat4x4.multiply(new Mat4x4(), this, m); }` (for backward compat).
 
-### Watch Outs
-*   **Manual Memory Management:** This fights against the JS GC. Only worth it in extremely hot paths (e.g., particle systems, per-vertex operations).
-*   **Alternatives:** Consider simply using `Float32Array` offsets directly for bulk data (Structure of Arrays).
-
-## 3. Cache Common Constants
-
-**Status:** Medium Impact / Low Effort
-**Currently:** `Mat4x4.identity()` creates a new matrix every call.
-**Proposed:** Add static read-only constants.
-
-### Implementation
-```javascript
-class Mat4x4 {
-    static get IDENTITY() {
-        if (!this._identity) this._identity = new Mat4x4().setIdentity();
-        return this._identity;
-    }
-}
-```
-
-### Cascading Changes
-*   **Usage:** Replace `Mat4x4.identity()` with `Mat4x4.IDENTITY` where read-only access is needed.
-*   **Cloning:** If modification is needed, use `Mat4x4.IDENTITY.clone()`.
-
-### Watch Outs
-*   **Accidental Mutation:** If someone does `Mat4x4.IDENTITY.translate(...)`, it corrupts the constant for everyone.
-    *   *Mitigation:* `Object.freeze()` or similar protections (though this has a perf cost). Better to rely on convention or a `ReadonlyMat4x4` type if using TS.
-
-## 4. Optimize Scene Graph with In-Place Operations
-
-**Status:** High Impact / Medium Effort
-**Currently:** `Node4D.updateMatrix` often chains operations: `T * R * S`.
-**Proposed:** Use the new `multiplyInPlace` and `rotateXX` methods.
-
-### Implementation
-```javascript
-// Node4D.updateLocalMatrix
-this.localMatrix.setIdentity();
-this.localMatrix.translate(this.position); // Needs implementation
-this.localMatrix.rotateFromAngles(this.rotation); // Needs implementation/update
-this.localMatrix.scale(this.scale); // Needs implementation
-```
-
-### Cascading Changes
-*   **`Mat4x4` Extensions:** Need to implement `translate(v)`, `scale(v)` as in-place methods.
-*   **Logic Updates:** Rewrite `Node4D` transform logic to be imperative/stateful rather than functional/immutable.
-
-### Watch Outs
-*   **Order of Operations:** Ensure `T * R * S` vs `S * R * T` order is preserved correctly when converting to in-place calls.
-*   **Dirty Flags:** Ensure `localMatrix` update only happens when `position`, `rotation`, or `scale` changes.
-
-## 5. Bulk Operations for Geometry
-
-**Status:** High Impact / High Complexity
-**Currently:** `Mat4x4.multiplyVec4` processes one vector at a time.
-**Proposed:** `Mat4x4.multiplyArray(inputArray, outputArray, count)`
-
-### Implementation
-Operate directly on flat `Float32Array` buffers.
-
-### Cascading Changes
-*   **Geometry Generators:** Update to use bulk processing.
-
-### Watch Outs
-*   **SIMD:** Browsers are starting to support SIMD via WASM. This might be a better target for heavy bulk math than optimizing JS loops.
+### Benchmarking
+Compare `new Mat4x4().multiply(new Mat4x4())` vs `Mat4x4.multiply(scratch, a, b)` in a loop of 10,000 iterations.
+Target: **0 allocations per frame** in the steady state.

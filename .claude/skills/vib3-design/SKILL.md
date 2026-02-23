@@ -7,25 +7,6 @@ description: VIB3+ visualization design and navigation. Use when creating 4D vis
 
 Help users create, choreograph, and export 4D visualizations.
 
-## Gold Standard v3 — Creative Foundation
-
-Before designing, absorb the creative vocabulary in `examples/dogfood/GOLD_STANDARD.md` — motion vocabulary (14 motions), coordination grammar (7 patterns), composition framework, and 3-mode parameter model — and study the flagship reference at `examples/codex/synesthesia/`.
-
-### Three Parameter Modes (Every Design Must Have All Three)
-
-1. **Continuous Mapping** — Parameters respond to input state every frame (audio→density, touch→rotation, tilt→dimension). Use EMA smoothing: `alpha = 1 - Math.exp(-dt / tau)`. Reference tau: speed 0.08s, chaos 0.12s, density 0.15s, hue 0.25s.
-
-2. **Event Choreography** — Discrete events trigger Attack/Sustain/Release envelopes. Tap = chaos burst. System switch = crossfade. Beat detection = intensity flash. Design timing asymmetry (approach faster than retreat).
-
-3. **Ambient Drift** — Parameters breathe without input. Heartbeat: morph + intensity sine waves. Use prime-number periods (7s, 11s, 13s) to prevent mechanical feel.
-
-### Design-Analyze-Enhance Loop
-1. **Design** — Plan mappings and timeline for your platform
-2. **Analyze** — Is 4D rotation visible? Do events feel distinct? Is audio reactivity noticeable?
-3. **Enhance** — Layer the three modes. Find emergent combinations
-
----
-
 ## Workflow
 
 ### 1. Detect Mode
