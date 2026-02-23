@@ -14,3 +14,11 @@
 ## 2024-05-23 - [Zero-Allocation Math Ops]
 **Learning:** Adding optional `target` parameters to core math functions (`Mat4x4.multiply`, `Vec4.add`, etc.) is a high-impact optimization that enables zero-allocation usage patterns in hot loops without breaking existing API compatibility.
 **Action:** Always implement `target` support for vector/matrix operations. Ensure aliasing safety (e.g. `a.multiply(b, a)`) by caching input values in local variables before writing to the output buffer.
+
+## 2024-05-24 - [Micro-Benchmarking Allocation vs In-Place]
+**Learning:** In V8, tight loops with simple object allocation (like `new Vec4`) can be faster than in-place modification due to inline caching and fixed shape optimizations. However, this advantage disappears in long-running applications where GC pressure accumulates.
+**Action:** Don't rely solely on micro-benchmarks for allocation optimizations. Prioritize zero-allocation patterns for their systemic benefit (reduced GC pauses) even if raw throughput in a tight loop appears slightly lower.
+
+## 2024-05-25 - [Broken Fallback Performance]
+**Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
+**Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
