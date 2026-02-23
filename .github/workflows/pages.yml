@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, master, 'claude/**']
+    branches: [main, master, work, 'claude/**']
   workflow_dispatch:
 
 permissions:
@@ -121,3 +121,28 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Publish link map to job summary
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          cat <<MARKDOWN >> "$GITHUB_STEP_SUMMARY"
+          ## ✅ GitHub Pages deployment ready
+
+          Use these links for review and QA:
+
+          - Landing page: ${PAGE_URL}/site/
+          - Root index redirect: ${PAGE_URL}/
+          - Legacy landing: ${PAGE_URL}/index-v2.html
+          - Docs index: ${PAGE_URL}/docs/
+          - WebGPU live: ${PAGE_URL}/docs/webgpu-live.html
+          - Examples root: ${PAGE_URL}/examples/
+          - Codex hub: ${PAGE_URL}/examples/codex/
+          - Synesthesia example: ${PAGE_URL}/examples/codex/synesthesia/
+          - Narrative Scroll example: ${PAGE_URL}/examples/codex/narrative-scroll/
+          - VIB3 demos index: ${PAGE_URL}/demos/
+          - Dogfood index: ${PAGE_URL}/dogfood/
+          - Samsung TV demo: ${PAGE_URL}/examples/dogfood/samsung-tv/
+          - Flutter Viz page: ${PAGE_URL}/examples/dogfood/flutter-viz/assets/vib3_visualization.html
+          - Test harness: ${PAGE_URL}/tests/e2e-harness.html
+          MARKDOWN
