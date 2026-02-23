@@ -40,3 +40,13 @@ examples/flutter_demo/android/.gradle/
 examples/flutter_demo/.dart_tool/
 examples/flutter_demo/.flutter-plugins-dependencies
 examples/flutter_demo/.flutter-plugins
+examples/flutter_demo/assets/vib3/assets/
+examples/flutter_demo/assets/vib3/docs/
+examples/flutter_demo/assets/vib3/site/
+examples/flutter_demo/assets/vib3/examples/
+examples/flutter_demo/assets/vib3/*.html
+examples/flutter_demo/assets/vib3/assets/
+examples/flutter_demo/assets/vib3/examples/
+examples/flutter_demo/assets/vib3/docs/
+examples/flutter_demo/assets/vib3/site/
+examples/flutter_demo/assets/vib3/*.html

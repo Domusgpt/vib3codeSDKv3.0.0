@@ -6,7 +6,6 @@
 /// - Native CustomPaint implementation (Dart Preview)
 /// - Native UI controls for parameter manipulation
 
-import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';

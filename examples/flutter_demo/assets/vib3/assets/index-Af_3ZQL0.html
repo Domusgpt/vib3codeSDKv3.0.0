@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIB3+ CORE — 4D Visualization Engine</title>
+    <meta name="description" content="VIB3+ is a 4D visualization SDK with 24 geometry variants, 6D rotation, and three rendering systems. WebGL + WebGPU.">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="stylesheet" href="./styles/overlay-accents.css">
+    <link rel="stylesheet" href="./styles/reveal-layers.css">
+    <script>
+    // Load CDN scripts dynamically with timeout fallback.
+    // This prevents page load from blocking if CDN is unreachable.
+    // Exposes window.__cdnReady promise for module scripts to await.
+    window.__cdnReady = new Promise(function(resolve) {
+      var scripts = [
+        'https://unpkg.com/lenis@1.1.13/dist/lenis.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js'
+      ];
+      var loaded = 0;
+      var timer = setTimeout(function() { resolve(false); }, 5000);
+      function loadNext() {
+        if (loaded >= scripts.length) { clearTimeout(timer); resolve(true); return; }
+        var s = document.createElement('script');
+        s.src = scripts[loaded];
+        s.onload = function() { loaded++; loadNext(); };
+        s.onerror = function() { loaded++; loadNext(); };
+        document.head.appendChild(s);
+      }
+      loadNext();
+    });
+    </script>
+    <link rel="stylesheet" href="./styles/main.css">
+</head>
+<body>
+    <a href="#main" class="sr-only">Skip to content</a>
+
+    <!-- Ambient Background + Noise -->
+    <div class="ambient-bg" aria-hidden="true"></div>
+    <svg class="noise-overlay" aria-hidden="true" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+        <filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch"/></filter>
+        <rect width="100%" height="100%" filter="url(#noiseFilter)"/>
+    </svg>
+
+    <div class="mouse-glow-overlay" id="mouseGlow" aria-hidden="true"></div>
+    <div class="scroll-progress" id="scrollProgress"></div>
+
+    <!-- ── Crescendo / Silence fullscreen overlays ── -->
+    <div class="crescendo-vignette-overlay" aria-hidden="true"></div>
+    <div class="silence-blackout-overlay" aria-hidden="true"></div>
+
+    <!-- ─── Section Transition Veil (reusable fixed overlay) ─── -->
+    <div class="section-veil" id="sectionVeil">
+        <div class="section-veil-bg"></div>
+        <div class="section-veil-card" id="veilCard"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         OPENING CINEMATIC — 800vh Scroll-Locked
+         VIB3CODE text mask over GPU canvas, lattice parallax,
+         text fade + lattice lock transition to hero
+         GPU: 1 context (Quantum), released when hero enters
+         ═══════════════════════════════════════════════════ -->
+    <section class="opening" id="openingSection">
+        <div class="opening-pinned" id="openingPinned">
+            <div class="opening-canvas-wrap canvas-wrap depth-container" id="openingCanvasWrap" style="width:100%;height:100%;">
+                <canvas class="vib3-canvas" id="opening-canvas"></canvas>
+                <div class="viz-vignette" id="openingVignette" aria-hidden="true"></div>
+                <div class="viz-scanlines" id="openingScanlines" aria-hidden="true">
+                    <div class="scanline" style="--scan-y:20%"></div>
+                    <div class="scanline" style="--scan-y:45%"></div>
+                    <div class="scanline" style="--scan-y:70%"></div>
+                </div>
+            </div>
+
+            <!-- SVG text mask: dark overlay with VIB3CODE cutout -->
+            <div class="opening-overlay" id="openingOverlay" aria-hidden="true">
+                <svg width="100%" height="100%" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <mask id="textCutout">
+                            <rect width="1920" height="1080" fill="white"/>
+                            <text x="960" y="560" text-anchor="middle" dominant-baseline="central"
+                                  font-family="'SF Pro Display',-apple-system,BlinkMacSystemFont,sans-serif"
+                                  font-size="240" font-weight="900" letter-spacing="18" fill="black">VIB3CODE</text>
+                        </mask>
+                    </defs>
+                    <rect width="1920" height="1080" fill="#030712" mask="url(#textCutout)"/>
+                </svg>
+            </div>
+
+            <!-- Geometric lattice parallax layers -->
+            <div class="lattice-layer lattice-1" id="lattice1" aria-hidden="true"></div>
+            <div class="lattice-layer lattice-2" id="lattice2" aria-hidden="true"></div>
+            <div class="lattice-layer lattice-3" id="lattice3" aria-hidden="true"></div>
+
+            <!-- Large title text (appears during scroll) -->
+            <div class="opening-title" id="openingTitle">
+                <span class="opening-char">V</span>
+                <span class="opening-char">I</span>
+                <span class="opening-char">B</span>
+                <span class="opening-char">3</span>
+                <span class="opening-char">C</span>
+                <span class="opening-char">O</span>
+                <span class="opening-char">D</span>
+                <span class="opening-char">E</span>
+            </div>
+
+            <div class="opening-sub" id="openingSub">
+                <span>C++ WASM &middot; WebGPU &middot; WebGL &middot; TypeScript &middot; MCP</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── Divider: Opening → Hero ─── -->
+    <div class="section-divider divider-tall">
+        <svg viewBox="0 0 1440 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,0 L0,60 Q360,120 720,60 Q1080,0 1440,60 L1440,0 Z" fill="var(--bg)"/>
+            <path d="M0,60 Q360,120 720,60 Q1080,0 1440,60 L1440,120 L0,120 Z" fill="var(--bg)" opacity="0.5"/>
+        </svg>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         SECTION 1: HERO — Quantum Emergence
+         Full-screen Quantum system shader (1 GPU context)
+         ═══════════════════════════════════════════════════ -->
+    <section class="hero" id="main">
+        <div class="hero-bg">
+            <div class="canvas-wrap" style="width:100%;height:100%;">
+                <canvas class="vib3-canvas" id="hero-canvas"></canvas>
+            </div>
+        </div>
+        <div class="hero-content" id="heroContent">
+            <span class="hero-badge" id="heroBadge">v2.0.3 &mdash; C++ WASM Core &middot; WebGPU + WebGL &middot; TypeScript</span>
+            <h1 class="hero-title text-shimmer" id="heroTitle">VIB3+</h1>
+            <p class="hero-sub" id="heroSub">
+                4D visualization SDK with a C++ Clifford algebra core compiled to WASM,
+                WebGPU/WebGL dual-backend rendering, three systems, 24 geometries, 6D rotation.
+            </p>
+            <div class="hero-system-label" id="heroSystemLabel">C++ WASM &middot; WebGPU &middot; WebGL &middot; MCP Agentic Control</div>
+        </div>
+        <div class="hero-scroll" id="heroScroll">
+            <span>explore</span>
+            <div class="scroll-line"></div>
+        </div>
+    </section>
+
+    <!-- ─── Divider: Hero → Morph ─── -->
+    <div class="section-divider divider-tall" id="divider-hero-morph">
+        <svg viewBox="0 0 1440 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,0 C360,100 720,100 1080,40 L1440,80 L1440,120 L0,120 Z" fill="var(--bg)" opacity="0.7"/>
+            <path d="M0,0 C480,80 960,80 1440,0 L1440,120 L0,120 Z" fill="var(--bg)"/>
+        </svg>
+        <div class="breath-line" aria-hidden="true"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         SECTION 2: MORPH EXPERIENCE — 1200vh Scroll-Locked
+         6-stage morphing with system swaps, parameter coordination
+         Density drops as elements expand; speed/chaos follow GSAP events
+         ═══════════════════════════════════════════════════ -->
+    <section class="morph" id="morphSection">
+        <div class="morph-pinned" id="morphPinned">
+            <div class="canvas-wrap" style="width:100%;height:100%;">
+                <canvas class="vib3-canvas" id="morph-canvas"></canvas>
+            </div>
+            <div class="morph-flash" id="morphFlash" aria-hidden="true"></div>
+
+            <!-- Central morphing glassmorphic card -->
+            <div class="morph-card viz-chromatic-border depth-container" id="morphCard">
+                <div class="morph-card-glow" id="morphGlow"></div>
+                <div class="viz-depth-shadow" aria-hidden="true" id="morphShadow"></div>
+            </div>
+
+            <!-- Three voice labels (stage 3) -->
+            <div class="morph-voices" id="morphVoices">
+                <div class="morph-voice" data-voice="quantum">
+                    <span class="morph-voice-label">Quantum</span>
+                </div>
+                <div class="morph-voice" data-voice="holographic">
+                    <span class="morph-voice-label">Holographic</span>
+                </div>
+                <div class="morph-voice" data-voice="faceted">
+                    <span class="morph-voice-label">Faceted</span>
+                </div>
+            </div>
+
+            <!-- Stage label -->
+            <div class="morph-label" id="morphLabel">
+                <h2 id="morphTitle"></h2>
+                <p id="morphSub"></p>
+            </div>
+
+            <!-- Stage counter -->
+            <div class="morph-counter" id="morphCounter">
+                <span class="current">01</span> / 06
+            </div>
+
+            <!-- Stage dots -->
+            <div class="morph-dots" id="morphDots">
+                <div class="morph-dot active" data-idx="0"></div>
+                <div class="morph-dot" data-idx="1"></div>
+                <div class="morph-dot" data-idx="2"></div>
+                <div class="morph-dot" data-idx="3"></div>
+                <div class="morph-dot" data-idx="4"></div>
+                <div class="morph-dot" data-idx="5"></div>
+            </div>
+
+            <!-- Progress bar -->
+            <div class="morph-progress">
+                <div class="morph-progress-fill" id="morphProgressFill"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── Divider: Morph → Playground ─── -->
+    <div class="section-divider divider-tall" id="divider-morph-playground">
+        <svg viewBox="0 0 1440 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,0 L480,100 L960,20 L1440,100 L1440,120 L0,120 Z" fill="var(--bg)" opacity="0.7"/>
+            <path d="M0,60 Q360,120 720,50 Q1080,-10 1440,60 L1440,120 L0,120 Z" fill="var(--bg)"/>
+        </svg>
+        <div class="breath-line" aria-hidden="true"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         SECTION 3: PARAMETERS PLAYGROUND — Full 6D
+         All 6 rotation planes: XY, XZ, YZ (3D) + XW, YW, ZW (4D)
+         ═══════════════════════════════════════════════════ -->
+    <section class="playground" id="playgroundSection">
+        <div class="playground-header section-reveal" data-animate>
+            <h2>Parameters Playground</h2>
+            <p>Every parameter exposed. All six rotation planes. Drag sliders to sculpt 4D geometry in real time.</p>
+        </div>
+        <div class="playground-layout">
+            <div class="playground-canvas">
+                <div class="canvas-wrap" style="width:100%;height:100%;border-radius:20px;">
+                    <canvas class="vib3-canvas" id="playground-canvas"></canvas>
+                </div>
+                <div class="pg-error" id="pgError">GPU context unavailable.<br>Try reloading the page.</div>
+            </div>
+            <div class="playground-controls" id="playgroundControls">
+                <div class="ctrl-group">
+                    <label><span>System</span></label>
+                    <div class="system-btns">
+                        <button class="sys-btn active" data-pg-system="0">Quantum</button>
+                        <button class="sys-btn" data-pg-system="1">Holographic</button>
+                        <button class="sys-btn" data-pg-system="2">Faceted</button>
+                    </div>
+                </div>
+                <div class="ctrl-group">
+                    <label><span>Geometry</span><span class="ctrl-val" id="val-geometry">3</span></label>
+                    <select class="geo-select" id="ctrl-geometry">
+                        <option value="0">Tetrahedron</option>
+                        <option value="1">Hypercube</option>
+                        <option value="2">Sphere</option>
+                        <option value="3" selected>Torus</option>
+                        <option value="4">Klein Bottle</option>
+                        <option value="5">Fractal</option>
+                        <option value="6">Wave</option>
+                        <option value="7">Crystal</option>
+                        <option value="8">Hyper-Tetra</option>
+                        <option value="9">Hyper-Cube</option>
+                        <option value="10">Hyper-Sphere</option>
+                        <option value="11">Hyper-Torus</option>
+                        <option value="12">Hyper-Klein</option>
+                        <option value="13">Hyper-Fractal</option>
+                        <option value="14">Hyper-Wave</option>
+                        <option value="15">Hyper-Crystal</option>
+                        <option value="16">HT-Tetra</option>
+                        <option value="17">HT-Cube</option>
+                        <option value="18">HT-Sphere</option>
+                        <option value="19">HT-Torus</option>
+                        <option value="20">HT-Klein</option>
+                        <option value="21">HT-Fractal</option>
+                        <option value="22">HT-Wave</option>
+                        <option value="23">HT-Crystal</option>
+                    </select>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-group">
+                        <label><span>Hue</span><span class="ctrl-val" id="val-hue">200</span></label>
+                        <input type="range" id="ctrl-hue" min="0" max="360" value="200" step="1">
+                    </div>
+                    <div class="ctrl-group">
+                        <label><span>Density</span><span class="ctrl-val" id="val-gridDensity">24</span></label>
+                        <input type="range" id="ctrl-gridDensity" min="4" max="80" value="24" step="1">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-group">
+                        <label><span>Speed</span><span class="ctrl-val" id="val-speed">1.0</span></label>
+                        <input type="range" id="ctrl-speed" min="0.1" max="3" value="1.0" step="0.1">
+                    </div>
+                    <div class="ctrl-group">
+                        <label><span>Chaos</span><span class="ctrl-val" id="val-chaos">0.2</span></label>
+                        <input type="range" id="ctrl-chaos" min="0" max="1" value="0.2" step="0.01">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-group">
+                        <label><span>Morph</span><span class="ctrl-val" id="val-morphFactor">0.5</span></label>
+                        <input type="range" id="ctrl-morphFactor" min="0" max="2" value="0.5" step="0.01">
+                    </div>
+                    <div class="ctrl-group">
+                        <label><span>Intensity</span><span class="ctrl-val" id="val-intensity">0.7</span></label>
+                        <input type="range" id="ctrl-intensity" min="0" max="1" value="0.7" step="0.01">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-group">
+                        <label><span>Dimension (4D)</span><span class="ctrl-val" id="val-dimension">3.5</span></label>
+                        <input type="range" id="ctrl-dimension" min="3.0" max="4.5" value="3.5" step="0.01">
+                    </div>
+                    <div class="ctrl-group">
+                        <label><span>Saturation</span><span class="ctrl-val" id="val-saturation">0.80</span></label>
+                        <input type="range" id="ctrl-saturation" min="0" max="1" value="0.8" step="0.01">
+                    </div>
+                </div>
+                <div class="ctrl-actions">
+                    <button class="ctrl-action-btn" id="btnRandomize" title="Randomize all parameters">Randomize</button>
+                    <button class="ctrl-action-btn ctrl-action-secondary" id="btnReset" title="Reset to defaults">Reset</button>
+                </div>
+
+                <!-- 3D ROTATION (XY, XZ, YZ) -->
+                <div class="ctrl-section-label">3D Rotation Planes</div>
+                <div class="ctrl-row-3">
+                    <div class="ctrl-group">
+                        <label><span>XY</span><span class="ctrl-val" id="val-rot4dXY">0.00</span></label>
+                        <input type="range" id="ctrl-rot4dXY" min="0" max="6.28" value="0" step="0.01">
+                    </div>
+                    <div class="ctrl-group">
+                        <label><span>XZ</span><span class="ctrl-val" id="val-rot4dXZ">0.00</span></label>
+                        <input type="range" id="ctrl-rot4dXZ" min="0" max="6.28" value="0" step="0.01">
+                    </div>
+                    <div class="ctrl-group">
+                        <label><span>YZ</span><span class="ctrl-val" id="val-rot4dYZ">0.00</span></label>
+                        <input type="range" id="ctrl-rot4dYZ" min="0" max="6.28" value="0" step="0.01">
+                    </div>
+                </div>
+
+                <!-- 4D ROTATION (XW, YW, ZW) -->
+                <div class="ctrl-section-label">4D Rotation Planes</div>
+                <div class="ctrl-row-3">
+                    <div class="ctrl-group">
+                        <label><span>XW</span><span class="ctrl-val" id="val-rot4dXW">0.00</span></label>
+                        <input type="range" id="ctrl-rot4dXW" min="0" max="6.28" value="0" step="0.01">
+                    </div>
+                    <div class="ctrl-group">
+                        <label><span>YW</span><span class="ctrl-val" id="val-rot4dYW">0.00</span></label>
+                        <input type="range" id="ctrl-rot4dYW" min="0" max="6.28" value="0" step="0.01">
+                    </div>
+                    <div class="ctrl-group">
+                        <label><span>ZW</span><span class="ctrl-val" id="val-rot4dZW">0.00</span></label>
+                        <input type="range" id="ctrl-rot4dZW" min="0" max="6.28" value="0" step="0.01">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── Divider: Playground → Triptych ─── -->
+    <div class="section-divider divider-tall" id="divider-playground-triptych">
+        <svg viewBox="0 0 1440 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,100 C200,40 400,80 600,30 C800,-10 1000,60 1200,20 C1350,-5 1440,40 1440,100 Z" fill="var(--bg)"/>
+        </svg>
+        <div class="breath-line" aria-hidden="true"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         SECTION 4: PARALLAX TRIPTYCH — 3-System Coordinated Showcase
+         Left: Quantum GPU, Center: Holographic GPU (behind text),
+         Right: Faceted GPU — cross-system coordination + convergence
+         ═══════════════════════════════════════════════════ -->
+    <section class="triptych" id="triptychSection">
+        <div class="triptych-divider left" aria-hidden="true"></div>
+        <div class="triptych-divider right" aria-hidden="true"></div>
+        <!-- Glow seams between the 3 visualizer columns -->
+        <div class="viz-seam" id="triSeamLeft" style="left:var(--tri-split-left, 29%)" aria-hidden="true"></div>
+        <div class="viz-seam" id="triSeamRight" style="left:var(--tri-split-right, 67%)" aria-hidden="true"></div>
+        <div class="triptych-inner">
+            <div class="triptych-col triptych-viz-col depth-container" id="triptychLeft">
+                <div class="canvas-wrap triptych-canvas-wrap">
+                    <canvas class="vib3-canvas" id="tri-left-canvas"></canvas>
+                    <div class="viz-vignette" id="triVignetteLeft" aria-hidden="true"></div>
+                </div>
+                <div class="viz-depth-shadow" aria-hidden="true" id="triShadowLeft"></div>
+                <div class="triptych-tag-wrap">
+                    <span class="triptych-tag sys-quantum">Quantum Engine</span>
+                </div>
+            </div>
+            <div class="triptych-col triptych-center-col depth-container" id="triptychCenter">
+                <div class="canvas-wrap triptych-canvas-wrap triptych-center-canvas">
+                    <canvas class="vib3-canvas" id="tri-center-canvas"></canvas>
+                    <div class="viz-vignette" id="triVignetteCenter" aria-hidden="true"></div>
+                </div>
+                <div class="triptych-content">
+                    <h2 class="triptych-title section-reveal" data-animate>Three Systems.<br>One C++ Core.</h2>
+                    <p class="triptych-desc section-reveal" data-animate>Quantum, Holographic, and Faceted &mdash; powered by Cl(4,0) Clifford algebra rotors in C++ WASM, dual WebGPU/WebGL backends, and TypeScript definitions.</p>
+                    <div class="triptych-stats section-reveal" data-animate>
+                        <div class="triptych-stat">
+                            <span class="stat-number">C++</span>
+                            <span class="stat-label">WASM Core</span>
+                        </div>
+                        <div class="triptych-stat">
+                            <span class="stat-number">24</span>
+                            <span class="stat-label">Geometries</span>
+                        </div>
+                        <div class="triptych-stat">
+                            <span class="stat-number">6D</span>
+                            <span class="stat-label">Rotation</span>
+                        </div>
+                        <div class="triptych-stat">
+                            <span class="stat-number">19</span>
+                            <span class="stat-label">MCP Tools</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="triptych-tag-wrap">
+                    <span class="triptych-tag sys-holographic">Holographic Engine</span>
+                </div>
+            </div>
+            <div class="triptych-col triptych-viz-col depth-container" id="triptychRight">
+                <div class="canvas-wrap triptych-canvas-wrap">
+                    <canvas class="vib3-canvas" id="tri-right-canvas"></canvas>
+                    <div class="viz-vignette" id="triVignetteRight" aria-hidden="true"></div>
+                </div>
+                <div class="viz-depth-shadow" aria-hidden="true" id="triShadowRight"></div>
+                <div class="triptych-tag-wrap">
+                    <span class="triptych-tag sys-faceted">Faceted Engine</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── Divider: Triptych → Cascade ─── -->
+    <div class="section-divider">
+        <svg viewBox="0 0 1440 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,0 L360,70 L720,20 L1080,70 L1440,0 L1440,80 L0,80 Z" fill="var(--bg)"/>
+        </svg>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         SECTION 5: GEOMETRY CASCADE — Morphing Cards
+         Dual GPU background (Q+H split-screen) + Canvas2D card faces
+         ═══════════════════════════════════════════════════ -->
+    <section class="cascade" id="cascadeSection">
+        <div class="cascade-pinned" id="cascadePinned">
+            <!-- Dual GPU background: Quantum left, Holographic right + glow seam -->
+            <div class="cascade-gpu-bg" id="cascadeGpuBg" style="position:absolute;inset:0;z-index:0;overflow:hidden;">
+                <div class="canvas-wrap" style="position:absolute;inset:0;clip-path:inset(0 50% 0 0);" id="cascadeGpuLeft">
+                    <canvas class="vib3-canvas" id="cascade-gpu-left"></canvas>
+                </div>
+                <div class="canvas-wrap" style="position:absolute;inset:0;clip-path:inset(0 0 0 50%);" id="cascadeGpuRight">
+                    <canvas class="vib3-canvas" id="cascade-gpu-right"></canvas>
+                </div>
+                <div class="viz-seam" id="cascadeSeam" aria-hidden="true"></div>
+                <div class="viz-vignette" id="cascadeVignette" aria-hidden="true"></div>
+            </div>
+            <div class="cascade-header section-reveal" data-animate>
+                <h2>Geometry Cascade</h2>
+                <p>24 geometry variants across three core types</p>
+            </div>
+            <div class="cascade-track" id="cascadeTrack">
+                <div class="cascade-card tilt-card tilt-holo" data-geo="0" data-hue="190">
+                    <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-0"></canvas></div>
+                    <div class="card-frame"></div>
+                    <div class="cascade-overlay"><h3>Tetrahedron</h3><span class="cascade-sys">Base Core</span></div>
+                </div>
+                <div class="cascade-card tilt-card tilt-holo" data-geo="11" data-hue="300">
+                    <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-1"></canvas></div>
+                    <div class="card-frame"></div>
+                    <div class="cascade-overlay"><h3>Hypersphere Torus</h3><span class="cascade-sys">Hypersphere Core</span></div>
+                </div>
+                <div class="cascade-card tilt-card tilt-holo" data-geo="16" data-hue="35">
+                    <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-2"></canvas></div>
+                    <div class="card-frame"></div>
+                    <div class="cascade-overlay"><h3>Hypertetra Simplex</h3><span class="cascade-sys">Hypertetra Core</span></div>
+                </div>
+                <div class="cascade-card tilt-card tilt-holo" data-geo="5" data-hue="130">
+                    <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-3"></canvas></div>
+                    <div class="card-frame"></div>
+                    <div class="cascade-overlay"><h3>Fractal</h3><span class="cascade-sys">Base Core</span></div>
+                </div>
+                <div class="cascade-card tilt-card tilt-holo" data-geo="12" data-hue="260">
+                    <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-4"></canvas></div>
+                    <div class="card-frame"></div>
+                    <div class="cascade-overlay"><h3>Hypersphere Klein</h3><span class="cascade-sys">Hypersphere Core</span></div>
+                </div>
+                <div class="cascade-card tilt-card tilt-holo" data-geo="7" data-hue="60">
+                    <div class="canvas-wrap"><canvas class="vib3-canvas" id="cas-5"></canvas></div>
+                    <div class="card-frame"></div>
+                    <div class="cascade-overlay"><h3>Crystal</h3><span class="cascade-sys">Base Core</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── Divider: Cascade → Energy ─── -->
+    <div class="section-divider divider-tall" id="divider-cascade-energy">
+        <svg viewBox="0 0 1440 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,80 Q180,0 360,50 Q540,100 720,40 Q900,-10 1080,50 Q1260,100 1440,20 L1440,100 L0,100 Z" fill="var(--bg)"/>
+        </svg>
+        <div class="breath-line" aria-hidden="true"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         SECTION 6: ENERGY TRANSFER — Interactive Demo
+         Quantum GPU bg + Faceted GPU card (2 GPU contexts, lazy)
+         ═══════════════════════════════════════════════════ -->
+    <section class="energy" id="energySection">
+        <div class="energy-pinned" id="energyPinned">
+            <div class="energy-bg depth-container" id="energyBgWrap">
+                <div class="canvas-wrap" style="width:100%;height:100%;">
+                    <canvas class="vib3-canvas" id="energy-bg-canvas"></canvas>
+                    <div class="viz-vignette" id="energyBgVignette" aria-hidden="true"></div>
+                </div>
+            </div>
+            <div class="energy-card tilt-card perspective-wrap viz-chromatic-border depth-container" id="energyCard">
+                <div class="energy-card-canvas">
+                    <canvas class="vib3-canvas" id="energy-card-canvas"></canvas>
+                </div>
+                <div class="viz-depth-shadow" aria-hidden="true" id="energyCardShadow"></div>
+                <h3>Energy Transfer</h3>
+                <p>Click to drain the card shader into the background.
+                   Watch color, density, and geometry morph between elements.</p>
+                <button class="energy-btn" id="energyBtn">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="9" r="3" fill="currentColor"/></svg>
+                    Trigger Sweep
+                </button>
+                <div class="energy-meter">
+                    <div class="energy-meter-fill" id="energyFill"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── Divider: Energy → Agent ─── -->
+    <div class="section-divider divider-short">
+        <svg viewBox="0 0 1440 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,0 Q360,60 720,30 Q1080,0 1440,40 L1440,60 L0,60 Z" fill="var(--bg)"/>
+        </svg>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         SECTION 7: AGENT INTEGRATION — Download Packs
+         ═══════════════════════════════════════════════════ -->
+    <section class="agent-section" id="agentSection">
+        <div class="agent-bg">
+            <div class="canvas-wrap" style="width:100%;height:100%;">
+                <canvas class="vib3-canvas" id="agent-canvas"></canvas>
+            </div>
+        </div>
+        <div class="agent-content">
+            <div class="agent-header section-reveal" data-animate>
+                <h2>Agent Integration</h2>
+                <p>19-tool MCP server with JSON-RPC 2.0. Pre-built context packs for Claude, OpenAI. Full programmatic control of the C++ WASM core.</p>
+            </div>
+            <div class="agent-grid section-reveal" data-animate>
+                <a class="agent-card" href="agent-config/mcp-config.json" download>
+                    <span class="agent-card-icon" aria-hidden="true">&#x1f517;</span>
+                    <h3>MCP Config</h3>
+                    <p>Model Context Protocol server configuration. Connect any MCP-compatible agent.</p>
+                    <span class="dl-badge">Download JSON</span>
+                </a>
+                <a class="agent-card" href="agent-config/claude-agent-context.md" download>
+                    <span class="agent-card-icon" aria-hidden="true">&#x1f9e0;</span>
+                    <h3>Claude Context</h3>
+                    <p>Full SDK context pack for Claude. Drop into CLAUDE.md or system prompts.</p>
+                    <span class="dl-badge">Download MD</span>
+                </a>
+                <a class="agent-card" href="agent-config/openai-agent-context.md" download>
+                    <span class="agent-card-icon" aria-hidden="true">&#x2699;</span>
+                    <h3>OpenAI Context</h3>
+                    <p>SDK context formatted for OpenAI assistants and custom GPTs.</p>
+                    <span class="dl-badge">Download MD</span>
+                </a>
+                <a class="agent-card" href="../CLAUDE.md" download="VIB3-CLAUDE.md">
+                    <span class="agent-card-icon" aria-hidden="true">&#x1f4d6;</span>
+                    <h3>Full Technical Ref</h3>
+                    <p>Complete CLAUDE.md technical reference. All APIs, shader uniforms, architecture.</p>
+                    <span class="dl-badge">Download MD</span>
+                </a>
+            </div>
+            <div class="agent-tools">
+                <span class="cmt">// MCP agentic control</span><br>
+                <span class="kw">const</span> result = <span class="kw">await</span> mcpClient.<span class="fn">callTool</span>(<span class="str">'set_parameter'</span>, {<br>
+                &nbsp;&nbsp;name: <span class="str">'geometry'</span>,<br>
+                &nbsp;&nbsp;value: <span class="str">16</span> &nbsp;<span class="cmt">// Hypertetrahedron + Tetrahedron</span><br>
+                });<br><br>
+                <span class="kw">await</span> mcpClient.<span class="fn">callTool</span>(<span class="str">'set_system'</span>, { system: <span class="str">'holographic'</span> });<br>
+                <span class="kw">await</span> mcpClient.<span class="fn">callTool</span>(<span class="str">'export_trading_card'</span>);
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── Divider: Agent → CTA ─── -->
+    <div class="section-divider">
+        <svg viewBox="0 0 1440 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,40 C240,80 480,0 720,40 C960,80 1200,0 1440,40 L1440,80 L0,80 Z" fill="var(--bg)"/>
+        </svg>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         SECTION 8: CTA — Dual GPU Finale (Quantum + Faceted dueling)
+         ═══════════════════════════════════════════════════ -->
+    <section class="cta-section" id="ctaSection">
+        <div class="cta-bg" style="overflow:hidden;">
+            <div class="canvas-wrap depth-container" style="position:absolute;inset:0;clip-path:polygon(0 0, 100% 0, 65% 40%, 35% 100%, 0 100%);" id="ctaGpuLeft">
+                <canvas class="vib3-canvas" id="cta-canvas-left"></canvas>
+            </div>
+            <div class="canvas-wrap depth-container" style="position:absolute;inset:0;clip-path:polygon(100% 0, 100% 100%, 35% 100%, 65% 40%);" id="ctaGpuRight">
+                <canvas class="vib3-canvas" id="cta-canvas-right"></canvas>
+            </div>
+            <div class="viz-seam" id="ctaSeam" style="transform:rotate(var(--cta-seam-angle, -45deg));transform-origin:center;width:200%;left:-50%;" aria-hidden="true"></div>
+            <div class="viz-vignette" id="ctaVignette" aria-hidden="true"></div>
+        </div>
+        <div class="cta-content section-reveal" data-animate>
+            <h2 class="text-shimmer">Start Building</h2>
+            <p>C++ Clifford algebra core (Cl(4,0) rotors) compiled to WASM. WebGPU primary, WebGL fallback. TypeScript definitions. MCP agentic control. React/Vue/Svelte integrations.</p>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="docs/webgpu-live.html">Launch Live Demo</a>
+                <a class="cta cta-ghost" href="https://github.com/Domusgpt/vib34d-xr-quaternion-sdk" target="_blank" rel="noopener">GitHub</a>
+            </div>
+            <div class="code-block">
+                <span class="cmt">// pnpm add @vib3code/sdk</span><br>
+                <span class="kw">import</span> { VIB3Engine } <span class="kw">from</span> <span class="str">'@vib3code/sdk'</span>;<br><br>
+                <span class="kw">const</span> engine = <span class="kw">new</span> <span class="fn">VIB3Engine</span>();<br>
+                <span class="kw">await</span> engine.<span class="fn">initialize</span>(<span class="str">'my-container'</span>);<br>
+                <span class="kw">await</span> engine.<span class="fn">switchSystem</span>(<span class="str">'quantum'</span>);<br>
+                engine.<span class="fn">setParameter</span>(<span class="str">'geometry'</span>, <span class="num">16</span>);<br>
+                engine.<span class="fn">setParameter</span>(<span class="str">'rot4dXW'</span>, <span class="num">1.57</span>);
+            </div>
+            <div class="link-grid">
+                <a href="../demo/index.html">SDK Controls Demo</a>
+                <a href="docs/webgpu-live.html"><span class="link-badge badge-gpu">WebGPU</span> Live 4D Engine</a>
+                <a href="docs/index.html">Gallery &mdash; Algorithmic Art</a>
+                <a href="docs/vib3-exports/index.html"><span class="link-badge badge-gl">WebGL</span> Shader Exports</a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2025-2026 <a href="https://parserator.com" target="_blank" rel="noopener">Clear Seas Solutions LLC</a> / Paul Phillips &middot; MIT License</p>
+    </footer>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         ENGINE BOOT + GPU CONTEXT POOL + GSAP CHOREOGRAPHY
+
+         GPU CONTEXT BUDGET (see DOCS/SCROLL_TIMELINE_v3.md):
+           Opening ......... 1 (Quantum)
+           Hero ............ 1 (Quantum)
+           Morph ........... 1 (swaps Q → H → F)
+           Playground ...... 1 (Q/H/F, user-controlled)
+           Triptych ........ 3 (Q + H + F split-screen)
+           Cascade ......... 2 (Q + H dual GPU background)
+           Energy .......... 2 (Q background + F card)
+           Agent ........... 1 (Holographic)
+           CTA ............. 2 (Q + F dueling finale)
+           MAX CONCURRENT .. 3 (pool auto-evicts oldest)
+         ═══════════════════════════════════════════════════════════ -->
+    <script type="module" src="./js/main.js"></script>
+</body>
+</html>
