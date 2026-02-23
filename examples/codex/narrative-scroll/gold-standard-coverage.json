@@ -1,0 +1,46 @@
+{
+  "entry": "narrative-scroll",
+  "version": 1,
+  "coverage": [
+    {
+      "section": "D",
+      "pattern": "Narrative Arc",
+      "status": "full",
+      "implementation": "section choreography in canonical landing runtime",
+      "activation": "scroll progression",
+      "validation_hint": "section transitions advance with scroll and maintain visual narrative continuity"
+    },
+    {
+      "section": "C",
+      "pattern": "Scroll Depth Tunnel",
+      "status": "full",
+      "implementation": "initScrollProgress + section timelines",
+      "activation": "scroll position",
+      "validation_hint": "depth and parameter modulation track scroll depth"
+    },
+    {
+      "section": "B",
+      "pattern": "Multi-instance coordination",
+      "status": "full",
+      "implementation": "ContextPool orchestration + triptych/cascade lifecycle",
+      "activation": "section entry/exit",
+      "validation_hint": "pooled instances acquire/release as sections enter and leave viewport"
+    },
+    {
+      "section": "F",
+      "pattern": "Timing Asymmetry",
+      "status": "partial",
+      "implementation": "section-specific reveal and veil timings",
+      "activation": "scene transitions",
+      "validation_hint": "some transitions attack faster than release"
+    },
+    {
+      "section": "G",
+      "pattern": "Agent design loop",
+      "status": "partial",
+      "implementation": "codex entry docs + lab + QA protocol",
+      "activation": "development workflow",
+      "validation_hint": "design/analyze/enhance notes are codified"
+    }
+  ]
+}
