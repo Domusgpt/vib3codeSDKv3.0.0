@@ -276,48 +276,54 @@ export class Rotor4D {
      * The result applies this rotation, then r's rotation
      *
      * @param {Rotor4D} r - Right operand
+     * @param {Rotor4D} [target=null] - Optional target rotor to write result into
      * @returns {Rotor4D} Composed rotor
      */
-    multiply(r) {
+    multiply(r, target = null) {
         // Full geometric product of two rotors in 4D
         // This is derived from the geometric algebra product rules
 
         const a = this;
         const b = r;
 
-        return new Rotor4D(
-            // Scalar component
-            a.s * b.s - a.xy * b.xy - a.xz * b.xz - a.yz * b.yz -
-            a.xw * b.xw - a.yw * b.yw - a.zw * b.zw - a.xyzw * b.xyzw,
+        // Compute all components first to ensure safety if target aliases a or b
+        const s = a.s * b.s - a.xy * b.xy - a.xz * b.xz - a.yz * b.yz -
+            a.xw * b.xw - a.yw * b.yw - a.zw * b.zw - a.xyzw * b.xyzw;
 
-            // XY bivector
-            a.s * b.xy + a.xy * b.s + a.xz * b.yz - a.yz * b.xz +
-            a.xw * b.yw - a.yw * b.xw - a.zw * b.xyzw - a.xyzw * b.zw,
+        const xy = a.s * b.xy + a.xy * b.s + a.xz * b.yz - a.yz * b.xz +
+            a.xw * b.yw - a.yw * b.xw - a.zw * b.xyzw - a.xyzw * b.zw;
 
-            // XZ bivector
-            a.s * b.xz + a.xz * b.s - a.xy * b.yz + a.yz * b.xy +
-            a.xw * b.zw + a.yw * b.xyzw - a.zw * b.xw + a.xyzw * b.yw,
+        const xz = a.s * b.xz + a.xz * b.s - a.xy * b.yz + a.yz * b.xy +
+            a.xw * b.zw + a.yw * b.xyzw - a.zw * b.xw + a.xyzw * b.yw;
 
-            // YZ bivector
-            a.s * b.yz + a.yz * b.s + a.xy * b.xz - a.xz * b.xy -
-            a.xw * b.xyzw + a.yw * b.zw - a.zw * b.yw - a.xyzw * b.xw,
+        const yz = a.s * b.yz + a.yz * b.s + a.xy * b.xz - a.xz * b.xy -
+            a.xw * b.xyzw + a.yw * b.zw - a.zw * b.yw - a.xyzw * b.xw;
 
-            // XW bivector
-            a.s * b.xw + a.xw * b.s - a.xy * b.yw + a.xz * b.zw +
-            a.yz * b.xyzw + a.yw * b.xy - a.zw * b.xz + a.xyzw * b.yz,
+        const xw = a.s * b.xw + a.xw * b.s - a.xy * b.yw + a.xz * b.zw +
+            a.yz * b.xyzw + a.yw * b.xy - a.zw * b.xz + a.xyzw * b.yz;
 
-            // YW bivector
-            a.s * b.yw + a.yw * b.s + a.xy * b.xw - a.xz * b.xyzw -
-            a.yz * b.zw - a.xw * b.xy + a.zw * b.yz - a.xyzw * b.xz,
+        const yw = a.s * b.yw + a.yw * b.s + a.xy * b.xw - a.xz * b.xyzw -
+            a.yz * b.zw - a.xw * b.xy + a.zw * b.yz - a.xyzw * b.xz;
 
-            // ZW bivector
-            a.s * b.zw + a.zw * b.s + a.xy * b.xyzw + a.xz * b.xw +
-            a.yz * b.yw - a.xw * b.xz - a.yw * b.yz + a.xyzw * b.xy,
+        const zw = a.s * b.zw + a.zw * b.s + a.xy * b.xyzw + a.xz * b.xw +
+            a.yz * b.yw - a.xw * b.xz - a.yw * b.yz + a.xyzw * b.xy;
 
-            // Pseudoscalar XYZW
-            a.s * b.xyzw + a.xyzw * b.s + a.xy * b.zw - a.xz * b.yw +
-            a.yz * b.xw + a.xw * b.yz - a.yw * b.xz + a.zw * b.xy
-        );
+        const xyzw = a.s * b.xyzw + a.xyzw * b.s + a.xy * b.zw - a.xz * b.yw +
+            a.yz * b.xw + a.xw * b.yz - a.yw * b.xz + a.zw * b.xy;
+
+        if (target) {
+            target.s = s;
+            target.xy = xy;
+            target.xz = xz;
+            target.yz = yz;
+            target.xw = xw;
+            target.yw = yw;
+            target.zw = zw;
+            target.xyzw = xyzw;
+            return target;
+        }
+
+        return new Rotor4D(s, xy, xz, yz, xw, yw, zw, xyzw);
     }
 
     /**
@@ -429,9 +435,10 @@ export class Rotor4D {
 
     /**
      * Convert rotor to 4x4 rotation matrix (column-major for WebGL)
+     * @param {Float32Array|Array} [target] - Optional target array to write into
      * @returns {Float32Array} 16-element array in column-major order
      */
-    toMatrix() {
+    toMatrix(target = null) {
         // Normalize first for numerical stability
         const n = this.norm();
         const invN = n > 1e-10 ? 1 / n : 1;
@@ -495,6 +502,35 @@ export class Rotor4D {
         // Formula derived from sandwich product R v R†
         // Diagonal: s² minus bivectors containing that axis, plus others
         // Off-diagonal: 2*s*bivector terms for single-plane contributions
+
+        if (target) {
+            // Column 0 (transformed X axis)
+            target[0] = s2 - xy2 - xz2 + yz2 - xw2 + yw2 + zw2 - xyzw2;
+            target[1] = sxy + xzyz + xwyw - zwxyzw;
+            target[2] = sxz - xyyz + xwzw + ywxyzw;
+            target[3] = sxw - xyyw - xzzw - yzxyzw;
+
+            // Column 1 (transformed Y axis)
+            target[4] = -sxy + xzyz + xwyw + zwxyzw;
+            target[5] = s2 - xy2 + xz2 - yz2 + xw2 - yw2 + zw2 - xyzw2;
+            target[6] = syz + xyxz + ywzw - xwxyzw;
+            target[7] = syw + xyxw - yzzw + xzxyzw;
+
+            // Column 2 (transformed Z axis)
+            target[8] = -sxz - xyyz + xwzw - ywxyzw;
+            target[9] = -syz + xyxz + ywzw + xwxyzw;
+            target[10] = s2 + xy2 - xz2 - yz2 + xw2 + yw2 - zw2 - xyzw2;
+            target[11] = szw + xzxw + yzyw - xyxyzw;
+
+            // Column 3 (transformed W axis)
+            target[12] = -sxw - xyyw - xzzw + yzxyzw;
+            target[13] = -syw + xyxw - yzzw - xzxyzw;
+            target[14] = -szw + xzxw + yzyw + xyxyzw;
+            target[15] = s2 + xy2 + xz2 + yz2 - xw2 - yw2 - zw2 - xyzw2;
+
+            return target;
+        }
+
         return new Float32Array([
             // Column 0 (transformed X axis)
             s2 - xy2 - xz2 + yz2 - xw2 + yw2 + zw2 - xyzw2,
