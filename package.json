@@ -343,7 +343,11 @@
     "storybook": "storybook dev -p 6006",
     "build:storybook": "storybook build",
     "demo:generate": "node scripts/generate-demo-assets.js",
-    "verify:shaders": "node tools/shader-sync-verify.js"
+    "verify:shaders": "node tools/shader-sync-verify.js",
+    "verify:codex-runtime": "node scripts/codex/verify_phase2_runtime_consolidation.mjs",
+    "verify:codex-catalog": "node scripts/codex/verify_codex_catalog_integrity.mjs",
+    "verify:codex-coverage": "node scripts/codex/verify_codex_coverage_integrity.mjs",
+    "verify:codex-suite": "node scripts/codex/verify_codex_suite.mjs"
   },
   "packageManager": "pnpm@9.4.0",
   "files": [
