@@ -14,12 +14,24 @@
   <!-- Secondary Visualizer: Floating panel -->
   <div id="secondary-viz"></div>
 
+  <!-- Learning Mode Controls -->
+  <div id="mode-panel">
+    <label for="modeSelect">Learning Mode</label>
+    <select id="modeSelect">
+      <option value="l1">L1 · Single Engine Foundations</option>
+      <option value="l2">L2 · Dual Engine Coordination</option>
+      <option value="l3">L3 · Narrative + Choreography</option>
+      <option value="l4">L4 · Full Flagship + Agent Handoff</option>
+    </select>
+    <div id="modeDescription">Select a mode to progressively enable complexity.</div>
+  </div>
+
   <!-- HUD -->
   <div id="hud">
     <div class="system-label" id="sysLabel">FACETED</div>
     <div class="geo-label" id="geoLabel">Hypercube [1]</div>
     <div class="coordination-label" id="secLabel">2nd: QUANTUM</div>
-    <div class="mode-label" id="modeLabel">active</div>
+    <div class="mode-label" id="modeLabel">active · L4</div>
     <div class="fps-label" id="fpsLabel">-- fps</div>
   </div>
 
