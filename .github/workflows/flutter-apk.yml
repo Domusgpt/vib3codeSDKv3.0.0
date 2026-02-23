@@ -4,18 +4,20 @@ on:
   push:
     paths:
       - 'examples/flutter_demo/**'
+      - 'src/**'
+      - 'DOCS/**'
+      - 'index.html'
+      - 'vite.config.js'
   pull_request:
     paths:
       - 'examples/flutter_demo/**'
+      - 'src/**'
+      - 'DOCS/**'
   workflow_dispatch:
 
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: examples/flutter_demo
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -51,12 +53,15 @@ jobs:
 
       - name: Get dependencies
         run: flutter pub get
+        working-directory: examples/flutter_demo
 
       - name: Build APK (Debug)
         run: flutter build apk --debug
+        working-directory: examples/flutter_demo
 
       - name: Build APK (Release)
         run: flutter build apk --release
+        working-directory: examples/flutter_demo
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4

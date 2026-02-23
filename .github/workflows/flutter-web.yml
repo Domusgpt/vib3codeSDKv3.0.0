@@ -5,6 +5,9 @@ on:
     branches: [main, master]
     paths:
       - 'examples/flutter_demo/**'
+      - 'src/**'
+      - 'index.html'
+      - 'vite.config.js'
   workflow_dispatch:
 
 permissions:
@@ -19,13 +22,26 @@ concurrency:
 jobs:
   build-web:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: examples/flutter_demo
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install and Build VIB3+ Core
+        run: |
+          npm ci
+          npm run build:web
+        working-directory: .
+
+      - name: Prepare Flutter Assets (VIB3 Core)
+        run: |
+          mkdir -p examples/flutter_demo/assets/vib3/
+          cp -r dist/* examples/flutter_demo/assets/vib3/
+        working-directory: .
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -33,11 +49,16 @@ jobs:
           flutter-version: '3.24.0'
           channel: 'stable'
 
-      - name: Get dependencies
+      - name: Get Flutter dependencies
         run: flutter pub get
+        working-directory: examples/flutter_demo
 
-      - name: Build web
-        run: flutter build web --release --base-href "/Vib3-CORE-Documented01-/"
+      - name: Build Flutter Web
+        # base-href is set to repo name for GitHub Pages project sites
+        # We can dynamically set it or use the hardcoded one if we know it works.
+        # Assuming the user wants to deploy to GH Pages at <username>.github.io/<repo-name>/
+        run: flutter build web --release --base-href "/${GITHUB_REPOSITORY#*/}/"
+        working-directory: examples/flutter_demo
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
