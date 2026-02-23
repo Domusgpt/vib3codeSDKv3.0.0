@@ -1102,23 +1102,22 @@ export function initCascade(pool, c2d) {
   if (cascadeTrack && cascadeCards.length > 0) {
     const N = cascadeCards.length;
 
-    // Mobile: no pin, no horizontal scroll — CSS stacks cards vertically
-    if (isMobile) {
-      // Simple entrance animation only — cards are already visible via CSS
-      return;
-    }
-
     ScrollTrigger.create({
       trigger: '#cascadeSection', start: 'top top', end: 'bottom bottom',
-      pin: '#cascadePinned', scrub: 0.5,
+      // Mobile: no pin (CSS sets height:auto on .cascade-pinned, cards stack vertically)
+      // Desktop: pin + horizontal scroll
+      pin: isMobile ? false : '#cascadePinned',
+      scrub: 0.5,
       onUpdate: (self) => {
         const p = self.progress;
 
-        // Cards are 80vw wide, end-to-end (no gap)
-        const vw = window.innerWidth / 100;
-        const cardW = 80 * vw;
-        const totalScroll = (N - 1) * cardW;
-        cascadeTrack.style.transform = `translateX(${-p * totalScroll}px)`;
+        // Desktop: horizontal scroll. Mobile: CSS stacks vertically (transform: none !important)
+        if (!isMobile) {
+          const vw = window.innerWidth / 100;
+          const cardW = 80 * vw;
+          const totalScroll = (N - 1) * cardW;
+          cascadeTrack.style.transform = `translateX(${-p * totalScroll}px)`;
+        }
 
         const activeIdx = Math.min(Math.floor(p * N), N - 1);
         const activeHue = parseInt(cascadeCards[activeIdx].dataset.hue);
@@ -1182,85 +1181,79 @@ export function initCascade(pool, c2d) {
           const phaseOffset = dist * Math.PI / 3;
           const isActive = (i === activeIdx);
 
-          // ═══ 3D TILT — NO SCALE EVER ═══
-          // Active card tilts toward face-on (flat). Neighbors fan outward.
-          let tiltY, tiltX, tiltZ;
-          if (isActive) {
-            // Face-on when fully active, slight tilt during transition
-            tiltY = (1 - pulse) * (localP < 0.5 ? -15 : 15);
-            tiltX = -pulse * 3;
-            tiltZ = (1 - pulse) * (localP < 0.5 ? -2 : 2);
-          } else {
-            // Fan outward: cards to left tilt right, cards to right tilt left
-            const dir = i < activeIdx ? 1 : -1;
-            const tiltStrength = Math.min(dist * 18, 50);
-            tiltY = dir * tiltStrength;
-            tiltX = dist * 3;
-            tiltZ = dir * dist * 1.5;
-          }
-
-          card.style.transform = `perspective(1200px) rotateY(${tiltY}deg) rotateX(${tiltX}deg) rotateZ(${tiltZ}deg)`;
-          card.style.zIndex = isActive ? '10' : `${Math.max(1, 7 - dist)}`;
-          card.style.opacity = isActive ? '1' : `${Math.max(0.35, 1 - dist * 0.13)}`;
-
-          // ═══ GEOMETRIC MORPHING via clip-path on canvas-wrap ═══
-          // Active: morph through shape sequence. Inactive: narrow window.
-          const wrap = card.querySelector('.canvas-wrap');
-          const overlay = card.querySelector('.cascade-overlay');
-          const frame = card.querySelector('.card-frame');
-          let clipVal;
-
-          if (isActive) {
-            // Cycle through 4 shape transitions based on localP (0→1)
-            const phase = localP * (shapeSeq.length - 1);
-            const segIdx = Math.min(Math.floor(phase), shapeSeq.length - 2);
-            const segT = phase - segIdx;
-            clipVal = lerpShape(shapeSeq[segIdx], shapeSeq[segIdx + 1], segT);
-          } else {
-            // Narrower window the further away — controls perceived size
-            const inset = Math.min(3 + dist * 6, 22);
-            const r = 14 + dist * 3;
-            clipVal = `inset(${inset}% ${inset * 0.6}% ${inset}% ${inset * 0.6}% round ${r}px)`;
-          }
-
-          if (wrap) wrap.style.clipPath = clipVal;
-          if (overlay) overlay.style.clipPath = clipVal;
-          if (frame) frame.style.clipPath = clipVal;
-
-          // ═══ FRACTAL ECHOES via filter: drop-shadow ═══
-          // Active card gets offset drop-shadows that follow the geometric clip-path.
-          // This creates the illusion of the card duplicating/fracturing outward.
-          if (isActive) {
-            const echoOff = 5 + pulse * 16;
-            const a1 = (0.18 + pulse * 0.14).toFixed(2);
-            const a2 = (0.10 + pulse * 0.08).toFixed(2);
-            const a3 = (0.05 + pulse * 0.04).toFixed(2);
-            card.style.filter = [
-              `drop-shadow(${echoOff}px ${echoOff * 0.8}px 0px hsla(${hue}, 70%, 50%, ${a1}))`,
-              `drop-shadow(${echoOff * 2.2}px ${echoOff * 1.2}px 1px hsla(${hue}, 65%, 45%, ${a2}))`,
-              `drop-shadow(${-echoOff * 0.8}px ${echoOff * 1.5}px 0px hsla(${hue}, 60%, 40%, ${a3}))`,
-              `drop-shadow(${echoOff * 1.4}px ${-echoOff * 0.6}px 0px hsla(${hue}, 60%, 40%, ${a3}))`,
-            ].join(' ');
-            card.classList.add('leaking');
-            // Frame glow
-            card.style.setProperty('--frame-glow-size', `${18 + pulse * 35}px`);
-            card.style.setProperty('--frame-glow-alpha', `${0.12 + pulse * 0.18}`);
-            card.style.setProperty('--frame-border', `1px solid rgba(255,255,255,${0.06 + pulse * 0.12})`);
-          } else {
-            // Neighbors: subtle single echo if close, none if far
-            if (ripple > 0.08) {
-              const rOff = 3 + ripple * 10;
-              card.style.filter = `drop-shadow(${rOff}px ${rOff * 0.6}px 0px hsla(${hue}, 60%, 45%, ${(ripple * 0.12).toFixed(2)}))`;
+          // ═══ 3D TILT + CLIP MORPHING + FRACTAL ECHOES — Desktop only ═══
+          // Mobile: cards are stacked vertically, no tilt/clip/echo needed
+          if (!isMobile) {
+            // ── 3D TILT — NO SCALE EVER ──
+            let tiltY, tiltX, tiltZ;
+            if (isActive) {
+              tiltY = (1 - pulse) * (localP < 0.5 ? -15 : 15);
+              tiltX = -pulse * 3;
+              tiltZ = (1 - pulse) * (localP < 0.5 ? -2 : 2);
             } else {
-              card.style.filter = 'none';
+              const dir = i < activeIdx ? 1 : -1;
+              const tiltStrength = Math.min(dist * 18, 50);
+              tiltY = dir * tiltStrength;
+              tiltX = dist * 3;
+              tiltZ = dir * dist * 1.5;
             }
-            card.classList.toggle('leaking', ripple > 0.15);
-            card.style.setProperty('--frame-glow-size', '0px');
-            card.style.setProperty('--frame-glow-alpha', '0');
-            card.style.setProperty('--frame-border', `1px solid rgba(255,255,255,${0.03 + ripple * 0.04})`);
-          }
 
-          // ═══ VISUALIZATION PARAMETERS ═══
+            card.style.transform = `perspective(1200px) rotateY(${tiltY}deg) rotateX(${tiltX}deg) rotateZ(${tiltZ}deg)`;
+            card.style.zIndex = isActive ? '10' : `${Math.max(1, 7 - dist)}`;
+            card.style.opacity = isActive ? '1' : `${Math.max(0.35, 1 - dist * 0.13)}`;
+
+            // ── GEOMETRIC MORPHING via clip-path on canvas-wrap ──
+            const wrap = card.querySelector('.canvas-wrap');
+            const overlay = card.querySelector('.cascade-overlay');
+            const frame = card.querySelector('.card-frame');
+            let clipVal;
+
+            if (isActive) {
+              const phase = localP * (shapeSeq.length - 1);
+              const segIdx = Math.min(Math.floor(phase), shapeSeq.length - 2);
+              const segT = phase - segIdx;
+              clipVal = lerpShape(shapeSeq[segIdx], shapeSeq[segIdx + 1], segT);
+            } else {
+              const inset = Math.min(3 + dist * 6, 22);
+              const r = 14 + dist * 3;
+              clipVal = `inset(${inset}% ${inset * 0.6}% ${inset}% ${inset * 0.6}% round ${r}px)`;
+            }
+
+            if (wrap) wrap.style.clipPath = clipVal;
+            if (overlay) overlay.style.clipPath = clipVal;
+            if (frame) frame.style.clipPath = clipVal;
+
+            // ── FRACTAL ECHOES via filter: drop-shadow ──
+            if (isActive) {
+              const echoOff = 5 + pulse * 16;
+              const a1 = (0.18 + pulse * 0.14).toFixed(2);
+              const a2 = (0.10 + pulse * 0.08).toFixed(2);
+              const a3 = (0.05 + pulse * 0.04).toFixed(2);
+              card.style.filter = [
+                `drop-shadow(${echoOff}px ${echoOff * 0.8}px 0px hsla(${hue}, 70%, 50%, ${a1}))`,
+                `drop-shadow(${echoOff * 2.2}px ${echoOff * 1.2}px 1px hsla(${hue}, 65%, 45%, ${a2}))`,
+                `drop-shadow(${-echoOff * 0.8}px ${echoOff * 1.5}px 0px hsla(${hue}, 60%, 40%, ${a3}))`,
+                `drop-shadow(${echoOff * 1.4}px ${-echoOff * 0.6}px 0px hsla(${hue}, 60%, 40%, ${a3}))`,
+              ].join(' ');
+              card.classList.add('leaking');
+              card.style.setProperty('--frame-glow-size', `${18 + pulse * 35}px`);
+              card.style.setProperty('--frame-glow-alpha', `${0.12 + pulse * 0.18}`);
+              card.style.setProperty('--frame-border', `1px solid rgba(255,255,255,${0.06 + pulse * 0.12})`);
+            } else {
+              if (ripple > 0.08) {
+                const rOff = 3 + ripple * 10;
+                card.style.filter = `drop-shadow(${rOff}px ${rOff * 0.6}px 0px hsla(${hue}, 60%, 45%, ${(ripple * 0.12).toFixed(2)}))`;
+              } else {
+                card.style.filter = 'none';
+              }
+              card.classList.toggle('leaking', ripple > 0.15);
+              card.style.setProperty('--frame-glow-size', '0px');
+              card.style.setProperty('--frame-glow-alpha', '0');
+              card.style.setProperty('--frame-border', `1px solid rgba(255,255,255,${0.03 + ripple * 0.04})`);
+            }
+          } // end desktop-only tilt/clip/echo
+
+          // ═══ VISUALIZATION PARAMETERS — runs on ALL screen sizes ═══
           // Active: low density (close/dramatic), high chaos/speed
           // Inactive: high density (receded/ambient), low chaos
           if (isActive) {
