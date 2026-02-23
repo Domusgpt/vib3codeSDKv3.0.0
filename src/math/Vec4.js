@@ -313,7 +313,11 @@ export class Vec4 {
      * @returns {number}
      */
     distanceTo(v) {
-        return this.sub(v).length();
+        const dx = this._x - v._x;
+        const dy = this._y - v._y;
+        const dz = this._z - v._z;
+        const dw = this._w - v._w;
+        return Math.sqrt(dx * dx + dy * dy + dz * dz + dw * dw);
     }
 
     /**
@@ -322,7 +326,11 @@ export class Vec4 {
      * @returns {number}
      */
     distanceToSquared(v) {
-        return this.sub(v).lengthSquared();
+        const dx = this._x - v._x;
+        const dy = this._y - v._y;
+        const dz = this._z - v._z;
+        const dw = this._w - v._w;
+        return dx * dx + dy * dy + dz * dz + dw * dw;
     }
 
     /**
@@ -483,7 +491,7 @@ export class Vec4 {
      * Project 4D point to 3D using orthographic projection
      * Simply drops the W component
      * @param {Vec4} [target=null] - Optional target vector
-     * @returns {Vec4} Projected point (w component is 0) or target
+     * @returns {Vec4} Projected point (w component is 0)
      */
     projectOrthographic(target = null) {
         if (target) {
