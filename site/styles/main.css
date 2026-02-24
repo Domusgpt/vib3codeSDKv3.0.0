@@ -12,6 +12,17 @@
             --glass-blur: 16px;
         }
 
+        /* ─── Scroll Lock (pre-GSAP) ───
+           Prevent scrolling before GSAP pins are created. Without pins,
+           the page physically scrolls away from the canvas on mobile,
+           creating a growing dark gap. Removed by JS after pin init. */
+        html.scroll-locked,
+        html.scroll-locked body {
+            overflow: hidden !important;
+            height: 100vh !important;
+            height: 100lvh !important;
+        }
+
         /* ─── Reset & Base ─── */
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
         html { scroll-behavior: auto; }
@@ -1396,6 +1407,10 @@
             transition: transform 0.2s ease-out, filter 0.2s ease-out, box-shadow 0.2s ease-out;
             will-change: transform, filter;
         }
+        /* Preserve position:absolute on elements that need to stretch via inset:0.
+           .depth-container's position:relative would otherwise override these. */
+        .opening-canvas-wrap.depth-container { position: absolute; }
+        .energy-bg.depth-container { position: absolute; inset: 0; }
 
         /* ═══════════════════════════════════════════
            SECTION-SPECIFIC ACCENT DIFFERENTIATION

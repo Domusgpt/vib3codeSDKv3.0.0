@@ -454,6 +454,7 @@ if (window.__cdnReady) {
       gsap.registerPlugin(ScrollTrigger);
     } else {
       console.warn('GSAP not loaded — scroll choreography disabled');
+      document.documentElement.classList.remove('scroll-locked');
       return;
     }
 
@@ -480,6 +481,17 @@ if (window.__cdnReady) {
     }
     initPlaygroundScrollTrigger();
 
+    // JS viewport height fallback for browsers without lvh support.
+    // Sets an explicit pixel height before pins are created.
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      const vh = window.innerHeight;
+      ['openingPinned', 'morphPinned', 'cascadePinned', 'energyPinned'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.height = vh + 'px';
+      });
+    }
+
     // Full scroll choreography
     initOpening(pool, createHero);
     initScrollProgress();
@@ -500,6 +512,14 @@ if (window.__cdnReady) {
     initOverlayChoreography(pool);
     initRevealChoreography();
 
+    // All pins created — unlock scrolling.
+    // Without this, the page is locked (html.scroll-locked) to prevent
+    // users from scrolling before pins exist (which causes the canvas
+    // to physically scroll away, creating a growing dark gap).
+    document.documentElement.classList.remove('scroll-locked');
+    window.scrollTo(0, 0);
+    ScrollTrigger.refresh();
+
     // Energy card tilt adapter lifecycle
     ScrollTrigger.create({
       trigger: '#energySection', start: 'top 80%', end: 'bottom top',
@@ -513,4 +533,5 @@ if (window.__cdnReady) {
   });
 } else {
   console.warn('CDN loader not available — scroll choreography disabled');
+  document.documentElement.classList.remove('scroll-locked');
 }
