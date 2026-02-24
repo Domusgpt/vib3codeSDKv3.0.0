@@ -29,6 +29,29 @@ function smoothstep(p) { return p * p * (3 - 2 * p); }
 function lerp(a, b, t) { return a + (b - a) * t; }
 function clamp01(v) { return Math.max(0, Math.min(1, v)); }
 
+// ─── Section Transition Covers ──────────────────────────────
+// Fullscreen dark overlays inside each pinned container.
+// Fade from opaque→transparent on entry (hides seam from previous section)
+// Fade from transparent→opaque on exit (hides seam into next section)
+function createSectionCover(pinnedId) {
+  const pinned = document.getElementById(pinnedId);
+  if (!pinned) return null;
+  const cover = document.createElement('div');
+  cover.style.cssText = 'position:absolute;inset:0;z-index:100;background:var(--bg,#0a0a12);opacity:1;pointer-events:none;will-change:opacity;';
+  pinned.appendChild(cover);
+  return cover;
+}
+function updateSectionCover(cover, progress, entryEnd, exitStart) {
+  if (!cover) return;
+  if (progress < entryEnd) {
+    cover.style.opacity = 1 - smoothstep(progress / entryEnd);
+  } else if (progress > exitStart) {
+    cover.style.opacity = smoothstep((progress - exitStart) / (1 - exitStart));
+  } else {
+    cover.style.opacity = 0;
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  DEPTH ILLUSION ENGINE
 // ═══════════════════════════════════════════════════════════════
@@ -292,14 +315,14 @@ export function initOpening(pool, createHero) {
   const lattice2 = document.getElementById('lattice2');
   const lattice3 = document.getElementById('lattice3');
   const openingSub = document.querySelector('.opening-sub span');
+  const openingCover = createSectionCover('openingPinned');
 
   ScrollTrigger.create({
     trigger: '#openingSection',
     start: 'top top',
     end: 'bottom bottom',
     pin: '#openingPinned',
-    pinType: 'transform',
-    scrub: 0.6,
+        scrub: 0.6,
     onEnter: () => {
       pool.acquire('opening', 'opening-canvas', QuantumAdapter, openingParams);
     },
@@ -315,6 +338,7 @@ export function initOpening(pool, createHero) {
     },
     onUpdate: (self) => {
       const p = self.progress;
+      updateSectionCover(openingCover, p, 0.04, 0.92);
       const adapter = pool.get('opening');
 
       // ── DEPTH TUNNEL: density-driven approach/retreat through phases ──
@@ -591,11 +615,12 @@ export function initMorph(pool, createHero) {
   const morphGlow = document.getElementById('morphGlow');
   const morphVoices = document.querySelectorAll('.morph-voice');
   const morphFill = document.getElementById('morphProgressFill');
+  const morphCover = createSectionCover('morphPinned');
   const NUM_STAGES = morphStages.length;
 
   ScrollTrigger.create({
     trigger: '#morphSection', start: 'top top', end: 'bottom bottom',
-    pin: '#morphPinned', pinType: 'transform', scrub: 0.6,
+    pin: '#morphPinned', scrub: 0.6,
     onEnter: () => {
       pool.release('hero');
       pool.release('opening');
@@ -617,6 +642,7 @@ export function initMorph(pool, createHero) {
     },
     onUpdate: (self) => {
       const p = self.progress;
+      updateSectionCover(morphCover, p, 0.03, 0.95);
 
       // ── Progress bar ──
       if (morphFill) morphFill.style.width = `${p * 100}%`;
@@ -1101,14 +1127,15 @@ export function initCascade(pool, c2d) {
 
   if (cascadeTrack && cascadeCards.length > 0) {
     const N = cascadeCards.length;
+    const cascadeCover = createSectionCover('cascadePinned');
 
     ScrollTrigger.create({
       trigger: '#cascadeSection', start: 'top top', end: 'bottom bottom',
       pin: '#cascadePinned',
-      pinType: 'transform',
       scrub: 0.5,
       onUpdate: (self) => {
         const p = self.progress;
+        updateSectionCover(cascadeCover, p, 0.04, 0.93);
 
         const vw = window.innerWidth / 100;
         const cardW = 80 * vw;
@@ -1311,11 +1338,13 @@ export function initEnergy(pool) {
 
   // 7-Step Pinned 3D Card Timeline
   const energyCard = document.getElementById('energyCard');
+  const energyCover = createSectionCover('energyPinned');
   if (energyCard) {
     const pinnedTl = gsap.timeline({
       scrollTrigger: {
         trigger: '#energySection', start: 'top top', end: 'bottom bottom',
-        pin: '#energyPinned', pinType: 'transform', scrub: 0.5,
+        pin: '#energyPinned', scrub: 0.5,
+        onUpdate: (self) => updateSectionCover(energyCover, self.progress, 0.04, 0.92),
       },
     });
 

@@ -457,8 +457,12 @@ if (window.__cdnReady) {
       return;
     }
 
-    // Lenis smooth scroll
-    if (typeof Lenis !== 'undefined') {
+    // Lenis smooth scroll — desktop only.
+    // On touch devices, native scroll is already smooth and Lenis's scroll
+    // interpolation desyncs with ScrollTrigger pin calculations, causing
+    // the pinned element to scroll instead of locking.
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (!isTouchDevice && typeof Lenis !== 'undefined') {
       const lenis = new Lenis();
       lenis.on('scroll', ScrollTrigger.update);
       gsap.ticker.add((time) => lenis.raf(time * 1000));
