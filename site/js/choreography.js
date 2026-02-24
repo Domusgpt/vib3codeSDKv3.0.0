@@ -328,7 +328,6 @@ export function initOpening(pool, createHero) {
     start: 'top top',
     end: 'bottom bottom',
     pin: '#openingPinned',
-    pinType: 'transform',
     scrub: 0.6,
     onEnter: () => {
       pool.acquire('opening', 'opening-canvas', QuantumAdapter, openingParams);
@@ -627,7 +626,7 @@ export function initMorph(pool, createHero) {
 
   ScrollTrigger.create({
     trigger: '#morphSection', start: 'top top', end: 'bottom bottom',
-    pin: '#morphPinned', pinType: 'transform', scrub: 0.6,
+    pin: '#morphPinned', scrub: 0.6,
     onEnter: () => {
       pool.release('hero');
       pool.release('opening');
@@ -1140,7 +1139,7 @@ export function initCascade(pool, c2d) {
 
     ScrollTrigger.create({
       trigger: '#cascadeSection', start: 'top top', end: 'bottom bottom',
-      pin: '#cascadePinned', pinType: 'transform',
+      pin: '#cascadePinned',
       scrub: 0.5,
       onUpdate: (self) => {
         const p = self.progress;
@@ -1352,7 +1351,7 @@ export function initEnergy(pool) {
     const pinnedTl = gsap.timeline({
       scrollTrigger: {
         trigger: '#energySection', start: 'top top', end: 'bottom bottom',
-        pin: '#energyPinned', pinType: 'transform', scrub: 0.5,
+        pin: '#energyPinned', scrub: 0.5,
         onUpdate: (self) => updateSectionCover(energyCover, self.progress, 0.04, 0.92, 270),
       },
     });

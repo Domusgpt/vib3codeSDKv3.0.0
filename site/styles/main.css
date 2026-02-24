@@ -1185,21 +1185,22 @@
 
         /* ─── Mobile — scroll-lock + canvas leeway ─── */
         @media (max-width: 768px) {
-            body { touch-action: none; overscroll-behavior-y: contain; }
+            body { touch-action: pan-y; overscroll-behavior-y: contain; }
 
-            /* ══ Viewport heights: dvh with vh fallback ══
-               ScrollTrigger.normalizeScroll(true) handles pin sync on touch.
-               dvh tracks dynamic viewport (toolbar show/hide). */
+            /* ══ Viewport heights: lvh with vh fallback ══
+               lvh = large viewport height (toolbar hidden). Stable value that
+               never changes during scroll — no gap when toolbar auto-hides.
+               Combined with ignoreMobileResize, GSAP pins stay locked. */
             .opening-pinned,
             .morph-pinned,
             .cascade-pinned,
             .energy-pinned {
                 height: 100vh;
-                height: 100dvh;
+                height: 100lvh;
             }
             .hero {
                 height: 100vh;
-                height: 100dvh;
+                height: 100lvh;
             }
 
             /* ══ CORE FIX: Section backgrounds ══
@@ -1234,7 +1235,7 @@
             }
             .triptych-canvas-wrap {
                 height: 100vh;
-                height: 100dvh;
+                height: 100lvh;
             }
 
             /* ── Playground — fill viewport, no dead space ── */
@@ -1242,7 +1243,7 @@
             .playground-header { padding: 16px 20px; }
             .playground-canvas {
                 width: 100%; min-height: auto;
-                height: 60vh; height: 60dvh;
+                height: 60vh; height: 60lvh;
                 aspect-ratio: auto; border-radius: 0;
             }
             .playground-controls {
@@ -1253,7 +1254,7 @@
             .playground-cta { display: none; }
 
             /* ── Cascade cards — taller on portrait viewports ── */
-            .cascade-card { height: 82vh; height: 82dvh; }
+            .cascade-card { height: 82vh; height: 82lvh; }
 
             /* ── Energy card — reduce padding for mobile ── */
             .energy-card { padding: 32px 24px; }
