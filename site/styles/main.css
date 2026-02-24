@@ -1183,9 +1183,38 @@
             transition: opacity 0.3s ease-out;
         }
 
-        /* ─── Mobile (same experience, surgical fitting only) ─── */
+        /* ─── Mobile — scroll-lock + canvas leeway ─── */
         @media (max-width: 768px) {
             body { touch-action: pan-y; overscroll-behavior-y: contain; }
+
+            /* ══ CORE FIX: Extend all pinned containers + hero ══
+               Mobile browsers have dynamic toolbars that make 100vh unreliable.
+               Use 100dvh (dynamic viewport) with vh fallback, PLUS extra buffer
+               so canvases always extend past the visible viewport edge.
+               overflow:hidden clips the excess — user never sees beyond viewport. */
+            .opening-pinned,
+            .morph-pinned,
+            .cascade-pinned,
+            .energy-pinned {
+                height: calc(100vh + 80px);
+                height: calc(100dvh + 80px);
+            }
+            .hero {
+                height: calc(100vh + 80px);
+                height: calc(100dvh + 80px);
+            }
+
+            /* ══ CORE FIX: Section backgrounds ══
+               Every section container gets explicit bg so ANY gap between
+               pin release and next section entry is seamless dark. */
+            .opening, .morph, .triptych, .cascade, .energy {
+                background: var(--bg);
+            }
+
+            /* ══ CORE FIX: Section dividers — tighter on mobile ══
+               Reduce divider height so transitions between sections are snappier. */
+            .section-divider svg { height: clamp(20px, 4vw, 40px); }
+            .section-divider.divider-tall svg { height: clamp(24px, 5vw, 50px); }
 
             /* ── Text visibility (non-hero) ── */
             .ctrl-section-label { color: rgba(255,255,255,0.4); }
@@ -1196,22 +1225,26 @@
             .morph-voices { gap: 12px; flex-wrap: wrap; }
             .morph-voice { padding: 8px 14px; }
 
-            /* ── FIX: Triptych column seams ──
-               Clip-path edges create anti-aliasing gaps at mobile widths.
-               Expand outer columns by ~1% to overlap at the seams. */
+            /* ── Triptych column seams ──
+               Expand outer columns by ~1% to overlap at anti-aliasing gaps. */
             .triptych-col:nth-child(1) {
                 clip-path: polygon(0 0, 29% 0, 31% 35%, 28% 65%, 30% 100%, 0 100%);
             }
             .triptych-col:nth-child(3) {
                 clip-path: polygon(65% 0, 100% 0, 100% 100%, 66% 100%, 64% 55%, 67% 30%);
             }
+            /* Triptych canvas wraps fill viewport + leeway */
+            .triptych-canvas-wrap {
+                height: calc(100vh + 80px);
+                height: calc(100dvh + 80px);
+            }
 
-            /* ── FIX: Playground — fill viewport, no dead space ──
-               Canvas fills width edge-to-edge, controls stack below. */
+            /* ── Playground — fill viewport, no dead space ── */
             .playground { padding: 24px 0; }
             .playground-header { padding: 16px 20px; }
             .playground-canvas {
-                width: 100%; min-height: auto; height: 56vh;
+                width: 100%; min-height: auto;
+                height: 60vh; height: 60dvh;
                 aspect-ratio: auto; border-radius: 0;
             }
             .playground-controls {
@@ -1221,10 +1254,10 @@
             }
             .playground-cta { display: none; }
 
-            /* ── FIX: Cascade cards — taller on portrait viewports ── */
-            .cascade-card { height: 80vh; }
+            /* ── Cascade cards — taller on portrait viewports ── */
+            .cascade-card { height: 82vh; height: 82dvh; }
 
-            /* ── FIX: Energy card — reduce padding for mobile ── */
+            /* ── Energy card — reduce padding for mobile ── */
             .energy-card { padding: 32px 24px; }
 
             /* Code blocks: horizontal scroll */
