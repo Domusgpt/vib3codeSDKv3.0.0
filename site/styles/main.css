@@ -1183,42 +1183,55 @@
             transition: opacity 0.3s ease-out;
         }
 
-        /* ─── Mobile (same experience as desktop, minor fitting only) ─── */
+        /* ─── Mobile (same experience, surgical fitting only) ─── */
         @media (max-width: 768px) {
-            /* Prevent mobile browser gesture conflicts */
             body { touch-action: pan-y; overscroll-behavior-y: contain; }
 
-            /* ── Text visibility fixes (genuinely too dim on small screens) ── */
-            .hero-sub { color: rgba(200,200,212,0.75); }
-            .hero-system-label { color: rgba(0,240,255,0.6); }
-            .hero-scroll span { color: rgba(255,255,255,0.4); }
+            /* ── Text visibility (non-hero) ── */
             .ctrl-section-label { color: rgba(255,255,255,0.4); }
             .opening-sub span { color: rgba(255,255,255,0.4); }
             .stat-label { color: rgba(255,255,255,0.5); }
-            .morph-counter { color: rgba(255,255,255,0.3); }
+            .morph-counter { color: rgba(255,255,255,0.3); top: 20px; right: 20px; }
             .text-shimmer { color: #fff; }
-
-            /* ── Minor fitting (no layout changes) ── */
-            .morph-counter { top: 20px; right: 20px; }
             .morph-voices { gap: 12px; flex-wrap: wrap; }
             .morph-voice { padding: 8px 14px; }
 
-            /* Playground controls: stack below canvas (they don't fit overlaid at 375px) */
-            .playground { padding: 60px 16px; }
+            /* ── FIX: Triptych column seams ──
+               Clip-path edges create anti-aliasing gaps at mobile widths.
+               Expand outer columns by ~1% to overlap at the seams. */
+            .triptych-col:nth-child(1) {
+                clip-path: polygon(0 0, 29% 0, 31% 35%, 28% 65%, 30% 100%, 0 100%);
+            }
+            .triptych-col:nth-child(3) {
+                clip-path: polygon(65% 0, 100% 0, 100% 100%, 66% 100%, 64% 55%, 67% 30%);
+            }
+
+            /* ── FIX: Playground — fill viewport, no dead space ──
+               Canvas fills width edge-to-edge, controls stack below. */
+            .playground { padding: 24px 0; }
+            .playground-header { padding: 16px 20px; }
+            .playground-canvas {
+                width: 100%; min-height: auto; height: 56vh;
+                aspect-ratio: auto; border-radius: 0;
+            }
             .playground-controls {
                 position: relative; top: auto; right: auto;
-                width: 100%; max-height: none; margin-top: 16px;
+                width: 100%; max-height: none; margin-top: 8px;
+                padding: 12px 16px;
             }
-            .playground-canvas { width: 100%; }
+            .playground-cta { display: none; }
 
-            /* Code blocks: allow horizontal scroll to prevent page overflow */
+            /* ── FIX: Cascade cards — taller on portrait viewports ── */
+            .cascade-card { height: 80vh; }
+
+            /* ── FIX: Energy card — reduce padding for mobile ── */
+            .energy-card { padding: 32px 24px; }
+
+            /* Code blocks: horizontal scroll */
             .code-block, .agent-tools { font-size: 11px; padding: 20px 16px; overflow-x: auto; }
             .link-grid { grid-template-columns: 1fr; }
         }
         @media (max-width: 480px) {
-            .hero-badge { font-size: 9px; letter-spacing: 1px; padding: 4px 12px; }
-            .hero-title { letter-spacing: 4px; }
-            .playground-header { padding: 16px 20px; }
             .playground-header p { font-size: 13px; }
             .cta-row { flex-direction: column; align-items: center; }
         }
