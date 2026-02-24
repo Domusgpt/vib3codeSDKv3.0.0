@@ -14,6 +14,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 // Import for iOS-specific features if needed
 // import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'vib3_controller.dart';
+import 'native/vib3_core_ffi.dart';
 
 enum RendererMode { webView, nativeDart }
 
@@ -414,11 +415,39 @@ class _GeometryPainter extends CustomPainter {
     switch (baseIndex) {
       case 0: _drawPoly(canvas, 3, radius, paint, fillPaint); break;
       case 1: _drawHypercube(canvas, radius, paint, fillPaint, rot4dXW); break;
-      case 2: canvas.drawCircle(Offset.zero, radius, paint); break;
+      case 2: _drawSphereFFI(canvas, radius, paint); break; // Use FFI for sphere
       default: _drawPoly(canvas, baseIndex + 2, radius, paint, fillPaint); break;
     }
 
     canvas.restore();
+  }
+
+  // Demonstration of FFI: Calculate sphere volume/radius using native math
+  void _drawSphereFFI(Canvas canvas, double r, Paint paint) {
+    // Call native Vec4 creation (just to prove FFI works)
+    // In a real engine, we'd pass the whole vertex buffer to C++
+    try {
+      final vec = Vib3Core.createVec4(r, 0, 0, 1);
+      final len = Vib3Core.createVec4(r, r, r, 0); // Dummy ops
+
+      canvas.drawCircle(Offset.zero, vec.x, paint);
+
+      // Native label to prove it's running C++
+      final textSpan = TextSpan(
+        text: 'Native C++ Active',
+        style: TextStyle(color: Color(0xFF00FF88), fontSize: 10),
+      );
+      final textPainter = TextPainter(
+        text: textSpan,
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      textPainter.paint(canvas, Offset(-40, r + 10));
+
+    } catch (e) {
+      // Fallback if FFI not loaded (e.g. web/desktop preview without libs)
+      canvas.drawCircle(Offset.zero, r, paint);
+    }
   }
 
   void _drawPoly(Canvas canvas, int sides, double r, Paint paint, Paint fill) {

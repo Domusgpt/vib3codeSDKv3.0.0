@@ -178,6 +178,25 @@ if(EMSCRIPTEN AND VIB3_BUILD_WASM AND TARGET vib3_math AND TARGET vib3_geometry)
     )
 endif()
 
+# Shared library for FFI (Android/iOS/Desktop)
+if(NOT EMSCRIPTEN AND TARGET vib3_math)
+    add_library(vib3_shared SHARED
+        bindings/c_api.cpp
+    )
+
+    target_link_libraries(vib3_shared PRIVATE
+        vib3_math
+        vib3_geometry
+    )
+
+    # Export symbol macros
+    target_compile_definitions(vib3_shared PRIVATE VIB3_EXPORT)
+
+    set_target_properties(vib3_shared PROPERTIES
+        OUTPUT_NAME "vib3_core"
+    )
+endif()
+
 # Native tests (not for WASM, only if sources exist)
 if(VIB3_BUILD_TESTS AND NOT EMSCRIPTEN AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/Vec4_test.cpp")
     enable_testing()
