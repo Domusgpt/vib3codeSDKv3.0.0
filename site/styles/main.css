@@ -1185,7 +1185,7 @@
 
         /* ─── Mobile — scroll-lock + canvas leeway ─── */
         @media (max-width: 768px) {
-            body { touch-action: pan-y; overscroll-behavior-y: contain; }
+            body { touch-action: none; overscroll-behavior-y: contain; }
 
             /* ══ Viewport heights: dvh with vh fallback ══
                ScrollTrigger.normalizeScroll(true) handles pin sync on touch.

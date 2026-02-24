@@ -30,23 +30,29 @@ function lerp(a, b, t) { return a + (b - a) * t; }
 function clamp01(v) { return Math.max(0, Math.min(1, v)); }
 
 // ─── Section Transition Covers ──────────────────────────────
-// Fullscreen dark overlays inside each pinned container.
-// Fade from opaque→transparent on entry (hides seam from previous section)
-// Fade from transparent→opaque on exit (hides seam into next section)
+// Colored glow overlays that bridge outgoing/incoming sections.
+// Uses the visualizer's current hue to create a radial gradient
+// that blends over the seam — never a black fade.
 function createSectionCover(pinnedId) {
   const pinned = document.getElementById(pinnedId);
   if (!pinned) return null;
   const cover = document.createElement('div');
-  cover.style.cssText = 'position:absolute;inset:0;z-index:100;background:var(--bg,#0a0a12);opacity:1;pointer-events:none;will-change:opacity;';
+  cover.style.cssText = 'position:absolute;inset:0;z-index:100;opacity:0;pointer-events:none;will-change:opacity;';
   pinned.appendChild(cover);
   return cover;
 }
-function updateSectionCover(cover, progress, entryEnd, exitStart) {
+function updateSectionCover(cover, progress, entryEnd, exitStart, hue) {
   if (!cover) return;
+  const h = hue || 220;
+  let opacity = 0;
   if (progress < entryEnd) {
-    cover.style.opacity = 1 - smoothstep(progress / entryEnd);
+    opacity = 1 - smoothstep(progress / entryEnd);
   } else if (progress > exitStart) {
-    cover.style.opacity = smoothstep((progress - exitStart) / (1 - exitStart));
+    opacity = smoothstep((progress - exitStart) / (1 - exitStart));
+  }
+  if (opacity > 0.001) {
+    cover.style.opacity = opacity;
+    cover.style.background = `radial-gradient(ellipse at 50% 50%, hsla(${h},80%,35%,0.75) 0%, hsla(${h},60%,18%,0.88) 55%, hsla(${h},40%,8%,0.95) 100%)`;
   } else {
     cover.style.opacity = 0;
   }
@@ -322,7 +328,8 @@ export function initOpening(pool, createHero) {
     start: 'top top',
     end: 'bottom bottom',
     pin: '#openingPinned',
-        scrub: 0.6,
+    pinType: 'transform',
+    scrub: 0.6,
     onEnter: () => {
       pool.acquire('opening', 'opening-canvas', QuantumAdapter, openingParams);
     },
@@ -338,7 +345,7 @@ export function initOpening(pool, createHero) {
     },
     onUpdate: (self) => {
       const p = self.progress;
-      updateSectionCover(openingCover, p, 0.04, 0.92);
+      updateSectionCover(openingCover, p, 0.04, 0.92, 220 + p * 100);
       const adapter = pool.get('opening');
 
       // ── DEPTH TUNNEL: density-driven approach/retreat through phases ──
@@ -620,7 +627,7 @@ export function initMorph(pool, createHero) {
 
   ScrollTrigger.create({
     trigger: '#morphSection', start: 'top top', end: 'bottom bottom',
-    pin: '#morphPinned', scrub: 0.6,
+    pin: '#morphPinned', pinType: 'transform', scrub: 0.6,
     onEnter: () => {
       pool.release('hero');
       pool.release('opening');
@@ -642,7 +649,7 @@ export function initMorph(pool, createHero) {
     },
     onUpdate: (self) => {
       const p = self.progress;
-      updateSectionCover(morphCover, p, 0.03, 0.95);
+      // Cover call deferred to after params.hue is computed (below)
 
       // ── Progress bar ──
       if (morphFill) morphFill.style.width = `${p * 100}%`;
@@ -672,6 +679,8 @@ export function initMorph(pool, createHero) {
       params.gridDensity += pulse * 4;
       params.rot4dXW += Math.sin(p * Math.PI * 3) * 0.3;
       params.intensity += pulse * 0.05;
+
+      updateSectionCover(morphCover, p, 0.03, 0.95, params.hue);
 
       // ── Apply to adapter ──
       const adapter = pool.get('morph');
@@ -1131,11 +1140,10 @@ export function initCascade(pool, c2d) {
 
     ScrollTrigger.create({
       trigger: '#cascadeSection', start: 'top top', end: 'bottom bottom',
-      pin: '#cascadePinned',
+      pin: '#cascadePinned', pinType: 'transform',
       scrub: 0.5,
       onUpdate: (self) => {
         const p = self.progress;
-        updateSectionCover(cascadeCover, p, 0.04, 0.93);
 
         const vw = window.innerWidth / 100;
         const cardW = 80 * vw;
@@ -1144,6 +1152,7 @@ export function initCascade(pool, c2d) {
 
         const activeIdx = Math.min(Math.floor(p * N), N - 1);
         const activeHue = parseInt(cascadeCards[activeIdx].dataset.hue);
+        updateSectionCover(cascadeCover, p, 0.04, 0.93, activeHue);
         const localP = (p * N) - activeIdx;
         const pulse = Math.sin(localP * Math.PI);
 
@@ -1343,8 +1352,8 @@ export function initEnergy(pool) {
     const pinnedTl = gsap.timeline({
       scrollTrigger: {
         trigger: '#energySection', start: 'top top', end: 'bottom bottom',
-        pin: '#energyPinned', scrub: 0.5,
-        onUpdate: (self) => updateSectionCover(energyCover, self.progress, 0.04, 0.92),
+        pin: '#energyPinned', pinType: 'transform', scrub: 0.5,
+        onUpdate: (self) => updateSectionCover(energyCover, self.progress, 0.04, 0.92, 270),
       },
     });
 

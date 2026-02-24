@@ -457,12 +457,17 @@ if (window.__cdnReady) {
       return;
     }
 
-    // Lenis smooth scroll — desktop only.
-    // On touch devices, native scroll is already smooth and Lenis's scroll
-    // interpolation desyncs with ScrollTrigger pin calculations, causing
-    // the pinned element to scroll instead of locking.
+    // Scroll handling: two paths for touch vs desktop.
+    // Touch: GSAP normalizeScroll intercepts touch events, prevents address-bar
+    // toggling (which breaks pin heights), and delivers smooth throttled scroll.
+    // Combined with pinType:'transform' on all pins this replaces position:fixed
+    // (broken on mobile Safari) with CSS translateY — no gap, no stutter.
+    // Desktop: Lenis provides smooth scroll interpolation.
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    if (!isTouchDevice && typeof Lenis !== 'undefined') {
+    if (isTouchDevice) {
+      ScrollTrigger.normalizeScroll(true);
+      ScrollTrigger.config({ ignoreMobileResize: true });
+    } else if (typeof Lenis !== 'undefined') {
       const lenis = new Lenis();
       lenis.on('scroll', ScrollTrigger.update);
       gsap.ticker.add((time) => lenis.raf(time * 1000));
