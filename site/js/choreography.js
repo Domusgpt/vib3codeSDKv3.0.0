@@ -993,7 +993,6 @@ export function initTriptych(pool) {
 // Shared rotation phase ties all cards to a common 4D rhythm.
 
 export function initCascade(pool, c2d) {
-  const isMobile = window.innerWidth <= 768;
   const cascadeCards = document.querySelectorAll('.cascade-card');
   const cascadeTrack = document.getElementById('cascadeTrack');
   const gpuLeftWrap = document.getElementById('cascadeGpuLeft');
@@ -1104,20 +1103,15 @@ export function initCascade(pool, c2d) {
 
     ScrollTrigger.create({
       trigger: '#cascadeSection', start: 'top top', end: 'bottom bottom',
-      // Mobile: no pin (CSS sets height:auto on .cascade-pinned, cards stack vertically)
-      // Desktop: pin + horizontal scroll
-      pin: isMobile ? false : '#cascadePinned',
+      pin: '#cascadePinned',
       scrub: 0.5,
       onUpdate: (self) => {
         const p = self.progress;
 
-        // Desktop: horizontal scroll. Mobile: CSS stacks vertically (transform: none !important)
-        if (!isMobile) {
-          const vw = window.innerWidth / 100;
-          const cardW = 80 * vw;
-          const totalScroll = (N - 1) * cardW;
-          cascadeTrack.style.transform = `translateX(${-p * totalScroll}px)`;
-        }
+        const vw = window.innerWidth / 100;
+        const cardW = 80 * vw;
+        const totalScroll = (N - 1) * cardW;
+        cascadeTrack.style.transform = `translateX(${-p * totalScroll}px)`;
 
         const activeIdx = Math.min(Math.floor(p * N), N - 1);
         const activeHue = parseInt(cascadeCards[activeIdx].dataset.hue);
@@ -1181,9 +1175,8 @@ export function initCascade(pool, c2d) {
           const phaseOffset = dist * Math.PI / 3;
           const isActive = (i === activeIdx);
 
-          // ═══ 3D TILT + CLIP MORPHING + FRACTAL ECHOES — Desktop only ═══
-          // Mobile: cards are stacked vertically, no tilt/clip/echo needed
-          if (!isMobile) {
+          // ═══ 3D TILT + CLIP MORPHING + FRACTAL ECHOES ═══
+          {
             // ── 3D TILT — NO SCALE EVER ──
             let tiltY, tiltX, tiltZ;
             if (isActive) {
@@ -1251,7 +1244,7 @@ export function initCascade(pool, c2d) {
               card.style.setProperty('--frame-glow-alpha', '0');
               card.style.setProperty('--frame-border', `1px solid rgba(255,255,255,${0.03 + ripple * 0.04})`);
             }
-          } // end desktop-only tilt/clip/echo
+          } // end tilt/clip/echo
 
           // ═══ VISUALIZATION PARAMETERS — runs on ALL screen sizes ═══
           // Active: low density (close/dramatic), high chaos/speed
@@ -1294,7 +1287,6 @@ export function initCascade(pool, c2d) {
 // ─── ENERGY TRANSFER ────────────────────────────────────────
 
 export function initEnergy(pool) {
-  const isMobile = window.innerWidth <= 768;
   const energyBgInitParams = {
     geometry: 6, hue: 270, gridDensity: 24, speed: 0.5,
     intensity: 0.6, chaos: 0.15, dimension: 3.4, morphFactor: 0.8, saturation: 0.9,
@@ -1315,10 +1307,9 @@ export function initEnergy(pool) {
     onLeaveBack: () => { pool.release('energyBg'); pool.release('energyCard'); },
   });
 
-  // 7-Step Pinned 3D Card Timeline — desktop only
-  // Mobile: simple reveal, no pin (CSS sets height: auto on .energy-pinned)
+  // 7-Step Pinned 3D Card Timeline
   const energyCard = document.getElementById('energyCard');
-  if (energyCard && !isMobile) {
+  if (energyCard) {
     const pinnedTl = gsap.timeline({
       scrollTrigger: {
         trigger: '#energySection', start: 'top top', end: 'bottom bottom',
@@ -1352,15 +1343,6 @@ export function initEnergy(pool) {
     pinnedTl.to(energyCard, {
       rotation: 360, scale: 0.7, y: -150, opacity: 0,
       duration: 0.12, ease: 'power2.in',
-    });
-  } else if (energyCard && isMobile) {
-    // Mobile: simple fade-in reveal, no pinning
-    gsap.set(energyCard, { opacity: 1, y: 0 });
-    ScrollTrigger.create({
-      trigger: '#energySection', start: 'top 80%', once: true,
-      onEnter: () => {
-        gsap.from(energyCard, { y: 60, opacity: 0, duration: 0.8, ease: 'power3.out' });
-      },
     });
   }
 
