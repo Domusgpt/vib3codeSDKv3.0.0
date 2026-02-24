@@ -34,7 +34,7 @@
 
         /* ─── Scroll Progress ─── */
         .scroll-progress {
-            position: fixed; top: 0; left: 0; width: 100%; height: 2px; z-index: 9999;
+            position: fixed; top: 0; left: 0; width: 100%; height: 2px; z-index: 9999; pointer-events: none;
             background: linear-gradient(90deg, var(--quantum), var(--faceted), var(--holographic), var(--quantum));
             background-size: 300% 100%;
             transform-origin: left; transform: scaleX(0);
@@ -1187,21 +1187,19 @@
         @media (max-width: 768px) {
             body { touch-action: pan-y; overscroll-behavior-y: contain; }
 
-            /* ══ CORE FIX: Extend all pinned containers + hero ══
-               Mobile browsers have dynamic toolbars that make 100vh unreliable.
-               Use 100dvh (dynamic viewport) with vh fallback, PLUS extra buffer
-               so canvases always extend past the visible viewport edge.
-               overflow:hidden clips the excess — user never sees beyond viewport. */
+            /* ══ Viewport heights: dvh with vh fallback ══
+               ScrollTrigger.normalizeScroll(true) handles pin sync on touch.
+               dvh tracks dynamic viewport (toolbar show/hide). */
             .opening-pinned,
             .morph-pinned,
             .cascade-pinned,
             .energy-pinned {
-                height: calc(100vh + 80px);
-                height: calc(100dvh + 80px);
+                height: 100vh;
+                height: 100dvh;
             }
             .hero {
-                height: calc(100vh + 80px);
-                height: calc(100dvh + 80px);
+                height: 100vh;
+                height: 100dvh;
             }
 
             /* ══ CORE FIX: Section backgrounds ══
@@ -1216,11 +1214,15 @@
             .section-divider svg { height: clamp(20px, 4vw, 40px); }
             .section-divider.divider-tall svg { height: clamp(24px, 5vw, 50px); }
 
-            /* ── Text visibility (non-hero) ── */
-            .ctrl-section-label { color: rgba(255,255,255,0.4); }
-            .opening-sub span { color: rgba(255,255,255,0.4); }
-            .stat-label { color: rgba(255,255,255,0.5); }
-            .morph-counter { color: rgba(255,255,255,0.3); top: 20px; right: 20px; }
+            /* ── Text visibility — boosted for mobile readability ── */
+            .hero-sub { color: rgba(255,255,255,0.85); }
+            .hero-badge { color: rgba(0,240,255,0.9); background: rgba(0,0,0,0.5); }
+            .hero-system-label { color: rgba(0,240,255,0.7); }
+            .ctrl-section-label { color: rgba(255,255,255,0.5); }
+            .opening-sub span { color: rgba(255,255,255,0.7); }
+            .stat-label { color: rgba(255,255,255,0.6); }
+            .morph-label p, .vib3-text--muted { color: rgba(255,255,255,0.7); }
+            .morph-counter { color: rgba(255,255,255,0.5); top: 20px; right: 20px; }
             .text-shimmer { color: #fff; }
             .morph-voices { gap: 12px; flex-wrap: wrap; }
             .morph-voice { padding: 8px 14px; }
@@ -1233,10 +1235,9 @@
             .triptych-col:nth-child(3) {
                 clip-path: polygon(65% 0, 100% 0, 100% 100%, 66% 100%, 64% 55%, 67% 30%);
             }
-            /* Triptych canvas wraps fill viewport + leeway */
             .triptych-canvas-wrap {
-                height: calc(100vh + 80px);
-                height: calc(100dvh + 80px);
+                height: 100vh;
+                height: 100dvh;
             }
 
             /* ── Playground — fill viewport, no dead space ── */

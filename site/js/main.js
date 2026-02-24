@@ -457,8 +457,16 @@ if (window.__cdnReady) {
       return;
     }
 
-    // Lenis smooth scroll
-    if (typeof Lenis !== 'undefined') {
+    // Scroll handling: Lenis on desktop, normalizeScroll on touch devices.
+    // Lenis smooth-interpolates scroll events which desyncs ScrollTrigger pins
+    // on touch devices (pin elements scroll instead of staying position:fixed).
+    // normalizeScroll replaces native touch scroll with JS-based scroll that
+    // syncs perfectly with ScrollTrigger pins.
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    if (isTouchDevice) {
+      ScrollTrigger.normalizeScroll(true);
+    } else if (typeof Lenis !== 'undefined') {
       const lenis = new Lenis();
       lenis.on('scroll', ScrollTrigger.update);
       gsap.ticker.add((time) => lenis.raf(time * 1000));
