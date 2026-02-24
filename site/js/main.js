@@ -481,18 +481,14 @@ if (window.__cdnReady) {
     }
     initPlaygroundScrollTrigger();
 
-    // JS viewport height fallback for browsers without lvh support.
-    // Sets an explicit pixel height before pins are created.
-    const isMobile = window.innerWidth <= 768;
-    if (isMobile) {
-      const vh = window.innerHeight;
-      ['openingPinned', 'morphPinned', 'cascadePinned', 'energyPinned'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.height = vh + 'px';
-      });
-    }
+    // Unlock scroll BEFORE creating pins so GSAP sees the correct
+    // unrestricted layout (full scroll range, natural element heights).
+    // JS is single-threaded — no user scroll events fire between
+    // classList.remove() and the pin creation calls below.
+    document.documentElement.classList.remove('scroll-locked');
+    window.scrollTo(0, 0);
 
-    // Full scroll choreography
+    // Full scroll choreography (pins measured with correct layout)
     initOpening(pool, createHero);
     initScrollProgress();
     initHero(pool);
@@ -511,14 +507,6 @@ if (window.__cdnReady) {
     initSpeedCrescendo(pool);
     initOverlayChoreography(pool);
     initRevealChoreography();
-
-    // All pins created — unlock scrolling.
-    // Without this, the page is locked (html.scroll-locked) to prevent
-    // users from scrolling before pins exist (which causes the canvas
-    // to physically scroll away, creating a growing dark gap).
-    document.documentElement.classList.remove('scroll-locked');
-    window.scrollTo(0, 0);
-    ScrollTrigger.refresh();
 
     // Energy card tilt adapter lifecycle
     ScrollTrigger.create({

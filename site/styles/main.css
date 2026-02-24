@@ -15,12 +15,13 @@
         /* ─── Scroll Lock (pre-GSAP) ───
            Prevent scrolling before GSAP pins are created. Without pins,
            the page physically scrolls away from the canvas on mobile,
-           creating a growing dark gap. Removed by JS after pin init. */
+           creating a growing dark gap. Removed by JS right before pin
+           creation (synchronous — no user scroll possible in between).
+           NOTE: Do NOT set height here — body must keep its natural height
+           so ScrollTrigger can calculate correct pin positions. */
         html.scroll-locked,
         html.scroll-locked body {
             overflow: hidden !important;
-            height: 100vh !important;
-            height: 100lvh !important;
         }
 
         /* ─── Reset & Base ─── */
