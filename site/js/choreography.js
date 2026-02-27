@@ -2,8 +2,8 @@
  * GSAP Scroll Choreography — v3: Depth Illusion Engine
  *
  * Architecture:
- *   Opening (800vh) → Hero → Morph (1200vh) → Playground → Triptych →
- *   Cascade → Energy → Agent → CTA
+ *   Opening (1200vh) → Hero → Morph (2000vh) → Playground → Triptych →
+ *   Cascade (500vh) → Energy (350vh) → Agent → CTA
  *
  * NEW in v3:
  *   - Depth Illusion Engine: density-as-distance, faux shadows, push-pull
@@ -23,11 +23,24 @@ const morphFactories = [QuantumAdapter, HolographicAdapter, FacetedAdapter];
 let morphCurrent = -1;
 let morphSwapLock = false;
 let morphLastStage = -1;
+const _autoInterludes = { stage4Fired: false, stage2Fired: false };
 
 // ─── Core Math Helpers ───────────────────────────────────────
 function smoothstep(p) { return p * p * (3 - 2 * p); }
 function lerp(a, b, t) { return a + (b - a) * t; }
 function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+
+/**
+ * Dead-zone remapping for dwell/hold at stage boundaries.
+ * 0.00 → holdStart: returns 0 (hold at previous stage)
+ * holdStart → holdEnd: returns 0→1 (compressed interpolation)
+ * holdEnd → 1.00: returns 1 (hold at next stage)
+ */
+function applyDeadZone(localP, holdStart = 0.15, holdEnd = 0.85) {
+  if (localP <= holdStart) return 0;
+  if (localP >= holdEnd) return 1;
+  return (localP - holdStart) / (holdEnd - holdStart);
+}
 
 // ─── Section Transition Covers ──────────────────────────────
 // Colored glow overlays that bridge outgoing/incoming sections.
@@ -612,11 +625,11 @@ export function initHero(pool) {
   });
 }
 
-// ─── MORPH EXPERIENCE (1200vh) ──────────────────────────────
+// ─── MORPH EXPERIENCE (2000vh) ──────────────────────────────
 // 6 stages: Emergence → Dimensional Shift → Three Voices →
 //           Convergence → Spectral Rupture → Resolution
 
-export function initMorph(pool, createHero) {
+export function initMorph(pool, createHero, lenis) {
   const morphCard = document.getElementById('morphCard');
   const morphGlow = document.getElementById('morphGlow');
   const morphVoices = document.querySelectorAll('.morph-voice');
@@ -627,23 +640,37 @@ export function initMorph(pool, createHero) {
   ScrollTrigger.create({
     trigger: '#morphSection', start: 'top top', end: 'bottom bottom',
     pin: '#morphPinned', scrub: 0.6,
+    snap: {
+      snapTo: [0, 1/6, 2/6, 3/6, 4/6, 5/6, 1.0],
+      duration: { min: 0.8, max: 2 },
+      delay: 0.1,
+      ease: 'power2.inOut',
+    },
     onEnter: () => {
       pool.release('hero');
       pool.release('opening');
       createMorphSystem(pool, 0);
       updateMorphUI(0);
+      _autoInterludes.stage4Fired = false;
+      _autoInterludes.stage2Fired = false;
+      try { if (lenis) lenis.options.lerp = 0.04; } catch (_) {}
     },
     onLeave: () => {
       pool.release('morph');
       morphCurrent = -1;
+      try { if (lenis) lenis.options.lerp = 0.1; } catch (_) {}
     },
     onEnterBack: () => {
       createMorphSystem(pool, 2);
       updateMorphUI(5);
+      _autoInterludes.stage4Fired = false;
+      _autoInterludes.stage2Fired = false;
+      try { if (lenis) lenis.options.lerp = 0.04; } catch (_) {}
     },
     onLeaveBack: () => {
       pool.release('morph');
       morphCurrent = -1;
+      try { if (lenis) lenis.options.lerp = 0.1; } catch (_) {}
       createHero();
     },
     onUpdate: (self) => {
@@ -668,8 +695,10 @@ export function initMorph(pool, createHero) {
       }
 
       // ── Interpolate parameters between current and next stage ──
+      // Dead zones: first 15% and last 15% of each stage hold steady
+      const remappedP = applyDeadZone(localP, 0.15, 0.85);
       const nextIdx = Math.min(stageIdx + 1, NUM_STAGES - 1);
-      const params = interpolateStages(morphStages[stageIdx], morphStages[nextIdx], localP);
+      const params = interpolateStages(morphStages[stageIdx], morphStages[nextIdx], remappedP);
 
       // ── Additional organic motion: sine modulation on top of interpolation ──
       const wave = Math.sin(p * Math.PI * 8);
@@ -701,7 +730,7 @@ export function initMorph(pool, createHero) {
 
         if (stageIdx === 0) {
           // Emergence: circle appears
-          const s = smoothstep(localP);
+          const s = smoothstep(remappedP);
           gsap.set(morphCard, {
             width: lerp(80, 120, s),
             height: lerp(80, 120, s),
@@ -712,7 +741,7 @@ export function initMorph(pool, createHero) {
           morphCard.classList.toggle('glowing', localP > 0.3);
         } else if (stageIdx === 1) {
           // Dimensional Shift: circle → rounded rect
-          const s = smoothstep(localP);
+          const s = smoothstep(remappedP);
           gsap.set(morphCard, {
             width: lerp(120, 340, s),
             height: lerp(120, 220, s),
@@ -721,14 +750,14 @@ export function initMorph(pool, createHero) {
             x: '-50%', y: '-50%',
           });
           morphCard.classList.add('glowing');
-          updateDepthShadow(morphShadow, smoothstep(localP) * 0.5);
+          updateDepthShadow(morphShadow, smoothstep(remappedP) * 0.5);
         } else if (stageIdx === 2) {
           // Three Voices: card holds, voice labels appear
           gsap.set(morphCard, {
             width: 340, height: 220, borderRadius: '24px',
             scale: 1, x: '-50%', y: '-50%',
           });
-          // Animate voice labels in
+          // Animate voice labels in (uses raw localP for timing triggers)
           morphVoices.forEach((v, i) => {
             const delay = i * 0.08;
             const show = localP > 0.15 + delay;
@@ -741,7 +770,7 @@ export function initMorph(pool, createHero) {
           });
         } else if (stageIdx === 3) {
           // Convergence: card grows, voice labels hide
-          const s = smoothstep(localP);
+          const s = smoothstep(remappedP);
           gsap.set(morphCard, {
             width: lerp(340, 500, s),
             height: lerp(220, 350, s),
@@ -756,7 +785,7 @@ export function initMorph(pool, createHero) {
           });
         } else if (stageIdx === 4) {
           // Spectral Rupture: card expands massively
-          const s = smoothstep(localP);
+          const s = smoothstep(remappedP);
           const cardW = lerp(500, window.innerWidth * 0.85, s);
           const cardH = lerp(350, window.innerHeight * 0.75, s);
           gsap.set(morphCard, {
@@ -776,7 +805,7 @@ export function initMorph(pool, createHero) {
           updateDepthShadow(morphShadow, 0.5 + s * 0.5);
         } else {
           // Resolution: card shrinks back to medium
-          const s = smoothstep(localP);
+          const s = smoothstep(remappedP);
           gsap.set(morphCard, {
             width: lerp(window.innerWidth * 0.85, 380, s),
             height: lerp(window.innerHeight * 0.75, 240, s),
@@ -786,6 +815,41 @@ export function initMorph(pool, createHero) {
           morphCard.classList.toggle('glowing', localP < 0.7);
           // Density recovers as card shrinks
           if (adapter) adapter.setParam('gridDensity', params.gridDensity * lerp(0.3, 1, s));
+        }
+      }
+
+      // ── Auto-interlude at "gasp" moments ──
+      // Stage 4 (Spectral Rupture): auto-scroll through the most dramatic portion
+      if (stageIdx === 4 && localP > 0.3 && localP < 0.4 && !_autoInterludes.stage4Fired && typeof ScrollToPlugin !== 'undefined') {
+        _autoInterludes.stage4Fired = true;
+        const morphSection = document.getElementById('morphSection');
+        if (morphSection) {
+          const targetProgress = (4 + 0.7) / NUM_STAGES;
+          const targetScroll = morphSection.offsetTop + morphSection.offsetHeight * targetProgress;
+          gsap.to(window, {
+            scrollTo: { y: targetScroll, autoKill: true },
+            duration: 3, ease: 'power1.inOut',
+            onComplete: () => {
+              setTimeout(() => { _autoInterludes.stage4Fired = false; }, 2000);
+            },
+          });
+        }
+      }
+
+      // Stage 2 (Three Voices): gentler auto-advance to let voices establish
+      if (stageIdx === 2 && localP > 0.2 && localP < 0.3 && !_autoInterludes.stage2Fired && typeof ScrollToPlugin !== 'undefined') {
+        _autoInterludes.stage2Fired = true;
+        const morphSection = document.getElementById('morphSection');
+        if (morphSection) {
+          const targetProgress = (2 + 0.65) / NUM_STAGES;
+          const targetScroll = morphSection.offsetTop + morphSection.offsetHeight * targetProgress;
+          gsap.to(window, {
+            scrollTo: { y: targetScroll, autoKill: true },
+            duration: 2, ease: 'power1.inOut',
+            onComplete: () => {
+              setTimeout(() => { _autoInterludes.stage2Fired = false; }, 2000);
+            },
+          });
         }
       }
     },
@@ -1027,7 +1091,7 @@ export function initTriptych(pool) {
 // with distance-based falloff — every card participates, none are idle.
 // Shared rotation phase ties all cards to a common 4D rhythm.
 
-export function initCascade(pool, c2d) {
+export function initCascade(pool, c2d, lenis) {
   const cascadeCards = document.querySelectorAll('.cascade-card');
   const cascadeTrack = document.getElementById('cascadeTrack');
   const gpuLeftWrap = document.getElementById('cascadeGpuLeft');
@@ -1045,8 +1109,12 @@ export function initCascade(pool, c2d) {
         geometry: 4, hue: 320, gridDensity: 18, speed: 0.4,
         intensity: 0.5, chaos: 0.12, dimension: 3.6, morphFactor: 0.7, saturation: 0.8,
       });
+      try { if (lenis) lenis.options.lerp = 0.06; } catch (_) {}
     },
-    onLeave: () => { pool.release('casGpuL'); pool.release('casGpuR'); },
+    onLeave: () => {
+      pool.release('casGpuL'); pool.release('casGpuR');
+      try { if (lenis) lenis.options.lerp = 0.1; } catch (_) {}
+    },
     onEnterBack: () => {
       pool.acquire('casGpuL', 'cascade-gpu-left', QuantumAdapter, {
         geometry: 2, hue: 200, gridDensity: 20, speed: 0.5,
@@ -1056,8 +1124,12 @@ export function initCascade(pool, c2d) {
         geometry: 4, hue: 320, gridDensity: 18, speed: 0.4,
         intensity: 0.5, chaos: 0.12, dimension: 3.6, morphFactor: 0.7, saturation: 0.8,
       });
+      try { if (lenis) lenis.options.lerp = 0.06; } catch (_) {}
     },
-    onLeaveBack: () => { pool.release('casGpuL'); pool.release('casGpuR'); },
+    onLeaveBack: () => {
+      pool.release('casGpuL'); pool.release('casGpuR');
+      try { if (lenis) lenis.options.lerp = 0.1; } catch (_) {}
+    },
   });
 
   // ═══ 8-point polygon shapes for geometric morphing ═══
@@ -1323,7 +1395,7 @@ export function initCascade(pool, c2d) {
 
 // ─── ENERGY TRANSFER ────────────────────────────────────────
 
-export function initEnergy(pool) {
+export function initEnergy(pool, lenis) {
   const energyBgInitParams = {
     geometry: 6, hue: 270, gridDensity: 24, speed: 0.5,
     intensity: 0.6, chaos: 0.15, dimension: 3.4, morphFactor: 0.8, saturation: 0.9,
@@ -1335,13 +1407,21 @@ export function initEnergy(pool) {
     onEnter: () => {
       pool.acquire('energyBg', 'energy-bg-canvas', QuantumAdapter, energyBgInitParams);
       pool.acquire('energyCard', 'energy-card-canvas', FacetedAdapter, energyCardParams);
+      try { if (lenis) lenis.options.lerp = 0.06; } catch (_) {}
     },
-    onLeave: () => { pool.release('energyBg'); pool.release('energyCard'); },
+    onLeave: () => {
+      pool.release('energyBg'); pool.release('energyCard');
+      try { if (lenis) lenis.options.lerp = 0.1; } catch (_) {}
+    },
     onEnterBack: () => {
       pool.acquire('energyBg', 'energy-bg-canvas', QuantumAdapter, energyBgInitParams);
       pool.acquire('energyCard', 'energy-card-canvas', FacetedAdapter, energyCardParams);
+      try { if (lenis) lenis.options.lerp = 0.06; } catch (_) {}
     },
-    onLeaveBack: () => { pool.release('energyBg'); pool.release('energyCard'); },
+    onLeaveBack: () => {
+      pool.release('energyBg'); pool.release('energyCard');
+      try { if (lenis) lenis.options.lerp = 0.1; } catch (_) {}
+    },
   });
 
   // 7-Step Pinned 3D Card Timeline

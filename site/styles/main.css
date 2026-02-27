@@ -24,6 +24,12 @@
             overflow: hidden !important;
         }
 
+        /* ── Intro Gate: blocks scroll during opening cinematic establish ── */
+        .intro-gate {
+            position: fixed; inset: 0; z-index: 10000;
+            pointer-events: none; /* mouse passes through for canvas reactivity */
+        }
+
         /* ─── Reset & Base ─── */
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
         html { scroll-behavior: auto; }
@@ -128,15 +134,18 @@
         }
 
         /* ═══════════════════════════════════════════
-           SECTION 2: MORPH EXPERIENCE — 1200vh Pinned
+           SECTION 2: MORPH EXPERIENCE — 2000vh Pinned
            6-stage scroll-driven morphing with system swaps
            ═══════════════════════════════════════════ */
         .morph {
-            position: relative; min-height: 1200vh;
+            position: relative; min-height: 2000vh;
         }
         .morph-pinned {
             height: 100vh; width: 100%; position: relative;
             overflow: hidden; background: var(--bg);
+        }
+        .morph-pinned > .canvas-wrap {
+            height: 120vh !important; margin-top: -10vh;
         }
         .morph-flash {
             position: absolute; inset: 0; z-index: 6;
@@ -495,11 +504,15 @@
            NO SCALE — ever. Size illusion via clip-path window.
            ═══════════════════════════════════════════ */
         .cascade {
-            position: relative; min-height: 400vh;
+            position: relative; min-height: 500vh;
         }
         .cascade-pinned {
             height: 100vh; display: flex; align-items: center;
             justify-content: center; position: relative; overflow: hidden;
+        }
+        .cascade-gpu-bg {
+            top: -10vh !important; bottom: -10vh !important;
+            height: auto !important;
         }
         .cascade-header {
             position: absolute; top: 40px; left: 50%;
@@ -604,13 +617,13 @@
            SECTION 6: ENERGY TRANSFER
            ═══════════════════════════════════════════ */
         .energy {
-            position: relative; min-height: 250vh;
+            position: relative; min-height: 350vh;
         }
         .energy-pinned {
             height: 100vh; position: relative;
             display: flex; align-items: center; justify-content: center;
         }
-        .energy-bg { position: absolute; inset: 0; z-index: 0; }
+        .energy-bg { position: absolute; inset: -10vh 0 -10vh 0; z-index: 0; }
         .energy-card {
             position: relative; z-index: 5;
             width: min(480px, 90vw); padding: 48px;
@@ -879,18 +892,18 @@
 
         /* ═══════════════════════════════════════════
            OPENING CINEMATIC — VIB3CODE Text Mask
-           800vh pinned, canvas sucked into text,
+           1200vh pinned, canvas sucked into text,
            lattice parallax layers, text fade
            ═══════════════════════════════════════════ */
         .opening {
-            position: relative; min-height: 800vh;
+            position: relative; min-height: 1200vh;
         }
         .opening-pinned {
             height: 100vh; width: 100%; position: relative;
             overflow: hidden; background: var(--bg);
         }
         .opening-canvas-wrap {
-            position: absolute; inset: 0; z-index: 1;
+            position: absolute; inset: -10vh 0; z-index: 1;
         }
         /* SVG text mask overlay: dark bg with VIB3CODE letter cutouts */
         .opening-overlay {
@@ -1248,6 +1261,18 @@
             .triptych-canvas-wrap {
                 height: 100vh;
                 height: 100lvh;
+            }
+
+            /* Canvas bleed: lvh fallback for mobile */
+            .opening-canvas-wrap {
+                inset: -10vh 0 !important;
+                inset: -10lvh 0 !important;
+            }
+            .morph-pinned > .canvas-wrap {
+                height: 120vh !important;
+                height: 120lvh !important;
+                margin-top: -10vh;
+                margin-top: -10lvh;
             }
 
             /* ── Playground — fill viewport, no dead space ── */

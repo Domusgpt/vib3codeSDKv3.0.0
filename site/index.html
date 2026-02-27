@@ -16,7 +16,8 @@
       var scripts = [
         'https://unpkg.com/lenis@1.1.13/dist/lenis.min.js',
         'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js',
-        'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js'
+        'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollToPlugin.min.js'
       ];
       var loaded = 0;
       var timer = setTimeout(function() { resolve(false); }, 5000);
@@ -45,6 +46,7 @@
     </svg>
 
     <div class="mouse-glow-overlay" id="mouseGlow" aria-hidden="true"></div>
+    <div class="intro-gate" id="introGate" aria-hidden="true"></div>
     <div class="scroll-progress" id="scrollProgress"></div>
 
     <!-- ── Crescendo / Silence fullscreen overlays ── -->
@@ -58,7 +60,7 @@
     </div>
 
     <!-- ═══════════════════════════════════════════════════
-         OPENING CINEMATIC — 800vh Scroll-Locked
+         OPENING CINEMATIC — 1200vh Scroll-Locked
          VIB3CODE text mask over GPU canvas, lattice parallax,
          text fade + lattice lock transition to hero
          GPU: 1 context (Quantum), released when hero enters
@@ -156,7 +158,7 @@
     </div>
 
     <!-- ═══════════════════════════════════════════════════
-         SECTION 2: MORPH EXPERIENCE — 1200vh Scroll-Locked
+         SECTION 2: MORPH EXPERIENCE — 2000vh Scroll-Locked
          6-stage morphing with system swaps, parameter coordination
          Density drops as elements expand; speed/chaos follow GSAP events
          ═══════════════════════════════════════════════════ -->
@@ -655,9 +657,9 @@
          ENGINE BOOT + GPU CONTEXT POOL + GSAP CHOREOGRAPHY
 
          GPU CONTEXT BUDGET (see DOCS/SCROLL_TIMELINE_v3.md):
-           Opening ......... 1 (Quantum)
+           Opening (1200vh). 1 (Quantum)
            Hero ............ 1 (Quantum)
-           Morph ........... 1 (swaps Q → H → F)
+           Morph (2000vh)... 1 (swaps Q → H → F)
            Playground ...... 1 (Q/H/F, user-controlled)
            Triptych ........ 3 (Q + H + F split-screen)
            Cascade ......... 2 (Q + H dual GPU background)
