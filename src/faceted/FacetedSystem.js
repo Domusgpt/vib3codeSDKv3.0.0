@@ -82,7 +82,8 @@ const FRAGMENT_SHADER_GLSL = `
     // ── 4D → 3D Projection ──
 
     vec3 project4Dto3D(vec4 p) {
-        float w = 2.5 / (2.5 + p.w);
+        float d = u_dimension;
+        float w = d / (d + p.w);
         return vec3(p.x * w, p.y * w, p.z * w);
     }
 
@@ -263,9 +264,9 @@ const FRAGMENT_SHADER_GLSL = `
         // Apply polytope core warp (types 8-23)
         vec3 warpedPoint = applyCoreWarp(basePoint, u_geometry, u_mouse - 0.5);
 
-        // Evaluate lattice geometry
-        vec4 warpedPos = vec4(warpedPoint, pos.w);
-        float value = geometryFunction(warpedPos);
+        // Evaluate lattice geometry with audio modulation
+        vec4 warpedPos = vec4(warpedPoint * audioDensityMod, pos.w);
+        float value = geometryFunction(warpedPos) * audioMorphMod;
 
         // Chaos noise
         float noise = sin(pos.x * 7.0) * cos(pos.y * 11.0) * sin(pos.z * 13.0);
@@ -375,7 +376,8 @@ fn rotateZW_w(theta: f32) -> mat4x4<f32> {
 }
 
 fn project4Dto3D_w(p: vec4<f32>) -> vec3<f32> {
-    let w = 2.5 / (2.5 + p.w);
+    let d = u.dimension;
+    let w = d / (d + p.w);
     return vec3<f32>(p.x * w, p.y * w, p.z * w);
 }
 
@@ -494,8 +496,11 @@ fn main(input: VertexOutput) -> @location(0) vec4<f32> {
 
     let basePoint = project4Dto3D_w(pos);
     let warpedPoint = applyCoreWarp_w(basePoint, u.geometry, vec2<f32>(0.0, 0.0));
-    let warpedPos = vec4<f32>(warpedPoint, pos.w);
-    var value = geometryFunction_w(warpedPos);
+    // Audio-reactive density and morph (matches GLSL)
+    let audioDensityMod_w = 1.0 + u.bass * 0.3;
+    let audioMorphMod_w = 1.0 + u.mid * 0.2;
+    let warpedPos = vec4<f32>(warpedPoint * audioDensityMod_w, pos.w);
+    var value = geometryFunction_w(warpedPos) * audioMorphMod_w;
 
     let noise = sin(pos.x * 7.0) * cos(pos.y * 11.0) * sin(pos.z * 13.0);
     value += noise * u.chaos;

@@ -2,8 +2,8 @@
  * VIB3+ Landing Page — Boot Script v3
  *
  * Section order:
- *   Opening (800vh) → Hero → Morph (1200vh) → Playground → Triptych →
- *   Cascade → Energy → Agent → CTA
+ *   Opening (1200vh) → Hero → Morph (2000vh) → Playground → Triptych →
+ *   Cascade (500vh) → Energy (350vh) → Agent → CTA
  *
  * Systems:
  *   1. ContextPool manages GPU context budget (max 3 concurrent)
@@ -45,12 +45,15 @@ import {
 } from './choreography.js';
 import { initOverlayChoreography } from './overlay-choreography.js';
 import { initRevealChoreography } from './reveal-choreography.js';
+import { AccentSystem } from '../../src/accent/AccentSystem.js';
 
 // ─── State ────────────────────────────────────────────────────
 
 const pool = new ContextPool(3);
 const c2d = new Map();
 let tiltSystem = null;
+let _lenis = null;
+const accentSystem = new AccentSystem();
 
 // ─── Playground GPU State ─────────────────────────────────────
 
@@ -301,6 +304,20 @@ function initPlaygroundScrollTrigger() {
     onEnterBack: acquirePlayground,
     onLeaveBack: releasePlayground,
   });
+
+  // "Try Making Your Own" CTA — fades in approaching playground
+  const ctaEl = document.getElementById('playgroundCTA');
+  if (ctaEl) {
+    ScrollTrigger.create({
+      trigger: '#playgroundSection',
+      start: 'top 95%',
+      end: 'top 40%',
+      onEnter: () => ctaEl.classList.add('visible'),
+      onLeave: () => ctaEl.classList.remove('visible'),
+      onEnterBack: () => ctaEl.classList.add('visible'),
+      onLeaveBack: () => ctaEl.classList.remove('visible'),
+    });
+  }
 }
 
 // ─── Global Mouse/Touch Reactivity ─────────────────────────────
@@ -364,8 +381,18 @@ function feedMouseToRenderers() {
 
 // ─── Render Loop (AmbientLattice + mouse reactivity) ──
 
+// Priority order for accent system: playground (user-controlled) → hero → morph → opening
+const _accentKeys = ['playground', 'hero', 'opening', 'triCenter', 'energyBg', 'agent', 'ctaL'];
+
 function renderLoop(ts) {
   feedMouseToRenderers();
+  // AccentSystem: find the best active adapter and derive CSS vars
+  let activeAdapter = null;
+  for (const key of _accentKeys) {
+    activeAdapter = pool.get(key);
+    if (activeAdapter) break;
+  }
+  accentSystem.update(activeAdapter, ts);
   for (const inst of c2d.values()) inst.render(ts);
   requestAnimationFrame(renderLoop);
 }
@@ -426,16 +453,26 @@ if (window.__cdnReady) {
   window.__cdnReady.then(() => {
     if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
       gsap.registerPlugin(ScrollTrigger);
+      if (typeof ScrollToPlugin !== 'undefined') gsap.registerPlugin(ScrollToPlugin);
     } else {
       console.warn('GSAP not loaded — scroll choreography disabled');
+      document.documentElement.classList.remove('scroll-locked');
       return;
     }
 
-    // Lenis smooth scroll
-    if (typeof Lenis !== 'undefined') {
-      const lenis = new Lenis();
-      lenis.on('scroll', ScrollTrigger.update);
-      gsap.ticker.add((time) => lenis.raf(time * 1000));
+    // Prevent ScrollTrigger from recalculating pins when the mobile toolbar
+    // shows/hides (which changes viewport height and causes pin jitter).
+    // Safe on desktop — has no effect when toolbar doesn't exist.
+    ScrollTrigger.config({ ignoreMobileResize: true });
+
+    // Lenis smooth scroll — desktop only.
+    // On touch devices, native scroll is already smooth and Lenis's scroll
+    // interpolation desyncs with ScrollTrigger pin calculations.
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (!isTouchDevice && typeof Lenis !== 'undefined') {
+      _lenis = new Lenis({ lerp: 0.1 });
+      _lenis.on('scroll', ScrollTrigger.update);
+      gsap.ticker.add((time) => _lenis.raf(time * 1000));
       gsap.ticker.lagSmoothing(0);
     }
 
@@ -446,14 +483,21 @@ if (window.__cdnReady) {
     }
     initPlaygroundScrollTrigger();
 
-    // Full scroll choreography
+    // Unlock scroll BEFORE creating pins so GSAP sees the correct
+    // unrestricted layout (full scroll range, natural element heights).
+    // JS is single-threaded — no user scroll events fire between
+    // classList.remove() and the pin creation calls below.
+    document.documentElement.classList.remove('scroll-locked');
+    window.scrollTo(0, 0);
+
+    // Full scroll choreography (pins measured with correct layout)
     initOpening(pool, createHero);
     initScrollProgress();
     initHero(pool);
-    initMorph(pool, createHero);
+    initMorph(pool, createHero, _lenis);
     initTriptych(pool);
-    initCascade(pool, c2d);
-    initEnergy(pool);
+    initCascade(pool, c2d, _lenis);
+    initEnergy(pool, _lenis);
     initAgent(pool);
     initCTA(pool);
     initSectionReveals();
@@ -465,6 +509,22 @@ if (window.__cdnReady) {
     initSpeedCrescendo(pool);
     initOverlayChoreography(pool);
     initRevealChoreography();
+
+    // ── Intro Gate: block scroll for 2.5s while opening cinematic establishes ──
+    // Mouse reactivity still works (pointer-events: none on gate div).
+    // Blocks wheel and touch scroll events only.
+    const introGate = document.getElementById('introGate');
+    if (introGate) {
+      const preventScroll = (e) => e.preventDefault();
+      window.addEventListener('wheel', preventScroll, { passive: false });
+      window.addEventListener('touchmove', preventScroll, { passive: false });
+      window.scrollTo(0, 0);
+      setTimeout(() => {
+        window.removeEventListener('wheel', preventScroll);
+        window.removeEventListener('touchmove', preventScroll);
+        introGate.remove();
+      }, 2500);
+    }
 
     // Energy card tilt adapter lifecycle
     ScrollTrigger.create({
@@ -479,4 +539,5 @@ if (window.__cdnReady) {
   });
 } else {
   console.warn('CDN loader not available — scroll choreography disabled');
+  document.documentElement.classList.remove('scroll-locked');
 }

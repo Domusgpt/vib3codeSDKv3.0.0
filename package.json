@@ -198,6 +198,13 @@
     "./reactivity/config": {
       "import": "./src/reactivity/ReactivityConfig.js"
     },
+    "./accent": {
+      "types": "./types/accent.d.ts",
+      "import": "./src/accent/index.js"
+    },
+    "./accent/css": {
+      "import": "./src/accent/accent.css"
+    },
     "./creative": {
       "import": "./src/creative/index.js"
     },
@@ -278,6 +285,33 @@
     },
     "./math/constants": {
       "import": "./src/math/constants.js"
+    },
+    "./premium": {
+      "import": "./src/premium/index.js"
+    },
+    "./premium/shader-surface": {
+      "import": "./src/premium/ShaderParameterSurface.js"
+    },
+    "./premium/rotation-lock": {
+      "import": "./src/premium/RotationLockSystem.js"
+    },
+    "./premium/layer-geometry": {
+      "import": "./src/premium/LayerGeometryMixer.js"
+    },
+    "./premium/events": {
+      "import": "./src/premium/VisualEventSystem.js"
+    },
+    "./premium/css-bridge": {
+      "import": "./src/premium/CSSBridge.js"
+    },
+    "./premium/choreography": {
+      "import": "./src/premium/ChoreographyExtensions.js"
+    },
+    "./premium/framework-sync": {
+      "import": "./src/premium/FrameworkSync.js"
+    },
+    "./premium/mcp": {
+      "import": "./src/premium/mcp/PremiumMCPServer.js"
     }
   },
   "keywords": [

@@ -68,12 +68,21 @@ export class VIB3Engine {
     }
 
     /**
-     * Initialize the VIB3+ engine
+     * Initialize the VIB3+ engine.
+     *
+     * AGENT NOTE — Quick Start:
+     *   1. HTML: <div id="vib3-container" style="position:relative; width:100vw; height:100vh;"></div>
+     *   2. JS:   const engine = new VIB3Engine({ system: 'quantum' });
+     *            const ok = await engine.initialize('vib3-container');
+     *            if (!ok) { /* check console — CanvasManager logs the exact problem */ }
+     *
+     * @param {string} [containerId='vib3-container'] - ID of the container div
+     * @returns {Promise<boolean>} true if visualization is rendering, false with console errors if not
      */
     async initialize(containerId = 'vib3-container') {
         console.log('Initializing VIB3+ Engine');
 
-        // Create CanvasManager
+        // Create CanvasManager (validates container positioning/size, auto-fixes if possible)
         try {
             this.canvasManager = new CanvasManager(containerId);
         } catch (error) {
@@ -86,6 +95,25 @@ export class VIB3Engine {
         if (!systemOk) {
             console.error(`VIB3+ Engine: Failed to create initial system "${this.currentSystemName}"`);
             return false;
+        }
+
+        // Verify at least one WebGL context was actually created
+        // (catches: invisible container, WebGL not supported, GPU blocklist, etc.)
+        const contextCount = this.canvasManager.registeredContexts.size;
+        const visualizerCount = this.activeSystem?.visualizers?.length ?? 0;
+        if (contextCount === 0 && visualizerCount === 0) {
+            console.error(
+                `VIB3+ Engine: System "${this.currentSystemName}" created but no WebGL contexts acquired.\n` +
+                'Possible causes:\n' +
+                '  - Container has zero dimensions (check CSS width/height)\n' +
+                '  - Browser does not support WebGL\n' +
+                '  - GPU is blocklisted or hardware acceleration is disabled\n' +
+                `Check that "#${containerId}" has non-zero size and position:relative.`
+            );
+            // Don't return false — some systems (e.g. faceted with bridge) may work without
+            // registered contexts. But the warning tells agents what went wrong.
+        } else if (this.debug) {
+            console.log(`VIB3+ Engine: ${contextCount} WebGL contexts, ${visualizerCount} visualizers active`);
         }
 
         // Sync base parameters to reactivity manager
@@ -283,11 +311,13 @@ export class VIB3Engine {
             console.warn('VIB3+ Engine [debug]: updateCurrentSystemParameters() called with no activeSystem');
         }
 
-        // Notify parameter change listeners
+        // Notify parameter change listeners with changed keys metadata
         if (this._parameterListeners && this._parameterListeners.size > 0) {
+            const meta = this._lastChangedKeys ? { changed: this._lastChangedKeys } : undefined;
             for (const listener of this._parameterListeners) {
-                try { listener(params); } catch (_) { /* listener error */ }
+                try { listener(params, meta); } catch (_) { /* listener error */ }
             }
+            this._lastChangedKeys = null;
         }
     }
 
@@ -297,6 +327,7 @@ export class VIB3Engine {
     setParameter(name, value) {
         this.parameters.setParameter(name, value);
         this.reactivity.setBaseParameter(name, value);
+        this._lastChangedKeys = [name];
         this.updateCurrentSystemParameters();
     }
 
@@ -306,6 +337,7 @@ export class VIB3Engine {
     setParameters(params) {
         this.parameters.setParameters(params);
         this.reactivity.setBaseParameters(params);
+        this._lastChangedKeys = Object.keys(params);
         this.updateCurrentSystemParameters();
     }
 
@@ -672,8 +704,8 @@ export class VIB3Engine {
 
     /**
      * Register a listener for parameter changes.
-     * Callback receives the full parameter object after each change.
-     * @param {(params: object) => void} callback
+     * Callback receives the full parameter object and a meta object with changed keys.
+     * @param {(params: object, meta?: { changed: string[] }) => void} callback
      * @returns {() => void} Unsubscribe function
      */
     onParameterChange(callback) {
@@ -682,6 +714,36 @@ export class VIB3Engine {
         }
         this._parameterListeners.add(callback);
         return () => this._parameterListeners.delete(callback);
+    }
+
+    // ========================================================================
+    // Plugin System
+    // ========================================================================
+
+    /**
+     * Register a plugin that extends engine functionality.
+     * Plugins must implement attach(engine) and optionally destroy().
+     * @param {object} plugin - Plugin with attach(engine) method
+     * @returns {void}
+     */
+    registerPlugin(plugin) {
+        if (!this._plugins) {
+            this._plugins = [];
+        }
+        if (typeof plugin.attach === 'function') {
+            plugin.attach(this);
+            this._plugins.push(plugin);
+        } else {
+            console.warn('VIB3Engine: plugin must implement attach(engine)');
+        }
+    }
+
+    /**
+     * Get all registered plugins.
+     * @returns {object[]}
+     */
+    getPlugins() {
+        return this._plugins ? [...this._plugins] : [];
     }
 
     /**
@@ -696,6 +758,16 @@ export class VIB3Engine {
         }
 
         this.vitality.stop();
+
+        // Destroy plugins
+        if (this._plugins) {
+            for (const plugin of this._plugins) {
+                if (typeof plugin.destroy === 'function') {
+                    try { plugin.destroy(); } catch (_) { /* plugin cleanup error */ }
+                }
+            }
+            this._plugins = [];
+        }
 
         // Stop and destroy spatial input
         if (this.spatialInput) {

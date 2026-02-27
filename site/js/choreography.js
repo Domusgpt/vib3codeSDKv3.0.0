@@ -2,8 +2,8 @@
  * GSAP Scroll Choreography — v3: Depth Illusion Engine
  *
  * Architecture:
- *   Opening (800vh) → Hero → Morph (1200vh) → Playground → Triptych →
- *   Cascade → Energy → Agent → CTA
+ *   Opening (1200vh) → Hero → Morph (2000vh) → Playground → Triptych →
+ *   Cascade (500vh) → Energy (350vh) → Agent → CTA
  *
  * NEW in v3:
  *   - Depth Illusion Engine: density-as-distance, faux shadows, push-pull
@@ -23,11 +23,53 @@ const morphFactories = [QuantumAdapter, HolographicAdapter, FacetedAdapter];
 let morphCurrent = -1;
 let morphSwapLock = false;
 let morphLastStage = -1;
+const _autoInterludes = { stage4Fired: false, stage2Fired: false };
 
 // ─── Core Math Helpers ───────────────────────────────────────
 function smoothstep(p) { return p * p * (3 - 2 * p); }
 function lerp(a, b, t) { return a + (b - a) * t; }
 function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+
+/**
+ * Dead-zone remapping for dwell/hold at stage boundaries.
+ * 0.00 → holdStart: returns 0 (hold at previous stage)
+ * holdStart → holdEnd: returns 0→1 (compressed interpolation)
+ * holdEnd → 1.00: returns 1 (hold at next stage)
+ */
+function applyDeadZone(localP, holdStart = 0.15, holdEnd = 0.85) {
+  if (localP <= holdStart) return 0;
+  if (localP >= holdEnd) return 1;
+  return (localP - holdStart) / (holdEnd - holdStart);
+}
+
+// ─── Section Transition Covers ──────────────────────────────
+// Colored glow overlays that bridge outgoing/incoming sections.
+// Uses the visualizer's current hue to create a radial gradient
+// that blends over the seam — never a black fade.
+function createSectionCover(pinnedId) {
+  const pinned = document.getElementById(pinnedId);
+  if (!pinned) return null;
+  const cover = document.createElement('div');
+  cover.style.cssText = 'position:absolute;inset:0;z-index:100;opacity:0;pointer-events:none;will-change:opacity;';
+  pinned.appendChild(cover);
+  return cover;
+}
+function updateSectionCover(cover, progress, entryEnd, exitStart, hue) {
+  if (!cover) return;
+  const h = hue || 220;
+  let opacity = 0;
+  if (progress < entryEnd) {
+    opacity = 1 - smoothstep(progress / entryEnd);
+  } else if (progress > exitStart) {
+    opacity = smoothstep((progress - exitStart) / (1 - exitStart));
+  }
+  if (opacity > 0.001) {
+    cover.style.opacity = opacity;
+    cover.style.background = `radial-gradient(ellipse at 50% 50%, hsla(${h},80%,35%,0.75) 0%, hsla(${h},60%,18%,0.88) 55%, hsla(${h},40%,8%,0.95) 100%)`;
+  } else {
+    cover.style.opacity = 0;
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  DEPTH ILLUSION ENGINE
@@ -292,6 +334,7 @@ export function initOpening(pool, createHero) {
   const lattice2 = document.getElementById('lattice2');
   const lattice3 = document.getElementById('lattice3');
   const openingSub = document.querySelector('.opening-sub span');
+  const openingCover = createSectionCover('openingPinned');
 
   ScrollTrigger.create({
     trigger: '#openingSection',
@@ -314,6 +357,7 @@ export function initOpening(pool, createHero) {
     },
     onUpdate: (self) => {
       const p = self.progress;
+      updateSectionCover(openingCover, p, 0.04, 0.92, 220 + p * 100);
       const adapter = pool.get('opening');
 
       // ── DEPTH TUNNEL: density-driven approach/retreat through phases ──
@@ -581,41 +625,57 @@ export function initHero(pool) {
   });
 }
 
-// ─── MORPH EXPERIENCE (1200vh) ──────────────────────────────
+// ─── MORPH EXPERIENCE (2000vh) ──────────────────────────────
 // 6 stages: Emergence → Dimensional Shift → Three Voices →
 //           Convergence → Spectral Rupture → Resolution
 
-export function initMorph(pool, createHero) {
+export function initMorph(pool, createHero, lenis) {
   const morphCard = document.getElementById('morphCard');
   const morphGlow = document.getElementById('morphGlow');
   const morphVoices = document.querySelectorAll('.morph-voice');
   const morphFill = document.getElementById('morphProgressFill');
+  const morphCover = createSectionCover('morphPinned');
   const NUM_STAGES = morphStages.length;
 
   ScrollTrigger.create({
     trigger: '#morphSection', start: 'top top', end: 'bottom bottom',
     pin: '#morphPinned', scrub: 0.6,
+    snap: {
+      snapTo: [0, 1/6, 2/6, 3/6, 4/6, 5/6, 1.0],
+      duration: { min: 0.8, max: 2 },
+      delay: 0.1,
+      ease: 'power2.inOut',
+    },
     onEnter: () => {
       pool.release('hero');
       pool.release('opening');
       createMorphSystem(pool, 0);
       updateMorphUI(0);
+      _autoInterludes.stage4Fired = false;
+      _autoInterludes.stage2Fired = false;
+      try { if (lenis) lenis.options.lerp = 0.04; } catch (_) {}
     },
     onLeave: () => {
       pool.release('morph');
       morphCurrent = -1;
+      try { if (lenis) lenis.options.lerp = 0.1; } catch (_) {}
     },
     onEnterBack: () => {
       createMorphSystem(pool, 2);
       updateMorphUI(5);
+      _autoInterludes.stage4Fired = false;
+      _autoInterludes.stage2Fired = false;
+      try { if (lenis) lenis.options.lerp = 0.04; } catch (_) {}
     },
     onLeaveBack: () => {
       pool.release('morph');
       morphCurrent = -1;
+      try { if (lenis) lenis.options.lerp = 0.1; } catch (_) {}
       createHero();
     },
     onUpdate: (self) => {
       const p = self.progress;
+      // Cover call deferred to after params.hue is computed (below)
 
       // ── Progress bar ──
       if (morphFill) morphFill.style.width = `${p * 100}%`;
@@ -635,8 +695,10 @@ export function initMorph(pool, createHero) {
       }
 
       // ── Interpolate parameters between current and next stage ──
+      // Dead zones: first 15% and last 15% of each stage hold steady
+      const remappedP = applyDeadZone(localP, 0.15, 0.85);
       const nextIdx = Math.min(stageIdx + 1, NUM_STAGES - 1);
-      const params = interpolateStages(morphStages[stageIdx], morphStages[nextIdx], localP);
+      const params = interpolateStages(morphStages[stageIdx], morphStages[nextIdx], remappedP);
 
       // ── Additional organic motion: sine modulation on top of interpolation ──
       const wave = Math.sin(p * Math.PI * 8);
@@ -645,6 +707,8 @@ export function initMorph(pool, createHero) {
       params.gridDensity += pulse * 4;
       params.rot4dXW += Math.sin(p * Math.PI * 3) * 0.3;
       params.intensity += pulse * 0.05;
+
+      updateSectionCover(morphCover, p, 0.03, 0.95, params.hue);
 
       // ── Apply to adapter ──
       const adapter = pool.get('morph');
@@ -666,7 +730,7 @@ export function initMorph(pool, createHero) {
 
         if (stageIdx === 0) {
           // Emergence: circle appears
-          const s = smoothstep(localP);
+          const s = smoothstep(remappedP);
           gsap.set(morphCard, {
             width: lerp(80, 120, s),
             height: lerp(80, 120, s),
@@ -677,7 +741,7 @@ export function initMorph(pool, createHero) {
           morphCard.classList.toggle('glowing', localP > 0.3);
         } else if (stageIdx === 1) {
           // Dimensional Shift: circle → rounded rect
-          const s = smoothstep(localP);
+          const s = smoothstep(remappedP);
           gsap.set(morphCard, {
             width: lerp(120, 340, s),
             height: lerp(120, 220, s),
@@ -686,14 +750,14 @@ export function initMorph(pool, createHero) {
             x: '-50%', y: '-50%',
           });
           morphCard.classList.add('glowing');
-          updateDepthShadow(morphShadow, smoothstep(localP) * 0.5);
+          updateDepthShadow(morphShadow, smoothstep(remappedP) * 0.5);
         } else if (stageIdx === 2) {
           // Three Voices: card holds, voice labels appear
           gsap.set(morphCard, {
             width: 340, height: 220, borderRadius: '24px',
             scale: 1, x: '-50%', y: '-50%',
           });
-          // Animate voice labels in
+          // Animate voice labels in (uses raw localP for timing triggers)
           morphVoices.forEach((v, i) => {
             const delay = i * 0.08;
             const show = localP > 0.15 + delay;
@@ -706,7 +770,7 @@ export function initMorph(pool, createHero) {
           });
         } else if (stageIdx === 3) {
           // Convergence: card grows, voice labels hide
-          const s = smoothstep(localP);
+          const s = smoothstep(remappedP);
           gsap.set(morphCard, {
             width: lerp(340, 500, s),
             height: lerp(220, 350, s),
@@ -721,7 +785,7 @@ export function initMorph(pool, createHero) {
           });
         } else if (stageIdx === 4) {
           // Spectral Rupture: card expands massively
-          const s = smoothstep(localP);
+          const s = smoothstep(remappedP);
           const cardW = lerp(500, window.innerWidth * 0.85, s);
           const cardH = lerp(350, window.innerHeight * 0.75, s);
           gsap.set(morphCard, {
@@ -741,7 +805,7 @@ export function initMorph(pool, createHero) {
           updateDepthShadow(morphShadow, 0.5 + s * 0.5);
         } else {
           // Resolution: card shrinks back to medium
-          const s = smoothstep(localP);
+          const s = smoothstep(remappedP);
           gsap.set(morphCard, {
             width: lerp(window.innerWidth * 0.85, 380, s),
             height: lerp(window.innerHeight * 0.75, 240, s),
@@ -751,6 +815,41 @@ export function initMorph(pool, createHero) {
           morphCard.classList.toggle('glowing', localP < 0.7);
           // Density recovers as card shrinks
           if (adapter) adapter.setParam('gridDensity', params.gridDensity * lerp(0.3, 1, s));
+        }
+      }
+
+      // ── Auto-interlude at "gasp" moments ──
+      // Stage 4 (Spectral Rupture): auto-scroll through the most dramatic portion
+      if (stageIdx === 4 && localP > 0.3 && localP < 0.4 && !_autoInterludes.stage4Fired && typeof ScrollToPlugin !== 'undefined') {
+        _autoInterludes.stage4Fired = true;
+        const morphSection = document.getElementById('morphSection');
+        if (morphSection) {
+          const targetProgress = (4 + 0.7) / NUM_STAGES;
+          const targetScroll = morphSection.offsetTop + morphSection.offsetHeight * targetProgress;
+          gsap.to(window, {
+            scrollTo: { y: targetScroll, autoKill: true },
+            duration: 3, ease: 'power1.inOut',
+            onComplete: () => {
+              setTimeout(() => { _autoInterludes.stage4Fired = false; }, 2000);
+            },
+          });
+        }
+      }
+
+      // Stage 2 (Three Voices): gentler auto-advance to let voices establish
+      if (stageIdx === 2 && localP > 0.2 && localP < 0.3 && !_autoInterludes.stage2Fired && typeof ScrollToPlugin !== 'undefined') {
+        _autoInterludes.stage2Fired = true;
+        const morphSection = document.getElementById('morphSection');
+        if (morphSection) {
+          const targetProgress = (2 + 0.65) / NUM_STAGES;
+          const targetScroll = morphSection.offsetTop + morphSection.offsetHeight * targetProgress;
+          gsap.to(window, {
+            scrollTo: { y: targetScroll, autoKill: true },
+            duration: 2, ease: 'power1.inOut',
+            onComplete: () => {
+              setTimeout(() => { _autoInterludes.stage2Fired = false; }, 2000);
+            },
+          });
         }
       }
     },
@@ -992,7 +1091,7 @@ export function initTriptych(pool) {
 // with distance-based falloff — every card participates, none are idle.
 // Shared rotation phase ties all cards to a common 4D rhythm.
 
-export function initCascade(pool, c2d) {
+export function initCascade(pool, c2d, lenis) {
   const cascadeCards = document.querySelectorAll('.cascade-card');
   const cascadeTrack = document.getElementById('cascadeTrack');
   const gpuLeftWrap = document.getElementById('cascadeGpuLeft');
@@ -1010,8 +1109,12 @@ export function initCascade(pool, c2d) {
         geometry: 4, hue: 320, gridDensity: 18, speed: 0.4,
         intensity: 0.5, chaos: 0.12, dimension: 3.6, morphFactor: 0.7, saturation: 0.8,
       });
+      try { if (lenis) lenis.options.lerp = 0.06; } catch (_) {}
     },
-    onLeave: () => { pool.release('casGpuL'); pool.release('casGpuR'); },
+    onLeave: () => {
+      pool.release('casGpuL'); pool.release('casGpuR');
+      try { if (lenis) lenis.options.lerp = 0.1; } catch (_) {}
+    },
     onEnterBack: () => {
       pool.acquire('casGpuL', 'cascade-gpu-left', QuantumAdapter, {
         geometry: 2, hue: 200, gridDensity: 20, speed: 0.5,
@@ -1021,8 +1124,12 @@ export function initCascade(pool, c2d) {
         geometry: 4, hue: 320, gridDensity: 18, speed: 0.4,
         intensity: 0.5, chaos: 0.12, dimension: 3.6, morphFactor: 0.7, saturation: 0.8,
       });
+      try { if (lenis) lenis.options.lerp = 0.06; } catch (_) {}
     },
-    onLeaveBack: () => { pool.release('casGpuL'); pool.release('casGpuR'); },
+    onLeaveBack: () => {
+      pool.release('casGpuL'); pool.release('casGpuR');
+      try { if (lenis) lenis.options.lerp = 0.1; } catch (_) {}
+    },
   });
 
   // ═══ 8-point polygon shapes for geometric morphing ═══
@@ -1100,14 +1207,15 @@ export function initCascade(pool, c2d) {
 
   if (cascadeTrack && cascadeCards.length > 0) {
     const N = cascadeCards.length;
+    const cascadeCover = createSectionCover('cascadePinned');
 
     ScrollTrigger.create({
       trigger: '#cascadeSection', start: 'top top', end: 'bottom bottom',
-      pin: '#cascadePinned', scrub: 0.5,
+      pin: '#cascadePinned',
+      scrub: 0.5,
       onUpdate: (self) => {
         const p = self.progress;
 
-        // Cards are 80vw wide, end-to-end (no gap)
         const vw = window.innerWidth / 100;
         const cardW = 80 * vw;
         const totalScroll = (N - 1) * cardW;
@@ -1115,6 +1223,7 @@ export function initCascade(pool, c2d) {
 
         const activeIdx = Math.min(Math.floor(p * N), N - 1);
         const activeHue = parseInt(cascadeCards[activeIdx].dataset.hue);
+        updateSectionCover(cascadeCover, p, 0.04, 0.93, activeHue);
         const localP = (p * N) - activeIdx;
         const pulse = Math.sin(localP * Math.PI);
 
@@ -1175,85 +1284,78 @@ export function initCascade(pool, c2d) {
           const phaseOffset = dist * Math.PI / 3;
           const isActive = (i === activeIdx);
 
-          // ═══ 3D TILT — NO SCALE EVER ═══
-          // Active card tilts toward face-on (flat). Neighbors fan outward.
-          let tiltY, tiltX, tiltZ;
-          if (isActive) {
-            // Face-on when fully active, slight tilt during transition
-            tiltY = (1 - pulse) * (localP < 0.5 ? -15 : 15);
-            tiltX = -pulse * 3;
-            tiltZ = (1 - pulse) * (localP < 0.5 ? -2 : 2);
-          } else {
-            // Fan outward: cards to left tilt right, cards to right tilt left
-            const dir = i < activeIdx ? 1 : -1;
-            const tiltStrength = Math.min(dist * 18, 50);
-            tiltY = dir * tiltStrength;
-            tiltX = dist * 3;
-            tiltZ = dir * dist * 1.5;
-          }
-
-          card.style.transform = `perspective(1200px) rotateY(${tiltY}deg) rotateX(${tiltX}deg) rotateZ(${tiltZ}deg)`;
-          card.style.zIndex = isActive ? '10' : `${Math.max(1, 7 - dist)}`;
-          card.style.opacity = isActive ? '1' : `${Math.max(0.35, 1 - dist * 0.13)}`;
-
-          // ═══ GEOMETRIC MORPHING via clip-path on canvas-wrap ═══
-          // Active: morph through shape sequence. Inactive: narrow window.
-          const wrap = card.querySelector('.canvas-wrap');
-          const overlay = card.querySelector('.cascade-overlay');
-          const frame = card.querySelector('.card-frame');
-          let clipVal;
-
-          if (isActive) {
-            // Cycle through 4 shape transitions based on localP (0→1)
-            const phase = localP * (shapeSeq.length - 1);
-            const segIdx = Math.min(Math.floor(phase), shapeSeq.length - 2);
-            const segT = phase - segIdx;
-            clipVal = lerpShape(shapeSeq[segIdx], shapeSeq[segIdx + 1], segT);
-          } else {
-            // Narrower window the further away — controls perceived size
-            const inset = Math.min(3 + dist * 6, 22);
-            const r = 14 + dist * 3;
-            clipVal = `inset(${inset}% ${inset * 0.6}% ${inset}% ${inset * 0.6}% round ${r}px)`;
-          }
-
-          if (wrap) wrap.style.clipPath = clipVal;
-          if (overlay) overlay.style.clipPath = clipVal;
-          if (frame) frame.style.clipPath = clipVal;
-
-          // ═══ FRACTAL ECHOES via filter: drop-shadow ═══
-          // Active card gets offset drop-shadows that follow the geometric clip-path.
-          // This creates the illusion of the card duplicating/fracturing outward.
-          if (isActive) {
-            const echoOff = 5 + pulse * 16;
-            const a1 = (0.18 + pulse * 0.14).toFixed(2);
-            const a2 = (0.10 + pulse * 0.08).toFixed(2);
-            const a3 = (0.05 + pulse * 0.04).toFixed(2);
-            card.style.filter = [
-              `drop-shadow(${echoOff}px ${echoOff * 0.8}px 0px hsla(${hue}, 70%, 50%, ${a1}))`,
-              `drop-shadow(${echoOff * 2.2}px ${echoOff * 1.2}px 1px hsla(${hue}, 65%, 45%, ${a2}))`,
-              `drop-shadow(${-echoOff * 0.8}px ${echoOff * 1.5}px 0px hsla(${hue}, 60%, 40%, ${a3}))`,
-              `drop-shadow(${echoOff * 1.4}px ${-echoOff * 0.6}px 0px hsla(${hue}, 60%, 40%, ${a3}))`,
-            ].join(' ');
-            card.classList.add('leaking');
-            // Frame glow
-            card.style.setProperty('--frame-glow-size', `${18 + pulse * 35}px`);
-            card.style.setProperty('--frame-glow-alpha', `${0.12 + pulse * 0.18}`);
-            card.style.setProperty('--frame-border', `1px solid rgba(255,255,255,${0.06 + pulse * 0.12})`);
-          } else {
-            // Neighbors: subtle single echo if close, none if far
-            if (ripple > 0.08) {
-              const rOff = 3 + ripple * 10;
-              card.style.filter = `drop-shadow(${rOff}px ${rOff * 0.6}px 0px hsla(${hue}, 60%, 45%, ${(ripple * 0.12).toFixed(2)}))`;
+          // ═══ 3D TILT + CLIP MORPHING + FRACTAL ECHOES ═══
+          {
+            // ── 3D TILT — NO SCALE EVER ──
+            let tiltY, tiltX, tiltZ;
+            if (isActive) {
+              tiltY = (1 - pulse) * (localP < 0.5 ? -15 : 15);
+              tiltX = -pulse * 3;
+              tiltZ = (1 - pulse) * (localP < 0.5 ? -2 : 2);
             } else {
-              card.style.filter = 'none';
+              const dir = i < activeIdx ? 1 : -1;
+              const tiltStrength = Math.min(dist * 18, 50);
+              tiltY = dir * tiltStrength;
+              tiltX = dist * 3;
+              tiltZ = dir * dist * 1.5;
             }
-            card.classList.toggle('leaking', ripple > 0.15);
-            card.style.setProperty('--frame-glow-size', '0px');
-            card.style.setProperty('--frame-glow-alpha', '0');
-            card.style.setProperty('--frame-border', `1px solid rgba(255,255,255,${0.03 + ripple * 0.04})`);
-          }
 
-          // ═══ VISUALIZATION PARAMETERS ═══
+            card.style.transform = `perspective(1200px) rotateY(${tiltY}deg) rotateX(${tiltX}deg) rotateZ(${tiltZ}deg)`;
+            card.style.zIndex = isActive ? '10' : `${Math.max(1, 7 - dist)}`;
+            card.style.opacity = isActive ? '1' : `${Math.max(0.35, 1 - dist * 0.13)}`;
+
+            // ── GEOMETRIC MORPHING via clip-path on canvas-wrap ──
+            const wrap = card.querySelector('.canvas-wrap');
+            const overlay = card.querySelector('.cascade-overlay');
+            const frame = card.querySelector('.card-frame');
+            let clipVal;
+
+            if (isActive) {
+              const phase = localP * (shapeSeq.length - 1);
+              const segIdx = Math.min(Math.floor(phase), shapeSeq.length - 2);
+              const segT = phase - segIdx;
+              clipVal = lerpShape(shapeSeq[segIdx], shapeSeq[segIdx + 1], segT);
+            } else {
+              const inset = Math.min(3 + dist * 6, 22);
+              const r = 14 + dist * 3;
+              clipVal = `inset(${inset}% ${inset * 0.6}% ${inset}% ${inset * 0.6}% round ${r}px)`;
+            }
+
+            if (wrap) wrap.style.clipPath = clipVal;
+            if (overlay) overlay.style.clipPath = clipVal;
+            if (frame) frame.style.clipPath = clipVal;
+
+            // ── FRACTAL ECHOES via filter: drop-shadow ──
+            if (isActive) {
+              const echoOff = 5 + pulse * 16;
+              const a1 = (0.18 + pulse * 0.14).toFixed(2);
+              const a2 = (0.10 + pulse * 0.08).toFixed(2);
+              const a3 = (0.05 + pulse * 0.04).toFixed(2);
+              card.style.filter = [
+                `drop-shadow(${echoOff}px ${echoOff * 0.8}px 0px hsla(${hue}, 70%, 50%, ${a1}))`,
+                `drop-shadow(${echoOff * 2.2}px ${echoOff * 1.2}px 1px hsla(${hue}, 65%, 45%, ${a2}))`,
+                `drop-shadow(${-echoOff * 0.8}px ${echoOff * 1.5}px 0px hsla(${hue}, 60%, 40%, ${a3}))`,
+                `drop-shadow(${echoOff * 1.4}px ${-echoOff * 0.6}px 0px hsla(${hue}, 60%, 40%, ${a3}))`,
+              ].join(' ');
+              card.classList.add('leaking');
+              card.style.setProperty('--frame-glow-size', `${18 + pulse * 35}px`);
+              card.style.setProperty('--frame-glow-alpha', `${0.12 + pulse * 0.18}`);
+              card.style.setProperty('--frame-border', `1px solid rgba(255,255,255,${0.06 + pulse * 0.12})`);
+            } else {
+              if (ripple > 0.08) {
+                const rOff = 3 + ripple * 10;
+                card.style.filter = `drop-shadow(${rOff}px ${rOff * 0.6}px 0px hsla(${hue}, 60%, 45%, ${(ripple * 0.12).toFixed(2)}))`;
+              } else {
+                card.style.filter = 'none';
+              }
+              card.classList.toggle('leaking', ripple > 0.15);
+              card.style.setProperty('--frame-glow-size', '0px');
+              card.style.setProperty('--frame-glow-alpha', '0');
+              card.style.setProperty('--frame-border', `1px solid rgba(255,255,255,${0.03 + ripple * 0.04})`);
+            }
+          } // end tilt/clip/echo
+
+          // ═══ VISUALIZATION PARAMETERS — runs on ALL screen sizes ═══
           // Active: low density (close/dramatic), high chaos/speed
           // Inactive: high density (receded/ambient), low chaos
           if (isActive) {
@@ -1293,7 +1395,7 @@ export function initCascade(pool, c2d) {
 
 // ─── ENERGY TRANSFER ────────────────────────────────────────
 
-export function initEnergy(pool) {
+export function initEnergy(pool, lenis) {
   const energyBgInitParams = {
     geometry: 6, hue: 270, gridDensity: 24, speed: 0.5,
     intensity: 0.6, chaos: 0.15, dimension: 3.4, morphFactor: 0.8, saturation: 0.9,
@@ -1305,22 +1407,32 @@ export function initEnergy(pool) {
     onEnter: () => {
       pool.acquire('energyBg', 'energy-bg-canvas', QuantumAdapter, energyBgInitParams);
       pool.acquire('energyCard', 'energy-card-canvas', FacetedAdapter, energyCardParams);
+      try { if (lenis) lenis.options.lerp = 0.06; } catch (_) {}
     },
-    onLeave: () => { pool.release('energyBg'); pool.release('energyCard'); },
+    onLeave: () => {
+      pool.release('energyBg'); pool.release('energyCard');
+      try { if (lenis) lenis.options.lerp = 0.1; } catch (_) {}
+    },
     onEnterBack: () => {
       pool.acquire('energyBg', 'energy-bg-canvas', QuantumAdapter, energyBgInitParams);
       pool.acquire('energyCard', 'energy-card-canvas', FacetedAdapter, energyCardParams);
+      try { if (lenis) lenis.options.lerp = 0.06; } catch (_) {}
     },
-    onLeaveBack: () => { pool.release('energyBg'); pool.release('energyCard'); },
+    onLeaveBack: () => {
+      pool.release('energyBg'); pool.release('energyCard');
+      try { if (lenis) lenis.options.lerp = 0.1; } catch (_) {}
+    },
   });
 
   // 7-Step Pinned 3D Card Timeline
   const energyCard = document.getElementById('energyCard');
+  const energyCover = createSectionCover('energyPinned');
   if (energyCard) {
     const pinnedTl = gsap.timeline({
       scrollTrigger: {
         trigger: '#energySection', start: 'top top', end: 'bottom bottom',
         pin: '#energyPinned', scrub: 0.5,
+        onUpdate: (self) => updateSectionCover(energyCover, self.progress, 0.04, 0.92, 270),
       },
     });
 
