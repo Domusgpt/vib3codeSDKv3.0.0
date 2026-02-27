@@ -95,11 +95,12 @@ export function generateHypersphereFibonacci(radius = 1, count = 200) {
  */
 export function generateHypersphereEdges(vertices, threshold = 0.5) {
     const edges = [];
+    const thresholdSq = threshold * threshold;
 
     for (let i = 0; i < vertices.length; i++) {
         for (let j = i + 1; j < vertices.length; j++) {
-            const dist = vertices[i].distanceTo(vertices[j]);
-            if (dist < threshold) {
+            const distSq = vertices[i].distanceToSquared(vertices[j]);
+            if (distSq < thresholdSq) {
                 edges.push([i, j]);
             }
         }
