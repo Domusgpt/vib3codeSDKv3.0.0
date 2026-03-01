@@ -417,28 +417,32 @@ export class Node4D {
      * @param {Vec4} localPoint
      * @returns {Vec4}
      */
-    localToWorld(localPoint) {
+    localToWorld(localPoint, target = null) {
         // Get local rotation/scale only (exclude translation)
         // by using the rotation rotor directly
-        const scaledPoint = new Vec4(
-            localPoint.x * this._scale.x,
-            localPoint.y * this._scale.y,
-            localPoint.z * this._scale.z,
-            localPoint.w * this._scale.w
-        );
+        const out = target || new Vec4();
 
-        // Apply rotation
-        const rotated = this._rotation.rotate(scaledPoint);
+        // ⚡ Bolt: Scale in place to avoid Vec4 allocation
+        out.x = localPoint.x * this._scale.x;
+        out.y = localPoint.y * this._scale.y;
+        out.z = localPoint.z * this._scale.z;
+        out.w = localPoint.w * this._scale.w;
 
-        // Add local position
-        const localResult = rotated.add(this._position);
+        // ⚡ Bolt: Apply rotation (Rotor4D.rotate supports target, and is aliasing-safe)
+        this._rotation.rotate(out, out);
 
-        // If has parent, transform through parent
+        // ⚡ Bolt: Add local position component-wise to avoid add() allocation
+        out.x += this._position.x;
+        out.y += this._position.y;
+        out.z += this._position.z;
+        out.w += this._position.w;
+
+        // If has parent, transform through parent (passing out as target)
         if (this._parent) {
-            return this._parent.localToWorld(localResult);
+            return this._parent.localToWorld(out, out);
         }
 
-        return localResult;
+        return out;
     }
 
     /**
