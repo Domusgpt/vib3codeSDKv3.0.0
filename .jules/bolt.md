@@ -1,4 +1,8 @@
 
+## 2026-03-04 - Rotor4D Slerp Allocation
+**Learning:** `Rotor4D.slerp` was allocating a new `Rotor4D` instance on every call, and potentially an extra intermediate `Rotor4D` instance when traversing the shortest path (negating a rotor). In high-frequency animation loops or particle systems, this creates substantial GC pressure. By refactoring the logic to handle negations inline and accepting an optional `out` parameter, we completely eliminated allocations in this hot path.
+**Action:** Always provide zero-allocation variants for interpolation functions (`slerp`, `lerp`), as they are frequently called inside render loops.
+
 ## 2026-02-14 - Matrix Multiplication Bottleneck
 **Learning:** The `Mat4x4.multiplyInPlace` method was deceptively inefficient, allocating a new `Mat4x4` instance and `Float32Array` on every call despite being labeled "in-place". This caused significant GC pressure in render loops.
 **Action:** When optimizing math libraries, always verify "in-place" methods are truly allocation-free. Unrolling 4x4 matrix multiplication loops in JS provides massive (~12x) speedups by avoiding loop overhead and enabling better JIT optimization.
