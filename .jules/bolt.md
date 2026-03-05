@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2026-06-12 - Recursive Transform Allocations
+**Learning:** Recursive hierarchy methods like `Node4D.localToWorld` were allocating multiple intermediate objects (vectors for scaling, translated results) per recursion step. In deep hierarchies, this compounded to create significant GC pressure.
+**Action:** Always provide `target` parameters in recursive math functions to allow a single allocated object to flow up or down the hierarchy. Furthermore, manually inline simple operations (like scaling and translation) using component-wise arithmetic (e.g. `out.x += this._position.x`) instead of allocating intermediate objects or calling methods like `add()`.
