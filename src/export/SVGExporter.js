@@ -355,13 +355,31 @@ function projectPoints(points, rotor, dimension, width, height) {
     const centerY = height / 2;
     const scale = Math.min(width, height) * 0.4;
 
-    // Reuse vectors to minimize allocation
+    // Pack points into a flat array for fast batch rotation
+    const numPoints = points.length;
+    const packedInput = new Float32Array(numPoints * 4);
+    for (let i = 0; i < numPoints; i++) {
+        const p = points[i];
+        const offset = i * 4;
+        packedInput[offset] = p.x;
+        packedInput[offset + 1] = p.y;
+        packedInput[offset + 2] = p.z;
+        packedInput[offset + 3] = p.w;
+    }
+
+    // Apply 4D rotation in batch
+    const packedRotated = rotor.rotateArray(packedInput);
+
+    // Project points
     const rotatedBuffer = new Vec4();
     const projectedBuffer = new Vec4();
 
-    for (const point of points) {
-        // Apply 4D rotation
-        rotor.rotate(point, rotatedBuffer);
+    for (let i = 0; i < numPoints; i++) {
+        const offset = i * 4;
+        rotatedBuffer.x = packedRotated[offset];
+        rotatedBuffer.y = packedRotated[offset + 1];
+        rotatedBuffer.z = packedRotated[offset + 2];
+        rotatedBuffer.w = packedRotated[offset + 3];
 
         // Project to 3D (perspective from W)
         rotatedBuffer.projectPerspective(dimension, projectedBuffer);
@@ -371,7 +389,7 @@ function projectPoints(points, rotor, dimension, width, height) {
         const y = centerY - projectedBuffer.y * scale; // Flip Y for SVG coordinates
         const depth = projectedBuffer.z; // Keep depth for styling
 
-        projected.push({ x, y, depth, original: point });
+        projected.push({ x, y, depth, original: points[i] });
     }
 
     return projected;
