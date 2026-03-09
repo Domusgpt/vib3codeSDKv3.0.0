@@ -70,6 +70,17 @@ export class Mat4x4 {
     }
 
     /**
+     * Read-only cached identity matrix
+     * @returns {Mat4x4}
+     */
+    static get IDENTITY() {
+        if (!this._IDENTITY) {
+            this._IDENTITY = new Mat4x4();
+        }
+        return this._IDENTITY;
+    }
+
+    /**
      * Create zero matrix
      * @returns {Mat4x4}
      */
@@ -547,7 +558,7 @@ export class Mat4x4 {
      * @returns {boolean}
      */
     isIdentity(epsilon = 1e-6) {
-        return this.equals(Mat4x4.identity(), epsilon);
+        return this.equals(Mat4x4.IDENTITY, epsilon);
     }
 
     /**

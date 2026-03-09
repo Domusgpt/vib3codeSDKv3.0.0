@@ -55,11 +55,26 @@ function runBenchmark() {
     const timeTargetTrans = end - start;
     console.log(`With Target: ${timeTargetTrans.toFixed(2)}ms`);
 
+    // 3. Benchmark isIdentity
+    console.log('\n--- isIdentity ---');
+    const mId = new Mat4x4();
+
+    // Test the performance of checking identity
+    start = performance.now();
+    for (let i = 0; i < ITERATIONS; i++) {
+        mId.isIdentity();
+    }
+    end = performance.now();
+    const timeIsIdentity = end - start;
+    console.log(`isIdentity: ${timeIsIdentity.toFixed(2)}ms`);
+
+
     return {
         timeAllocInv,
         timeTargetInv,
         timeAllocTrans,
-        timeTargetTrans
+        timeTargetTrans,
+        timeIsIdentity
     };
 }
 
