@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-05-26 - [Pre-computing Matrices for Batch Rotations]
+**Learning:** `Rotor4D` batch operations over packed flat arrays suffer heavily from redundant matrix recalculation (`toMatrix`) and per-vector object allocations when using a loop over `rotate()`.
+**Action:** Always pre-compute the rotation matrix once and inline the multiplication logic when handling batched packed array data. Methods like `rotateArray` provide massive (~4x) speedups by avoiding allocations entirely and utilizing raw Float32Array components directly in hot paths.

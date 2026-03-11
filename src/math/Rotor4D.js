@@ -559,6 +559,48 @@ export class Rotor4D {
     }
 
     /**
+     * Rotate a packed array of 4D vectors (x,y,z,w,x,y,z,w...)
+     * Pre-computes the rotation matrix once for better performance
+     *
+     * @param {Float32Array|number[]} input - Array of packed 4D vectors
+     * @param {Float32Array|number[]} [output=null] - Optional pre-allocated output array
+     * @returns {Float32Array|number[]} Rotated vectors
+     */
+    rotateArray(input, output = null) {
+        // Handle lengths not perfectly divisible by 4
+        const count = Math.floor(input.length / 4);
+        const result = output || new Float32Array(input.length);
+
+        // Pre-compute matrix once rather than per-vector
+        const m = this.toMatrix();
+
+        const m0 = m[0], m4 = m[4], m8 = m[8], m12 = m[12];
+        const m1 = m[1], m5 = m[5], m9 = m[9], m13 = m[13];
+        const m2 = m[2], m6 = m[6], m10= m[10],m14 = m[14];
+        const m3 = m[3], m7 = m[7], m11= m[11],m15 = m[15];
+
+        for (let i = 0; i < count; i++) {
+            const offset = i * 4;
+            const x = input[offset];
+            const y = input[offset + 1];
+            const z = input[offset + 2];
+            const w = input[offset + 3];
+
+            result[offset] = m0 * x + m4 * y + m8 * z + m12 * w;
+            result[offset + 1] = m1 * x + m5 * y + m9 * z + m13 * w;
+            result[offset + 2] = m2 * x + m6 * y + m10 * z + m14 * w;
+            result[offset + 3] = m3 * x + m7 * y + m11 * z + m15 * w;
+        }
+
+        // Copy over any remaining elements that don't make up a full 4D vector
+        for (let i = count * 4; i < input.length; i++) {
+            result[i] = input[i];
+        }
+
+        return result;
+    }
+
+    /**
      * Spherical linear interpolation between rotors
      * @param {Rotor4D} target - Target rotor
      * @param {number} t - Interpolation factor (0-1)
