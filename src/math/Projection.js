@@ -185,19 +185,52 @@ export class Projection {
     /**
      * Project array of Vec4s using stereographic projection
      * @param {Vec4[]} vectors
+     * @param {object|Array} [options] - Options or target array
+     * @param {Vec4[]} [target] - Optional target array to write results to
      * @returns {Vec4[]}
      */
-    static stereographicArray(vectors, options = {}) {
-        return vectors.map(v => Projection.stereographic(v, options));
+    static stereographicArray(vectors, options = {}, target = null) {
+        // Handle options overload (if target is passed as second argument)
+        if (Array.isArray(options)) {
+            target = options;
+            options = {};
+        }
+
+        const count = vectors.length;
+        const result = target || new Array(count);
+
+        for (let i = 0; i < count; i++) {
+            const out = result[i];
+            if (out) {
+                Projection.stereographic(vectors[i], options, out);
+            } else {
+                result[i] = Projection.stereographic(vectors[i], options);
+            }
+        }
+
+        return result;
     }
 
     /**
      * Project array of Vec4s using orthographic projection
      * @param {Vec4[]} vectors
+     * @param {Vec4[]} [target] - Optional target array to write results to
      * @returns {Vec4[]}
      */
-    static orthographicArray(vectors) {
-        return vectors.map(v => Projection.orthographic(v));
+    static orthographicArray(vectors, target = null) {
+        const count = vectors.length;
+        const result = target || new Array(count);
+
+        for (let i = 0; i < count; i++) {
+            const out = result[i];
+            if (out) {
+                Projection.orthographic(vectors[i], out);
+            } else {
+                result[i] = Projection.orthographic(vectors[i]);
+            }
+        }
+
+        return result;
     }
 
     /**
