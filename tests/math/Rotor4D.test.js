@@ -189,6 +189,24 @@ describe('Rotor4D', () => {
             const result = r1.slerp(r2, 1);
             expect(result.equals(r2)).toBe(true);
         });
+
+        it('slerp uses out parameter', () => {
+            const r1 = Rotor4D.fromPlaneAngle('XY', 0);
+            const r2 = Rotor4D.fromPlaneAngle('XY', Math.PI);
+            const target = new Rotor4D();
+            const result = r1.slerp(r2, 0.5, target);
+            expect(result).toBe(target);
+            expect(result.norm()).toBeCloseTo(1);
+        });
+
+        it('slerp linear interpolation uses out parameter', () => {
+            const r1 = Rotor4D.fromPlaneAngle('XY', 0);
+            const r2 = Rotor4D.fromPlaneAngle('XY', 0.0001);
+            const target = new Rotor4D();
+            const result = r1.slerp(r2, 0.5, target);
+            expect(result).toBe(target);
+            expect(result.norm()).toBeCloseTo(1);
+        });
     });
 
     describe('numerical stability', () => {
