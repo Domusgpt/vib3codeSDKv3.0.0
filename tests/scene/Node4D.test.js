@@ -198,6 +198,29 @@ describe('Node4D', () => {
             expect(worldPoint.y).toBeCloseTo(21, 5);
             expect(worldPoint.z).toBeCloseTo(31, 5);
         });
+
+        it('supports optional target for zero-allocation localToWorld', () => {
+            node.setPosition(10, 20, 30, 0);
+            const target = new Vec4();
+            const worldPoint = node.localToWorld(new Vec4(1, 1, 1, 0), target);
+
+            expect(worldPoint).toBe(target); // Ensure the same instance is returned
+            expect(target.x).toBeCloseTo(11, 5);
+            expect(target.y).toBeCloseTo(21, 5);
+            expect(target.z).toBeCloseTo(31, 5);
+        });
+
+        it('supports optional target for zero-allocation worldToLocal', () => {
+            node.setPosition(10, 20, 30, 0);
+            const target = new Vec4();
+            // In Node4D matrix logic, w component must be 1 to apply translation
+            const localPoint = node.worldToLocal(new Vec4(11, 21, 31, 1), target);
+
+            expect(localPoint).toBe(target); // Ensure the same instance is returned
+            expect(target.x).toBeCloseTo(1, 5);
+            expect(target.y).toBeCloseTo(1, 5);
+            expect(target.z).toBeCloseTo(1, 5);
+        });
     });
 
     describe('tags', () => {
