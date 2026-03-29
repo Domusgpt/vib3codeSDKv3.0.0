@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-05-26 - [Zero-Allocation Spherical Interpolation]
+**Learning:** `Rotor4D.slerp` was allocating temporary `Rotor4D` instances when negating vectors for the shortest-path check (negative dot product) and creating a new return object even when the operation could be done in-place.
+**Action:** Extract components into local primitive variables (`bS`, `bXY`, etc.) to perform the negation logic inline without intermediate objects, and pass an optional `outTarget` parameter to support zero-allocation spherical interpolation.
