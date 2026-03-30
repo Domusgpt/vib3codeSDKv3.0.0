@@ -162,6 +162,81 @@ describe('Projection', () => {
             expect(projected[0].x).toBeCloseTo(0.5);
         });
 
+        it('reuses target array in perspectiveArray', () => {
+            const vectors = [
+                new Vec4(1, 0, 0, 0),
+                new Vec4(0, 1, 0, 0)
+            ];
+            const target = [new Vec4(), new Vec4()];
+            const projected = Projection.perspectiveArray(vectors, 2, {}, target);
+            expect(projected).toBe(target);
+            expect(projected[0]).toBe(target[0]);
+            expect(projected[0].x).toBeCloseTo(0.5);
+            expect(projected[1].y).toBeCloseTo(0.5);
+        });
+
+        it('projects array using stereographicArray', () => {
+            const vectors = [
+                new Vec4(1, 0, 0, 0),
+                new Vec4(0, 1, 0, 0)
+            ];
+            const projected = Projection.stereographicArray(vectors);
+            expect(projected.length).toBe(2);
+            expect(projected[0].x).toBeCloseTo(1);
+        });
+
+        it('reuses target array in stereographicArray', () => {
+            const vectors = [
+                new Vec4(1, 0, 0, 0),
+                new Vec4(0, 1, 0, 0)
+            ];
+            const target = [new Vec4(), new Vec4()];
+            const projected = Projection.stereographicArray(vectors, {}, target);
+            expect(projected).toBe(target);
+            expect(projected[0]).toBe(target[0]);
+            expect(projected[0].x).toBeCloseTo(1);
+            expect(projected[1].y).toBeCloseTo(1);
+        });
+
+        it('reuses target array in stereographicArray with array overload', () => {
+            const vectors = [
+                new Vec4(1, 0, 0, 0),
+                new Vec4(0, 1, 0, 0)
+            ];
+            const target = [new Vec4(), new Vec4()];
+            const projected = Projection.stereographicArray(vectors, target);
+            expect(projected).toBe(target);
+            expect(projected[0]).toBe(target[0]);
+            expect(projected[0].x).toBeCloseTo(1);
+            expect(projected[1].y).toBeCloseTo(1);
+        });
+
+        it('projects array using orthographicArray', () => {
+            const vectors = [
+                new Vec4(1, 0, 0, 100),
+                new Vec4(0, 1, 0, 100)
+            ];
+            const projected = Projection.orthographicArray(vectors);
+            expect(projected.length).toBe(2);
+            expect(projected[0].x).toBeCloseTo(1);
+            expect(projected[0].w).toBeCloseTo(0);
+        });
+
+        it('reuses target array in orthographicArray', () => {
+            const vectors = [
+                new Vec4(1, 0, 0, 100),
+                new Vec4(0, 1, 0, 100)
+            ];
+            const target = [new Vec4(), new Vec4()];
+            const projected = Projection.orthographicArray(vectors, target);
+            expect(projected).toBe(target);
+            expect(projected[0]).toBe(target[0]);
+            expect(projected[0].x).toBeCloseTo(1);
+            expect(projected[0].w).toBeCloseTo(0);
+            expect(projected[1].y).toBeCloseTo(1);
+            expect(projected[1].w).toBeCloseTo(0);
+        });
+
         it('projects packed float array', () => {
             const packed = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0]);
             const result = Projection.perspectivePacked(packed, 2);
