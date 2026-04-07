@@ -22,3 +22,6 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+## 2026-04-07 - Object Freezing in Math Libraries
+**Learning:** Returning a frozen `Object.freeze()` singleton from math operations (like `normalize()` or `fromEuler6()`) that are contractually expected to return mutable instances introduces subtle, breaking bugs.
+**Action:** When implementing cached static instances (e.g., `IDENTITY`) to avoid allocations, strictly limit their use to read-only comparisons (like `isIdentity()`). Methods that generate new math objects must continue to instantiate them so callers can safely mutate the result.

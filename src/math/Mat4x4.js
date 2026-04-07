@@ -70,6 +70,12 @@ export class Mat4x4 {
     }
 
     /**
+     * Cached identity matrix to avoid allocations
+     * @type {Mat4x4}
+     */
+    static IDENTITY = Object.freeze(new Mat4x4());
+
+    /**
      * Create zero matrix
      * @returns {Mat4x4}
      */
@@ -547,7 +553,7 @@ export class Mat4x4 {
      * @returns {boolean}
      */
     isIdentity(epsilon = 1e-6) {
-        return this.equals(Mat4x4.identity(), epsilon);
+        return this.equals(Mat4x4.IDENTITY, epsilon);
     }
 
     /**
