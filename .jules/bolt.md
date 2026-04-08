@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-05-26 - [Zero-Allocation in Scene Graph Transformations]
+**Learning:** The recursive `Node4D.localToWorld` method allocated 3 intermediate Vec4s per node in the hierarchy, causing exponential garbage creation for deep scenes. Adding an optional `target` parameter and component-wise addition (`out.x += this._position.x`) instead of `add` completely eliminated this GC pressure.
+**Action:** When implementing recursive hierarchical algorithms, always design them to thread a reusable target buffer down and up the call stack to avoid per-node allocations.
