@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2026-06-12 - Matrix Math Translation Aliasing
+**Learning:** `Mat4x4.multiplyVec4` relies on the `w` component being `1` to apply the translation component correctly. In tests using a target (e.g. `node.worldToLocal(new Vec4(11, 21, 31, 0), target)`), if `w` is `0`, translation is incorrectly skipped, causing false positive test failures even if the logic is correct.
+**Action:** Always ensure the input vector's `w` component is exactly `1` when verifying matrix translation applications, such as converting between local and world coordinates.

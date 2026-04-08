@@ -415,39 +415,44 @@ export class Node4D {
      * since W is a spatial dimension. We apply rotation/scale via the
      * rotation part of the matrix, then add world position separately.
      * @param {Vec4} localPoint
-     * @returns {Vec4}
+     * @param {Vec4} [target=null] - Optional target to prevent allocation
+     * @returns {Vec4} Transformed point
      */
-    localToWorld(localPoint) {
-        // Get local rotation/scale only (exclude translation)
-        // by using the rotation rotor directly
-        const scaledPoint = new Vec4(
-            localPoint.x * this._scale.x,
-            localPoint.y * this._scale.y,
-            localPoint.z * this._scale.z,
-            localPoint.w * this._scale.w
-        );
+    localToWorld(localPoint, target = null) {
+        const out = target || new Vec4();
 
-        // Apply rotation
-        const rotated = this._rotation.rotate(scaledPoint);
+        // 1. Scale
+        out.x = localPoint.x * this._scale.x;
+        out.y = localPoint.y * this._scale.y;
+        out.z = localPoint.z * this._scale.z;
+        out.w = localPoint.w * this._scale.w;
 
-        // Add local position
-        const localResult = rotated.add(this._position);
+        // 2. Rotate (in-place into out to prevent allocation)
+        // Rotor4D.rotate is aliasing-safe so we can use rotate(out, out)
+        this._rotation.rotate(out, out);
 
-        // If has parent, transform through parent
+        // 3. Translate
+        out.x += this._position.x;
+        out.y += this._position.y;
+        out.z += this._position.z;
+        out.w += this._position.w;
+
+        // 4. Transform through parent if exists
         if (this._parent) {
-            return this._parent.localToWorld(localResult);
+            return this._parent.localToWorld(out, out);
         }
 
-        return localResult;
+        return out;
     }
 
     /**
      * Transform a point from world to local space
      * @param {Vec4} worldPoint
-     * @returns {Vec4}
+     * @param {Vec4} [target=null] - Optional target to prevent allocation
+     * @returns {Vec4} Transformed point
      */
-    worldToLocal(worldPoint) {
-        return this.worldMatrix.inverse().multiplyVec4(worldPoint);
+    worldToLocal(worldPoint, target = null) {
+        return this.worldMatrix.inverse().multiplyVec4(worldPoint, target);
     }
 
     /**
