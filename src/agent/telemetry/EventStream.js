@@ -125,7 +125,7 @@ export class EventStreamServer extends EventEmitter {
      */
     broadcast(event, channel = 'default') {
         const envelope = {
-            id: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            id: `evt_${Date.now()}_${globalThis.crypto.randomUUID()}`,
             channel,
             timestamp: new Date().toISOString(),
             ...event
@@ -153,7 +153,7 @@ export class EventStreamServer extends EventEmitter {
         const connection = this.connections.get(connectionId);
         if (connection) {
             connection.send({
-                id: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                id: `evt_${Date.now()}_${globalThis.crypto.randomUUID()}`,
                 timestamp: new Date().toISOString(),
                 ...event
             });

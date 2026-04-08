@@ -54,15 +54,15 @@ export const SpanStatus = {
 };
 
 /**
- * Generate unique trace/span IDs
+ * Generate unique trace/span IDs using cryptographically secure randomness.
  */
 function generateId(length = 16) {
-    const chars = '0123456789abcdef';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-        result += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return result;
+    const bytes = new Uint8Array(Math.ceil(length / 2));
+    globalThis.crypto.getRandomValues(bytes);
+    return Array.from(bytes)
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('')
+        .slice(0, length);
 }
 
 /**

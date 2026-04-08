@@ -14,10 +14,11 @@ import { TransitionAnimator } from '../../creative/TransitionAnimator.js';
 import { PRESET_REGISTRY } from '../../render/LayerRelationshipGraph.js';
 
 /**
- * Generate unique IDs
+ * Generate unique IDs using cryptographically secure randomness.
+ * Prepend timestamp for sorting compatibility.
  */
 function generateId(prefix = 'scene') {
-    return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 9)}`;
+    return `${prefix}_${Date.now().toString(36)}_${globalThis.crypto.randomUUID()}`;
 }
 
 /**
