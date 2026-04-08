@@ -55,6 +55,12 @@ export class Rotor4D {
     }
 
     /**
+     * Cached identity rotor to avoid allocations
+     * @type {Rotor4D}
+     */
+    static IDENTITY = Object.freeze(new Rotor4D(1, 0, 0, 0, 0, 0, 0, 0));
+
+    /**
      * Create a copy of this rotor
      * @returns {Rotor4D}
      */
@@ -640,7 +646,7 @@ export class Rotor4D {
      * @returns {boolean}
      */
     isIdentity(epsilon = 1e-6) {
-        return this.equals(Rotor4D.identity(), epsilon);
+        return this.equals(Rotor4D.IDENTITY, epsilon);
     }
 
     /**
