@@ -25,6 +25,11 @@ export class Mat4x4 {
     static UNINITIALIZED = {};
 
     /**
+     * Cached identity matrix to prevent allocations
+     */
+    static IDENTITY = new Mat4x4();
+
+    /**
      * Create a new 4x4 matrix
      * Default is identity matrix
      * @param {Float32Array|number[]} [elements] - 16 elements in column-major order
@@ -547,7 +552,7 @@ export class Mat4x4 {
      * @returns {boolean}
      */
     isIdentity(epsilon = 1e-6) {
-        return this.equals(Mat4x4.identity(), epsilon);
+        return this.equals(Mat4x4.IDENTITY, epsilon);
     }
 
     /**

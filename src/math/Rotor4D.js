@@ -23,6 +23,11 @@ import { Vec4 } from './Vec4.js';
 
 export class Rotor4D {
     /**
+     * Cached identity rotor to prevent allocations
+     */
+    static IDENTITY = new Rotor4D();
+
+    /**
      * Create a new 4D rotor
      * Default is identity rotor (no rotation)
      *
@@ -640,7 +645,7 @@ export class Rotor4D {
      * @returns {boolean}
      */
     isIdentity(epsilon = 1e-6) {
-        return this.equals(Rotor4D.identity(), epsilon);
+        return this.equals(Rotor4D.IDENTITY, epsilon);
     }
 
     /**

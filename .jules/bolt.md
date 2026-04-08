@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2026-05-26 - Caching Identity Matrices
+**Learning:** Checking for equality against `Mat4x4.identity()` or `Rotor4D.identity()` is a massive source of Garbage Collection (GC) pauses because `identity()` instantiates a new object every time. While micro-benchmarks showed allocating was "fast", in long-running apps, GC pressure accumulated dramatically.
+**Action:** Always create a `static IDENTITY` property for commonly used math constants and update operations like `isIdentity()` to reference this cached object instead of spawning a new instance.
