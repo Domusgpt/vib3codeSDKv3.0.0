@@ -562,9 +562,10 @@ export class Rotor4D {
      * Spherical linear interpolation between rotors
      * @param {Rotor4D} target - Target rotor
      * @param {number} t - Interpolation factor (0-1)
-     * @returns {Rotor4D}
+     * @param {Rotor4D} [outTarget=null] - Optional target rotor to write into
+     * @returns {Rotor4D} Interpolated rotor
      */
-    slerp(target, t) {
+    slerp(target, t, outTarget = null) {
         // Compute the cosine of the angle between rotors
         let dot = this.s * target.s +
             this.xy * target.xy + this.xz * target.xz + this.yz * target.yz +
@@ -572,27 +573,28 @@ export class Rotor4D {
             this.xyzw * target.xyzw;
 
         // If dot is negative, negate one rotor to take shorter path
-        let b = target;
+        let bS = target.s, bXY = target.xy, bXZ = target.xz, bYZ = target.yz,
+            bXW = target.xw, bYW = target.yw, bZW = target.zw, bXYZW = target.xyzw;
+
         if (dot < 0) {
             dot = -dot;
-            b = new Rotor4D(
-                -target.s, -target.xy, -target.xz, -target.yz,
-                -target.xw, -target.yw, -target.zw, -target.xyzw
-            );
+            bS = -bS; bXY = -bXY; bXZ = -bXZ; bYZ = -bYZ;
+            bXW = -bXW; bYW = -bYW; bZW = -bZW; bXYZW = -bXYZW;
         }
+
+        const out = outTarget || new Rotor4D();
 
         // If rotors are very close, use linear interpolation
         if (dot > 0.9995) {
-            return new Rotor4D(
-                this.s + t * (b.s - this.s),
-                this.xy + t * (b.xy - this.xy),
-                this.xz + t * (b.xz - this.xz),
-                this.yz + t * (b.yz - this.yz),
-                this.xw + t * (b.xw - this.xw),
-                this.yw + t * (b.yw - this.yw),
-                this.zw + t * (b.zw - this.zw),
-                this.xyzw + t * (b.xyzw - this.xyzw)
-            ).normalizeInPlace();
+            out.s = this.s + t * (bS - this.s);
+            out.xy = this.xy + t * (bXY - this.xy);
+            out.xz = this.xz + t * (bXZ - this.xz);
+            out.yz = this.yz + t * (bYZ - this.yz);
+            out.xw = this.xw + t * (bXW - this.xw);
+            out.yw = this.yw + t * (bYW - this.yw);
+            out.zw = this.zw + t * (bZW - this.zw);
+            out.xyzw = this.xyzw + t * (bXYZW - this.xyzw);
+            return out.normalizeInPlace();
         }
 
         // Spherical interpolation
@@ -601,16 +603,16 @@ export class Rotor4D {
         const wa = Math.sin((1 - t) * theta) / sinTheta;
         const wb = Math.sin(t * theta) / sinTheta;
 
-        return new Rotor4D(
-            wa * this.s + wb * b.s,
-            wa * this.xy + wb * b.xy,
-            wa * this.xz + wb * b.xz,
-            wa * this.yz + wb * b.yz,
-            wa * this.xw + wb * b.xw,
-            wa * this.yw + wb * b.yw,
-            wa * this.zw + wb * b.zw,
-            wa * this.xyzw + wb * b.xyzw
-        );
+        out.s = wa * this.s + wb * bS;
+        out.xy = wa * this.xy + wb * bXY;
+        out.xz = wa * this.xz + wb * bXZ;
+        out.yz = wa * this.yz + wb * bYZ;
+        out.xw = wa * this.xw + wb * bXW;
+        out.yw = wa * this.yw + wb * bYW;
+        out.zw = wa * this.zw + wb * bZW;
+        out.xyzw = wa * this.xyzw + wb * bXYZW;
+
+        return out;
     }
 
     /**
