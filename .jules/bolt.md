@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2026-02-18 - [Hidden Allocations in Hot Checks]
+**Learning:** `Mat4x4.isIdentity()` was allocating a new matrix on every check because it called `Mat4x4.identity()`. This caused a hidden performance penalty for what is fundamentally a read-only comparison check that runs extremely frequently in transformation updates.
+**Action:** Always cache common read-only instances (like `Mat4x4.IDENTITY`) for use in equality checks or fallback assignments to prevent silent allocations during hot loops.
