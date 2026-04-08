@@ -417,28 +417,31 @@ export class Node4D {
      * @param {Vec4} localPoint
      * @returns {Vec4}
      */
-    localToWorld(localPoint) {
+    localToWorld(localPoint, target = null) {
+        const out = target || new Vec4();
+
         // Get local rotation/scale only (exclude translation)
         // by using the rotation rotor directly
-        const scaledPoint = new Vec4(
-            localPoint.x * this._scale.x,
-            localPoint.y * this._scale.y,
-            localPoint.z * this._scale.z,
-            localPoint.w * this._scale.w
-        );
+        out.x = localPoint.x * this._scale.x;
+        out.y = localPoint.y * this._scale.y;
+        out.z = localPoint.z * this._scale.z;
+        out.w = localPoint.w * this._scale.w;
 
-        // Apply rotation
-        const rotated = this._rotation.rotate(scaledPoint);
+        // Apply rotation in-place
+        this._rotation.rotate(out, out);
 
-        // Add local position
-        const localResult = rotated.add(this._position);
+        // Add local position component-wise
+        out.x += this._position.x;
+        out.y += this._position.y;
+        out.z += this._position.z;
+        out.w += this._position.w;
 
         // If has parent, transform through parent
         if (this._parent) {
-            return this._parent.localToWorld(localResult);
+            return this._parent.localToWorld(out, out);
         }
 
-        return localResult;
+        return out;
     }
 
     /**
@@ -446,8 +449,8 @@ export class Node4D {
      * @param {Vec4} worldPoint
      * @returns {Vec4}
      */
-    worldToLocal(worldPoint) {
-        return this.worldMatrix.inverse().multiplyVec4(worldPoint);
+    worldToLocal(worldPoint, target = null) {
+        return this.worldMatrix.inverse().multiplyVec4(worldPoint, target);
     }
 
     /**
