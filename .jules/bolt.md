@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-03-06 - Optimized Node4D local/world transformations
+**Learning:** In a heavily math-reliant codebase (like VIB3+ 4D rotations), methods like `localToWorld` and `worldToLocal` in hot scene graph paths (`Node4D`) can be huge bottlenecks if they allocate memory per vector operation. Vector `add` or matrix operations without a target allocate a new `Float32Array(4)` and wrapper object.
+**Action:** When working on transformations in `Node4D`, prefer in-place scalar arithmetic directly assigning `_x`, `_y`, `_z`, `_w` to avoid allocations. If you need to chain transformations down the tree, accept an optional `target` Vec4 and recursively pass it to methods that modify the instance in-place.
