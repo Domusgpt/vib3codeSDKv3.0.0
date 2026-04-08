@@ -222,19 +222,37 @@ export class CollectionManager {
      */
     getStatistics() {
         const collections = Array.from(this.collections.values());
-        const stats = {
-            totalCollections: collections.length,
-            totalVariations: collections.reduce((sum, c) => sum + c.variations.length, 0),
-            customCollections: collections.filter(c => c.name.includes('Custom')).length,
-            baseCollections: collections.filter(c => c.name.includes('Base')).length,
-            collections: collections.map(c => ({
+        let totalVariations = 0;
+        let customCollections = 0;
+        let baseCollections = 0;
+        const collectionList = new Array(collections.length);
+
+        for (let i = 0; i < collections.length; i++) {
+            const c = collections[i];
+            totalVariations += c.variations.length;
+
+            const name = c.name || '';
+            if (name.includes('Custom')) {
+                customCollections++;
+            }
+            if (name.includes('Base')) {
+                baseCollections++;
+            }
+
+            collectionList[i] = {
                 name: c.name,
                 filename: c.filename,
                 variationCount: c.variations.length,
                 created: c.created
-            }))
+            };
+        }
+
+        return {
+            totalCollections: collections.length,
+            totalVariations,
+            customCollections,
+            baseCollections,
+            collections: collectionList
         };
-        
-        return stats;
     }
 }
