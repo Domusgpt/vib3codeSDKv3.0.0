@@ -434,6 +434,91 @@ export class Rotor4D {
     }
 
     /**
+     * Rotate a flat array of packed 4D vectors (x,y,z,w, x,y,z,w, ...)
+     * Pre-calculates the rotation matrix once for optimal batch performance.
+     *
+     * @param {Float32Array|Array} input - Flat array of 4D components
+     * @param {Float32Array|Array} [output] - Optional target array
+     * @returns {Float32Array|Array} Rotated array (target if provided, otherwise new array)
+     */
+    rotateArray(input, output = null) {
+        const result = output || new Float32Array(input.length);
+        const count = Math.floor(input.length / 4);
+
+        // Fast path for identity
+        if (this.isIdentity()) {
+            if (input !== result) {
+                for (let i = 0; i < count * 4; i++) {
+                    result[i] = input[i];
+                }
+            }
+            return result;
+        }
+
+        // Pre-compute matrix entries once for the entire batch
+        const n = this.norm();
+        const invN = n > 1e-10 ? 1 / n : 1;
+
+        const s = this.s * invN;
+        const xy = this.xy * invN;
+        const xz = this.xz * invN;
+        const yz = this.yz * invN;
+        const xw = this.xw * invN;
+        const yw = this.yw * invN;
+        const zw = this.zw * invN;
+        const xyzw = this.xyzw * invN;
+
+        const s2 = s * s, xy2 = xy * xy, xz2 = xz * xz, yz2 = yz * yz;
+        const xw2 = xw * xw, yw2 = yw * yw, zw2 = zw * zw, xyzw2 = xyzw * xyzw;
+
+        const sxy = 2 * s * xy, sxz = 2 * s * xz, syz = 2 * s * yz;
+        const sxw = 2 * s * xw, syw = 2 * s * yw, szw = 2 * s * zw;
+
+        const xzyz = 2 * xz * yz, xyyz = 2 * xy * yz, xyxz = 2 * xy * xz;
+        const xyxw = 2 * xy * xw, xyyw = 2 * xy * yw, xzxw = 2 * xz * xw;
+        const xzyw = 2 * xz * yw, xzzw = 2 * xz * zw, yzxw = 2 * yz * xw;
+        const yzyw = 2 * yz * yw, yzzw = 2 * yz * zw, xwyw = 2 * xw * yw;
+        const xwzw = 2 * xw * zw, ywzw = 2 * yw * zw;
+
+        const xyxyzw = 2 * xy * xyzw, xzxyzw = 2 * xz * xyzw;
+        const yzxyzw = 2 * yz * xyzw, xwxyzw = 2 * xw * xyzw;
+        const ywxyzw = 2 * yw * xyzw, zwxyzw = 2 * zw * xyzw;
+
+        const m0  = s2 - xy2 - xz2 + yz2 - xw2 + yw2 + zw2 - xyzw2;
+        const m1  = sxy + xzyz + xwyw - zwxyzw;
+        const m2  = sxz - xyyz + xwzw + ywxyzw;
+        const m3  = sxw - xyyw - xzzw - yzxyzw;
+        const m4  = -sxy + xzyz + xwyw + zwxyzw;
+        const m5  = s2 - xy2 + xz2 - yz2 + xw2 - yw2 + zw2 - xyzw2;
+        const m6  = syz + xyxz + ywzw - xwxyzw;
+        const m7  = syw + xyxw - yzzw + xzxyzw;
+        const m8  = -sxz - xyyz + xwzw - ywxyzw;
+        const m9  = -syz + xyxz + ywzw + xwxyzw;
+        const m10 = s2 + xy2 - xz2 - yz2 + xw2 + yw2 - zw2 - xyzw2;
+        const m11 = szw + xzxw + yzyw - xyxyzw;
+        const m12 = -sxw - xyyw - xzzw + yzxyzw;
+        const m13 = -syw + xyxw - yzzw - xzxyzw;
+        const m14 = -szw + xzxw + yzyw + xyxyzw;
+        const m15 = s2 + xy2 + xz2 + yz2 - xw2 - yw2 - zw2 - xyzw2;
+
+        // Process all vectors with the pre-computed matrix
+        for (let i = 0; i < count; i++) {
+            const offset = i * 4;
+            const x = input[offset];
+            const y = input[offset + 1];
+            const z = input[offset + 2];
+            const w = input[offset + 3];
+
+            result[offset]     = m0 * x + m4 * y + m8  * z + m12 * w;
+            result[offset + 1] = m1 * x + m5 * y + m9  * z + m13 * w;
+            result[offset + 2] = m2 * x + m6 * y + m10 * z + m14 * w;
+            result[offset + 3] = m3 * x + m7 * y + m11 * z + m15 * w;
+        }
+
+        return result;
+    }
+
+    /**
      * Convert rotor to 4x4 rotation matrix (column-major for WebGL)
      * @param {Float32Array|Array} [target] - Optional target array to write into
      * @returns {Float32Array} 16-element array in column-major order
