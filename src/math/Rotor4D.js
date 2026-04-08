@@ -434,6 +434,114 @@ export class Rotor4D {
     }
 
     /**
+     * Rotate an array of 4D vectors (packed as x,y,z,w)
+     *
+     * Pre-computes the rotation matrix once and applies it to all vectors
+     * for high-performance batch processing.
+     *
+     * @param {Float32Array|Array} input - Packed input vectors [x,y,z,w, x,y,z,w, ...]
+     * @param {Float32Array|Array} [output] - Optional output buffer (can be same as input)
+     * @returns {Float32Array|Array} Rotated packed vectors
+     */
+    rotateArray(input, output = null) {
+        const result = output || new (input.constructor)(input.length);
+        const count = Math.floor(input.length / 4);
+
+        // Normalize first for numerical stability
+        const n = this.norm();
+        const invN = n > 1e-10 ? 1 / n : 1;
+
+        const s = this.s * invN;
+        const xy = this.xy * invN;
+        const xz = this.xz * invN;
+        const yz = this.yz * invN;
+        const xw = this.xw * invN;
+        const yw = this.yw * invN;
+        const zw = this.zw * invN;
+        const xyzw = this.xyzw * invN;
+
+        // Squared terms
+        const s2 = s * s;
+        const xy2 = xy * xy;
+        const xz2 = xz * xz;
+        const yz2 = yz * yz;
+        const xw2 = xw * xw;
+        const yw2 = yw * yw;
+        const zw2 = zw * zw;
+        const xyzw2 = xyzw * xyzw;
+
+        // Cross terms
+        const sxy = 2 * s * xy;
+        const sxz = 2 * s * xz;
+        const syz = 2 * s * yz;
+        const sxw = 2 * s * xw;
+        const syw = 2 * s * yw;
+        const szw = 2 * s * zw;
+
+        const xzyz = 2 * xz * yz;
+        const xyyz = 2 * xy * yz;
+        const xyxz = 2 * xy * xz;
+        const xyxw = 2 * xy * xw;
+        const xyyw = 2 * xy * yw;
+
+        const xzxw = 2 * xz * xw;
+        const xzyw = 2 * xz * yw;
+        const xzzw = 2 * xz * zw;
+
+        const yzxw = 2 * yz * xw;
+        const yzyw = 2 * yz * yw;
+        const yzzw = 2 * yz * zw;
+
+        const xwyw = 2 * xw * yw;
+        const xwzw = 2 * xw * zw;
+        const ywzw = 2 * yw * zw;
+
+        const xyxyzw = 2 * xy * xyzw;
+        const xzxyzw = 2 * xz * xyzw;
+        const yzxyzw = 2 * yz * xyzw;
+        const xwxyzw = 2 * xw * xyzw;
+        const ywxyzw = 2 * yw * xyzw;
+        const zwxyzw = 2 * zw * xyzw;
+
+        // Column-major 4x4 rotation matrix entries
+        // Column 0
+        const m0  = s2 - xy2 - xz2 + yz2 - xw2 + yw2 + zw2 - xyzw2;
+        const m1  = sxy + xzyz + xwyw - zwxyzw;
+        const m2  = sxz - xyyz + xwzw + ywxyzw;
+        const m3  = sxw - xyyw - xzzw - yzxyzw;
+        // Column 1
+        const m4  = -sxy + xzyz + xwyw + zwxyzw;
+        const m5  = s2 - xy2 + xz2 - yz2 + xw2 - yw2 + zw2 - xyzw2;
+        const m6  = syz + xyxz + ywzw - xwxyzw;
+        const m7  = syw + xyxw - yzzw + xzxyzw;
+        // Column 2
+        const m8  = -sxz - xyyz + xwzw - ywxyzw;
+        const m9  = -syz + xyxz + ywzw + xwxyzw;
+        const m10 = s2 + xy2 - xz2 - yz2 + xw2 + yw2 - zw2 - xyzw2;
+        const m11 = szw + xzxw + yzyw - xyxyzw;
+        // Column 3
+        const m12 = -sxw - xyyw - xzzw + yzxyzw;
+        const m13 = -syw + xyxw - yzzw - xzxyzw;
+        const m14 = -szw + xzxw + yzyw + xyxyzw;
+        const m15 = s2 + xy2 + xz2 + yz2 - xw2 - yw2 - zw2 - xyzw2;
+
+        for (let i = 0; i < count; i++) {
+            const idx = i * 4;
+            const x = input[idx];
+            const y = input[idx + 1];
+            const z = input[idx + 2];
+            const w = input[idx + 3];
+
+            result[idx]     = m0 * x + m4 * y + m8  * z + m12 * w;
+            result[idx + 1] = m1 * x + m5 * y + m9  * z + m13 * w;
+            result[idx + 2] = m2 * x + m6 * y + m10 * z + m14 * w;
+            result[idx + 3] = m3 * x + m7 * y + m11 * z + m15 * w;
+        }
+
+        return result;
+    }
+
+    /**
      * Convert rotor to 4x4 rotation matrix (column-major for WebGL)
      * @param {Float32Array|Array} [target] - Optional target array to write into
      * @returns {Float32Array} 16-element array in column-major order
