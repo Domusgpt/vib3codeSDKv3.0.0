@@ -329,7 +329,8 @@ mat4 rotateZW(float theta) {
 }
 
 vec3 project4Dto3D(vec4 p) {
-    float w = 2.5 / (2.5 + p.w);
+    float d = u_dimension;
+    float w = d / (d + p.w);
     return vec3(p.x * w, p.y * w, p.z * w);
 }
 

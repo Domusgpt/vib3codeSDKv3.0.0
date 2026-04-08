@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <!--
+      [WHY] viewport-fit=cover: extends rendering into safe area insets (notch, home bar).
+      user-scalable=no: prevents double-tap zoom conflicting with our tap-to-burst gesture.
+      The CSS handles safe areas with env(safe-area-inset-*) so content isn't clipped.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+    <!--
+      [WHY] PWA-capable: these let mobile browsers run the demo as a standalone app
+      (Add to Home Screen). black-translucent extends our canvas behind the iOS status bar.
+    -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <title>HYPERSTORM — VIB3+ Premium</title>
+    <link rel="stylesheet" href="hyperstorm.css">
+</head>
+<body>
+    <!--
+      VIB3+ Canvas Container
+      ─────────────────────────────────────────────────────────
+      CanvasManager creates 5 absolutely-positioned <canvas> elements inside this div.
+      Requirements (all handled in hyperstorm.css, NOT inline):
+        1. position: relative (or fixed) — canvases are position:absolute children
+        2. Non-zero width and height — canvases inherit 100% of container size
+        3. overflow: hidden — prevents canvas bleed
+
+      [WHY] No inline styles: codex examples are reference implementations that agents
+      and developers copy. Inline styles teach bad habits and make the container
+      requirements invisible to anyone reading only the CSS. All layout lives in the
+      stylesheet where it's documented with [WHY] comments.
+    -->
+    <div id="vib3-container"></div>
+
+    <!--
+      HUD — Compact top bar with collapsible parameter readout.
+      [WHY] Collapsed by default on mobile to maximize viz real estate.
+      Desktop (768px+) shows it expanded via CSS media query.
+      All colors driven by CSS custom properties from CSSBridge / fallback.
+    -->
+    <div id="hud">
+        <div class="hud-top">
+            <span class="hud-title">HYPERSTORM</span>
+            <span class="hud-system" id="hud-system">QUANTUM</span>
+            <button class="hud-toggle" id="hud-toggle" aria-label="Toggle info panel">i</button>
+        </div>
+        <div class="hud-detail" id="hud-detail">
+            <div class="hud-row"><span class="rlabel">HUE</span><span class="rval" id="r-hue">&mdash;</span></div>
+            <div class="hud-row"><span class="rlabel">CHAOS</span><span class="rval" id="r-chaos">&mdash;</span></div>
+            <div class="hud-row"><span class="rlabel">SPEED</span><span class="rval" id="r-speed">&mdash;</span></div>
+            <div class="hud-row"><span class="rlabel">DIM</span><span class="rval" id="r-dim">&mdash;</span></div>
+            <div class="hud-row"><span class="rlabel">GEOM</span><span class="rval" id="r-geom">&mdash;</span></div>
+            <div class="hud-row"><span class="rlabel">PROJ</span><span class="rval" id="r-proj">&mdash;</span></div>
+            <div class="hud-row"><span class="rlabel">FLIGHT</span><span class="rval" id="r-flight">&mdash;</span></div>
+            <div class="hud-row"><span class="rlabel">TRIGGERS</span><span class="rval" id="r-triggers">0</span></div>
+            <!--
+              [WHY] Trigger dots: visual feedback for Gold Standard Mode 2 (Event Choreography).
+              Each dot lights up when its named trigger fires, giving immediate visual confirmation
+              that the event system is running — critical for debugging and demo clarity.
+            -->
+            <div class="trigger-dots">
+                <span class="tdot" id="t-chaos-burst" title="Chaos Burst"></span>
+                <span class="tdot" id="t-intensity-flash" title="Intensity Flash"></span>
+                <span class="tdot" id="t-dimension-dive" title="Dimension Dive"></span>
+                <span class="tdot" id="t-storm-peak" title="Storm Peak"></span>
+            </div>
+        </div>
+    </div>
+
+    <!--
+      Touch Control Dock — Bottom-anchored, horizontally scrollable.
+      [WHY] Fat-finger friendly: 60px min-width buttons with 56px height.
+      Phones are the primary device. Desktop users have keyboard fallback.
+      Each button maps to a Gold Standard named motion (burst, crystallize, etc.)
+      or a system-level action (switch, show).
+    -->
+    <div id="dock">
+        <button class="dock-btn" data-action="burst">
+            <span class="dock-icon">&#x1F4A5;</span>
+            <span class="dock-label">BURST</span>
+        </button>
+        <button class="dock-btn" data-action="crystallize">
+            <span class="dock-icon">&#x2744;</span>
+            <span class="dock-label">FREEZE</span>
+        </button>
+        <button class="dock-btn" data-action="portal">
+            <span class="dock-icon">&#x1F300;</span>
+            <span class="dock-label">PORTAL</span>
+        </button>
+        <button class="dock-btn" data-action="fly">
+            <span class="dock-icon">&#x1F680;</span>
+            <span class="dock-label">FLY</span>
+        </button>
+        <button class="dock-btn" data-action="dimzoom">
+            <span class="dock-icon">&#x1F52D;</span>
+            <span class="dock-label">ZOOM</span>
+        </button>
+        <button class="dock-btn" data-action="storm">
+            <span class="dock-icon">&#x26A1;</span>
+            <span class="dock-label">STORM</span>
+        </button>
+        <button class="dock-btn" data-action="system">
+            <span class="dock-icon">&#x1F504;</span>
+            <span class="dock-label">SWITCH</span>
+        </button>
+        <button class="dock-btn" data-action="choreo">
+            <span class="dock-icon">&#x1F3AC;</span>
+            <span class="dock-label">SHOW</span>
+        </button>
+    </div>
+
+    <!--
+      Gesture Hint — First-load educational overlay.
+      [WHY] Auto-dismisses after 4s OR on first touch (whichever comes first).
+      pointer-events:none so it doesn't block the canvas underneath.
+    -->
+    <div id="gesture-hint">
+        <div>tap = burst &nbsp; hold = freeze &nbsp; swipe = switch</div>
+        <div>two-finger = portal &nbsp; pinch = zoom</div>
+    </div>
+
+    <!--
+      Error overlay — Hidden by default, shown by JS when init fails.
+      [WHY] Exists because agents testing on headless browsers or misconfigured
+      containers need immediate visible feedback, not just console errors.
+      All styling in hyperstorm.css — no inline styles.
+    -->
+    <div id="error-overlay"></div>
+
+    <script type="module" src="hyperstorm.js"></script>
+</body>
+</html>

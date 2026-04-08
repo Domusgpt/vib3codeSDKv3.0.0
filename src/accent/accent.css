@@ -1,0 +1,250 @@
+/**
+ * VIB3+ Accent System — CSS Utility Classes
+ *
+ * Every class consumes CSS custom properties set by AccentSystem.js.
+ * Zero hardcoded colors — all derived from the active visualization's
+ * parameter space via color theory relationships.
+ *
+ * Classes:
+ *   .vib3-glass          Adaptive glass panel (complement relationship)
+ *   .vib3-glass--light   Subtle glass variant (glass-depth: 0.25)
+ *   .vib3-glass--heavy   Opaque glass variant (glass-depth: 0.8)
+ *   .vib3-glass--desat   Desaturated backdrop variant
+ *   .vib3-text           Complement-colored text (harmonic relationship)
+ *   .vib3-text--bright   White text with complement glow
+ *   .vib3-text--muted    Soft complement text, no glow
+ *   .vib3-heading        Heading with complement shimmer (harmonic + reactive)
+ *   .vib3-badge          Pill badge with energy border (reactive)
+ *   .vib3-divider        Energy-line section divider
+ */
+
+/* ═══════════════════════════════════════════════════════════════
+   DEFAULTS — sane values before AccentSystem.js initializes
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --accent-hue: 200;
+  --accent-complement: 20;
+  --accent-split-warm: 350;
+  --accent-split-cool: 50;
+  --accent-analogous-a: 260;
+  --accent-analogous-b: 140;
+  --accent-harmonic: 337.5;
+  --accent-saturation: 0.7;
+
+  --glass-depth: 0.52;
+  --glass-blur: 16px;
+  --glass-tint: 20;
+
+  --energy-intensity: 0.1;
+  --energy-hue: 20;
+  --energy-pulse: 2s;
+
+  --depth-shadow: 16px;
+  --depth-shadow-alpha: 0.3;
+  --depth-radius: 16px;
+  --depth-lift: 1px;
+
+  --rhythm-duration: 0.6s;
+  --rhythm-ease: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   .vib3-glass — Adaptive glass panel (complement relationship)
+   Bright viz → darker glass. Chaotic viz → softer blur.
+   Border glow tracks 4D rotation energy.
+   ═══════════════════════════════════════════════════════════════ */
+.vib3-glass {
+  background: hsla(var(--glass-tint), 15%, 8%, var(--glass-depth));
+  backdrop-filter: blur(var(--glass-blur)) saturate(0.7);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(0.7);
+  border: 1px solid hsla(var(--accent-complement), 40%, 50%, var(--energy-intensity));
+  border-radius: var(--depth-radius);
+  box-shadow:
+    0 var(--depth-lift) var(--depth-shadow) rgba(0, 0, 0, var(--depth-shadow-alpha)),
+    inset 0 1px 0 hsla(var(--accent-complement), 30%, 60%, calc(var(--energy-intensity) * 0.5));
+  transition: all var(--rhythm-duration) var(--rhythm-ease);
+  position: relative;
+}
+
+/* Top-edge energy accent line */
+.vib3-glass::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 10%; right: 10%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsla(var(--accent-split-cool), 50%, 50%, var(--energy-intensity)),
+    hsla(var(--accent-complement), 60%, 55%, calc(var(--energy-intensity) * 1.5)),
+    hsla(var(--accent-split-warm), 50%, 50%, var(--energy-intensity)),
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* Variant: subtle glass */
+.vib3-glass--light {
+  --glass-depth: 0.25;
+}
+
+/* Variant: opaque glass for critical text */
+.vib3-glass--heavy {
+  --glass-depth: 0.8;
+}
+
+/* Variant: desaturated backdrop (greys out viz behind) */
+.vib3-glass--desat {
+  backdrop-filter: blur(var(--glass-blur)) saturate(0.3) brightness(0.6);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(0.3) brightness(0.6);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   .vib3-text — Complement-colored text (harmonic relationship)
+   Color derived from viz hue complement. Glow tracks energy.
+   ═══════════════════════════════════════════════════════════════ */
+.vib3-text {
+  color: hsl(var(--accent-complement), calc(var(--accent-saturation) * 40% + 10%), 78%);
+  text-shadow: 0 0 20px hsla(var(--accent-complement), 50%, 50%, calc(var(--energy-intensity) * 2));
+  transition: color var(--rhythm-duration) var(--rhythm-ease),
+              text-shadow var(--rhythm-duration) var(--rhythm-ease);
+}
+
+/* Variant: bright — white text with complement glow halo */
+.vib3-text--bright {
+  color: #fff;
+  text-shadow:
+    0 0 20px hsla(var(--accent-complement), 60%, 50%, calc(var(--energy-intensity) * 3)),
+    0 2px 8px rgba(0, 0, 0, 0.4);
+  transition: text-shadow var(--rhythm-duration) var(--rhythm-ease);
+}
+
+/* Variant: muted — soft complement, no glow */
+.vib3-text--muted {
+  color: hsl(var(--accent-complement), calc(var(--accent-saturation) * 20% + 5%), 65%);
+  text-shadow: none;
+  transition: color var(--rhythm-duration) var(--rhythm-ease);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   .vib3-heading — Complement shimmer heading (harmonic + reactive)
+   Gradient text cycles through complement → split-warm → white.
+   Shimmer speed responds to 4D rotation energy.
+   ═══════════════════════════════════════════════════════════════ */
+.vib3-heading {
+  color: #fff; /* fallback for browsers without background-clip */
+  text-shadow:
+    0 2px 20px hsla(var(--accent-complement), 60%, 40%, 0.5),
+    0 0 60px hsla(var(--accent-hue), 50%, 50%, calc(var(--energy-intensity) * 0.6));
+  background: linear-gradient(
+    135deg,
+    #fff 0%,
+    hsl(var(--accent-complement), 60%, 65%) 40%,
+    hsl(var(--accent-split-warm), 50%, 60%) 70%,
+    #fff 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: vib3-heading-shimmer calc(var(--energy-pulse) * 2) linear infinite;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   .vib3-badge — Pill badge with energy border (reactive)
+   Border pulses with 4D rotation energy.
+   ═══════════════════════════════════════════════════════════════ */
+.vib3-badge {
+  display: inline-block;
+  background: hsla(var(--accent-complement), 30%, 15%, 0.6);
+  border: 1px solid hsla(var(--energy-hue), 50%, 50%, calc(0.15 + var(--energy-intensity)));
+  color: hsl(var(--accent-complement), 50%, 72%);
+  border-radius: 100px;
+  padding: 4px 14px;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  animation: vib3-badge-pulse var(--energy-pulse) ease-in-out infinite;
+  transition: background var(--rhythm-duration) var(--rhythm-ease),
+              color var(--rhythm-duration) var(--rhythm-ease);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   .vib3-divider — Energy-line section divider
+   Gradient from split-cool → complement → split-warm.
+   Intensity tracks energy layer.
+   ═══════════════════════════════════════════════════════════════ */
+.vib3-divider {
+  height: 1px;
+  border: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsla(var(--accent-split-cool), 50%, 50%, var(--energy-intensity)),
+    hsla(var(--accent-complement), 60%, 50%, calc(var(--energy-intensity) * 1.5)),
+    hsla(var(--accent-split-warm), 50%, 50%, var(--energy-intensity)),
+    transparent
+  );
+  margin: 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   KEYFRAMES — all speeds derived from --energy-pulse
+   ═══════════════════════════════════════════════════════════════ */
+
+@keyframes vib3-heading-shimmer {
+  to { background-position: 200% center; }
+}
+
+@keyframes vib3-badge-pulse {
+  0%, 100% {
+    border-color: hsla(var(--energy-hue), 50%, 50%, calc(0.1 + var(--energy-intensity)));
+  }
+  50% {
+    border-color: hsla(var(--energy-hue), 60%, 60%, calc(0.2 + var(--energy-intensity) * 1.5));
+  }
+}
+
+@keyframes vib3-glass-breath {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.95; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   PLAYGROUND CTA — scroll-triggered call-to-action
+   ═══════════════════════════════════════════════════════════════ */
+.playground-cta {
+  text-align: center;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+  pointer-events: none;
+  margin-bottom: 24px;
+}
+.playground-cta.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.playground-cta span {
+  font-size: 15px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.playground-cta svg {
+  display: block;
+  margin: 8px auto 0;
+  animation: vib3-cta-bounce 2s ease-in-out infinite;
+}
+@keyframes vib3-cta-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(12px); }
+}
