@@ -151,7 +151,7 @@ describe('Projection', () => {
     });
 
     describe('array operations', () => {
-        it('projects array of vectors', () => {
+        it('projects array of vectors (perspective)', () => {
             const vectors = [
                 new Vec4(1, 0, 0, 0),
                 new Vec4(0, 1, 0, 0),
@@ -160,6 +160,46 @@ describe('Projection', () => {
             const projected = Projection.perspectiveArray(vectors, 2);
             expect(projected.length).toBe(3);
             expect(projected[0].x).toBeCloseTo(0.5);
+        });
+
+        it('projects array of vectors with target array (stereographic)', () => {
+            const vectors = [
+                new Vec4(1, 0, 0, 0),
+                new Vec4(0, 1, 0, 0),
+                new Vec4(0, 0, 1, 0)
+            ];
+            const target = [new Vec4(), new Vec4(), new Vec4()];
+            const projected = Projection.stereographicArray(vectors, {}, target);
+            expect(projected).toBe(target);
+            expect(projected.length).toBe(3);
+            expect(projected[0].x).toBeCloseTo(1);
+            expect(projected[1].y).toBeCloseTo(1);
+            expect(projected[2].z).toBeCloseTo(1);
+        });
+
+        it('projects array of vectors with target array using overload (stereographic)', () => {
+            const vectors = [
+                new Vec4(1, 0, 0, 0)
+            ];
+            const target = [new Vec4()];
+            const projected = Projection.stereographicArray(vectors, target);
+            expect(projected).toBe(target);
+            expect(projected[0].x).toBeCloseTo(1);
+        });
+
+        it('projects array of vectors with target array (orthographic)', () => {
+            const vectors = [
+                new Vec4(1, 2, 3, 4),
+                new Vec4(5, 6, 7, 8)
+            ];
+            const target = [new Vec4(), new Vec4()];
+            const projected = Projection.orthographicArray(vectors, target);
+            expect(projected).toBe(target);
+            expect(projected.length).toBe(2);
+            expect(projected[0].x).toBe(1);
+            expect(projected[0].y).toBe(2);
+            expect(projected[0].z).toBe(3);
+            expect(projected[0].w).toBe(0);
         });
 
         it('projects packed float array', () => {
