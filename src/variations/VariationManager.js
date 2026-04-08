@@ -417,7 +417,12 @@ export class VariationManager {
      * Get variation statistics
      */
     getStatistics() {
-        const customCount = this.customVariations.filter(v => v !== null).length;
+        let customCount = 0;
+        for (let i = 0; i < this.customVariations.length; i++) {
+            if (this.customVariations[i] !== null) {
+                customCount++;
+            }
+        }
         
         return {
             totalVariations: this.totalVariations,

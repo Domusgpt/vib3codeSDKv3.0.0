@@ -36,16 +36,28 @@ export class Projection {
      *
      * @param {Vec4} v - 4D point
      * @param {number} d - Distance parameter (typically 1.5-5)
+     * @param {object} [options] - Projection options
+     * @param {Vec4} [target] - Optional target vector to write result to
      * @returns {Vec4} Projected point (w=0)
      */
-    static perspective(v, d = 2, options = {}) {
+    static perspective(v, d = 2, options = {}, target = null) {
         if (typeof d === 'object') {
             options = d;
             d = options.d ?? 2;
         }
-        const epsilon = options.epsilon ?? DEFAULT_EPSILON;
+
+        // Handle options overload or direct target argument
+        if (!target && options && options.target) {
+            target = options.target;
+        }
+
+        const epsilon = (options && options.epsilon) ?? DEFAULT_EPSILON;
         const denom = clampDenominator(d - v.w, epsilon);
         const scale = 1 / denom;
+
+        if (target) {
+            return target.set(v.x * scale, v.y * scale, v.z * scale, 0);
+        }
         return new Vec4(v.x * scale, v.y * scale, v.z * scale, 0);
     }
 
@@ -60,12 +72,23 @@ export class Projection {
      * The projection point is at (0, 0, 0, 1) - the "north pole"
      *
      * @param {Vec4} v - 4D point (ideally on unit hypersphere)
+     * @param {object|Vec4} [options] - Projection options or target vector
+     * @param {Vec4} [target] - Optional target vector to write result to
      * @returns {Vec4} Projected point (w=0)
      */
-    static stereographic(v, options = {}) {
-        const epsilon = options.epsilon ?? DEFAULT_EPSILON;
+    static stereographic(v, options = {}, target = null) {
+        if (options instanceof Vec4) {
+            target = options;
+            options = {};
+        }
+
+        const epsilon = (options && options.epsilon) ?? DEFAULT_EPSILON;
         const denom = clampDenominator(1 - v.w, epsilon);
         const scale = 1 / denom;
+
+        if (target) {
+            return target.set(v.x * scale, v.y * scale, v.z * scale, 0);
+        }
         return new Vec4(v.x * scale, v.y * scale, v.z * scale, 0);
     }
 
@@ -95,9 +118,13 @@ export class Projection {
      * Parallel projection - no perspective distortion.
      *
      * @param {Vec4} v - 4D point
+     * @param {Vec4} [target] - Optional target vector to write result to
      * @returns {Vec4} Projected point (w=0)
      */
-    static orthographic(v) {
+    static orthographic(v, target = null) {
+        if (target) {
+            return target.set(v.x, v.y, v.z, 0);
+        }
         return new Vec4(v.x, v.y, v.z, 0);
     }
 
@@ -126,10 +153,33 @@ export class Projection {
      * Project array of Vec4s using perspective projection
      * @param {Vec4[]} vectors
      * @param {number} d
+     * @param {object} [options]
+     * @param {Vec4[]} [target] - Optional target array to write results to
      * @returns {Vec4[]}
      */
-    static perspectiveArray(vectors, d = 2, options = {}) {
-        return vectors.map(v => Projection.perspective(v, d, options));
+    static perspectiveArray(vectors, d = 2, options = {}, target = null) {
+        // Handle options overload for 'd'
+        if (typeof d === 'object') {
+             options = d;
+             d = options.d ?? 2;
+        }
+
+        if (!target) {
+            return vectors.map(v => Projection.perspective(v, d, options));
+        }
+
+        const count = vectors.length;
+        // Iterate and reuse
+        for (let i = 0; i < count; i++) {
+            const out = target[i];
+            if (out) {
+                Projection.perspective(vectors[i], d, options, out);
+            } else {
+                target[i] = Projection.perspective(vectors[i], d, options);
+            }
+        }
+
+        return target;
     }
 
     /**
