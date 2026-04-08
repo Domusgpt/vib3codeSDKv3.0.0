@@ -85,6 +85,22 @@ describe('Projection', () => {
             // Should still be perpendicular in 3D (dot product ≈ 0)
             expect(p1.x * p2.x + p1.y * p2.y + p1.z * p2.z).toBeCloseTo(0);
         });
+
+        it('supports optional target vector', () => {
+            const v = new Vec4(1, 0, 0, 0);
+            const target = new Vec4();
+            const result = Projection.stereographic(v, {}, target);
+            expect(result).toBe(target);
+            expect(result.x).toBeCloseTo(1);
+        });
+
+        it('supports optional target vector with direct argument overload', () => {
+            const v = new Vec4(1, 0, 0, 0);
+            const target = new Vec4();
+            const result = Projection.stereographic(v, target);
+            expect(result).toBe(target);
+            expect(result.x).toBeCloseTo(1);
+        });
     });
 
     describe('stereographicInverse', () => {
@@ -113,6 +129,14 @@ describe('Projection', () => {
             expect(p.y).toBe(2);
             expect(p.z).toBe(3);
             expect(p.w).toBe(0);
+        });
+
+        it('supports optional target vector', () => {
+            const v = new Vec4(1, 2, 3, 100);
+            const target = new Vec4();
+            const result = Projection.orthographic(v, target);
+            expect(result).toBe(target);
+            expect(result.x).toBe(1);
         });
     });
 

@@ -313,7 +313,11 @@ export class Vec4 {
      * @returns {number}
      */
     distanceTo(v) {
-        return this.sub(v).length();
+        const dx = this._x - v._x;
+        const dy = this._y - v._y;
+        const dz = this._z - v._z;
+        const dw = this._w - v._w;
+        return Math.sqrt(dx * dx + dy * dy + dz * dz + dw * dw);
     }
 
     /**
@@ -322,7 +326,11 @@ export class Vec4 {
      * @returns {number}
      */
     distanceToSquared(v) {
-        return this.sub(v).lengthSquared();
+        const dx = this._x - v._x;
+        const dy = this._y - v._y;
+        const dz = this._z - v._z;
+        const dw = this._w - v._w;
+        return dx * dx + dy * dy + dz * dz + dw * dw;
     }
 
     /**
@@ -408,42 +416,91 @@ export class Vec4 {
     /**
      * Project 4D point to 3D using perspective projection
      * Projects from 4D to 3D by dividing by (d - w)
-     * @param {number} d - Distance parameter (usually 2-5)
-     * @param {object} [options] - Projection options (epsilon, distance)
+     * @param {number|object} d - Distance parameter (usually 2-5) or options object
+     * @param {object|Vec4} [options] - Projection options or target vector
+     * @param {Vec4} [target] - Target vector to store result
      * @returns {Vec4} Projected point (w component is 0)
      */
-    projectPerspective(d = 2, options = {}) {
+    projectPerspective(d = 2, options = {}, target = null) {
         if (typeof d === 'object') {
+            // usage: projectPerspective({ distance: 2, ... }, target?)
+            if (options instanceof Vec4) {
+                target = options;
+            }
             options = d;
             d = options.distance ?? options.d ?? 2;
+        } else {
+            // usage: projectPerspective(d, options?, target?)
+            // usage: projectPerspective(d, target?)
+            if (options instanceof Vec4) {
+                target = options;
+                options = {};
+            }
         }
+
+        options = options || {};
+
         const epsilon = options.epsilon ?? 1e-5;
         const denom = d - this._w;
         const clamped = Math.abs(denom) < epsilon ? (denom >= 0 ? epsilon : -epsilon) : denom;
         const scale = 1 / clamped;
+
+        if (target) {
+            target._x = this._x * scale;
+            target._y = this._y * scale;
+            target._z = this._z * scale;
+            target._w = 0;
+            return target;
+        }
+
         return new Vec4(this._x * scale, this._y * scale, this._z * scale, 0);
     }
 
     /**
      * Project 4D point to 3D using stereographic projection
      * Maps 4D hypersphere to 3D space
-     * @param {object} [options] - Projection options (epsilon)
+     * @param {object|Vec4} [options] - Projection options or target vector
+     * @param {Vec4} [target] - Target vector to store result
      * @returns {Vec4} Projected point (w component is 0)
      */
-    projectStereographic(options = {}) {
+    projectStereographic(options = {}, target = null) {
+        if (options instanceof Vec4) {
+            target = options;
+            options = {};
+        }
+
+        options = options || {};
+
         const epsilon = options.epsilon ?? 1e-5;
         const denom = 1 - this._w;
         const clamped = Math.abs(denom) < epsilon ? (denom >= 0 ? epsilon : -epsilon) : denom;
         const scale = 1 / clamped;
+
+        if (target) {
+            target._x = this._x * scale;
+            target._y = this._y * scale;
+            target._z = this._z * scale;
+            target._w = 0;
+            return target;
+        }
+
         return new Vec4(this._x * scale, this._y * scale, this._z * scale, 0);
     }
 
     /**
      * Project 4D point to 3D using orthographic projection
      * Simply drops the W component
+     * @param {Vec4} [target=null] - Optional target vector
      * @returns {Vec4} Projected point (w component is 0)
      */
-    projectOrthographic() {
+    projectOrthographic(target = null) {
+        if (target) {
+            target._x = this._x;
+            target._y = this._y;
+            target._z = this._z;
+            target._w = 0;
+            return target;
+        }
         return new Vec4(this._x, this._y, this._z, 0);
     }
 

@@ -787,6 +787,11 @@ void main() {
 }`;
         
         this.program = this.createProgram(vertexShaderSource, fragmentShaderSource);
+
+        if (!this.program) {
+            return;
+        }
+
         this.uniforms = {
             resolution: this.gl.getUniformLocation(this.program, 'u_resolution'),
             time: this.gl.getUniformLocation(this.program, 'u_time'),
@@ -817,6 +822,18 @@ void main() {
      * Create WebGL program from shaders
      */
     createProgram(vertexSource, fragmentSource) {
+        // CRITICAL FIX: Check WebGL context state before shader operations
+        if (!this.gl) {
+            console.error('❌ Cannot create program: WebGL context is null');
+            return null;
+        }
+
+        if (this.gl.isContextLost()) {
+            console.error('❌ Cannot create program: WebGL context is lost');
+            this._contextLost = true;
+            return null;
+        }
+
         const vertexShader = this.createShader(this.gl.VERTEX_SHADER, vertexSource);
         const fragmentShader = this.createShader(this.gl.FRAGMENT_SHADER, fragmentSource);
         
@@ -860,6 +877,7 @@ void main() {
         
         if (this.gl.isContextLost()) {
             console.error('❌ Cannot create shader: WebGL context is lost');
+            this._contextLost = true;
             if (window.mobileDebug) {
                 window.mobileDebug.log(`❌ ${this.canvas?.id}: Cannot create shader - WebGL context is lost`);
             }
@@ -924,6 +942,11 @@ void main() {
      * Initialize vertex buffers
      */
     initBuffers() {
+        // CRITICAL FIX: Check WebGL context state before buffer operations
+        if (!this.gl || this.gl.isContextLost()) {
+            return;
+        }
+
         const positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
         
         this.buffer = this.gl.createBuffer();
@@ -939,6 +962,11 @@ void main() {
      * Resize canvas and viewport
      */
     resize() {
+        // CRITICAL FIX: Check WebGL context state before viewport operations
+        if (!this.gl || this.gl.isContextLost()) {
+            return;
+        }
+
         // Mobile-optimized canvas sizing
         const dpr = Math.min(window.devicePixelRatio || 1, 2); // Cap at 2x for mobile performance
         const width = this.canvas.clientWidth;

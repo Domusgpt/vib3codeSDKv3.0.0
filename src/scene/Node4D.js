@@ -500,29 +500,74 @@ export class Node4D {
      * @private
      */
     _updateLocalMatrix() {
-        // Start with identity
-        this._localMatrix = Mat4x4.identity();
+        // Ensure matrix exists
+        if (!this._localMatrix) {
+            this._localMatrix = new Mat4x4();
+        }
 
-        // Apply scale
-        const scaleMatrix = Mat4x4.identity();
-        scaleMatrix.set(0, 0, this._scale.x);
-        scaleMatrix.set(1, 1, this._scale.y);
-        scaleMatrix.set(2, 2, this._scale.z);
-        scaleMatrix.set(3, 3, this._scale.w);
+        const m = this._localMatrix.data;
+        const s = this._scale;
+        const p = this._position;
 
-        // Apply rotation (toMatrix returns Float32Array, wrap in Mat4x4)
-        const rotationMatrix = new Mat4x4(this._rotation.toMatrix());
+        // 1. Write rotation directly to local matrix (No allocation)
+        this._rotation.toMatrix(m);
 
-        // Apply translation (in 4D, translation is stored in last column, keep [3,3]=1)
-        const translationMatrix = Mat4x4.identity();
-        translationMatrix.set(0, 3, this._position.x);
-        translationMatrix.set(1, 3, this._position.y);
-        translationMatrix.set(2, 3, this._position.z);
-        // Note: position.w is the 4th spatial coordinate, handled separately
-        // Matrix[3,3] must remain 1 for proper transformation
+        // 2. Apply scale (Diagonal matrix multiplication on the right)
+        // M = M * S
+        // Columns of M are scaled by s.x, s.y, s.z, s.w
 
-        // Compose: T * R * S
-        this._localMatrix = translationMatrix.multiply(rotationMatrix).multiply(scaleMatrix);
+        // Col 0
+        m[0] *= s.x; m[1] *= s.x; m[2] *= s.x; m[3] *= s.x;
+        // Col 1
+        m[4] *= s.y; m[5] *= s.y; m[6] *= s.y; m[7] *= s.y;
+        // Col 2
+        m[8] *= s.z; m[9] *= s.z; m[10] *= s.z; m[11] *= s.z;
+        // Col 3
+        m[12] *= s.w; m[13] *= s.w; m[14] *= s.w; m[15] *= s.w;
+
+        // 3. Apply translation (Matrix multiplication on the left)
+        // M = T * M
+        // T is standard 3D translation:
+        // [ 1 0 0 px ]
+        // [ 0 1 0 py ]
+        // [ 0 0 1 pz ]
+        // [ 0 0 0 1  ]
+        //
+        // Row 0 += px * Row 3
+        // Row 1 += py * Row 3
+        // Row 2 += pz * Row 3
+
+        const px = p.x;
+        const py = p.y;
+        const pz = p.z;
+
+        // Row 3 elements of M (which are used in the calculation)
+        const m3 = m[3];
+        const m7 = m[7];
+        const m11 = m[11];
+        const m15 = m[15];
+
+        if (px !== 0) {
+            m[0] += px * m3;
+            m[4] += px * m7;
+            m[8] += px * m11;
+            m[12] += px * m15;
+        }
+
+        if (py !== 0) {
+            m[1] += py * m3;
+            m[5] += py * m7;
+            m[9] += py * m11;
+            m[13] += py * m15;
+        }
+
+        if (pz !== 0) {
+            m[2] += pz * m3;
+            m[6] += pz * m7;
+            m[10] += pz * m11;
+            m[14] += pz * m15;
+        }
+
         this._localDirty = false;
     }
 
@@ -535,10 +580,15 @@ export class Node4D {
             this._updateLocalMatrix();
         }
 
+        // Ensure matrix exists
+        if (!this._worldMatrix) {
+            this._worldMatrix = new Mat4x4();
+        }
+
         if (this._parent) {
-            this._worldMatrix = this._parent.worldMatrix.multiply(this._localMatrix);
+            this._parent.worldMatrix.multiply(this._localMatrix, this._worldMatrix);
         } else {
-            this._worldMatrix = this._localMatrix.clone();
+            this._worldMatrix.copy(this._localMatrix);
         }
 
         this._worldDirty = false;

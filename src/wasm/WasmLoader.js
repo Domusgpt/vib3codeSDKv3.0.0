@@ -200,12 +200,17 @@ function createFallbackModule() {
         ),
 
         // Projections
-        projectPerspective: JsProjection.perspectiveProject,
-        projectStereographic: JsProjection.stereographicProject,
-        projectOrthographic: JsProjection.orthographicProject,
-        projectOblique: JsProjection.obliqueProject,
-        projectSlice: JsProjection.sliceProject,
-        projectToFloatArray: JsProjection.projectToFloatArray
+        projectPerspective: JsProjection.Projection.perspective,
+        projectStereographic: JsProjection.Projection.stereographic,
+        projectOrthographic: JsProjection.Projection.orthographic,
+        projectOblique: JsProjection.Projection.oblique,
+        projectSlice: (v, wPlane, tolerance) => {
+            if (JsProjection.SliceProjection.isInSlice(v, wPlane, tolerance)) {
+                return JsProjection.Projection.orthographic(v);
+            }
+            return null;
+        },
+        projectToFloatArray: JsProjection.Projection.perspectivePacked
     };
 }
 
