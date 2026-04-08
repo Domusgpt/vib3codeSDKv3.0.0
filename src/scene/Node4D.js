@@ -415,39 +415,44 @@ export class Node4D {
      * since W is a spatial dimension. We apply rotation/scale via the
      * rotation part of the matrix, then add world position separately.
      * @param {Vec4} localPoint
+     * @param {Vec4} [target] - Optional target vector to store result
      * @returns {Vec4}
      */
-    localToWorld(localPoint) {
-        // Get local rotation/scale only (exclude translation)
-        // by using the rotation rotor directly
-        const scaledPoint = new Vec4(
-            localPoint.x * this._scale.x,
-            localPoint.y * this._scale.y,
-            localPoint.z * this._scale.z,
-            localPoint.w * this._scale.w
-        );
+    localToWorld(localPoint, target = null) {
+        // Apply scale directly to the target (or a new Vec4)
+        const scale = this._scale;
+        const out = target || new Vec4();
+        out.x = localPoint.x * scale.x;
+        out.y = localPoint.y * scale.y;
+        out.z = localPoint.z * scale.z;
+        out.w = localPoint.w * scale.w;
 
-        // Apply rotation
-        const rotated = this._rotation.rotate(scaledPoint);
+        // Apply rotation in place
+        this._rotation.rotate(out, out);
 
-        // Add local position
-        const localResult = rotated.add(this._position);
+        // Add local position in place
+        const pos = this._position;
+        out.x += pos.x;
+        out.y += pos.y;
+        out.z += pos.z;
+        out.w += pos.w;
 
         // If has parent, transform through parent
         if (this._parent) {
-            return this._parent.localToWorld(localResult);
+            return this._parent.localToWorld(out, out);
         }
 
-        return localResult;
+        return out;
     }
 
     /**
      * Transform a point from world to local space
      * @param {Vec4} worldPoint
+     * @param {Vec4} [target] - Optional target vector to store result
      * @returns {Vec4}
      */
-    worldToLocal(worldPoint) {
-        return this.worldMatrix.inverse().multiplyVec4(worldPoint);
+    worldToLocal(worldPoint, target = null) {
+        return this.worldMatrix.inverse().multiplyVec4(worldPoint, target);
     }
 
     /**
