@@ -184,20 +184,59 @@ export class Projection {
 
     /**
      * Project array of Vec4s using stereographic projection
+     * @performance Implements target array to support zero-allocation batch operations, reducing GC pressure.
      * @param {Vec4[]} vectors
+     * @param {Object} [options={}]
+     * @param {Vec4[]} [target=null]
      * @returns {Vec4[]}
      */
-    static stereographicArray(vectors, options = {}) {
-        return vectors.map(v => Projection.stereographic(v, options));
+    static stereographicArray(vectors, options = {}, target = null) {
+        if (!target) {
+            target = new Array(vectors.length);
+            for (let i = 0; i < vectors.length; i++) {
+                target[i] = Projection.stereographic(vectors[i], options);
+            }
+            return target;
+        }
+
+        const count = vectors.length;
+        for (let i = 0; i < count; i++) {
+            const out = target[i];
+            if (out) {
+                Projection.stereographic(vectors[i], options, out);
+            } else {
+                target[i] = Projection.stereographic(vectors[i], options);
+            }
+        }
+        return target;
     }
 
     /**
      * Project array of Vec4s using orthographic projection
+     * @performance Implements target array to support zero-allocation batch operations, reducing GC pressure.
      * @param {Vec4[]} vectors
+     * @param {Vec4[]} [target=null]
      * @returns {Vec4[]}
      */
-    static orthographicArray(vectors) {
-        return vectors.map(v => Projection.orthographic(v));
+    static orthographicArray(vectors, target = null) {
+        if (!target) {
+            target = new Array(vectors.length);
+            for (let i = 0; i < vectors.length; i++) {
+                target[i] = Projection.orthographic(vectors[i]);
+            }
+            return target;
+        }
+
+        const count = vectors.length;
+        for (let i = 0; i < count; i++) {
+            const out = target[i];
+            if (out) {
+                Projection.orthographic(vectors[i], out);
+            } else {
+                target[i] = Projection.orthographic(vectors[i]);
+            }
+        }
+        return target;
     }
 
     /**

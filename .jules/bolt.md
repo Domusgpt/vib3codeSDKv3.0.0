@@ -22,3 +22,6 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+## 2024-05-18 - Zero-allocation array mapping in math functions
+**Learning:** In tight geometric or mathematical loops, relying on `Array.prototype.map()` (e.g., `vectors.map(v => ...)`) generates significant GC pressure due to the allocation of both intermediate arrays and new vector/object instances per iteration.
+**Action:** When working on array-level transforms (like `multiplyVec4Array`, `stereographicArray`, `orthographicArray`), replace `.map()` with a standard `for` loop that accepts an optional pre-allocated `target` array to write results in-place, drastically reducing GC pauses in rendering loops.
