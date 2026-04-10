@@ -1,4 +1,3 @@
-
 ## 2026-02-14 - Matrix Multiplication Bottleneck
 **Learning:** The `Mat4x4.multiplyInPlace` method was deceptively inefficient, allocating a new `Mat4x4` instance and `Float32Array` on every call despite being labeled "in-place". This caused significant GC pressure in render loops.
 **Action:** When optimizing math libraries, always verify "in-place" methods are truly allocation-free. Unrolling 4x4 matrix multiplication loops in JS provides massive (~12x) speedups by avoiding loop overhead and enabling better JIT optimization.
@@ -22,3 +21,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-05-26 - [Geometric Warp Operations Allocation]
+**Learning:** Array mapping operations (`vertices.map()`) inside geometric warp functions (`warpRadial`, `warpTetrahedral`, etc.) cause substantial GC pressure during repetitive render loops. Introducing an optional `target` array parameter combined with an indexed `for` loop prevents these array allocations and allows for object reuse, yielding significant (~2x) latency reductions.
+**Action:** When implementing array-transformation geometric operations, always structure them to accept an optional pre-allocated `target` array and avoid `.map()` closures to facilitate zero-allocation pipelines.
