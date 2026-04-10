@@ -195,20 +195,29 @@ function computeFaceNormal(v0, v1, v2) {
  * @param {Vec4[]} vertices - Input vertices
  * @param {number} size - Pentatope size
  * @param {number} blend - Blend factor (0=original, 1=full warp)
+ * @param {Vec4[]} [target=null] - Optional target array to prevent allocations
+ * @performance Avoids map allocation by using optional pre-allocated target array
  * @returns {Vec4[]} Warped vertices
  */
-export function warpTetrahedral(vertices, size = 1, blend = 1) {
+export function warpTetrahedral(vertices, size = 1, blend = 1, target = null) {
     const pentatopeVerts = getPentatopeVertices(size);
 
-    return vertices.map(v => {
+    const result = target || new Array(vertices.length);
+    for (let i = 0; i < vertices.length; i++) {
+        const v = vertices[i];
         // Get barycentric coordinates
         const bary = toBarycentricCoords(v, pentatopeVerts);
 
         // Reconstruct from barycentric - this "snaps" toward pentatope structure
         const warped = fromBarycentricCoords(bary, pentatopeVerts);
 
-        return v.lerp(warped, blend);
-    });
+        if (result[i]) {
+            v.lerp(warped, blend, result[i]);
+        } else {
+            result[i] = v.lerp(warped, blend);
+        }
+    }
+    return result;
 }
 
 /**
@@ -217,13 +226,17 @@ export function warpTetrahedral(vertices, size = 1, blend = 1) {
  * @param {Vec4[]} vertices - Input vertices
  * @param {number} size - Pentatope size
  * @param {number} snap - How strongly to snap to edges
+ * @param {Vec4[]} [target=null] - Optional target array to prevent allocations
+ * @performance Avoids map allocation by using optional pre-allocated target array
  * @returns {Vec4[]} Warped vertices
  */
-export function warpToEdges(vertices, size = 1, snap = 0.5) {
+export function warpToEdges(vertices, size = 1, snap = 0.5, target = null) {
     const pentatopeVerts = getPentatopeVertices(size);
     const edges = getPentatopeEdges();
 
-    return vertices.map(v => {
+    const result = target || new Array(vertices.length);
+    for (let idx = 0; idx < vertices.length; idx++) {
+        const v = vertices[idx];
         // Find nearest edge and project onto it
         let nearestDist = Infinity;
         let nearestPoint = v;
@@ -248,8 +261,13 @@ export function warpToEdges(vertices, size = 1, snap = 0.5) {
             }
         }
 
-        return v.lerp(nearestPoint, snap);
-    });
+        if (result[idx]) {
+            v.lerp(nearestPoint, snap, result[idx]);
+        } else {
+            result[idx] = v.lerp(nearestPoint, snap);
+        }
+    }
+    return result;
 }
 
 /**
@@ -257,13 +275,17 @@ export function warpToEdges(vertices, size = 1, snap = 0.5) {
  * @param {Vec4[]} vertices - Input vertices
  * @param {number} size - Pentatope size
  * @param {number} cellInfluence - How much cells pull points (0-1)
+ * @param {Vec4[]} [target=null] - Optional target array to prevent allocations
+ * @performance Avoids map allocation by using optional pre-allocated target array
  * @returns {Vec4[]} Warped vertices
  */
-export function warpToCells(vertices, size = 1, cellInfluence = 0.7) {
+export function warpToCells(vertices, size = 1, cellInfluence = 0.7, target = null) {
     const pentatopeVerts = getPentatopeVertices(size);
     const cells = getPentatopeCells();
 
-    return vertices.map(v => {
+    const result = target || new Array(vertices.length);
+    for (let idx = 0; idx < vertices.length; idx++) {
+        const v = vertices[idx];
         // Find nearest cell center
         let nearestDist = Infinity;
         let nearestCell = 0;
@@ -302,11 +324,20 @@ export function warpToCells(vertices, size = 1, cellInfluence = 0.7) {
 
         if (distToCenter > targetDist) {
             const adjustment = toCenterDir.scale((distToCenter - targetDist) * cellInfluence);
-            return v.add(adjustment);
+            if (result[idx]) {
+                v.add(adjustment, result[idx]);
+            } else {
+                result[idx] = v.add(adjustment);
+            }
+        } else {
+            if (result[idx]) {
+                result[idx].set(v.x, v.y, v.z, v.w);
+            } else {
+                result[idx] = new Vec4(v.x, v.y, v.z, v.w);
+            }
         }
-
-        return v;
-    });
+    }
+    return result;
 }
 
 /**
