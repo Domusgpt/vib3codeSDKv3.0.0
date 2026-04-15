@@ -560,38 +560,64 @@ export class Rotor4D {
 
     /**
      * Spherical linear interpolation between rotors
-     * @param {Rotor4D} target - Target rotor
+     * @performance Uses outTarget to reduce GC pressure and primitive local variables for zero-allocation computation.
+     * @param {Rotor4D} target - Target rotor to interpolate towards
      * @param {number} t - Interpolation factor (0-1)
+     * @param {Rotor4D} [outTarget=null] - Optional target rotor to store result
      * @returns {Rotor4D}
      */
-    slerp(target, t) {
+    slerp(target, t, outTarget = null) {
         // Compute the cosine of the angle between rotors
         let dot = this.s * target.s +
             this.xy * target.xy + this.xz * target.xz + this.yz * target.yz +
             this.xw * target.xw + this.yw * target.yw + this.zw * target.zw +
             this.xyzw * target.xyzw;
 
+        // Extract components to primitive variables to avoid allocating temporary objects
+        let bS = target.s;
+        let bXY = target.xy;
+        let bXZ = target.xz;
+        let bYZ = target.yz;
+        let bXW = target.xw;
+        let bYW = target.yw;
+        let bZW = target.zw;
+        let bXYZW = target.xyzw;
+
         // If dot is negative, negate one rotor to take shorter path
-        let b = target;
         if (dot < 0) {
             dot = -dot;
-            b = new Rotor4D(
-                -target.s, -target.xy, -target.xz, -target.yz,
-                -target.xw, -target.yw, -target.zw, -target.xyzw
-            );
+            bS = -bS;
+            bXY = -bXY;
+            bXZ = -bXZ;
+            bYZ = -bYZ;
+            bXW = -bXW;
+            bYW = -bYW;
+            bZW = -bZW;
+            bXYZW = -bXYZW;
         }
 
         // If rotors are very close, use linear interpolation
         if (dot > 0.9995) {
+            if (outTarget) {
+                outTarget.s = this.s + t * (bS - this.s);
+                outTarget.xy = this.xy + t * (bXY - this.xy);
+                outTarget.xz = this.xz + t * (bXZ - this.xz);
+                outTarget.yz = this.yz + t * (bYZ - this.yz);
+                outTarget.xw = this.xw + t * (bXW - this.xw);
+                outTarget.yw = this.yw + t * (bYW - this.yw);
+                outTarget.zw = this.zw + t * (bZW - this.zw);
+                outTarget.xyzw = this.xyzw + t * (bXYZW - this.xyzw);
+                return outTarget.normalizeInPlace();
+            }
             return new Rotor4D(
-                this.s + t * (b.s - this.s),
-                this.xy + t * (b.xy - this.xy),
-                this.xz + t * (b.xz - this.xz),
-                this.yz + t * (b.yz - this.yz),
-                this.xw + t * (b.xw - this.xw),
-                this.yw + t * (b.yw - this.yw),
-                this.zw + t * (b.zw - this.zw),
-                this.xyzw + t * (b.xyzw - this.xyzw)
+                this.s + t * (bS - this.s),
+                this.xy + t * (bXY - this.xy),
+                this.xz + t * (bXZ - this.xz),
+                this.yz + t * (bYZ - this.yz),
+                this.xw + t * (bXW - this.xw),
+                this.yw + t * (bYW - this.yw),
+                this.zw + t * (bZW - this.zw),
+                this.xyzw + t * (bXYZW - this.xyzw)
             ).normalizeInPlace();
         }
 
@@ -601,15 +627,27 @@ export class Rotor4D {
         const wa = Math.sin((1 - t) * theta) / sinTheta;
         const wb = Math.sin(t * theta) / sinTheta;
 
+        if (outTarget) {
+            outTarget.s = wa * this.s + wb * bS;
+            outTarget.xy = wa * this.xy + wb * bXY;
+            outTarget.xz = wa * this.xz + wb * bXZ;
+            outTarget.yz = wa * this.yz + wb * bYZ;
+            outTarget.xw = wa * this.xw + wb * bXW;
+            outTarget.yw = wa * this.yw + wb * bYW;
+            outTarget.zw = wa * this.zw + wb * bZW;
+            outTarget.xyzw = wa * this.xyzw + wb * bXYZW;
+            return outTarget;
+        }
+
         return new Rotor4D(
-            wa * this.s + wb * b.s,
-            wa * this.xy + wb * b.xy,
-            wa * this.xz + wb * b.xz,
-            wa * this.yz + wb * b.yz,
-            wa * this.xw + wb * b.xw,
-            wa * this.yw + wb * b.yw,
-            wa * this.zw + wb * b.zw,
-            wa * this.xyzw + wb * b.xyzw
+            wa * this.s + wb * bS,
+            wa * this.xy + wb * bXY,
+            wa * this.xz + wb * bXZ,
+            wa * this.yz + wb * bYZ,
+            wa * this.xw + wb * bXW,
+            wa * this.yw + wb * bYW,
+            wa * this.zw + wb * bZW,
+            wa * this.xyzw + wb * bXYZW
         );
     }
 

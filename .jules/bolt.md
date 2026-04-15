@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-05-26 - [Zero-Allocation Slerp Interpolation]
+**Learning:** `Rotor4D.slerp` was allocating temporary `Rotor4D` instances even when interpolating in a tight loop. While an `outTarget` parameter handles the final result, intermediate calculations (like negating the target rotor) were still allocating new objects under the hood. Using primitive local variables (`bS`, `bXY`, etc.) eliminates all hidden object allocations during intermediate math steps.
+**Action:** When implementing mathematical interpolation or complex math functions that may alter the input conceptually (like taking the shortest path by negating components), extract the components to primitive local variables rather than allocating intermediate objects. Ensure the final result can be written to an `outTarget`.
