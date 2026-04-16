@@ -297,10 +297,23 @@ export class Mat4x4 {
     /**
      * Transform array of Vec4s by this matrix
      * @param {Vec4[]} vectors
+     * @param {Vec4[]} [target=null] - Optional pre-allocated array for results
      * @returns {Vec4[]} Transformed vectors
+     * @performance Uses target array to reduce GC pressure by avoiding .map() allocations
      */
-    multiplyVec4Array(vectors) {
-        return vectors.map(v => this.multiplyVec4(v));
+    multiplyVec4Array(vectors, target = null) {
+        if (!target) {
+            return vectors.map(v => this.multiplyVec4(v));
+        }
+        const count = vectors.length;
+        for (let i = 0; i < count; i++) {
+            if (target[i]) {
+                this.multiplyVec4(vectors[i], target[i]);
+            } else {
+                target[i] = this.multiplyVec4(vectors[i]);
+            }
+        }
+        return target;
     }
 
     /**
