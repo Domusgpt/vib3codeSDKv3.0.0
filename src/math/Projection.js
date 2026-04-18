@@ -185,19 +185,46 @@ export class Projection {
     /**
      * Project array of Vec4s using stereographic projection
      * @param {Vec4[]} vectors
+     * @param {object} [options]
+     * @param {Vec4[]} [target=null] - Optional target array to support zero-allocation batch vector transformations, replacing `.map()` to prevent GC pressure
      * @returns {Vec4[]}
+     * @performance Implements zero-allocation target array parameter to avoid object creation in hot paths reducing GC pressure
      */
-    static stereographicArray(vectors, options = {}) {
-        return vectors.map(v => Projection.stereographic(v, options));
+    static stereographicArray(vectors, options = {}, target = null) {
+        if (!target) {
+            target = new Array(vectors.length);
+            for (let i = 0; i < vectors.length; i++) {
+                target[i] = Projection.stereographic(vectors[i], options);
+            }
+            return target;
+        }
+
+        for (let i = 0; i < vectors.length; i++) {
+            Projection.stereographic(vectors[i], options, target[i]);
+        }
+        return target;
     }
 
     /**
      * Project array of Vec4s using orthographic projection
      * @param {Vec4[]} vectors
+     * @param {Vec4[]} [target=null] - Optional target array to support zero-allocation batch vector transformations, replacing `.map()` to prevent GC pressure
      * @returns {Vec4[]}
+     * @performance Implements zero-allocation target array parameter to avoid object creation in hot paths reducing GC pressure
      */
-    static orthographicArray(vectors) {
-        return vectors.map(v => Projection.orthographic(v));
+    static orthographicArray(vectors, target = null) {
+        if (!target) {
+            target = new Array(vectors.length);
+            for (let i = 0; i < vectors.length; i++) {
+                target[i] = Projection.orthographic(vectors[i]);
+            }
+            return target;
+        }
+
+        for (let i = 0; i < vectors.length; i++) {
+            Projection.orthographic(vectors[i], target[i]);
+        }
+        return target;
     }
 
     /**
