@@ -187,8 +187,12 @@ export class Projection {
      * @param {Vec4[]} vectors
      * @returns {Vec4[]}
      */
-    static stereographicArray(vectors, options = {}) {
-        return vectors.map(v => Projection.stereographic(v, options));
+    static stereographicArray(vectors, options = {}, target = null) {
+        const out = target || new Array(vectors.length);
+        for (let i = 0; i < vectors.length; i++) {
+            out[i] = Projection.stereographic(vectors[i], options, out[i]);
+        }
+        return out;
     }
 
     /**
@@ -196,8 +200,12 @@ export class Projection {
      * @param {Vec4[]} vectors
      * @returns {Vec4[]}
      */
-    static orthographicArray(vectors) {
-        return vectors.map(v => Projection.orthographic(v));
+    static orthographicArray(vectors, target = null) {
+        const out = target || new Array(vectors.length);
+        for (let i = 0; i < vectors.length; i++) {
+            out[i] = Projection.orthographic(vectors[i], out[i]);
+        }
+        return out;
     }
 
     /**
