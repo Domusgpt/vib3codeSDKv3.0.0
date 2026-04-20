@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-05-26 - [Zero-Allocation Geometric Warps]
+**Learning:** Array `.map()` operations combined with new object creation (like `new Vec4`) within core geometry modification functions (`warpRadial`, `warpStereographic`, etc.) cause immense GC pressure during rendering. While these are convenient, they allocate a new array and potentially thousands of new vectors every frame.
+**Action:** Replace `.map()` with `for` loops in geometric algorithms and introduce an optional `target` array parameter. This allows callers to supply a pre-allocated array of vectors to mutate in place, turning O(N) allocation per frame into zero-allocation operations after initialization. Ensure robust fallbacks `target[i] || (target[i] = new Vec4())` to maintain API compatibility for consumers not utilizing pooling.
