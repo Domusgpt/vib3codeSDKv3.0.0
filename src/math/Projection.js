@@ -187,17 +187,43 @@ export class Projection {
      * @param {Vec4[]} vectors
      * @returns {Vec4[]}
      */
-    static stereographicArray(vectors, options = {}) {
-        return vectors.map(v => Projection.stereographic(v, options));
+    static stereographicArray(vectors, options = {}, target = null) {
+        if (!target) {
+            return vectors.map(v => Projection.stereographic(v, options));
+        }
+        const count = vectors.length;
+        for (let i = 0; i < count; i++) {
+            const out = target[i];
+            if (out) {
+                Projection.stereographic(vectors[i], options, out);
+            } else {
+                target[i] = Projection.stereographic(vectors[i], options);
+            }
+        }
+        return target;
     }
 
     /**
      * Project array of Vec4s using orthographic projection
+     * @performance Pass an optional pre-allocated target array to avoid allocating a new array and new Vec4 instances, significantly reducing GC pressure.
      * @param {Vec4[]} vectors
+     * @param {Vec4[]} [target=null] - Optional pre-allocated array of target vectors
      * @returns {Vec4[]}
      */
-    static orthographicArray(vectors) {
-        return vectors.map(v => Projection.orthographic(v));
+    static orthographicArray(vectors, target = null) {
+        if (!target) {
+            return vectors.map(v => Projection.orthographic(v));
+        }
+        const count = vectors.length;
+        for (let i = 0; i < count; i++) {
+            const out = target[i];
+            if (out) {
+                Projection.orthographic(vectors[i], out);
+            } else {
+                target[i] = Projection.orthographic(vectors[i]);
+            }
+        }
+        return target;
     }
 
     /**

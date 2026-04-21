@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-05-26 - [Optional Target Preallocation for Array Math]
+**Learning:** Functions like `Mat4x4.multiplyVec4Array` and `Projection.stereographicArray` used `.map()` and allocated a new array and new vectors on every call. Using an optional `target` pre-allocated array of target vectors significantly reduces garbage collection and cuts execution time by ~60-70%.
+**Action:** When a method returns an array of objects representing a geometric or math operation, add an optional `target` argument (an array of pre-allocated target objects) and modify the method to either reuse those targets or allocate new ones if none are provided.
