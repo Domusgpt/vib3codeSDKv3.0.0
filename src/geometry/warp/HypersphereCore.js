@@ -98,12 +98,18 @@ export function hopfFibration(theta, phi, psi, radius = 1, target = null) {
  * @param {number} blendFactor - How much to blend (0=original, 1=full sphere)
  * @returns {Vec4[]} Warped vertices
  */
-export function warpRadial(vertices, radius = 1, blendFactor = 1) {
+/**
+ * @performance Optimization: Added optional `target` array and replaced `.map` with `for` loop to reduce GC pressure
+ */
+export function warpRadial(vertices, radius = 1, blendFactor = 1, target = null) {
     const onSphere = new Vec4();
-    return vertices.map(v => {
+    const result = target || new Array(vertices.length);
+    for (let i = 0; i < vertices.length; i++) {
+        const v = vertices[i];
         projectToHypersphere(v, radius, onSphere);
-        return v.lerp(onSphere, blendFactor);
-    });
+        result[i] = v.lerp(onSphere, blendFactor, result[i] || new Vec4());
+    }
+    return result;
 }
 
 /**
@@ -114,12 +120,18 @@ export function warpRadial(vertices, radius = 1, blendFactor = 1) {
  * @param {number} scale - Pre-scale factor before projection
  * @returns {Vec4[]} Warped vertices
  */
-export function warpStereographic(vertices, radius = 1, scale = 1) {
+/**
+ * @performance Optimization: Added optional `target` array and replaced `.map` with `for` loop to reduce GC pressure
+ */
+export function warpStereographic(vertices, radius = 1, scale = 1, target = null) {
     const scaled = new Vec4();
-    return vertices.map(v => {
+    const result = target || new Array(vertices.length);
+    for (let i = 0; i < vertices.length; i++) {
+        const v = vertices[i];
         v.scale(scale, scaled);
-        return stereographicToHypersphere(scaled, radius);
-    });
+        result[i] = stereographicToHypersphere(scaled, radius, result[i] || new Vec4());
+    }
+    return result;
 }
 
 /**
@@ -130,12 +142,21 @@ export function warpStereographic(vertices, radius = 1, scale = 1) {
  * @param {number} twist - Twist factor along fiber
  * @returns {Vec4[]} Warped vertices
  */
-export function warpHopf(vertices, radius = 1, twist = 1) {
-    return vertices.map(v => {
+/**
+ * @performance Optimization: Added optional `target` array and replaced `.map` with `for` loop to reduce GC pressure
+ */
+export function warpHopf(vertices, radius = 1, twist = 1, target = null) {
+    const result = target || new Array(vertices.length);
+    for (let i = 0; i < vertices.length; i++) {
+        const v = vertices[i];
+        const out = result[i] || new Vec4();
+
         // Convert to spherical-like coordinates
         const r = v.length();
         if (r < 0.0001) {
-            return new Vec4(0, 0, 0, radius);
+            out.set(0, 0, 0, radius);
+            result[i] = out;
+            continue;
         }
 
         // Use original angles but apply to Hopf structure
@@ -143,8 +164,9 @@ export function warpHopf(vertices, radius = 1, twist = 1) {
         const phi = Math.atan2(v.y, v.x);
         const psi = v.w * twist + phi * 0.5;
 
-        return hopfFibration(theta, phi, psi, radius);
-    });
+        result[i] = hopfFibration(theta, phi, psi, radius, out);
+    }
+    return result;
 }
 
 /**
@@ -170,9 +192,15 @@ export function warpHypersphereCore(geometry, options = {}) {
     } = options;
 
     const temp = new Vec4();
-    const warpedVertices = geometry.vertices.map(v => {
-        // Combined scaling and warping to minimize allocations
-        const result = v.scale(scale);
+    const targetArray = options.target || new Array(geometry.vertices.length);
+
+    // @performance Optimization: Replace .map with for loop to prevent intermediate array allocation
+    for (let i = 0; i < geometry.vertices.length; i++) {
+        const v = geometry.vertices[i];
+
+        // Use target array element if available to prevent new Vec4 allocation
+        let out = targetArray[i] || new Vec4();
+        const result = v.scale(scale, out);
 
         if (method === 'stereographic') {
             stereographicToHypersphere(result, radius, result);
@@ -192,8 +220,10 @@ export function warpHypersphereCore(geometry, options = {}) {
             result.lerp(temp, blend, result);
         }
 
-        return result;
-    });
+        targetArray[i] = result;
+    }
+
+    const warpedVertices = targetArray;
 
     return {
         ...geometry,
