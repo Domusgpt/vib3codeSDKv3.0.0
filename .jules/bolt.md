@@ -22,3 +22,6 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+## 2024-05-25 - [Zero-Allocation Geometric Warps]
+**Learning:** The geometric warp loops in `HypersphereCore.js` and `HypertetraCore.js` were allocating thousands of `Vec4` instances per frame using `.map()` arrays and internal operations. Moving `new Vec4()` instantiations outside of inner loops (e.g. `nearestPoint`) and supporting optional `target` arrays drastically reduces garbage collection pressure.
+**Action:** When implementing high-frequency vector loops (like geometry projection/warping), prefer standard `for` loops over `Array.map()`. Pre-allocate loop variables, cache reused calculations outside loops, and always support a `target` output array for true zero-allocation pipelines.

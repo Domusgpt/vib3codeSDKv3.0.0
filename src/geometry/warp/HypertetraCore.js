@@ -133,15 +133,22 @@ export function fromBarycentricCoords(coords, pentatopeVerts) {
  * @param {number} scale - Scale factor
  * @returns {Vec4} Point on pentatope surface
  */
-export function projectToPentatopeSurface(point, pentatopeVerts, scale = 1) {
+export function projectToPentatopeSurface(point, pentatopeVerts, scale = 1, target = null) {
     // Find the nearest face and project onto it
     const faces = getPentatopeFaces();
     let nearestDist = Infinity;
-    let nearestPoint = point;
+    let nearestPoint = target || new Vec4();
+    nearestPoint.copy(point);
+
+    const center = new Vec4();
+    const toPoint = new Vec4();
+    const projection = new Vec4();
+    const scaledNormal = new Vec4();
+    const faceNormal = new Vec4();
 
     for (const face of faces) {
         // Get face center
-        const center = new Vec4(
+        center.set(
             (pentatopeVerts[face[0]].x + pentatopeVerts[face[1]].x + pentatopeVerts[face[2]].x) / 3,
             (pentatopeVerts[face[0]].y + pentatopeVerts[face[1]].y + pentatopeVerts[face[2]].y) / 3,
             (pentatopeVerts[face[0]].z + pentatopeVerts[face[1]].z + pentatopeVerts[face[2]].z) / 3,
@@ -152,18 +159,21 @@ export function projectToPentatopeSurface(point, pentatopeVerts, scale = 1) {
         if (dist < nearestDist) {
             nearestDist = dist;
             // Project onto the face plane
-            const faceNormal = computeFaceNormal(
+            computeFaceNormal(
                 pentatopeVerts[face[0]],
                 pentatopeVerts[face[1]],
-                pentatopeVerts[face[2]]
+                pentatopeVerts[face[2]],
+                faceNormal
             );
-            const toPoint = point.sub(center);
-            const projection = toPoint.sub(faceNormal.scale(toPoint.dot(faceNormal)));
-            nearestPoint = center.add(projection);
+            point.sub(center, toPoint);
+            const dot = toPoint.dot(faceNormal);
+            faceNormal.scale(dot, scaledNormal);
+            toPoint.sub(scaledNormal, projection);
+            center.add(projection, nearestPoint);
         }
     }
 
-    return nearestPoint.scale(scale);
+    return nearestPoint.scaleInPlace(scale);
 }
 
 /**
@@ -173,20 +183,21 @@ export function projectToPentatopeSurface(point, pentatopeVerts, scale = 1) {
  * @param {Vec4} v2
  * @returns {Vec4} Normal vector
  */
-function computeFaceNormal(v0, v1, v2) {
+function computeFaceNormal(v0, v1, v2, target = null) {
     const e1 = v1.sub(v0);
     const e2 = v2.sub(v0);
 
     // In 4D, use a simplified normal computation
     // Take the component orthogonal to both edges
-    const n = new Vec4(
+    const n = target || new Vec4();
+    n.set(
         e1.y * e2.z - e1.z * e2.y,
         e1.z * e2.x - e1.x * e2.z,
         e1.x * e2.y - e1.y * e2.x,
         e1.w * (e2.x + e2.y + e2.z) - e2.w * (e1.x + e1.y + e1.z)
     );
 
-    return n.normalize();
+    return n.normalizeInPlace();
 }
 
 /**
@@ -197,18 +208,26 @@ function computeFaceNormal(v0, v1, v2) {
  * @param {number} blend - Blend factor (0=original, 1=full warp)
  * @returns {Vec4[]} Warped vertices
  */
-export function warpTetrahedral(vertices, size = 1, blend = 1) {
+/**
+ * @performance Optimization: Added optional `target` array and replaced `.map` with `for` loop to reduce GC pressure
+ */
+export function warpTetrahedral(vertices, size = 1, blend = 1, target = null) {
     const pentatopeVerts = getPentatopeVertices(size);
+    const result = target || new Array(vertices.length);
 
-    return vertices.map(v => {
+    for (let i = 0; i < vertices.length; i++) {
+        const v = vertices[i];
+
         // Get barycentric coordinates
         const bary = toBarycentricCoords(v, pentatopeVerts);
 
         // Reconstruct from barycentric - this "snaps" toward pentatope structure
         const warped = fromBarycentricCoords(bary, pentatopeVerts);
 
-        return v.lerp(warped, blend);
-    });
+        result[i] = v.lerp(warped, blend, result[i] || new Vec4());
+    }
+
+    return result;
 }
 
 /**
@@ -219,37 +238,55 @@ export function warpTetrahedral(vertices, size = 1, blend = 1) {
  * @param {number} snap - How strongly to snap to edges
  * @returns {Vec4[]} Warped vertices
  */
-export function warpToEdges(vertices, size = 1, snap = 0.5) {
+/**
+ * @performance Optimization: Added optional `target` array, replaced `.map` with `for` loop, and reduced intermediate Vec4 allocations
+ */
+export function warpToEdges(vertices, size = 1, snap = 0.5, target = null) {
     const pentatopeVerts = getPentatopeVertices(size);
     const edges = getPentatopeEdges();
 
-    return vertices.map(v => {
-        // Find nearest edge and project onto it
-        let nearestDist = Infinity;
-        let nearestPoint = v;
+    const result = target || new Array(vertices.length);
 
-        for (const [i, j] of edges) {
-            const edgeStart = pentatopeVerts[i];
-            const edgeEnd = pentatopeVerts[j];
-            const edgeVec = edgeEnd.sub(edgeStart);
-            const edgeLen = edgeVec.length();
+    // Pre-calculate edge vectors and lengths
+    const edgeData = edges.map(([i, j]) => {
+        const edgeStart = pentatopeVerts[i];
+        const edgeEnd = pentatopeVerts[j];
+        const edgeVec = edgeEnd.sub(edgeStart);
+        return { start: edgeStart, vec: edgeVec, lenSq: edgeVec.lengthSquared() };
+    });
 
+    const toV = new Vec4();
+    const projection = new Vec4();
+    const nearestPoint = new Vec4(); // Reused per vertex
+
+    for (let k = 0; k < vertices.length; k++) {
+        const v = vertices[k];
+        let nearestDistSq = Infinity;
+
+        for (const data of edgeData) {
             // Project v onto edge
-            const toV = v.sub(edgeStart);
-            let t = toV.dot(edgeVec) / (edgeLen * edgeLen);
+            v.sub(data.start, toV);
+            let t = toV.dot(data.vec) / data.lenSq;
             t = Math.max(0, Math.min(1, t));
 
-            const projection = edgeStart.add(edgeVec.scale(t));
-            const dist = v.distanceTo(projection);
+            data.vec.scale(t, projection);
+            data.start.add(projection, projection);
 
-            if (dist < nearestDist) {
-                nearestDist = dist;
-                nearestPoint = projection;
+            const distSq = v.distanceToSquared(projection);
+
+            if (distSq < nearestDistSq) {
+                nearestDistSq = distSq;
+                nearestPoint.copy(projection);
             }
         }
 
-        return v.lerp(nearestPoint, snap);
-    });
+        if (nearestDistSq === Infinity) {
+             nearestPoint.copy(v);
+        }
+
+        result[k] = v.lerp(nearestPoint, snap, result[k] || new Vec4());
+    }
+    return result;
 }
 
 /**
@@ -259,54 +296,70 @@ export function warpToEdges(vertices, size = 1, snap = 0.5) {
  * @param {number} cellInfluence - How much cells pull points (0-1)
  * @returns {Vec4[]} Warped vertices
  */
-export function warpToCells(vertices, size = 1, cellInfluence = 0.7) {
+/**
+ * @performance Optimization: Added optional `target` array, replaced `.map` with `for` loop, and cached cell centers
+ */
+export function warpToCells(vertices, size = 1, cellInfluence = 0.7, target = null) {
     const pentatopeVerts = getPentatopeVertices(size);
     const cells = getPentatopeCells();
 
-    return vertices.map(v => {
+    // Pre-compute cell centers to avoid doing it per-vertex
+    const cellCenters = cells.map(cellIndices => {
+        const v0 = pentatopeVerts[cellIndices[0]];
+        const v1 = pentatopeVerts[cellIndices[1]];
+        const v2 = pentatopeVerts[cellIndices[2]];
+        const v3 = pentatopeVerts[cellIndices[3]];
+        return new Vec4(
+            (v0.x + v1.x + v2.x + v3.x) / 4,
+            (v0.y + v1.y + v2.y + v3.y) / 4,
+            (v0.z + v1.z + v2.z + v3.z) / 4,
+            (v0.w + v1.w + v2.w + v3.w) / 4
+        );
+    });
+
+    const result = target || new Array(vertices.length);
+    const toCenterDir = new Vec4();
+    const adjustment = new Vec4();
+
+    for (let i = 0; i < vertices.length; i++) {
+        const v = vertices[i];
+
         // Find nearest cell center
-        let nearestDist = Infinity;
+        let nearestDistSq = Infinity;
         let nearestCell = 0;
 
-        for (let c = 0; c < cells.length; c++) {
-            const cellVerts = cells[c].map(i => pentatopeVerts[i]);
-            const center = new Vec4(
-                (cellVerts[0].x + cellVerts[1].x + cellVerts[2].x + cellVerts[3].x) / 4,
-                (cellVerts[0].y + cellVerts[1].y + cellVerts[2].y + cellVerts[3].y) / 4,
-                (cellVerts[0].z + cellVerts[1].z + cellVerts[2].z + cellVerts[3].z) / 4,
-                (cellVerts[0].w + cellVerts[1].w + cellVerts[2].w + cellVerts[3].w) / 4
-            );
-
-            const dist = v.distanceTo(center);
-            if (dist < nearestDist) {
-                nearestDist = dist;
+        for (let c = 0; c < cellCenters.length; c++) {
+            const distSq = v.distanceToSquared(cellCenters[c]);
+            if (distSq < nearestDistSq) {
+                nearestDistSq = distSq;
                 nearestCell = c;
             }
         }
 
-        // Project into the cell's tetrahedral space
-        const cellVerts = cells[nearestCell].map(i => pentatopeVerts[i]);
-
-        // Simple approach: interpolate toward cell center
-        const center = new Vec4(
-            (cellVerts[0].x + cellVerts[1].x + cellVerts[2].x + cellVerts[3].x) / 4,
-            (cellVerts[0].y + cellVerts[1].y + cellVerts[2].y + cellVerts[3].y) / 4,
-            (cellVerts[0].z + cellVerts[1].z + cellVerts[2].z + cellVerts[3].z) / 4,
-            (cellVerts[0].w + cellVerts[1].w + cellVerts[2].w + cellVerts[3].w) / 4
-        );
+        const center = cellCenters[nearestCell];
 
         // Move toward the cell but maintain some original structure
-        const toCenterDir = center.sub(v).normalize();
-        const distToCenter = v.distanceTo(center);
-        const targetDist = size * 0.5; // Target distance from center
+        center.sub(v, toCenterDir);
+        const distToCenter = toCenterDir.length();
 
-        if (distToCenter > targetDist) {
-            const adjustment = toCenterDir.scale((distToCenter - targetDist) * cellInfluence);
-            return v.add(adjustment);
+        if (distToCenter > 0.0001) {
+            toCenterDir.scaleInPlace(1 / distToCenter);
         }
 
-        return v;
-    });
+        const targetDist = size * 0.5; // Target distance from center
+
+        const out = result[i] || new Vec4();
+        if (distToCenter > targetDist) {
+            toCenterDir.scale((distToCenter - targetDist) * cellInfluence, adjustment);
+            v.add(adjustment, out);
+            result[i] = out;
+        } else {
+            out.copy(v);
+            result[i] = out;
+        }
+    }
+
+    return result;
 }
 
 /**
@@ -334,22 +387,27 @@ export function warpHypertetraCore(geometry, options = {}) {
 
     switch (method) {
         case 'edges':
-            warpedVertices = warpToEdges(geometry.vertices, size, snap);
+            warpedVertices = warpToEdges(geometry.vertices, size, snap, options.target);
             break;
 
         case 'cells':
-            warpedVertices = warpToCells(geometry.vertices, size, blend);
+            warpedVertices = warpToCells(geometry.vertices, size, blend, options.target);
             break;
 
         case 'surface':
-            warpedVertices = geometry.vertices.map(v =>
-                projectToPentatopeSurface(v, pentatopeVerts, size)
-            );
+            // @performance Optimization: Replace .map with for loop for target array support
+            const targetArray = options.target || new Array(geometry.vertices.length);
+            for (let i = 0; i < geometry.vertices.length; i++) {
+                let out = targetArray[i] || new Vec4();
+                projectToPentatopeSurface(geometry.vertices[i], pentatopeVerts, size, out);
+                targetArray[i] = out;
+            }
+            warpedVertices = targetArray;
             break;
 
         case 'tetrahedral':
         default:
-            warpedVertices = warpTetrahedral(geometry.vertices, size, blend);
+            warpedVertices = warpTetrahedral(geometry.vertices, size, blend, options.target);
             break;
     }
 
