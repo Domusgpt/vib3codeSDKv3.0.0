@@ -93,49 +93,67 @@ export function hopfFibration(theta, phi, psi, radius = 1, target = null) {
 
 /**
  * Warp a geometry onto the hypersphere using radial projection
+ * @performance Pre-allocates objects in target array to reduce GC pressure
  * @param {Vec4[]} vertices - Input vertices
  * @param {number} radius - Hypersphere radius
  * @param {number} blendFactor - How much to blend (0=original, 1=full sphere)
+ * @param {Vec4[]} [target=[]] - Optional target array to avoid allocations
  * @returns {Vec4[]} Warped vertices
  */
-export function warpRadial(vertices, radius = 1, blendFactor = 1) {
+export function warpRadial(vertices, radius = 1, blendFactor = 1, target = []) {
     const onSphere = new Vec4();
-    return vertices.map(v => {
+    for (let i = 0; i < vertices.length; i++) {
+        const v = vertices[i];
         projectToHypersphere(v, radius, onSphere);
-        return v.lerp(onSphere, blendFactor);
-    });
+        target[i] = target[i] || new Vec4();
+        v.lerp(onSphere, blendFactor, target[i]);
+    }
+    if (target.length > vertices.length) target.length = vertices.length;
+    return target;
 }
 
 /**
  * Warp geometry using stereographic projection
  * Maps the entire geometry onto the hypersphere
+ * @performance Pre-allocates objects in target array to reduce GC pressure
  * @param {Vec4[]} vertices - Input vertices
  * @param {number} radius - Hypersphere radius
  * @param {number} scale - Pre-scale factor before projection
+ * @param {Vec4[]} [target=[]] - Optional target array to avoid allocations
  * @returns {Vec4[]} Warped vertices
  */
-export function warpStereographic(vertices, radius = 1, scale = 1) {
+export function warpStereographic(vertices, radius = 1, scale = 1, target = []) {
     const scaled = new Vec4();
-    return vertices.map(v => {
+    for (let i = 0; i < vertices.length; i++) {
+        const v = vertices[i];
         v.scale(scale, scaled);
-        return stereographicToHypersphere(scaled, radius);
-    });
+        target[i] = target[i] || new Vec4();
+        stereographicToHypersphere(scaled, radius, target[i]);
+    }
+    if (target.length > vertices.length) target.length = vertices.length;
+    return target;
 }
 
 /**
  * Warp geometry along Hopf fibers
  * Creates twisted, fibered structures
+ * @performance Pre-allocates objects in target array to reduce GC pressure
  * @param {Vec4[]} vertices - Input vertices
  * @param {number} radius - Hypersphere radius
  * @param {number} twist - Twist factor along fiber
+ * @param {Vec4[]} [target=[]] - Optional target array to avoid allocations
  * @returns {Vec4[]} Warped vertices
  */
-export function warpHopf(vertices, radius = 1, twist = 1) {
-    return vertices.map(v => {
+export function warpHopf(vertices, radius = 1, twist = 1, target = []) {
+    for (let i = 0; i < vertices.length; i++) {
+        const v = vertices[i];
+        target[i] = target[i] || new Vec4();
+
         // Convert to spherical-like coordinates
         const r = v.length();
         if (r < 0.0001) {
-            return new Vec4(0, 0, 0, radius);
+            target[i].set(0, 0, 0, radius);
+            continue;
         }
 
         // Use original angles but apply to Hopf structure
@@ -143,14 +161,17 @@ export function warpHopf(vertices, radius = 1, twist = 1) {
         const phi = Math.atan2(v.y, v.x);
         const psi = v.w * twist + phi * 0.5;
 
-        return hopfFibration(theta, phi, psi, radius);
-    });
+        hopfFibration(theta, phi, psi, radius, target[i]);
+    }
+    if (target.length > vertices.length) target.length = vertices.length;
+    return target;
 }
 
 /**
  * Main hypersphere core warp function
  * Wraps base geometry in a 4D hypersphere structure
  *
+ * @performance Pre-allocates objects in target array to reduce GC pressure
  * @param {object} geometry - Base geometry with vertices and edges
  * @param {object} options - Warp options
  * @param {string} options.method - 'radial', 'stereographic', 'hopf'
@@ -158,9 +179,10 @@ export function warpHopf(vertices, radius = 1, twist = 1) {
  * @param {number} options.blend - Blend factor (default 1)
  * @param {number} options.scale - Pre-scale factor (default 1)
  * @param {number} options.twist - Hopf twist factor (default 1)
+ * @param {Vec4[]} [target=[]] - Optional target array to avoid allocations
  * @returns {object} Warped geometry
  */
-export function warpHypersphereCore(geometry, options = {}) {
+export function warpHypersphereCore(geometry, options = {}, target = []) {
     const {
         method = 'radial',
         radius = 1,
@@ -170,9 +192,13 @@ export function warpHypersphereCore(geometry, options = {}) {
     } = options;
 
     const temp = new Vec4();
-    const warpedVertices = geometry.vertices.map(v => {
+    const warpedVertices = target;
+    for (let i = 0; i < geometry.vertices.length; i++) {
+        const v = geometry.vertices[i];
+        const result = warpedVertices[i] || (warpedVertices[i] = new Vec4());
+
         // Combined scaling and warping to minimize allocations
-        const result = v.scale(scale);
+        v.scale(scale, result);
 
         if (method === 'stereographic') {
             stereographicToHypersphere(result, radius, result);
@@ -191,9 +217,12 @@ export function warpHypersphereCore(geometry, options = {}) {
             projectToHypersphere(result, radius, temp);
             result.lerp(temp, blend, result);
         }
+    }
 
-        return result;
-    });
+    // Trim target array if geometry is smaller
+    if (warpedVertices.length > geometry.vertices.length) {
+        warpedVertices.length = geometry.vertices.length;
+    }
 
     return {
         ...geometry,
