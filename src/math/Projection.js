@@ -185,19 +185,54 @@ export class Projection {
     /**
      * Project array of Vec4s using stereographic projection
      * @param {Vec4[]} vectors
+     * @param {object} [options]
+     * @param {Vec4[]} [target] - Optional array to hold results
      * @returns {Vec4[]}
+     * @performance Uses target array if provided to reduce GC pressure
      */
-    static stereographicArray(vectors, options = {}) {
-        return vectors.map(v => Projection.stereographic(v, options));
+    static stereographicArray(vectors, options = {}, target = null) {
+        if (!target) {
+            return vectors.map(v => Projection.stereographic(v, options));
+        }
+
+        const count = vectors.length;
+        if (target.length > count) target.length = count;
+
+        for (let i = 0; i < count; i++) {
+            const out = target[i];
+            if (out) {
+                Projection.stereographic(vectors[i], options, out);
+            } else {
+                target[i] = Projection.stereographic(vectors[i], options);
+            }
+        }
+        return target;
     }
 
     /**
      * Project array of Vec4s using orthographic projection
      * @param {Vec4[]} vectors
+     * @param {Vec4[]} [target] - Optional array to hold results
      * @returns {Vec4[]}
+     * @performance Uses target array if provided to reduce GC pressure
      */
-    static orthographicArray(vectors) {
-        return vectors.map(v => Projection.orthographic(v));
+    static orthographicArray(vectors, target = null) {
+        if (!target) {
+            return vectors.map(v => Projection.orthographic(v));
+        }
+
+        const count = vectors.length;
+        if (target.length > count) target.length = count;
+
+        for (let i = 0; i < count; i++) {
+            const out = target[i];
+            if (out) {
+                Projection.orthographic(vectors[i], out);
+            } else {
+                target[i] = Projection.orthographic(vectors[i]);
+            }
+        }
+        return target;
     }
 
     /**

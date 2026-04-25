@@ -1,65 +1,40 @@
-
 import { Mat4x4 } from '../../src/math/Mat4x4.js';
+import { Vec4 } from '../../src/math/Vec4.js';
 
-const ITERATIONS = 1000000;
+const ITERATIONS = 100000;
+const VECTOR_COUNT = 1000;
 
 function runBenchmark() {
-    console.log(`Running Mat4x4 benchmark with ${ITERATIONS} iterations...`);
+    console.log(`Running Mat4x4 benchmark with ${ITERATIONS} iterations on array of size ${VECTOR_COUNT}...`);
 
-    const m1 = new Mat4x4([
-        1, 2, 3, 4,
-        5, 6, 7, 8,
-        9, 10, 11, 12,
-        13, 14, 15, 17 // Slightly non-singular
-    ]);
-    const target = new Mat4x4();
+    const mat = new Mat4x4();
+    const vectors = Array.from({ length: VECTOR_COUNT }, (_, i) => new Vec4(i, i+1, i+2, i+3));
+    const target = Array.from({ length: VECTOR_COUNT }, () => new Vec4());
 
-    // 1. Benchmark inverse
-    console.log('\n--- inverse ---');
+    // 1. Benchmark multiplyVec4Array
+    console.log('\n--- multiplyVec4Array ---');
 
-    // Baseline (Allocation)
+    // Allocation
     let start = performance.now();
     for (let i = 0; i < ITERATIONS; i++) {
-        const res = m1.inverse();
+        const res = mat.multiplyVec4Array(vectors);
     }
     let end = performance.now();
-    const timeAllocInv = end - start;
-    console.log(`Allocation: ${timeAllocInv.toFixed(2)}ms`);
+    const timeAlloc = end - start;
+    console.log(`Allocation: ${timeAlloc.toFixed(2)}ms`);
 
     // With Target
     start = performance.now();
     for (let i = 0; i < ITERATIONS; i++) {
-        m1.inverse(target);
+        mat.multiplyVec4Array(vectors, target);
     }
     end = performance.now();
-    const timeTargetInv = end - start;
-    console.log(`With Target: ${timeTargetInv.toFixed(2)}ms`);
-
-    // 2. Benchmark transpose
-    console.log('\n--- transpose ---');
-
-    start = performance.now();
-    for (let i = 0; i < ITERATIONS; i++) {
-        const t = m1.transpose();
-    }
-    end = performance.now();
-    const timeAllocTrans = end - start;
-    console.log(`Allocation: ${timeAllocTrans.toFixed(2)}ms`);
-
-    // With Target
-    start = performance.now();
-    for (let i = 0; i < ITERATIONS; i++) {
-        m1.transpose(target);
-    }
-    end = performance.now();
-    const timeTargetTrans = end - start;
-    console.log(`With Target: ${timeTargetTrans.toFixed(2)}ms`);
+    const timeTarget = end - start;
+    console.log(`With Target: ${timeTarget.toFixed(2)}ms`);
 
     return {
-        timeAllocInv,
-        timeTargetInv,
-        timeAllocTrans,
-        timeTargetTrans
+        timeAlloc,
+        timeTarget
     };
 }
 

@@ -1,64 +1,62 @@
-
 import { Vec4 } from '../../src/math/Vec4.js';
+import { Projection } from '../../src/math/Projection.js';
 
-const ITERATIONS = 5000000;
+const ITERATIONS = 100000;
+const VECTOR_COUNT = 1000;
 
 function runBenchmark() {
-    console.log(`Running benchmark with ${ITERATIONS} iterations...`);
+    console.log(`Running array benchmark with ${ITERATIONS} iterations on array of size ${VECTOR_COUNT}...`);
 
-    const v1 = new Vec4(1, 2, 3, 4);
-    const v2 = new Vec4(5, 6, 7, 8);
-    const target = new Vec4();
+    const vectors = Array.from({ length: VECTOR_COUNT }, (_, i) => new Vec4(i, i+1, i+2, i+3));
+    const target = Array.from({ length: VECTOR_COUNT }, () => new Vec4());
 
-    // 1. Benchmark projectOrthographic
-    console.log('\n--- projectOrthographic ---');
+    // 1. Benchmark orthographicArray
+    console.log('\n--- orthographicArray ---');
 
     // Allocation
     let start = performance.now();
     for (let i = 0; i < ITERATIONS; i++) {
-        const res = v1.projectOrthographic();
+        const res = Projection.orthographicArray(vectors);
     }
     let end = performance.now();
-    const timeAlloc = end - start;
-    console.log(`Allocation: ${timeAlloc.toFixed(2)}ms`);
+    const timeOrthoAlloc = end - start;
+    console.log(`Allocation: ${timeOrthoAlloc.toFixed(2)}ms`);
 
     // With Target
     start = performance.now();
     for (let i = 0; i < ITERATIONS; i++) {
-        v1.projectOrthographic(target);
+        Projection.orthographicArray(vectors, target);
     }
     end = performance.now();
-    const timeTarget = end - start;
-    console.log(`With Target: ${timeTarget.toFixed(2)}ms`);
+    const timeOrthoTarget = end - start;
+    console.log(`With Target: ${timeOrthoTarget.toFixed(2)}ms`);
 
 
-    // 2. Benchmark distanceTo
-    console.log('\n--- distanceTo ---');
+    // 2. Benchmark stereographicArray
+    console.log('\n--- stereographicArray ---');
 
     start = performance.now();
     for (let i = 0; i < ITERATIONS; i++) {
-        const d = v1.distanceTo(v2);
+        const res = Projection.stereographicArray(vectors);
     }
     end = performance.now();
-    const timeDistance = end - start;
-    console.log(`distanceTo: ${timeDistance.toFixed(2)}ms`);
+    const timeStereoAlloc = end - start;
+    console.log(`Allocation: ${timeStereoAlloc.toFixed(2)}ms`);
 
-    // 3. Benchmark distanceToSquared
-    console.log('\n--- distanceToSquared ---');
-
+    // With Target
     start = performance.now();
     for (let i = 0; i < ITERATIONS; i++) {
-        const d = v1.distanceToSquared(v2);
+        Projection.stereographicArray(vectors, {}, target);
     }
     end = performance.now();
-    const timeDistanceSq = end - start;
-    console.log(`distanceToSquared: ${timeDistanceSq.toFixed(2)}ms`);
+    const timeStereoTarget = end - start;
+    console.log(`With Target: ${timeStereoTarget.toFixed(2)}ms`);
 
     return {
-        timeAlloc,
-        timeTarget,
-        timeDistance,
-        timeDistanceSq
+        timeOrthoAlloc,
+        timeOrthoTarget,
+        timeStereoAlloc,
+        timeStereoTarget
     };
 }
 
