@@ -318,6 +318,7 @@ export class Scene4D {
 
     /**
      * Find nodes within a 4D sphere
+     * @performance Uses distanceToSquared instead of sub().lengthSquared() to avoid allocating a temporary Vec4 on every iteration
      * @param {Vec4} center
      * @param {number} radius
      * @returns {Node4D[]}
@@ -328,7 +329,7 @@ export class Scene4D {
 
         this.root.traverse(node => {
             if (node === this.root) return;
-            const dist = node.worldPosition.sub(center).lengthSquared();
+            const dist = node.worldPosition.distanceToSquared(center);
             if (dist <= radiusSq) {
                 results.push(node);
             }
@@ -362,6 +363,7 @@ export class Scene4D {
 
     /**
      * Find nearest node to a point
+     * @performance Uses distanceToSquared instead of sub().lengthSquared() to avoid allocating a temporary Vec4 on every iteration
      * @param {Vec4} point
      * @param {number} [maxDistance] - Maximum search distance
      * @returns {Node4D|null}
@@ -372,7 +374,7 @@ export class Scene4D {
 
         this.root.traverse(node => {
             if (node === this.root) return;
-            const distSq = node.worldPosition.sub(point).lengthSquared();
+            const distSq = node.worldPosition.distanceToSquared(point);
             if (distSq < nearestDistSq) {
                 nearestDistSq = distSq;
                 nearest = node;
@@ -384,6 +386,7 @@ export class Scene4D {
 
     /**
      * Raycast into the scene (simplified 4D ray)
+     * @performance Uses distanceTo instead of sub().length() to avoid allocating a temporary Vec4 on every hit test
      * @param {Vec4} origin
      * @param {Vec4} direction
      * @param {number} [maxDistance]
@@ -403,7 +406,7 @@ export class Scene4D {
             if (dist > 0 && dist < maxDistance) {
                 // Check perpendicular distance
                 const closest = origin.add(dir.scale(dist));
-                const perpDist = node.worldPosition.sub(closest).length();
+                const perpDist = node.worldPosition.distanceTo(closest);
 
                 // Assume nodes have radius 0.5 for hit detection
                 if (perpDist < 0.5) {

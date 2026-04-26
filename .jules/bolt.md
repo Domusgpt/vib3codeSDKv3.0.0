@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-05-18 - Optimize Scene4D Traversal Distance Checks
+**Learning:** In hot scene graph traversal methods (e.g. `findNodesInSphere`, `findNearestNode`, `raycast`), chaining vector methods like `node.worldPosition.sub(center).lengthSquared()` allocates a temporary `Vec4` for each node visited. This creates significant garbage collection pressure during continuous rendering or interactions.
+**Action:** Use zero-allocation methods like `distanceToSquared(target)` or `distanceTo(target)` to perform magnitude checks without intermediate object creation.
