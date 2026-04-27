@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-05-18 - Zero-allocation Distance Checks in Scene Traversals
+**Learning:** Hot loops in scene traversals (`findNodesInSphere`, `findNearestNode`, `raycast`) that use chained vector operations like `sub().lengthSquared()` or `sub().length()` create significant garbage collection pressure by allocating temporary vectors.
+**Action:** Replace `.sub(target).lengthSquared()` with `.distanceToSquared(target)` and `.sub(target).length()` with `.distanceTo(target)`. In cases where `.sub()` is still needed for subsequent operations (like `.dot()` products), pre-allocate temporary vectors outside the loop and use `v.sub(target, outTarget)`.
