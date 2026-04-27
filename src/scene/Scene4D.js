@@ -328,7 +328,7 @@ export class Scene4D {
 
         this.root.traverse(node => {
             if (node === this.root) return;
-            const dist = node.worldPosition.sub(center).lengthSquared();
+            const dist = node.worldPosition.distanceToSquared(center); // @performance Uses zero-allocation distance check to reduce GC pressure
             if (dist <= radiusSq) {
                 results.push(node);
             }
@@ -372,7 +372,7 @@ export class Scene4D {
 
         this.root.traverse(node => {
             if (node === this.root) return;
-            const distSq = node.worldPosition.sub(point).lengthSquared();
+            const distSq = node.worldPosition.distanceToSquared(point); // @performance Uses zero-allocation distance check to reduce GC pressure
             if (distSq < nearestDistSq) {
                 nearestDistSq = distSq;
                 nearest = node;
@@ -393,17 +393,24 @@ export class Scene4D {
         const hits = [];
         const dir = direction.normalize();
 
+        const toNode = new Vec4(); // @performance Pre-allocated to avoid allocation in traverse loop
+        const closest = new Vec4(); // @performance Pre-allocated for closest point
+
         this.root.traverse(node => {
             if (node === this.root) return;
 
             // Simplified: treat each node as a point
-            const toNode = node.worldPosition.sub(origin);
+            node.worldPosition.sub(origin, toNode);
             const dist = toNode.dot(dir);
 
             if (dist > 0 && dist < maxDistance) {
                 // Check perpendicular distance
-                const closest = origin.add(dir.scale(dist));
-                const perpDist = node.worldPosition.sub(closest).length();
+                closest.x = origin.x + dir.x * dist;
+                closest.y = origin.y + dir.y * dist;
+                closest.z = origin.z + dir.z * dist;
+                closest.w = origin.w + dir.w * dist;
+
+                const perpDist = node.worldPosition.distanceTo(closest);
 
                 // Assume nodes have radius 0.5 for hit detection
                 if (perpDist < 0.5) {
