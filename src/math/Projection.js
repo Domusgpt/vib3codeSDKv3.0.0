@@ -185,19 +185,56 @@ export class Projection {
     /**
      * Project array of Vec4s using stereographic projection
      * @param {Vec4[]} vectors
+     * @param {object} [options]
+     * @param {Vec4[]} [target] - Optional target array to write results to
      * @returns {Vec4[]}
      */
-    static stereographicArray(vectors, options = {}) {
-        return vectors.map(v => Projection.stereographic(v, options));
+    static stereographicArray(vectors, options = {}, target = null) {
+        if (!target) {
+            target = new Array(vectors.length);
+        }
+
+        const count = vectors.length;
+        for (let i = 0; i < count; i++) {
+            const out = target[i];
+            if (out) {
+                Projection.stereographic(vectors[i], options, out);
+            } else {
+                target[i] = Projection.stereographic(vectors[i], options);
+            }
+        }
+
+        // Truncate if the target array is larger than the input array to avoid stale data
+        if (target.length > count) target.length = count;
+
+        return target;
     }
 
     /**
      * Project array of Vec4s using orthographic projection
      * @param {Vec4[]} vectors
+     * @param {Vec4[]} [target] - Optional target array to write results to
      * @returns {Vec4[]}
      */
-    static orthographicArray(vectors) {
-        return vectors.map(v => Projection.orthographic(v));
+    static orthographicArray(vectors, target = null) {
+        if (!target) {
+            target = new Array(vectors.length);
+        }
+
+        const count = vectors.length;
+        for (let i = 0; i < count; i++) {
+            const out = target[i];
+            if (out) {
+                Projection.orthographic(vectors[i], out);
+            } else {
+                target[i] = Projection.orthographic(vectors[i]);
+            }
+        }
+
+        // Truncate if the target array is larger than the input array to avoid stale data
+        if (target.length > count) target.length = count;
+
+        return target;
     }
 
     /**
