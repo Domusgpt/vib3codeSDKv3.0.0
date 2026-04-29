@@ -297,10 +297,28 @@ export class Mat4x4 {
     /**
      * Transform array of Vec4s by this matrix
      * @param {Vec4[]} vectors
+     * @param {Vec4[]} [target] - Optional target array to write results to
      * @returns {Vec4[]} Transformed vectors
      */
-    multiplyVec4Array(vectors) {
-        return vectors.map(v => this.multiplyVec4(v));
+    multiplyVec4Array(vectors, target = null) {
+        if (!target) {
+            target = new Array(vectors.length);
+        }
+
+        const count = vectors.length;
+        for (let i = 0; i < count; i++) {
+            const out = target[i];
+            if (out) {
+                this.multiplyVec4(vectors[i], out);
+            } else {
+                target[i] = this.multiplyVec4(vectors[i]);
+            }
+        }
+
+        // Truncate if the target array is larger than the input array to avoid stale data
+        if (target.length > count) target.length = count;
+
+        return target;
     }
 
     /**
