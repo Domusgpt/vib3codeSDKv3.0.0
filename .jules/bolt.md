@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-05-26 - [Precomputing and Target Optimization for Geometric Iterations]
+**Learning:** During mesh warping operations (`warpHypersphereCore` and `warpHypertetraCore`), creating new geometry instances over the vertices via `Array.prototype.map()` created significant garbage collection overhead, particularly when recalculating invariant constants like `getPentatopeCells()`, and allocating new vectors inside the loop.
+**Action:** When working with large arrays of 4D vertices that are updated repeatedly, hoist invariant calculations (such as cell centers and edge vectors) out of the iteration loops. Furthermore, abandon `Array.prototype.map()` in favor of standard `for` loops equipped with an optional `target` output parameter, supporting zero-allocation patterns while allowing fallback memory allocation when a target is not provided.
