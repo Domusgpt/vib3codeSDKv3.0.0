@@ -258,6 +258,7 @@ export class Scene4D {
 
     /**
      * Get all visible nodes sorted by W coordinate (far to near)
+     * @performance Zero-allocation optimization by extracting W directly from matrix
      * @returns {Node4D[]}
      */
     getVisibleNodesSortedByW() {
@@ -269,7 +270,7 @@ export class Scene4D {
         });
 
         // Sort by world W coordinate (far to near for proper transparency)
-        nodes.sort((a, b) => a.worldPosition.w - b.worldPosition.w);
+        nodes.sort((a, b) => a.worldMatrix.data[15] - b.worldMatrix.data[15]);
         return nodes;
     }
 
@@ -318,6 +319,7 @@ export class Scene4D {
 
     /**
      * Find nodes within a 4D sphere
+     * @performance Zero-allocation optimization by extracting world position directly from matrix
      * @param {Vec4} center
      * @param {number} radius
      * @returns {Node4D[]}
@@ -326,10 +328,23 @@ export class Scene4D {
         const results = [];
         const radiusSq = radius * radius;
 
+        // Cache coordinates
+        const cx = center._x !== undefined ? center._x : center.x;
+        const cy = center._y !== undefined ? center._y : center.y;
+        const cz = center._z !== undefined ? center._z : center.z;
+        const cw = center._w !== undefined ? center._w : center.w;
+
         this.root.traverse(node => {
             if (node === this.root) return;
-            const dist = node.worldPosition.sub(center).lengthSquared();
-            if (dist <= radiusSq) {
+
+            const wm = node.worldMatrix.data;
+            const dx = wm[12] - cx;
+            const dy = wm[13] - cy;
+            const dz = wm[14] - cz;
+            const dw = wm[15] - cw;
+
+            const distSq = dx*dx + dy*dy + dz*dz + dw*dw;
+            if (distSq <= radiusSq) {
                 results.push(node);
             }
         });
@@ -339,6 +354,7 @@ export class Scene4D {
 
     /**
      * Find nodes within a 4D box
+     * @performance Zero-allocation optimization by extracting world position directly from matrix
      * @param {Vec4} min
      * @param {Vec4} max
      * @returns {Node4D[]}
@@ -346,14 +362,32 @@ export class Scene4D {
     findNodesInBox(min, max) {
         const results = [];
 
+        const minX = min._x !== undefined ? min._x : min.x;
+        const minY = min._y !== undefined ? min._y : min.y;
+        const minZ = min._z !== undefined ? min._z : min.z;
+        const minW = min._w !== undefined ? min._w : min.w;
+
+        const maxX = max._x !== undefined ? max._x : max.x;
+        const maxY = max._y !== undefined ? max._y : max.y;
+        const maxZ = max._z !== undefined ? max._z : max.z;
+        const maxW = max._w !== undefined ? max._w : max.w;
+
         this.root.traverse(node => {
             if (node === this.root) return;
-            const pos = node.worldPosition;
-            if (pos.x >= min.x && pos.x <= max.x &&
-                pos.y >= min.y && pos.y <= max.y &&
-                pos.z >= min.z && pos.z <= max.z &&
-                pos.w >= min.w && pos.w <= max.w) {
-                results.push(node);
+
+            const wm = node.worldMatrix.data;
+            const px = wm[12];
+            if (px >= minX && px <= maxX) {
+                const py = wm[13];
+                if (py >= minY && py <= maxY) {
+                    const pz = wm[14];
+                    if (pz >= minZ && pz <= maxZ) {
+                        const pw = wm[15];
+                        if (pw >= minW && pw <= maxW) {
+                            results.push(node);
+                        }
+                    }
+                }
             }
         });
 
@@ -362,6 +396,7 @@ export class Scene4D {
 
     /**
      * Find nearest node to a point
+     * @performance Zero-allocation optimization by extracting world position directly from matrix
      * @param {Vec4} point
      * @param {number} [maxDistance] - Maximum search distance
      * @returns {Node4D|null}
@@ -370,9 +405,21 @@ export class Scene4D {
         let nearest = null;
         let nearestDistSq = maxDistance * maxDistance;
 
+        const px = point._x !== undefined ? point._x : point.x;
+        const py = point._y !== undefined ? point._y : point.y;
+        const pz = point._z !== undefined ? point._z : point.z;
+        const pw = point._w !== undefined ? point._w : point.w;
+
         this.root.traverse(node => {
             if (node === this.root) return;
-            const distSq = node.worldPosition.sub(point).lengthSquared();
+
+            const wm = node.worldMatrix.data;
+            const dx = wm[12] - px;
+            const dy = wm[13] - py;
+            const dz = wm[14] - pz;
+            const dw = wm[15] - pw;
+
+            const distSq = dx*dx + dy*dy + dz*dz + dw*dw;
             if (distSq < nearestDistSq) {
                 nearestDistSq = distSq;
                 nearest = node;
@@ -384,6 +431,7 @@ export class Scene4D {
 
     /**
      * Raycast into the scene (simplified 4D ray)
+     * @performance Zero-allocation optimization by inlining math operations
      * @param {Vec4} origin
      * @param {Vec4} direction
      * @param {number} [maxDistance]
@@ -393,20 +441,51 @@ export class Scene4D {
         const hits = [];
         const dir = direction.normalize();
 
+        const ox = origin._x !== undefined ? origin._x : origin.x;
+        const oy = origin._y !== undefined ? origin._y : origin.y;
+        const oz = origin._z !== undefined ? origin._z : origin.z;
+        const ow = origin._w !== undefined ? origin._w : origin.w;
+
+        const dx = dir._x !== undefined ? dir._x : dir.x;
+        const dy = dir._y !== undefined ? dir._y : dir.y;
+        const dz = dir._z !== undefined ? dir._z : dir.z;
+        const dw = dir._w !== undefined ? dir._w : dir.w;
+
         this.root.traverse(node => {
             if (node === this.root) return;
 
-            // Simplified: treat each node as a point
-            const toNode = node.worldPosition.sub(origin);
-            const dist = toNode.dot(dir);
+            // Extract world position from matrix
+            const wm = node.worldMatrix.data;
+            const nx = wm[12];
+            const ny = wm[13];
+            const nz = wm[14];
+            const nw = wm[15];
+
+            // toNode = node.pos - origin
+            const tnx = nx - ox;
+            const tny = ny - oy;
+            const tnz = nz - oz;
+            const tnw = nw - ow;
+
+            // dist = toNode.dot(dir)
+            const dist = tnx*dx + tny*dy + tnz*dz + tnw*dw;
 
             if (dist > 0 && dist < maxDistance) {
-                // Check perpendicular distance
-                const closest = origin.add(dir.scale(dist));
-                const perpDist = node.worldPosition.sub(closest).length();
+                // closest = origin + dir * dist
+                const cx = ox + dx * dist;
+                const cy = oy + dy * dist;
+                const cz = oz + dz * dist;
+                const cw = ow + dw * dist;
 
-                // Assume nodes have radius 0.5 for hit detection
-                if (perpDist < 0.5) {
+                // perpDistSq = lengthSquared(node.pos - closest)
+                const pdx = nx - cx;
+                const pdy = ny - cy;
+                const pdz = nz - cz;
+                const pdw = nw - cw;
+                const perpDistSq = pdx*pdx + pdy*pdy + pdz*pdz + pdw*pdw;
+
+                // Assume nodes have radius 0.5 for hit detection (0.5^2 = 0.25)
+                if (perpDistSq < 0.25) {
                     hits.push({ node, distance: dist });
                 }
             }
