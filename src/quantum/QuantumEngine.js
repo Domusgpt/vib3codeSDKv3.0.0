@@ -650,7 +650,9 @@ export class QuantumEngine {
         this.parameters.setParameter(param, value);
         
         // CRITICAL: Apply to all quantum visualizers with immediate render
-        this.visualizers.forEach(visualizer => {
+        // @performance: Replaced .forEach with a standard for loop to avoid closure allocations in hot paths
+        for (let i = 0; i < this.visualizers.length; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateParameters) {
                 const params = {};
                 params[param] = value;
@@ -664,7 +666,7 @@ export class QuantumEngine {
                     }
                 }
             }
-        });
+        }
         
         console.log(`🔮 Updated quantum ${param}: ${value}`);
     }
@@ -673,20 +675,25 @@ export class QuantumEngine {
      * Update multiple parameters
      */
     updateParameters(params) {
-        Object.keys(params).forEach(param => {
+        const keys = Object.keys(params);
+        // @performance: Replaced .forEach with a standard for loop to avoid closure allocations in hot paths
+        for (let i = 0; i < keys.length; i++) {
+            const param = keys[i];
             this.updateParameter(param, params[param]);
-        });
+        }
     }
     
     /**
      * Update mouse interaction
      */
     updateInteraction(x, y, intensity) {
-        this.visualizers.forEach(visualizer => {
+        // @performance: Replaced .forEach with a standard for loop to avoid closure allocations in hot paths
+        for (let i = 0; i < this.visualizers.length; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateInteraction) {
                 visualizer.updateInteraction(x, y, intensity);
             }
-        });
+        }
     }
     
     /**
@@ -759,12 +766,14 @@ export class QuantumEngine {
     _renderDirectFrame() {
         const currentParams = this.parameters.getAllParameters();
 
-        this.visualizers.forEach(visualizer => {
+        // @performance: Replaced .forEach with a standard for loop to avoid closure allocations in hot loops
+        for (let i = 0; i < this.visualizers.length; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateParameters && visualizer.render) {
                 visualizer.updateParameters(currentParams);
                 visualizer.render();
             }
-        });
+        }
     }
     
     /**
@@ -776,22 +785,26 @@ export class QuantumEngine {
      * Update click effects (for universal reactivity system)
      */
     updateClick(intensity) {
-        this.visualizers.forEach(visualizer => {
+        // @performance: Replaced .forEach with a standard for loop to avoid closure allocations in hot paths
+        for (let i = 0; i < this.visualizers.length; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.triggerClick) {
                 visualizer.triggerClick(0.5, 0.5, intensity); // Click at center with intensity
             }
-        });
+        }
     }
     
     /**
      * Update scroll effects (for universal reactivity system)
      */
     updateScroll(velocity) {
-        this.visualizers.forEach(visualizer => {
+        // @performance: Replaced .forEach with a standard for loop to avoid closure allocations in hot paths
+        for (let i = 0; i < this.visualizers.length; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateScroll) {
                 visualizer.updateScroll(velocity);
             }
-        });
+        }
     }
     
     /**
