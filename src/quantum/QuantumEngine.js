@@ -650,7 +650,9 @@ export class QuantumEngine {
         this.parameters.setParameter(param, value);
         
         // CRITICAL: Apply to all quantum visualizers with immediate render
-        this.visualizers.forEach(visualizer => {
+        // @performance Changed to for loop to avoid closure allocation and GC pressure in hot path
+        for (let i = 0; i < this.visualizers.length; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateParameters) {
                 const params = {};
                 params[param] = value;
@@ -664,7 +666,7 @@ export class QuantumEngine {
                     }
                 }
             }
-        });
+        }
         
         console.log(`🔮 Updated quantum ${param}: ${value}`);
     }
@@ -673,9 +675,12 @@ export class QuantumEngine {
      * Update multiple parameters
      */
     updateParameters(params) {
-        Object.keys(params).forEach(param => {
+        // @performance Changed to for loop to avoid closure allocation and GC pressure in hot path
+        const keys = Object.keys(params);
+        for (let i = 0; i < keys.length; i++) {
+            const param = keys[i];
             this.updateParameter(param, params[param]);
-        });
+        }
     }
     
     /**
@@ -759,12 +764,14 @@ export class QuantumEngine {
     _renderDirectFrame() {
         const currentParams = this.parameters.getAllParameters();
 
-        this.visualizers.forEach(visualizer => {
+        // @performance Changed to for loop to avoid closure allocation and GC pressure in hot path
+        for (let i = 0; i < this.visualizers.length; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateParameters && visualizer.render) {
                 visualizer.updateParameters(currentParams);
                 visualizer.render();
             }
-        });
+        }
     }
     
     /**
