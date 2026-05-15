@@ -950,9 +950,10 @@ export class RealHolographicSystem {
                     this._renderBridgeFrame();
                 } else {
                     // Direct mode: render all visualizers
-                    this.visualizers.forEach(visualizer => {
-                        visualizer.render();
-                    });
+                    // @performance Replaced forEach with for-loop to reduce GC pressure in hot render loop
+                    for (let i = 0; i < this.visualizers.length; i++) {
+                        this.visualizers[i].render();
+                    }
                 }
             }
 
@@ -1050,7 +1051,9 @@ export class RealHolographicSystem {
         if (this._renderMode === 'bridge' && this._multiCanvasBridge) {
             this._multiCanvasBridge.resizeAll(width, height, pixelRatio);
         } else {
-            this.visualizers.forEach(visualizer => {
+            // @performance Replaced forEach with for-loop for consistency and slightly less GC overhead
+            for (let i = 0; i < this.visualizers.length; i++) {
+                const visualizer = this.visualizers[i];
                 if (visualizer.canvas && visualizer.gl) {
                     visualizer.canvas.width = width * pixelRatio;
                     visualizer.canvas.height = height * pixelRatio;
@@ -1058,7 +1061,7 @@ export class RealHolographicSystem {
                     visualizer.canvas.style.height = `${height}px`;
                     visualizer.gl.viewport(0, 0, visualizer.canvas.width, visualizer.canvas.height);
                 }
-            });
+            }
         }
         console.log(`🌌 Holographic resized to ${width}x${height} @${pixelRatio}x`);
     }
@@ -1084,11 +1087,13 @@ export class RealHolographicSystem {
             this._renderBridgeFrame();
         } else {
             // Render all visualizers in direct mode
-            this.visualizers.forEach(visualizer => {
+            // @performance Replaced forEach with for-loop to reduce GC pressure in hot render loop
+            for (let i = 0; i < this.visualizers.length; i++) {
+                const visualizer = this.visualizers[i];
                 if (visualizer.render) {
                     visualizer.render();
                 }
-            });
+            }
         }
     }
 

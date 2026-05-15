@@ -759,12 +759,14 @@ export class QuantumEngine {
     _renderDirectFrame() {
         const currentParams = this.parameters.getAllParameters();
 
-        this.visualizers.forEach(visualizer => {
+        // @performance Replaced forEach with for-loop to reduce GC pressure in hot render loop
+        for (let i = 0; i < this.visualizers.length; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateParameters && visualizer.render) {
                 visualizer.updateParameters(currentParams);
                 visualizer.render();
             }
-        });
+        }
     }
     
     /**
@@ -895,7 +897,9 @@ export class QuantumEngine {
         if (this._renderMode === 'bridge' && this._multiCanvasBridge) {
             this._multiCanvasBridge.resizeAll(width, height, pixelRatio);
         } else {
-            this.visualizers.forEach(visualizer => {
+            // @performance Replaced forEach with for-loop for consistency and slightly less GC overhead
+            for (let i = 0; i < this.visualizers.length; i++) {
+                const visualizer = this.visualizers[i];
                 if (visualizer.canvas && visualizer.gl) {
                     visualizer.canvas.width = width * pixelRatio;
                     visualizer.canvas.height = height * pixelRatio;
@@ -903,7 +907,7 @@ export class QuantumEngine {
                     visualizer.canvas.style.height = `${height}px`;
                     visualizer.gl.viewport(0, 0, visualizer.canvas.width, visualizer.canvas.height);
                 }
-            });
+            }
         }
         console.log(`🔮 Quantum resized to ${width}x${height} @${pixelRatio}x`);
     }
