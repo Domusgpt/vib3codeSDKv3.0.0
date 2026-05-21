@@ -457,16 +457,38 @@ export class Node4D {
      * @returns {this}
      */
     lookAt(target) {
-        const direction = target.sub(this.worldPosition).normalize();
+        // Avoid calling this.worldPosition which allocates a new Vec4
+        const data = this.worldMatrix.data;
+        const wx = data[12];
+        const wy = data[13];
+        const wz = data[14];
+        const ww = data[15];
+
+        const dx = target.x - wx;
+        const dy = target.y - wy;
+        const dz = target.z - wz;
+        const dw = target.w - ww;
+
+        // Inline normalize
+        const lenSq = dx*dx + dy*dy + dz*dz + dw*dw;
+        const invLen = lenSq > 0 ? 1 / Math.sqrt(lenSq) : 0;
+
+        const dirX = dx * invLen;
+        const dirY = dy * invLen;
+        const dirZ = dz * invLen;
+        const dirW = dw * invLen;
+
         // Simplified: rotate to align with direction
         // Full 4D lookAt would require specifying an "up" and "ana" vector
-        const forward = new Vec4(0, 0, 1, 0);
-        const dot = forward.dot(direction);
+        // forward dot direction where forward = (0,0,1,0)
+        const dot = dirZ;
+        // Simplified: rotate to align with direction
+        // Full 4D lookAt would require specifying an "up" and "ana" vector
         if (Math.abs(dot) < 0.9999) {
             const angle = Math.acos(dot);
             // Use XZ and YZ planes for 3D-like rotation
-            const rotX = Math.atan2(direction.y, direction.z);
-            const rotY = Math.atan2(direction.x, direction.z);
+            const rotX = Math.atan2(dirY, dirZ);
+            const rotY = Math.atan2(dirX, dirZ);
             this._rotation = Rotor4D.fromEuler6(rotX, rotY, 0, 0, 0, 0);
             this._markLocalDirty();
         }

@@ -269,7 +269,8 @@ export class Scene4D {
         });
 
         // Sort by world W coordinate (far to near for proper transparency)
-        nodes.sort((a, b) => a.worldPosition.w - b.worldPosition.w);
+        // Access matrix data directly to prevent Vec4 allocations during sort
+        nodes.sort((a, b) => a.worldMatrix.data[15] - b.worldMatrix.data[15]);
         return nodes;
     }
 
@@ -328,8 +329,14 @@ export class Scene4D {
 
         this.root.traverse(node => {
             if (node === this.root) return;
-            const dist = node.worldPosition.sub(center).lengthSquared();
-            if (dist <= radiusSq) {
+            const data = node.worldMatrix.data;
+            const dx = data[12] - center.x;
+            const dy = data[13] - center.y;
+            const dz = data[14] - center.z;
+            const dw = data[15] - center.w;
+            const distSq = dx * dx + dy * dy + dz * dz + dw * dw;
+
+            if (distSq <= radiusSq) {
                 results.push(node);
             }
         });
@@ -348,11 +355,16 @@ export class Scene4D {
 
         this.root.traverse(node => {
             if (node === this.root) return;
-            const pos = node.worldPosition;
-            if (pos.x >= min.x && pos.x <= max.x &&
-                pos.y >= min.y && pos.y <= max.y &&
-                pos.z >= min.z && pos.z <= max.z &&
-                pos.w >= min.w && pos.w <= max.w) {
+            const data = node.worldMatrix.data;
+            const x = data[12];
+            const y = data[13];
+            const z = data[14];
+            const w = data[15];
+
+            if (x >= min.x && x <= max.x &&
+                y >= min.y && y <= max.y &&
+                z >= min.z && z <= max.z &&
+                w >= min.w && w <= max.w) {
                 results.push(node);
             }
         });
@@ -372,7 +384,13 @@ export class Scene4D {
 
         this.root.traverse(node => {
             if (node === this.root) return;
-            const distSq = node.worldPosition.sub(point).lengthSquared();
+            const data = node.worldMatrix.data;
+            const dx = data[12] - point.x;
+            const dy = data[13] - point.y;
+            const dz = data[14] - point.z;
+            const dw = data[15] - point.w;
+            const distSq = dx * dx + dy * dy + dz * dz + dw * dw;
+
             if (distSq < nearestDistSq) {
                 nearestDistSq = distSq;
                 nearest = node;
@@ -396,17 +414,35 @@ export class Scene4D {
         this.root.traverse(node => {
             if (node === this.root) return;
 
+            const data = node.worldMatrix.data;
+            const nx = data[12];
+            const ny = data[13];
+            const nz = data[14];
+            const nw = data[15];
+
             // Simplified: treat each node as a point
-            const toNode = node.worldPosition.sub(origin);
-            const dist = toNode.dot(dir);
+            const tnx = nx - origin.x;
+            const tny = ny - origin.y;
+            const tnz = nz - origin.z;
+            const tnw = nw - origin.w;
+
+            const dist = tnx * dir.x + tny * dir.y + tnz * dir.z + tnw * dir.w;
 
             if (dist > 0 && dist < maxDistance) {
                 // Check perpendicular distance
-                const closest = origin.add(dir.scale(dist));
-                const perpDist = node.worldPosition.sub(closest).length();
+                const cx = origin.x + dir.x * dist;
+                const cy = origin.y + dir.y * dist;
+                const cz = origin.z + dir.z * dist;
+                const cw = origin.w + dir.w * dist;
+
+                const dx = nx - cx;
+                const dy = ny - cy;
+                const dz = nz - cz;
+                const dw = nw - cw;
+                const perpDistSq = dx*dx + dy*dy + dz*dz + dw*dw;
 
                 // Assume nodes have radius 0.5 for hit detection
-                if (perpDist < 0.5) {
+                if (perpDistSq < 0.25) {
                     hits.push({ node, distance: dist });
                 }
             }

@@ -22,3 +22,6 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+## 2026-05-22 - Spatial Query Allocations
+**Learning:** Implicit getter properties like `node.worldPosition` that allocate objects (e.g. `new Vec4(...)`) cause extreme hidden GC pressure when queried continuously within scene traversal loops like `raycast` or `findNearestNode`.
+**Action:** When implementing high-frequency spatial queries or loops, read directly from the underlying static arrays (like `worldMatrix.data`) and compute distances mathematically inline instead of using temporary vector class instances.
