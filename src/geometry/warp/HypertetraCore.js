@@ -219,37 +219,60 @@ export function warpTetrahedral(vertices, size = 1, blend = 1) {
  * @param {number} snap - How strongly to snap to edges
  * @returns {Vec4[]} Warped vertices
  */
+/**
+ * @performance Optimization: Hoisted invariant edge calculations outside the
+ * loop and replaced map with for loop to reduce GC pressure.
+ */
 export function warpToEdges(vertices, size = 1, snap = 0.5) {
     const pentatopeVerts = getPentatopeVertices(size);
     const edges = getPentatopeEdges();
 
-    return vertices.map(v => {
+    // Pre-calculate edge vectors and lengths
+    const edgeData = new Array(edges.length);
+    for (let e = 0; e < edges.length; e++) {
+        const edge = edges[e];
+        const edgeStart = pentatopeVerts[edge[0]];
+        const edgeEnd = pentatopeVerts[edge[1]];
+        const edgeVec = edgeEnd.sub(edgeStart);
+        edgeData[e] = {
+            start: edgeStart,
+            vec: edgeVec,
+            lenSq: edgeVec.lengthSquared()
+        };
+    }
+
+    const result = new Array(vertices.length);
+
+    for (let i = 0; i < vertices.length; i++) {
+        const v = vertices[i];
         // Find nearest edge and project onto it
-        let nearestDist = Infinity;
+        let nearestDistSq = Infinity;
         let nearestPoint = v;
 
-        for (const [i, j] of edges) {
-            const edgeStart = pentatopeVerts[i];
-            const edgeEnd = pentatopeVerts[j];
-            const edgeVec = edgeEnd.sub(edgeStart);
-            const edgeLen = edgeVec.length();
+        for (let e = 0; e < edgeData.length; e++) {
+            const data = edgeData[e];
+            const edgeStart = data.start;
+            const edgeVec = data.vec;
+            const lenSq = data.lenSq;
 
             // Project v onto edge
             const toV = v.sub(edgeStart);
-            let t = toV.dot(edgeVec) / (edgeLen * edgeLen);
+            let t = toV.dot(edgeVec) / lenSq;
             t = Math.max(0, Math.min(1, t));
 
             const projection = edgeStart.add(edgeVec.scale(t));
-            const dist = v.distanceTo(projection);
+            const distSq = v.distanceToSquared(projection);
 
-            if (dist < nearestDist) {
-                nearestDist = dist;
+            if (distSq < nearestDistSq) {
+                nearestDistSq = distSq;
                 nearestPoint = projection;
             }
         }
 
-        return v.lerp(nearestPoint, snap);
-    });
+        result[i] = v.lerp(nearestPoint, snap);
+    }
+
+    return result;
 }
 
 /**
@@ -259,54 +282,63 @@ export function warpToEdges(vertices, size = 1, snap = 0.5) {
  * @param {number} cellInfluence - How much cells pull points (0-1)
  * @returns {Vec4[]} Warped vertices
  */
+/**
+ * @performance Optimization: Hoisted cell centers calculation out of vertex loop
+ * and replaced map with for loop to reduce GC pressure.
+ */
 export function warpToCells(vertices, size = 1, cellInfluence = 0.7) {
     const pentatopeVerts = getPentatopeVertices(size);
     const cells = getPentatopeCells();
 
-    return vertices.map(v => {
-        // Find nearest cell center
-        let nearestDist = Infinity;
-        let nearestCell = 0;
+    // Pre-calculate cell centers to avoid doing it per-vertex
+    const cellCenters = new Array(cells.length);
+    for (let c = 0; c < cells.length; c++) {
+        const cell = cells[c];
+        const v0 = pentatopeVerts[cell[0]];
+        const v1 = pentatopeVerts[cell[1]];
+        const v2 = pentatopeVerts[cell[2]];
+        const v3 = pentatopeVerts[cell[3]];
 
-        for (let c = 0; c < cells.length; c++) {
-            const cellVerts = cells[c].map(i => pentatopeVerts[i]);
-            const center = new Vec4(
-                (cellVerts[0].x + cellVerts[1].x + cellVerts[2].x + cellVerts[3].x) / 4,
-                (cellVerts[0].y + cellVerts[1].y + cellVerts[2].y + cellVerts[3].y) / 4,
-                (cellVerts[0].z + cellVerts[1].z + cellVerts[2].z + cellVerts[3].z) / 4,
-                (cellVerts[0].w + cellVerts[1].w + cellVerts[2].w + cellVerts[3].w) / 4
-            );
+        cellCenters[c] = new Vec4(
+            (v0.x + v1.x + v2.x + v3.x) / 4,
+            (v0.y + v1.y + v2.y + v3.y) / 4,
+            (v0.z + v1.z + v2.z + v3.z) / 4,
+            (v0.w + v1.w + v2.w + v3.w) / 4
+        );
+    }
 
-            const dist = v.distanceTo(center);
-            if (dist < nearestDist) {
-                nearestDist = dist;
-                nearestCell = c;
+    const result = new Array(vertices.length);
+    const targetDist = size * 0.5; // Target distance from center
+
+    for (let i = 0; i < vertices.length; i++) {
+        const v = vertices[i];
+
+        // Find nearest cell center using squared distance
+        let nearestDistSq = Infinity;
+        let nearestCenter = cellCenters[0];
+
+        for (let c = 0; c < cellCenters.length; c++) {
+            const center = cellCenters[c];
+            const distSq = v.distanceToSquared(center);
+            if (distSq < nearestDistSq) {
+                nearestDistSq = distSq;
+                nearestCenter = center;
             }
         }
 
-        // Project into the cell's tetrahedral space
-        const cellVerts = cells[nearestCell].map(i => pentatopeVerts[i]);
-
-        // Simple approach: interpolate toward cell center
-        const center = new Vec4(
-            (cellVerts[0].x + cellVerts[1].x + cellVerts[2].x + cellVerts[3].x) / 4,
-            (cellVerts[0].y + cellVerts[1].y + cellVerts[2].y + cellVerts[3].y) / 4,
-            (cellVerts[0].z + cellVerts[1].z + cellVerts[2].z + cellVerts[3].z) / 4,
-            (cellVerts[0].w + cellVerts[1].w + cellVerts[2].w + cellVerts[3].w) / 4
-        );
-
         // Move toward the cell but maintain some original structure
-        const toCenterDir = center.sub(v).normalize();
-        const distToCenter = v.distanceTo(center);
-        const targetDist = size * 0.5; // Target distance from center
+        const distToCenter = Math.sqrt(nearestDistSq);
 
         if (distToCenter > targetDist) {
+            const toCenterDir = nearestCenter.sub(v).normalize();
             const adjustment = toCenterDir.scale((distToCenter - targetDist) * cellInfluence);
-            return v.add(adjustment);
+            result[i] = v.add(adjustment);
+        } else {
+            result[i] = v;
         }
+    }
 
-        return v;
-    });
+    return result;
 }
 
 /**
