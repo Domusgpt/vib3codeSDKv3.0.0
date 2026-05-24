@@ -393,7 +393,9 @@ export class RealHolographicSystem {
         const resolved = this._layerGraph.resolveAll(keystoneParams, Date.now());
 
         // Apply resolved params to each visualizer by role
-        this.visualizers.forEach((visualizer, index) => {
+        // @performance: Using standard for-loop to prevent closure allocations
+        for (let index = 0, len = this.visualizers.length; index < len; index++) {
+            const visualizer = this.visualizers[index];
             const role = visualizer.role || 'content';
             const layerParams = resolved[role] || keystoneParams;
 
@@ -409,7 +411,7 @@ export class RealHolographicSystem {
             } catch (error) {
                 console.error(`Failed to update holographic layer ${index} (${role}):`, error);
             }
-        });
+        }
     }
 
     /**
@@ -430,7 +432,9 @@ export class RealHolographicSystem {
         const keystoneParams = { ...this._buildKeystoneParams(), ...params };
         const resolved = this._layerGraph.resolveAll(keystoneParams, Date.now());
 
-        this.visualizers.forEach((visualizer, index) => {
+        // @performance: Using standard for-loop to prevent closure allocations
+        for (let index = 0, len = this.visualizers.length; index < len; index++) {
+            const visualizer = this.visualizers[index];
             const role = visualizer.role || 'content';
             const layerParams = resolved[role] || keystoneParams;
 
@@ -443,7 +447,7 @@ export class RealHolographicSystem {
             } catch (error) {
                 console.error(`Failed to update holographic layer ${index} (${role}):`, error);
             }
-        });
+        }
     }
 
     // ========================================================================
@@ -512,18 +516,23 @@ export class RealHolographicSystem {
         this.currentVariant = newVariant;
         
         // Update all visualizers with new variant parameters
-        this.visualizers.forEach(visualizer => {
+        // @performance: Using standard for-loop to prevent closure allocations
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            const visualizer = this.visualizers[i];
             visualizer.variant = this.currentVariant;
             visualizer.variantParams = visualizer.generateVariantParams(this.currentVariant);
             visualizer.roleParams = visualizer.generateRoleParams(visualizer.role);
             
             // Apply any custom parameter overrides
             if (this.customParams) {
-                Object.keys(this.customParams).forEach(param => {
-                    visualizer.variantParams[param] = this.customParams[param];
-                });
+                // @performance: Using for...in loop to prevent intermediate array creation and closure allocations
+                for (const param in this.customParams) {
+                    if (Object.prototype.hasOwnProperty.call(this.customParams, param)) {
+                        visualizer.variantParams[param] = this.customParams[param];
+                    }
+                }
             }
-        });
+        }
         
         this.updateVariantDisplay();
         console.log(`🔄 REAL Holograms switched to variant ${this.currentVariant + 1}: ${this.variantNames[this.currentVariant]}`);
@@ -664,9 +673,10 @@ export class RealHolographicSystem {
         }
         
         // Apply audio reactivity to all visualizers
-        this.visualizers.forEach(visualizer => {
-            visualizer.updateAudio(this.audioData);
-        });
+        // @performance: Using standard for-loop to prevent closure allocations in hot render loop
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            this.visualizers[i].updateAudio(this.audioData);
+        }
     }
     
     smoothAudioValue(currentValue, type) {
@@ -950,9 +960,10 @@ export class RealHolographicSystem {
                     this._renderBridgeFrame();
                 } else {
                     // Direct mode: render all visualizers
-                    this.visualizers.forEach(visualizer => {
-                        visualizer.render();
-                    });
+                    // @performance: Using standard for-loop to prevent closure allocations in hot render loop
+                    for (let i = 0, len = this.visualizers.length; i < len; i++) {
+                        this.visualizers[i].render();
+                    }
                 }
             }
 
@@ -1070,9 +1081,12 @@ export class RealHolographicSystem {
     render(frameState = {}) {
         // Apply frameState parameters if provided
         if (frameState.params) {
-            Object.keys(frameState.params).forEach(param => {
-                this.updateParameter(param, frameState.params[param]);
-            });
+            // @performance: Using for...in loop to prevent intermediate array creation and closure allocations
+            for (const param in frameState.params) {
+                if (Object.prototype.hasOwnProperty.call(frameState.params, param)) {
+                    this.updateParameter(param, frameState.params[param]);
+                }
+            }
         }
 
         // Apply audio data if provided
@@ -1084,11 +1098,13 @@ export class RealHolographicSystem {
             this._renderBridgeFrame();
         } else {
             // Render all visualizers in direct mode
-            this.visualizers.forEach(visualizer => {
+            // @performance: Using standard for-loop to prevent closure allocations in hot render loop
+            for (let i = 0, len = this.visualizers.length; i < len; i++) {
+                const visualizer = this.visualizers[i];
                 if (visualizer.render) {
                     visualizer.render();
                 }
-            });
+            }
         }
     }
 
