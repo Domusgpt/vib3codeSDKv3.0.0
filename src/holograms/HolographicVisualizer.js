@@ -1005,23 +1005,25 @@ export class HolographicVisualizer {
     updateParameters(params) {
         if (!params || typeof params !== 'object') return;
         if (this.variantParams) {
-            Object.keys(params).forEach(param => {
-                let scaledValue = params[param];
-                // Guard against NaN/Infinity reaching GPU uniforms
-                if (typeof scaledValue !== 'number' || !Number.isFinite(scaledValue)) return;
+            for (const param in params) {
+                if (Object.prototype.hasOwnProperty.call(params, param)) {
+                    let scaledValue = params[param];
+                    // Guard against NaN/Infinity reaching GPU uniforms
+                    if (typeof scaledValue !== 'number' || !Number.isFinite(scaledValue)) continue;
 
-                // Scale gridDensity (5-100) to holographic density range (0.3-2.5)
-                if (param === 'gridDensity') {
-                    scaledValue = 0.3 + (parseFloat(params[param]) - 5) / 95 * 2.2;
+                    // Scale gridDensity (5-100) to holographic density range (0.3-2.5)
+                    if (param === 'gridDensity') {
+                        scaledValue = 0.3 + (parseFloat(params[param]) - 5) / 95 * 2.2;
+                    }
+
+                    this.variantParams[param] = scaledValue;
+
+                    // Regenerate role params when geometry changes
+                    if (param === 'geometry') {
+                        this.roleParams = this.generateRoleParams(this.role);
+                    }
                 }
-
-                this.variantParams[param] = scaledValue;
-
-                // Regenerate role params when geometry changes
-                if (param === 'geometry') {
-                    this.roleParams = this.generateRoleParams(this.role);
-                }
-            });
+            }
         }
 
         // Don't call render() here - engine will call it to prevent infinite loop
