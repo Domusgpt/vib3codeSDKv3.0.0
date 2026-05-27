@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-05-26 - [Identity Checks Without Allocation]
+**Learning:** `Mat4x4.isIdentity()` and `Rotor4D.isIdentity()` were creating a new instance of the identity matrix/rotor for equality checking. By replacing the new object allocation with direct internal comparisons, performance was improved by roughly 10x while removing GC pressure. Additionally, when manually comparing components with an `epsilon`, it is critical to use an L-infinity norm (checking each component individually: `Math.abs(val) > epsilon`) rather than an aggregate L1 norm (`sum < epsilon`), as the latter mathematically relaxes the acceptable error bounds per component and leads to bugs.
+**Action:** Always prefer direct internal property checks to zero-allocation equality operations when dealing with hot-path identity validations in math classes. Ensure strict component-wise checks are used instead of sums.
