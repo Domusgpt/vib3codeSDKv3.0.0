@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-05-26 - [Scene4D Geometric Traversal Allocation]
+**Learning:** Instantiating new vectors via properties like `node.worldPosition` during full scene graph traversals (e.g., `Scene4D.findNodesInSphere`, `findNearestNode`) creates severe garbage collection pressure for scenes with many nodes.
+**Action:** Extract spatial coordinates directly from the internal matrix array (`node.worldMatrix.data` indices 12, 13, 14, 15) and inline standard mathematical operations for simple bounds checks to eliminate `Vec4` allocations entirely.
