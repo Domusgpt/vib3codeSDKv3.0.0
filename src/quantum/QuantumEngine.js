@@ -673,9 +673,12 @@ export class QuantumEngine {
      * Update multiple parameters
      */
     updateParameters(params) {
-        Object.keys(params).forEach(param => {
-            this.updateParameter(param, params[param]);
-        });
+        // @performance Avoid Object.keys().forEach to eliminate array allocation and closure overhead in hot path
+        for (const param in params) {
+            if (Object.prototype.hasOwnProperty.call(params, param)) {
+                this.updateParameter(param, params[param]);
+            }
+        }
     }
     
     /**
@@ -700,9 +703,12 @@ export class QuantumEngine {
      * Set parameters from loaded/imported data
      */
     setParameters(params) {
-        Object.keys(params).forEach(param => {
-            this.parameters.setParameter(param, params[param]);
-        });
+        // @performance Avoid Object.keys().forEach to eliminate array allocation and closure overhead in hot path
+        for (const param in params) {
+            if (Object.prototype.hasOwnProperty.call(params, param)) {
+                this.parameters.setParameter(param, params[param]);
+            }
+        }
         this.updateParameters(params);
     }
     
@@ -759,12 +765,15 @@ export class QuantumEngine {
     _renderDirectFrame() {
         const currentParams = this.parameters.getAllParameters();
 
-        this.visualizers.forEach(visualizer => {
+        // @performance Use cached for loop instead of .forEach to avoid per-frame closure allocation
+        const len = this.visualizers.length;
+        for (let i = 0; i < len; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateParameters && visualizer.render) {
                 visualizer.updateParameters(currentParams);
                 visualizer.render();
             }
-        });
+        }
     }
     
     /**
