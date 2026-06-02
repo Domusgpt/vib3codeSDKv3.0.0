@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-05-27 - [Closure Allocations in Render Loops]
+**Learning:** In high-frequency functions like render loops (`_renderDirectFrame()`) and parameter updates in engines (`QuantumEngine`, `RealHolographicSystem`), utilizing `.forEach` and `Object.keys(obj).forEach` leads to continuous per-frame closure and array allocations. This creates significant garbage collection pressure which can cause micro-stutters during animations.
+**Action:** Always replace `.forEach` array iterations with length-cached `for` loops, and use `for...in` loops (along with `hasOwnProperty` checks) instead of `Object.keys()` in any performance-sensitive paths like render loops. Include a `@performance` tag to document the memory management optimization.
