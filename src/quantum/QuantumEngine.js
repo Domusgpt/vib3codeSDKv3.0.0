@@ -650,7 +650,10 @@ export class QuantumEngine {
         this.parameters.setParameter(param, value);
         
         // CRITICAL: Apply to all quantum visualizers with immediate render
-        this.visualizers.forEach(visualizer => {
+        // @performance: Use standard for loop to prevent closure allocations
+        const len = this.visualizers.length;
+        for (let i = 0; i < len; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateParameters) {
                 const params = {};
                 params[param] = value;
@@ -664,7 +667,7 @@ export class QuantumEngine {
                     }
                 }
             }
-        });
+        }
         
         console.log(`🔮 Updated quantum ${param}: ${value}`);
     }
@@ -673,9 +676,12 @@ export class QuantumEngine {
      * Update multiple parameters
      */
     updateParameters(params) {
-        Object.keys(params).forEach(param => {
-            this.updateParameter(param, params[param]);
-        });
+        // @performance: Use for...in to avoid Object.keys() array and closure allocations
+        for (const param in params) {
+            if (Object.prototype.hasOwnProperty.call(params, param)) {
+                this.updateParameter(param, params[param]);
+            }
+        }
     }
     
     /**
@@ -700,9 +706,12 @@ export class QuantumEngine {
      * Set parameters from loaded/imported data
      */
     setParameters(params) {
-        Object.keys(params).forEach(param => {
-            this.parameters.setParameter(param, params[param]);
-        });
+        // @performance: Use for...in to avoid Object.keys() array and closure allocations
+        for (const param in params) {
+            if (Object.prototype.hasOwnProperty.call(params, param)) {
+                this.parameters.setParameter(param, params[param]);
+            }
+        }
         this.updateParameters(params);
     }
     
@@ -759,12 +768,15 @@ export class QuantumEngine {
     _renderDirectFrame() {
         const currentParams = this.parameters.getAllParameters();
 
-        this.visualizers.forEach(visualizer => {
+        // @performance: Avoid .forEach allocation in hot render loop path
+        const len = this.visualizers.length;
+        for (let i = 0; i < len; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateParameters && visualizer.render) {
                 visualizer.updateParameters(currentParams);
                 visualizer.render();
             }
-        });
+        }
     }
     
     /**
