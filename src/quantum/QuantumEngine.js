@@ -387,16 +387,18 @@ export class QuantumEngine {
         // Gather canvases: from canvasSet (landing page) or DOM IDs (main app)
         const canvasElements = [];
         if (this.canvasSet) {
-            Object.values(this.canvasSet).forEach(c => { if (c) canvasElements.push(c); });
+            for (const key in this.canvasSet) { if (Object.prototype.hasOwnProperty.call(this.canvasSet, key)) { const c = this.canvasSet[key]; if (c) canvasElements.push(c); } }
         } else {
-            ['quantum-background-canvas', 'quantum-shadow-canvas', 'quantum-content-canvas',
-             'quantum-highlight-canvas', 'quantum-accent-canvas'].forEach(id => {
+            const canvasIds = ['quantum-background-canvas', 'quantum-shadow-canvas', 'quantum-content-canvas', 'quantum-highlight-canvas', 'quantum-accent-canvas'];
+            for (let i = 0, len = canvasIds.length; i < len; i++) {
+                const id = canvasIds[i];
                 const c = document.getElementById(id);
                 if (c) canvasElements.push(c);
-            });
+            }
         }
 
-        canvasElements.forEach(canvas => {
+        for (let i = 0, len = canvasElements.length; i < len; i++) {
+            const canvas = canvasElements[i];
             
             // Mouse movement -> smooth velocity + multiple parameters
             canvas.addEventListener('mousemove', (e) => {
@@ -440,7 +442,7 @@ export class QuantumEngine {
                 if (!this.isActive) return;
                 this.updateQuantumScroll(e.deltaY);
             }, { passive: true });
-        });
+        }
         
         // Start smooth animation loops
         this.startQuantumEffectLoops();
@@ -650,7 +652,8 @@ export class QuantumEngine {
         this.parameters.setParameter(param, value);
         
         // CRITICAL: Apply to all quantum visualizers with immediate render
-        this.visualizers.forEach(visualizer => {
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateParameters) {
                 const params = {};
                 params[param] = value;
@@ -664,7 +667,7 @@ export class QuantumEngine {
                     }
                 }
             }
-        });
+        }
         
         console.log(`🔮 Updated quantum ${param}: ${value}`);
     }
@@ -673,20 +676,23 @@ export class QuantumEngine {
      * Update multiple parameters
      */
     updateParameters(params) {
-        Object.keys(params).forEach(param => {
-            this.updateParameter(param, params[param]);
-        });
+        for (const param in params) {
+            if (Object.prototype.hasOwnProperty.call(params, param)) {
+                this.updateParameter(param, params[param]);
+            }
+        }
     }
     
     /**
      * Update mouse interaction
      */
     updateInteraction(x, y, intensity) {
-        this.visualizers.forEach(visualizer => {
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateInteraction) {
                 visualizer.updateInteraction(x, y, intensity);
             }
-        });
+        }
     }
     
     /**
@@ -700,9 +706,11 @@ export class QuantumEngine {
      * Set parameters from loaded/imported data
      */
     setParameters(params) {
-        Object.keys(params).forEach(param => {
-            this.parameters.setParameter(param, params[param]);
-        });
+        for (const param in params) {
+            if (Object.prototype.hasOwnProperty.call(params, param)) {
+                this.parameters.setParameter(param, params[param]);
+            }
+        }
         this.updateParameters(params);
     }
     
@@ -759,12 +767,13 @@ export class QuantumEngine {
     _renderDirectFrame() {
         const currentParams = this.parameters.getAllParameters();
 
-        this.visualizers.forEach(visualizer => {
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateParameters && visualizer.render) {
                 visualizer.updateParameters(currentParams);
                 visualizer.render();
             }
-        });
+        }
     }
     
     /**
@@ -776,22 +785,24 @@ export class QuantumEngine {
      * Update click effects (for universal reactivity system)
      */
     updateClick(intensity) {
-        this.visualizers.forEach(visualizer => {
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.triggerClick) {
                 visualizer.triggerClick(0.5, 0.5, intensity); // Click at center with intensity
             }
-        });
+        }
     }
     
     /**
      * Update scroll effects (for universal reactivity system)
      */
     updateScroll(velocity) {
-        this.visualizers.forEach(visualizer => {
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateScroll) {
                 visualizer.updateScroll(velocity);
             }
-        });
+        }
     }
     
     /**
@@ -842,11 +853,12 @@ export class QuantumEngine {
         this._renderMode = 'direct';
 
         // Destroy all visualizers
-        this.visualizers.forEach(visualizer => {
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.destroy) {
                 visualizer.destroy();
             }
-        });
+        }
         this.visualizers = [];
         console.log('Quantum Engine destroyed');
     }
@@ -875,7 +887,10 @@ export class QuantumEngine {
         }
 
         // Tear down any existing visualizers before re-init
-        this.visualizers.forEach(v => v.destroy && v.destroy());
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            const v = this.visualizers[i];
+            if (v.destroy) v.destroy();
+        }
         this.visualizers = [];
 
         this.createVisualizers();
@@ -895,7 +910,8 @@ export class QuantumEngine {
         if (this._renderMode === 'bridge' && this._multiCanvasBridge) {
             this._multiCanvasBridge.resizeAll(width, height, pixelRatio);
         } else {
-            this.visualizers.forEach(visualizer => {
+            for (let i = 0, len = this.visualizers.length; i < len; i++) {
+                const visualizer = this.visualizers[i];
                 if (visualizer.canvas && visualizer.gl) {
                     visualizer.canvas.width = width * pixelRatio;
                     visualizer.canvas.height = height * pixelRatio;
@@ -903,7 +919,7 @@ export class QuantumEngine {
                     visualizer.canvas.style.height = `${height}px`;
                     visualizer.gl.viewport(0, 0, visualizer.canvas.width, visualizer.canvas.height);
                 }
-            });
+            }
         }
         console.log(`🔮 Quantum resized to ${width}x${height} @${pixelRatio}x`);
     }
