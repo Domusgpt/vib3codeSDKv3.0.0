@@ -615,32 +615,58 @@ export class Rotor4D {
 
     /**
      * Check if approximately equal to another rotor
+     * @performance Uses short-circuit L-infinity norm comparison to avoid sum computations
      * @param {Rotor4D} r
      * @param {number} epsilon
      * @returns {boolean}
      */
     equals(r, epsilon = 1e-6) {
         // Account for double cover (R and -R represent same rotation)
-        const diff1 = Math.abs(this.s - r.s) + Math.abs(this.xy - r.xy) +
-            Math.abs(this.xz - r.xz) + Math.abs(this.yz - r.yz) +
-            Math.abs(this.xw - r.xw) + Math.abs(this.yw - r.yw) +
-            Math.abs(this.zw - r.zw) + Math.abs(this.xyzw - r.xyzw);
+        // using L-infinity norm (checking each component)
 
-        const diff2 = Math.abs(this.s + r.s) + Math.abs(this.xy + r.xy) +
-            Math.abs(this.xz + r.xz) + Math.abs(this.yz + r.yz) +
-            Math.abs(this.xw + r.xw) + Math.abs(this.yw + r.yw) +
-            Math.abs(this.zw + r.zw) + Math.abs(this.xyzw + r.xyzw);
+        let matchPos = true;
+        if (Math.abs(this.s - r.s) > epsilon) matchPos = false;
+        if (matchPos && Math.abs(this.xy - r.xy) > epsilon) matchPos = false;
+        if (matchPos && Math.abs(this.xz - r.xz) > epsilon) matchPos = false;
+        if (matchPos && Math.abs(this.yz - r.yz) > epsilon) matchPos = false;
+        if (matchPos && Math.abs(this.xw - r.xw) > epsilon) matchPos = false;
+        if (matchPos && Math.abs(this.yw - r.yw) > epsilon) matchPos = false;
+        if (matchPos && Math.abs(this.zw - r.zw) > epsilon) matchPos = false;
+        if (matchPos && Math.abs(this.xyzw - r.xyzw) > epsilon) matchPos = false;
 
-        return Math.min(diff1, diff2) < epsilon * 8;
+        if (matchPos) return true;
+
+        let matchNeg = true;
+        if (Math.abs(this.s + r.s) > epsilon) matchNeg = false;
+        if (matchNeg && Math.abs(this.xy + r.xy) > epsilon) matchNeg = false;
+        if (matchNeg && Math.abs(this.xz + r.xz) > epsilon) matchNeg = false;
+        if (matchNeg && Math.abs(this.yz + r.yz) > epsilon) matchNeg = false;
+        if (matchNeg && Math.abs(this.xw + r.xw) > epsilon) matchNeg = false;
+        if (matchNeg && Math.abs(this.yw + r.yw) > epsilon) matchNeg = false;
+        if (matchNeg && Math.abs(this.zw + r.zw) > epsilon) matchNeg = false;
+        if (matchNeg && Math.abs(this.xyzw + r.xyzw) > epsilon) matchNeg = false;
+
+        return matchNeg;
     }
 
     /**
      * Check if this is the identity rotor
+     * @performance Optimized to avoid new object allocation from Rotor4D.identity()
      * @param {number} epsilon
      * @returns {boolean}
      */
     isIdentity(epsilon = 1e-6) {
-        return this.equals(Rotor4D.identity(), epsilon);
+        const offDiagonalsZero =
+            Math.abs(this.xy) <= epsilon &&
+            Math.abs(this.xz) <= epsilon &&
+            Math.abs(this.yz) <= epsilon &&
+            Math.abs(this.xw) <= epsilon &&
+            Math.abs(this.yw) <= epsilon &&
+            Math.abs(this.zw) <= epsilon &&
+            Math.abs(this.xyzw) <= epsilon;
+
+        if (!offDiagonalsZero) return false;
+        return Math.abs(this.s - 1) <= epsilon || Math.abs(this.s + 1) <= epsilon;
     }
 
     /**
