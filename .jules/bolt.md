@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-06-12 - Scene4D Query Optimization
+**Learning:** Math object allocation (like `Vec4`) in high-frequency scene graph queries (`findNodesInSphere`, `raycast`) causes huge GC pressure and slows down iteration. However, making assumptions about internal matrix layout can be dangerous and lead to regressions if misinterpreted.
+**Action:** Always prefer safely extracting properties (like `node.worldPosition.x/y/z/w`) and inlining the math (e.g., expanding `.sub().lengthSquared()` into raw arithmetic) over chaining operations that create intermediate objects. Avoid direct matrix hacking unless mathematically verified, as using the class getter avoids breaking abstractions while still allowing massive (e.g. ~50%) speedups.
