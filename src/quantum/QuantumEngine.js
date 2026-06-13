@@ -650,7 +650,9 @@ export class QuantumEngine {
         this.parameters.setParameter(param, value);
         
         // CRITICAL: Apply to all quantum visualizers with immediate render
-        this.visualizers.forEach(visualizer => {
+        // Bolt: Using for-loop to reduce callback overhead in hot path
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateParameters) {
                 const params = {};
                 params[param] = value;
@@ -664,7 +666,7 @@ export class QuantumEngine {
                     }
                 }
             }
-        });
+        }
         
         console.log(`🔮 Updated quantum ${param}: ${value}`);
     }
@@ -682,11 +684,13 @@ export class QuantumEngine {
      * Update mouse interaction
      */
     updateInteraction(x, y, intensity) {
-        this.visualizers.forEach(visualizer => {
+        // Bolt: Using for-loop to reduce callback overhead in hot path
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateInteraction) {
                 visualizer.updateInteraction(x, y, intensity);
             }
-        });
+        }
     }
     
     /**
@@ -759,12 +763,14 @@ export class QuantumEngine {
     _renderDirectFrame() {
         const currentParams = this.parameters.getAllParameters();
 
-        this.visualizers.forEach(visualizer => {
+        // Bolt: Using for-loop to reduce callback overhead in hot path
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateParameters && visualizer.render) {
                 visualizer.updateParameters(currentParams);
                 visualizer.render();
             }
-        });
+        }
     }
     
     /**
@@ -776,22 +782,26 @@ export class QuantumEngine {
      * Update click effects (for universal reactivity system)
      */
     updateClick(intensity) {
-        this.visualizers.forEach(visualizer => {
+        // Bolt: Using for-loop to reduce callback overhead in hot path
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.triggerClick) {
                 visualizer.triggerClick(0.5, 0.5, intensity); // Click at center with intensity
             }
-        });
+        }
     }
     
     /**
      * Update scroll effects (for universal reactivity system)
      */
     updateScroll(velocity) {
-        this.visualizers.forEach(visualizer => {
+        // Bolt: Using for-loop to reduce callback overhead in hot path
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateScroll) {
                 visualizer.updateScroll(velocity);
             }
-        });
+        }
     }
     
     /**
@@ -842,11 +852,13 @@ export class QuantumEngine {
         this._renderMode = 'direct';
 
         // Destroy all visualizers
-        this.visualizers.forEach(visualizer => {
+        // Bolt: Using for-loop to reduce callback overhead in hot path
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.destroy) {
                 visualizer.destroy();
             }
-        });
+        }
         this.visualizers = [];
         console.log('Quantum Engine destroyed');
     }
@@ -875,7 +887,11 @@ export class QuantumEngine {
         }
 
         // Tear down any existing visualizers before re-init
-        this.visualizers.forEach(v => v.destroy && v.destroy());
+        // Bolt: Using for-loop to reduce callback overhead in hot path
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            const v = this.visualizers[i];
+            if (v.destroy) v.destroy();
+        }
         this.visualizers = [];
 
         this.createVisualizers();
@@ -895,7 +911,9 @@ export class QuantumEngine {
         if (this._renderMode === 'bridge' && this._multiCanvasBridge) {
             this._multiCanvasBridge.resizeAll(width, height, pixelRatio);
         } else {
-            this.visualizers.forEach(visualizer => {
+            // Bolt: Using for-loop to reduce callback overhead in hot path
+            for (let i = 0, len = this.visualizers.length; i < len; i++) {
+                const visualizer = this.visualizers[i];
                 if (visualizer.canvas && visualizer.gl) {
                     visualizer.canvas.width = width * pixelRatio;
                     visualizer.canvas.height = height * pixelRatio;
@@ -903,7 +921,7 @@ export class QuantumEngine {
                     visualizer.canvas.style.height = `${height}px`;
                     visualizer.gl.viewport(0, 0, visualizer.canvas.width, visualizer.canvas.height);
                 }
-            });
+            }
         }
         console.log(`🔮 Quantum resized to ${width}x${height} @${pixelRatio}x`);
     }
