@@ -34,7 +34,8 @@ export class CanvasManager {
             const viewHeight = this.container.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 600);
             const dpr = (typeof window !== 'undefined') ? Math.min(window.devicePixelRatio || 1, 2) : 1;
 
-            canvasIds.forEach((canvasId, index) => {
+            for (let index = 0, len = canvasIds.length; index < len; index++) {
+                const canvasId = canvasIds[index];
                 const canvas = document.createElement('canvas');
                 canvas.id = canvasId;
                 canvas.className = 'visualization-canvas';
@@ -48,7 +49,7 @@ export class CanvasManager {
                 canvas.height = viewHeight * dpr;
                 this.container.appendChild(canvas);
                 this.createdCanvases.push(canvas);
-            });
+            }
         }
 
         this.currentSystem = systemName;

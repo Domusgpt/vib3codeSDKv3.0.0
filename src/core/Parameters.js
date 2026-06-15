@@ -128,7 +128,8 @@ export class ParameterManager {
             'gridDensity', 'morphFactor', 'chaos', 'speed', 'hue'
         ];
         
-        controlIds.forEach(id => {
+        for (let i = 0, len = controlIds.length; i < len; i++) {
+            const id = controlIds[i];
             const element = document.getElementById(id);
             if (element) {
                 const value = parseFloat(element.value);
@@ -142,7 +143,7 @@ export class ParameterManager {
 
                 this.setParameter(paramName, value);
             }
-        });
+        }
     }
     
     /**
