@@ -200,7 +200,8 @@ export class VIB3Engine {
             }
 
             // Register WebGL contexts with CanvasManager for cleanup
-            canvasIds.forEach(canvasId => {
+            for (let i = 0, len = canvasIds.length; i < len; i++) {
+                const canvasId = canvasIds[i];
                 const canvas = document.getElementById(canvasId);
                 if (canvas) {
                     const gl = canvas.getContext('webgl') || canvas.getContext('webgl2');
@@ -208,7 +209,7 @@ export class VIB3Engine {
                         this.canvasManager.registerContext(canvasId, gl);
                     }
                 }
-            });
+            }
 
             // Apply current parameters
             system.updateParameters(this.parameters.getAllParameters());
