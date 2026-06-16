@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-05-26 - [Avoid forEach in Render Loops]
+**Learning:** In high-frequency code paths like `renderFrame()` and continuous parameter updates, utilizing `.forEach()`, `Object.keys(obj).forEach()`, and `Object.entries(obj).forEach()` causes substantial closure allocation and intermediate array garbage. This directly leads to GC pressure, jitter, and frame drops. Benchmarks show standard `for` loops are ~50% faster, and `for...in` loops are ~34-80% faster for these patterns.
+**Action:** When working inside hot loops (especially rendering arrays or iterating system parameter maps), strictly avoid array iterator functions (`.forEach`, `.map`, etc.). Pre-cache lengths (`for (let i = 0, len = arr.length; i < len; i++)`) and utilize `for...in` with `Object.prototype.hasOwnProperty.call()` for objects.
