@@ -664,9 +664,10 @@ export class RealHolographicSystem {
         }
         
         // Apply audio reactivity to all visualizers
-        this.visualizers.forEach(visualizer => {
-            visualizer.updateAudio(this.audioData);
-        });
+        const visualizers = this.visualizers;
+        for (let i = 0, len = visualizers.length; i < len; i++) {
+            visualizers[i].updateAudio(this.audioData);
+        }
     }
     
     smoothAudioValue(currentValue, type) {
@@ -950,9 +951,10 @@ export class RealHolographicSystem {
                     this._renderBridgeFrame();
                 } else {
                     // Direct mode: render all visualizers
-                    this.visualizers.forEach(visualizer => {
-                        visualizer.render();
-                    });
+                    const visualizers = this.visualizers;
+                    for (let i = 0, len = visualizers.length; i < len; i++) {
+                        visualizers[i].render();
+                    }
                 }
             }
 
@@ -1070,9 +1072,11 @@ export class RealHolographicSystem {
     render(frameState = {}) {
         // Apply frameState parameters if provided
         if (frameState.params) {
-            Object.keys(frameState.params).forEach(param => {
-                this.updateParameter(param, frameState.params[param]);
-            });
+            for (const param in frameState.params) {
+                if (Object.prototype.hasOwnProperty.call(frameState.params, param)) {
+                    this.updateParameter(param, frameState.params[param]);
+                }
+            }
         }
 
         // Apply audio data if provided
@@ -1084,11 +1088,13 @@ export class RealHolographicSystem {
             this._renderBridgeFrame();
         } else {
             // Render all visualizers in direct mode
-            this.visualizers.forEach(visualizer => {
+            const visualizers = this.visualizers;
+            for (let i = 0, len = visualizers.length; i < len; i++) {
+                const visualizer = visualizers[i];
                 if (visualizer.render) {
                     visualizer.render();
                 }
-            });
+            }
         }
     }
 
