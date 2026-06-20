@@ -640,7 +640,13 @@ export class Rotor4D {
      * @returns {boolean}
      */
     isIdentity(epsilon = 1e-6) {
-        return this.equals(Rotor4D.identity(), epsilon);
+        // Zero-allocation, unrolled property check, taking into account double cover
+        if (Math.abs(this.xy) > epsilon || Math.abs(this.xz) > epsilon || Math.abs(this.yz) > epsilon ||
+            Math.abs(this.xw) > epsilon || Math.abs(this.yw) > epsilon || Math.abs(this.zw) > epsilon ||
+            Math.abs(this.xyzw) > epsilon) {
+            return false;
+        }
+        return Math.abs(this.s - 1) <= epsilon || Math.abs(this.s + 1) <= epsilon;
     }
 
     /**
