@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## $(date +%Y-%m-%d) - [Zero-Allocation Geometric Identity Checks]
+**Learning:** Checking for equality against `Mat4x4.identity()` or `Rotor4D.identity()` instantiates a new object every time. This creates hidden garbage collection pressure when called in hot math paths.
+**Action:** Unroll identity equality checks in primitive math objects by comparing internal `.data` values or properties directly to the mathematical identity constants (e.g. 1 on diagonal, 0 elsewhere for Matrices; s=1 or -1 for Rotors) to achieve zero-allocation validation.
