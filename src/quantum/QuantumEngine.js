@@ -673,20 +673,23 @@ export class QuantumEngine {
      * Update multiple parameters
      */
     updateParameters(params) {
-        Object.keys(params).forEach(param => {
-            this.updateParameter(param, params[param]);
-        });
+        for (const param in params) {
+            if (Object.prototype.hasOwnProperty.call(params, param)) {
+                this.updateParameter(param, params[param]);
+            }
+        }
     }
     
     /**
      * Update mouse interaction
      */
     updateInteraction(x, y, intensity) {
-        this.visualizers.forEach(visualizer => {
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateInteraction) {
                 visualizer.updateInteraction(x, y, intensity);
             }
-        });
+        }
     }
     
     /**
@@ -759,12 +762,13 @@ export class QuantumEngine {
     _renderDirectFrame() {
         const currentParams = this.parameters.getAllParameters();
 
-        this.visualizers.forEach(visualizer => {
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateParameters && visualizer.render) {
                 visualizer.updateParameters(currentParams);
                 visualizer.render();
             }
-        });
+        }
     }
     
     /**
