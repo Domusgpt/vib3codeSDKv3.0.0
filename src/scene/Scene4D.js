@@ -328,7 +328,7 @@ export class Scene4D {
 
         this.root.traverse(node => {
             if (node === this.root) return;
-            const dist = node.worldPosition.sub(center).lengthSquared();
+            const dist = node.worldPosition.distanceToSquared(center);
             if (dist <= radiusSq) {
                 results.push(node);
             }
@@ -372,7 +372,7 @@ export class Scene4D {
 
         this.root.traverse(node => {
             if (node === this.root) return;
-            const distSq = node.worldPosition.sub(point).lengthSquared();
+            const distSq = node.worldPosition.distanceToSquared(point);
             if (distSq < nearestDistSq) {
                 nearestDistSq = distSq;
                 nearest = node;
@@ -393,20 +393,24 @@ export class Scene4D {
         const hits = [];
         const dir = direction.normalize();
 
+        const _tempToNode = new Vec4();
+        const _tempScaledDir = new Vec4();
+        const _tempClosest = new Vec4();
+
         this.root.traverse(node => {
             if (node === this.root) return;
 
             // Simplified: treat each node as a point
-            const toNode = node.worldPosition.sub(origin);
+            const toNode = node.worldPosition.sub(origin, _tempToNode);
             const dist = toNode.dot(dir);
 
             if (dist > 0 && dist < maxDistance) {
                 // Check perpendicular distance
-                const closest = origin.add(dir.scale(dist));
-                const perpDist = node.worldPosition.sub(closest).length();
+                dir.scale(dist, _tempScaledDir);
+                const closest = origin.add(_tempScaledDir, _tempClosest);
 
-                // Assume nodes have radius 0.5 for hit detection
-                if (perpDist < 0.5) {
+                // Assume nodes have radius 0.5 for hit detection (0.5^2 = 0.25)
+                if (node.worldPosition.distanceToSquared(closest) < 0.25) {
                     hits.push({ node, distance: dist });
                 }
             }
