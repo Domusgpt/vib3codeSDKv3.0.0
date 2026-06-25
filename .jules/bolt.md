@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-05-25 - [Scene4D Traversal Target Mutation]
+**Learning:** The math library's `Vec4` API (`sub`, `add`, `scale`) supports an optional `target` parameter for zero-allocation mutations. When optimizing hot paths like `raycast` traversal, passing pre-allocated temporary vectors to these methods prevents object creation. Also, avoiding `.length()` calculation by using `distanceToSquared` saves square root and temporary object allocation costs.
+**Action:** When working with 3D/4D math in tight loops or traversals, always check if the math API supports target parameters and use them to avoid allocating temporary instances. Replace distance checks with squared distance alternatives whenever possible.
