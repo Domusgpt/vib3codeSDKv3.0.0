@@ -950,9 +950,10 @@ export class RealHolographicSystem {
                     this._renderBridgeFrame();
                 } else {
                     // Direct mode: render all visualizers
-                    this.visualizers.forEach(visualizer => {
-                        visualizer.render();
-                    });
+                    // ⚡ Bolt: Replaced .forEach with for loop to prevent closure allocation in hot path
+                    for (let i = 0, len = this.visualizers.length; i < len; i++) {
+                        this.visualizers[i].render();
+                    }
                 }
             }
 
@@ -1084,11 +1085,13 @@ export class RealHolographicSystem {
             this._renderBridgeFrame();
         } else {
             // Render all visualizers in direct mode
-            this.visualizers.forEach(visualizer => {
+            // ⚡ Bolt: Replaced .forEach with for loop to prevent closure allocation in hot path
+            for (let i = 0, len = this.visualizers.length; i < len; i++) {
+                const visualizer = this.visualizers[i];
                 if (visualizer.render) {
                     visualizer.render();
                 }
-            });
+            }
         }
     }
 
