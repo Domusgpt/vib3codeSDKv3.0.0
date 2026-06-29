@@ -362,7 +362,11 @@ class UnifiedResourceManager {
     }
 
     // Clear maps
-    Object.values(this.resources).forEach(map => map.clear());
+    for (const key in this.resources) {
+      if (Object.prototype.hasOwnProperty.call(this.resources, key)) {
+        this.resources[key].clear();
+      }
+    }
     this.currentUsage = 0;
   }
 }

@@ -377,7 +377,8 @@ class ExportedHolographicRenderer {
             { alpha: 0.5, size: 2.5, offset: 1.2 }
         ];
         
-        layers.forEach((layer, layerIndex) => {
+        for (let layerIndex = 0, len = layers.length; layerIndex < len; layerIndex++) {
+            const layer = layers[layerIndex];
             for (let i = 0; i < this.config.gridDensity * 8; i++) {
                 const angle = (i / (this.config.gridDensity * 8)) * Math.PI * 2;
                 const radius = Math.sin(this.time * 0.001 * this.config.speed + angle * this.config.morphFactor + layer.offset) * 
@@ -395,7 +396,7 @@ class ExportedHolographicRenderer {
                 ctx.arc(x, y, (2 + this.config.chaos * 3) * layer.size, 0, Math.PI * 2);
                 ctx.fill();
             }
-        });
+        }
         
         // Decay intensities
         this.mouseIntensity *= 0.95;
