@@ -223,33 +223,47 @@ export function warpToEdges(vertices, size = 1, snap = 0.5) {
     const pentatopeVerts = getPentatopeVertices(size);
     const edges = getPentatopeEdges();
 
-    return vertices.map(v => {
+    // ⚡ Bolt: Pre-calculate edge vectors and lengths to avoid redundant calculations per vertex
+    const edgeData = edges.map(([i, j]) => {
+        const edgeStart = pentatopeVerts[i];
+        const edgeEnd = pentatopeVerts[j];
+        const edgeVec = edgeEnd.sub(edgeStart);
+        const edgeLenSq = edgeVec.lengthSquared();
+        return { edgeStart, edgeVec, edgeLenSq };
+    });
+
+    // ⚡ Bolt: Use a standard for loop with pre-allocated result array instead of map()
+    const result = new Array(vertices.length);
+    for (let j = 0; j < vertices.length; j++) {
+        const v = vertices[j];
+
         // Find nearest edge and project onto it
-        let nearestDist = Infinity;
+        let nearestDistSq = Infinity;
         let nearestPoint = v;
 
-        for (const [i, j] of edges) {
-            const edgeStart = pentatopeVerts[i];
-            const edgeEnd = pentatopeVerts[j];
-            const edgeVec = edgeEnd.sub(edgeStart);
-            const edgeLen = edgeVec.length();
+        // ⚡ Bolt: Caching array length in standard for loop
+        for (let i = 0; i < edgeData.length; i++) {
+            const { edgeStart, edgeVec, edgeLenSq } = edgeData[i];
 
             // Project v onto edge
             const toV = v.sub(edgeStart);
-            let t = toV.dot(edgeVec) / (edgeLen * edgeLen);
+            let t = toV.dot(edgeVec) / edgeLenSq;
             t = Math.max(0, Math.min(1, t));
 
             const projection = edgeStart.add(edgeVec.scale(t));
-            const dist = v.distanceTo(projection);
+            // ⚡ Bolt: Use distanceToSquared to avoid expensive Math.sqrt calls
+            const distSq = v.distanceToSquared(projection);
 
-            if (dist < nearestDist) {
-                nearestDist = dist;
+            if (distSq < nearestDistSq) {
+                nearestDistSq = distSq;
                 nearestPoint = projection;
             }
         }
 
-        return v.lerp(nearestPoint, snap);
-    });
+        result[j] = v.lerp(nearestPoint, snap);
+    }
+
+    return result;
 }
 
 /**
@@ -263,50 +277,56 @@ export function warpToCells(vertices, size = 1, cellInfluence = 0.7) {
     const pentatopeVerts = getPentatopeVertices(size);
     const cells = getPentatopeCells();
 
-    return vertices.map(v => {
-        // Find nearest cell center
-        let nearestDist = Infinity;
-        let nearestCell = 0;
-
-        for (let c = 0; c < cells.length; c++) {
-            const cellVerts = cells[c].map(i => pentatopeVerts[i]);
-            const center = new Vec4(
-                (cellVerts[0].x + cellVerts[1].x + cellVerts[2].x + cellVerts[3].x) / 4,
-                (cellVerts[0].y + cellVerts[1].y + cellVerts[2].y + cellVerts[3].y) / 4,
-                (cellVerts[0].z + cellVerts[1].z + cellVerts[2].z + cellVerts[3].z) / 4,
-                (cellVerts[0].w + cellVerts[1].w + cellVerts[2].w + cellVerts[3].w) / 4
-            );
-
-            const dist = v.distanceTo(center);
-            if (dist < nearestDist) {
-                nearestDist = dist;
-                nearestCell = c;
-            }
-        }
-
-        // Project into the cell's tetrahedral space
-        const cellVerts = cells[nearestCell].map(i => pentatopeVerts[i]);
-
-        // Simple approach: interpolate toward cell center
-        const center = new Vec4(
+    // ⚡ Bolt: Pre-calculate all cell centers since they don't change per vertex,
+    // eliminating redundant center coordinate averaging in the inner loop
+    const cellCenters = cells.map(cellIndices => {
+        const cellVerts = cellIndices.map(i => pentatopeVerts[i]);
+        return new Vec4(
             (cellVerts[0].x + cellVerts[1].x + cellVerts[2].x + cellVerts[3].x) / 4,
             (cellVerts[0].y + cellVerts[1].y + cellVerts[2].y + cellVerts[3].y) / 4,
             (cellVerts[0].z + cellVerts[1].z + cellVerts[2].z + cellVerts[3].z) / 4,
             (cellVerts[0].w + cellVerts[1].w + cellVerts[2].w + cellVerts[3].w) / 4
         );
+    });
 
-        // Move toward the cell but maintain some original structure
-        const toCenterDir = center.sub(v).normalize();
-        const distToCenter = v.distanceTo(center);
-        const targetDist = size * 0.5; // Target distance from center
+    const targetDist = size * 0.5; // Target distance from center
 
-        if (distToCenter > targetDist) {
-            const adjustment = toCenterDir.scale((distToCenter - targetDist) * cellInfluence);
-            return v.add(adjustment);
+    // ⚡ Bolt: Use a standard for loop with pre-allocated result array instead of map()
+    const result = new Array(vertices.length);
+    for (let i = 0; i < vertices.length; i++) {
+        const v = vertices[i];
+
+        // Find nearest cell center
+        let nearestDistSq = Infinity;
+        let nearestCell = 0;
+
+        // ⚡ Bolt: Caching array length in standard for loop
+        for (let c = 0; c < cells.length; c++) {
+            const center = cellCenters[c];
+            // ⚡ Bolt: Use distanceToSquared to avoid expensive Math.sqrt calls
+            const distSq = v.distanceToSquared(center);
+            if (distSq < nearestDistSq) {
+                nearestDistSq = distSq;
+                nearestCell = c;
+            }
         }
 
-        return v;
-    });
+        const center = cellCenters[nearestCell];
+
+        // ⚡ Bolt: We already know nearestDistSq, compute actual distance efficiently
+        const distToCenter = Math.sqrt(nearestDistSq);
+
+        // Move toward the cell but maintain some original structure
+        if (distToCenter > targetDist) {
+            const toCenterDir = center.sub(v).normalize();
+            const adjustment = toCenterDir.scale((distToCenter - targetDist) * cellInfluence);
+            result[i] = v.add(adjustment);
+        } else {
+            result[i] = v;
+        }
+    }
+
+    return result;
 }
 
 /**
