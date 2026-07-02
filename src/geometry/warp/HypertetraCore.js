@@ -259,54 +259,77 @@ export function warpToEdges(vertices, size = 1, snap = 0.5) {
  * @param {number} cellInfluence - How much cells pull points (0-1)
  * @returns {Vec4[]} Warped vertices
  */
-export function warpToCells(vertices, size = 1, cellInfluence = 0.7) {
+export function warpToCells(vertices, size = 1, cellInfluence = 0.7, target = null) {
     const pentatopeVerts = getPentatopeVertices(size);
     const cells = getPentatopeCells();
 
-    return vertices.map(v => {
-        // Find nearest cell center
-        let nearestDist = Infinity;
-        let nearestCell = 0;
+    // Precompute cell centers to avoid redundant evaluation
+    const cellCenters = [];
+    for (let c = 0; c < cells.length; c++) {
+        const c0 = pentatopeVerts[cells[c][0]];
+        const c1 = pentatopeVerts[cells[c][1]];
+        const c2 = pentatopeVerts[cells[c][2]];
+        const c3 = pentatopeVerts[cells[c][3]];
+
+        cellCenters.push(new Vec4(
+            (c0.x + c1.x + c2.x + c3.x) / 4,
+            (c0.y + c1.y + c2.y + c3.y) / 4,
+            (c0.z + c1.z + c2.z + c3.z) / 4,
+            (c0.w + c1.w + c2.w + c3.w) / 4
+        ));
+    }
+
+    const result = target || new Array(vertices.length);
+    if (result.length > vertices.length) result.length = vertices.length;
+
+    const targetDistSq = (size * 0.5) * (size * 0.5);
+
+    for (let i = 0; i < vertices.length; i++) {
+        const v = vertices[i];
+        let nearestDistSq = Infinity;
+        let nearestCellIdx = 0;
 
         for (let c = 0; c < cells.length; c++) {
-            const cellVerts = cells[c].map(i => pentatopeVerts[i]);
-            const center = new Vec4(
-                (cellVerts[0].x + cellVerts[1].x + cellVerts[2].x + cellVerts[3].x) / 4,
-                (cellVerts[0].y + cellVerts[1].y + cellVerts[2].y + cellVerts[3].y) / 4,
-                (cellVerts[0].z + cellVerts[1].z + cellVerts[2].z + cellVerts[3].z) / 4,
-                (cellVerts[0].w + cellVerts[1].w + cellVerts[2].w + cellVerts[3].w) / 4
-            );
-
-            const dist = v.distanceTo(center);
-            if (dist < nearestDist) {
-                nearestDist = dist;
-                nearestCell = c;
+            const distSq = v.distanceToSquared(cellCenters[c]);
+            if (distSq < nearestDistSq) {
+                nearestDistSq = distSq;
+                nearestCellIdx = c;
             }
         }
 
-        // Project into the cell's tetrahedral space
-        const cellVerts = cells[nearestCell].map(i => pentatopeVerts[i]);
+        const center = cellCenters[nearestCellIdx];
+        const distToCenterSq = nearestDistSq;
 
-        // Simple approach: interpolate toward cell center
-        const center = new Vec4(
-            (cellVerts[0].x + cellVerts[1].x + cellVerts[2].x + cellVerts[3].x) / 4,
-            (cellVerts[0].y + cellVerts[1].y + cellVerts[2].y + cellVerts[3].y) / 4,
-            (cellVerts[0].z + cellVerts[1].z + cellVerts[2].z + cellVerts[3].z) / 4,
-            (cellVerts[0].w + cellVerts[1].w + cellVerts[2].w + cellVerts[3].w) / 4
-        );
+        if (distToCenterSq > targetDistSq) {
+            const distToCenter = Math.sqrt(distToCenterSq);
+            const targetDist = size * 0.5;
+            const factor = ((distToCenter - targetDist) * cellInfluence) / distToCenter;
 
-        // Move toward the cell but maintain some original structure
-        const toCenterDir = center.sub(v).normalize();
-        const distToCenter = v.distanceTo(center);
-        const targetDist = size * 0.5; // Target distance from center
-
-        if (distToCenter > targetDist) {
-            const adjustment = toCenterDir.scale((distToCenter - targetDist) * cellInfluence);
-            return v.add(adjustment);
+            if (result[i]) {
+                result[i].set(
+                    v.x + (center.x - v.x) * factor,
+                    v.y + (center.y - v.y) * factor,
+                    v.z + (center.z - v.z) * factor,
+                    v.w + (center.w - v.w) * factor
+                );
+            } else {
+                result[i] = new Vec4(
+                    v.x + (center.x - v.x) * factor,
+                    v.y + (center.y - v.y) * factor,
+                    v.z + (center.z - v.z) * factor,
+                    v.w + (center.w - v.w) * factor
+                );
+            }
+        } else {
+            if (result[i] && result[i] !== v) {
+                result[i].set(v.x, v.y, v.z, v.w);
+            } else {
+                result[i] = v; // Avoid allocation for untouched vertices if no separate target is provided
+            }
         }
+    }
 
-        return v;
-    });
+    return result;
 }
 
 /**
@@ -326,7 +349,8 @@ export function warpHypertetraCore(geometry, options = {}) {
         method = 'tetrahedral',
         size = 1,
         blend = 1,
-        snap = 0.5
+        snap = 0.5,
+        target = null
     } = options;
 
     let warpedVertices;
@@ -338,7 +362,7 @@ export function warpHypertetraCore(geometry, options = {}) {
             break;
 
         case 'cells':
-            warpedVertices = warpToCells(geometry.vertices, size, blend);
+            warpedVertices = warpToCells(geometry.vertices, size, blend, target);
             break;
 
         case 'surface':
