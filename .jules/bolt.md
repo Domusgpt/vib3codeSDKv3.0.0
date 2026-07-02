@@ -22,3 +22,6 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+## 2025-01-20 - [Performance] Eliminating map and vector allocation in loops
+**Learning:** Precomputing array-mapped variables outside the vertex loops and using zero-allocation distance math (e.g. `distanceToSquared`) instead of map chains creates massive performance boosts for hot path components like hypertetrahedron warps.
+**Action:** Before mapping through vertices in loops, consider if data computations inside the loop can be hoisted outside, and always avoid vector reinstantiation inside the iteration bounds where possible.
