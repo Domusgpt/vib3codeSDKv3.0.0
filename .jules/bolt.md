@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-10-25 - Zero-allocation Tree Traversals
+**Learning:** In Scene4D tree traversals, chained vector operations like node.worldPosition.sub(origin).lengthSquared() create significant garbage collection pressure by allocating temporary vectors.
+**Action:** Avoid chaining by replacing them with zero-allocation math methods like node.worldPosition.distanceToSquared(center) or inline scalar math arithmetic for complex geometric collisions like raycasts.

@@ -328,7 +328,7 @@ export class Scene4D {
 
         this.root.traverse(node => {
             if (node === this.root) return;
-            const dist = node.worldPosition.sub(center).lengthSquared();
+            const dist = node.worldPosition.distanceToSquared(center);
             if (dist <= radiusSq) {
                 results.push(node);
             }
@@ -372,7 +372,7 @@ export class Scene4D {
 
         this.root.traverse(node => {
             if (node === this.root) return;
-            const distSq = node.worldPosition.sub(point).lengthSquared();
+            const distSq = node.worldPosition.distanceToSquared(point);
             if (distSq < nearestDistSq) {
                 nearestDistSq = distSq;
                 nearest = node;
@@ -392,21 +392,36 @@ export class Scene4D {
     raycast(origin, direction, maxDistance = 1000) {
         const hits = [];
         const dir = direction.normalize();
+        const ox = origin.x, oy = origin.y, oz = origin.z, ow = origin.w;
+        const dx = dir.x, dy = dir.y, dz = dir.z, dw = dir.w;
 
         this.root.traverse(node => {
             if (node === this.root) return;
 
-            // Simplified: treat each node as a point
-            const toNode = node.worldPosition.sub(origin);
-            const dist = toNode.dot(dir);
+            // Use node.worldPosition accessor (allocates Vec4, but we access properties to avoid .sub() allocation)
+            const pos = node.worldPosition;
+
+            const toNodeX = pos.x - ox;
+            const toNodeY = pos.y - oy;
+            const toNodeZ = pos.z - oz;
+            const toNodeW = pos.w - ow;
+
+            const dist = toNodeX * dx + toNodeY * dy + toNodeZ * dz + toNodeW * dw;
 
             if (dist > 0 && dist < maxDistance) {
-                // Check perpendicular distance
-                const closest = origin.add(dir.scale(dist));
-                const perpDist = node.worldPosition.sub(closest).length();
+                const closestX = ox + dx * dist;
+                const closestY = oy + dy * dist;
+                const closestZ = oz + dz * dist;
+                const closestW = ow + dw * dist;
 
-                // Assume nodes have radius 0.5 for hit detection
-                if (perpDist < 0.5) {
+                const px = pos.x - closestX;
+                const py = pos.y - closestY;
+                const pz = pos.z - closestZ;
+                const pw = pos.w - closestW;
+
+                const perpDistSq = px * px + py * py + pz * pz + pw * pw;
+
+                if (perpDistSq < 0.25) { // 0.5 * 0.5
                     hits.push({ node, distance: dist });
                 }
             }
