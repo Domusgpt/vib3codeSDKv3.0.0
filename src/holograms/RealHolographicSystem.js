@@ -519,9 +519,11 @@ export class RealHolographicSystem {
             
             // Apply any custom parameter overrides
             if (this.customParams) {
-                Object.keys(this.customParams).forEach(param => {
-                    visualizer.variantParams[param] = this.customParams[param];
-                });
+                for (const param in this.customParams) {
+                        if (Object.prototype.hasOwnProperty.call(this.customParams, param)) {
+                            visualizer.variantParams[param] = this.customParams[param];
+                        }
+                    }
             }
         });
         
@@ -1070,9 +1072,11 @@ export class RealHolographicSystem {
     render(frameState = {}) {
         // Apply frameState parameters if provided
         if (frameState.params) {
-            Object.keys(frameState.params).forEach(param => {
-                this.updateParameter(param, frameState.params[param]);
-            });
+            for (const param in frameState.params) {
+                if (Object.prototype.hasOwnProperty.call(frameState.params, param)) {
+                    this.updateParameter(param, frameState.params[param]);
+                }
+            }
         }
 
         // Apply audio data if provided
