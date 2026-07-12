@@ -22,7 +22,3 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
-
-## 2026-06-15 - Hoisting Invariant Geometric Calculations
-**Learning:** In `HypertetraCore.js`, `warpToCells` and `warpToEdges` were redundantly calculating cell centers and edge vectors inside the vertex loop. This caused massive GC pressure (creating arrays and Vec4s inside O(V*C) loops) and hurt throughput.
-**Action:** Always hoist invariant geometric structures (like precomputing cell centers, face normals, or edge lengths) outside of vertex processing loops. Also, prefer standard `for` loops and `distanceToSquared` in hot paths to avoid closure allocations and Math.sqrt overhead.
