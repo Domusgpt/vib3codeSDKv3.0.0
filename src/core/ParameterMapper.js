@@ -164,17 +164,23 @@ export class ParameterMapper {
         }
 
         // Map known parameters
-        Object.entries(params).forEach(([key, value]) => {
-            const unifiedKey = mapping[key] || key;
-            unified[unifiedKey] = value;
-        });
+        for (const key in params) {
+            if (Object.prototype.hasOwnProperty.call(params, key)) {
+                const value = params[key];
+                const unifiedKey = mapping[key] || key;
+                unified[unifiedKey] = value;
+            }
+        }
         
         // Add defaults for missing parameters
-        Object.entries(this.unifiedSchema).forEach(([key, schema]) => {
-            if (unified[key] === undefined) {
-                unified[key] = schema.default;
+        for (const key in this.unifiedSchema) {
+            if (Object.prototype.hasOwnProperty.call(this.unifiedSchema, key)) {
+                const schema = this.unifiedSchema[key];
+                if (unified[key] === undefined) {
+                    unified[key] = schema.default;
+                }
             }
-        });
+        }
         
         return unified;
     }
@@ -189,15 +195,18 @@ export class ParameterMapper {
         const mapping = this.mappings[targetSystem]?.from || {};
         
         // Map unified parameters to system-specific
-        Object.entries(params).forEach(([key, value]) => {
-            const systemKey = mapping[key] || key;
-            
-            // Only include parameters the target system uses
-            if (this.mappings[targetSystem]?.to[systemKey] !== undefined || 
-                this.mappings[targetSystem]?.from[key] !== undefined) {
-                systemParams[systemKey] = value;
+        for (const key in params) {
+            if (Object.prototype.hasOwnProperty.call(params, key)) {
+                const value = params[key];
+                const systemKey = mapping[key] || key;
+
+                // Only include parameters the target system uses
+                if (this.mappings[targetSystem]?.to[systemKey] !== undefined ||
+                    this.mappings[targetSystem]?.from[key] !== undefined) {
+                    systemParams[systemKey] = value;
+                }
             }
-        });
+        }
         
         return systemParams;
     }
@@ -209,38 +218,41 @@ export class ParameterMapper {
         const errors = [];
         const validated = {};
         
-        Object.entries(params).forEach(([key, value]) => {
-            const schema = this.unifiedSchema[key];
-            
-            if (!schema) {
-                errors.push(`Unknown parameter: ${key}`);
-                return;
-            }
-            
-            // Type validation
-            if (schema.type === 'integer') {
-                value = Math.round(Number(value));
-            } else if (schema.type === 'float') {
-                value = Number(value);
-            }
+        for (const key in params) {
+            if (Object.prototype.hasOwnProperty.call(params, key)) {
+                let value = params[key];
+                const schema = this.unifiedSchema[key];
 
-            // Reject NaN/Infinity
-            if (!Number.isFinite(value)) {
-                errors.push(`${key} is not a finite number, using default`);
-                value = schema.default;
-            }
+                if (!schema) {
+                    errors.push(`Unknown parameter: ${key}`);
+                    continue;
+                }
 
-            // Range validation
-            if (value < schema.min) {
-                value = schema.min;
-                errors.push(`${key} clamped to minimum: ${schema.min}`);
-            } else if (value > schema.max) {
-                value = schema.max;
-                errors.push(`${key} clamped to maximum: ${schema.max}`);
+                // Type validation
+                if (schema.type === 'integer') {
+                    value = Math.round(Number(value));
+                } else if (schema.type === 'float') {
+                    value = Number(value);
+                }
+
+                // Reject NaN/Infinity
+                if (!Number.isFinite(value)) {
+                    errors.push(`${key} is not a finite number, using default`);
+                    value = schema.default;
+                }
+
+                // Range validation
+                if (value < schema.min) {
+                    value = schema.min;
+                    errors.push(`${key} clamped to minimum: ${schema.min}`);
+                } else if (value > schema.max) {
+                    value = schema.max;
+                    errors.push(`${key} clamped to maximum: ${schema.max}`);
+                }
+
+                validated[key] = value;
             }
-            
-            validated[key] = value;
-        });
+        }
         
         return { params: validated, errors };
     }
@@ -251,13 +263,17 @@ export class ParameterMapper {
     merge(...paramSets) {
         const merged = {};
         
-        paramSets.forEach(params => {
-            Object.entries(params).forEach(([key, value]) => {
-                if (value !== undefined && value !== null) {
-                    merged[key] = value;
+        for (let i = 0; i < paramSets.length; i++) {
+            const params = paramSets[i];
+            for (const key in params) {
+                if (Object.prototype.hasOwnProperty.call(params, key)) {
+                    const value = params[key];
+                    if (value !== undefined && value !== null) {
+                        merged[key] = value;
+                    }
                 }
-            });
-        });
+            }
+        }
         
         return merged;
     }
@@ -269,15 +285,18 @@ export class ParameterMapper {
         const defaults = {};
         const mapping = this.mappings[system]?.from || {};
         
-        Object.entries(this.unifiedSchema).forEach(([unifiedKey, schema]) => {
-            const systemKey = mapping[unifiedKey] || unifiedKey;
-            
-            // Only include if this system uses this parameter
-            if (this.mappings[system]?.to[systemKey] !== undefined ||
-                this.mappings[system]?.from[unifiedKey] !== undefined) {
-                defaults[systemKey] = schema.default;
+        for (const unifiedKey in this.unifiedSchema) {
+            if (Object.prototype.hasOwnProperty.call(this.unifiedSchema, unifiedKey)) {
+                const schema = this.unifiedSchema[unifiedKey];
+                const systemKey = mapping[unifiedKey] || unifiedKey;
+
+                // Only include if this system uses this parameter
+                if (this.mappings[system]?.to[systemKey] !== undefined ||
+                    this.mappings[system]?.from[unifiedKey] !== undefined) {
+                    defaults[systemKey] = schema.default;
+                }
             }
-        });
+        }
         
         return defaults;
     }
@@ -289,20 +308,23 @@ export class ParameterMapper {
         const ranges = {};
         const mapping = this.mappings[system]?.from || {};
         
-        Object.entries(this.unifiedSchema).forEach(([unifiedKey, schema]) => {
-            const systemKey = mapping[unifiedKey] || unifiedKey;
-            
-            // Only include if this system uses this parameter
-            if (this.mappings[system]?.to[systemKey] !== undefined ||
-                this.mappings[system]?.from[unifiedKey] !== undefined) {
-                ranges[systemKey] = {
-                    min: schema.min,
-                    max: schema.max,
-                    default: schema.default,
-                    type: schema.type
-                };
+        for (const unifiedKey in this.unifiedSchema) {
+            if (Object.prototype.hasOwnProperty.call(this.unifiedSchema, unifiedKey)) {
+                const schema = this.unifiedSchema[unifiedKey];
+                const systemKey = mapping[unifiedKey] || unifiedKey;
+
+                // Only include if this system uses this parameter
+                if (this.mappings[system]?.to[systemKey] !== undefined ||
+                    this.mappings[system]?.from[unifiedKey] !== undefined) {
+                    ranges[systemKey] = {
+                        min: schema.min,
+                        max: schema.max,
+                        default: schema.default,
+                        type: schema.type
+                    };
+                }
             }
-        });
+        }
         
         return ranges;
     }
@@ -319,14 +341,16 @@ export class ParameterMapper {
         const currentParams = this.getDefaults(targetSystem);
         const influenced = {};
         
-        Object.keys(targetParams).forEach(key => {
-            if (currentParams[key] !== undefined) {
-                // Blend current and new values based on influence
-                influenced[key] = currentParams[key] * (1 - influence) + targetParams[key] * influence;
-            } else {
-                influenced[key] = targetParams[key];
+        for (const key in targetParams) {
+            if (Object.prototype.hasOwnProperty.call(targetParams, key)) {
+                if (currentParams[key] !== undefined) {
+                    // Blend current and new values based on influence
+                    influenced[key] = currentParams[key] * (1 - influence) + targetParams[key] * influence;
+                } else {
+                    influenced[key] = targetParams[key];
+                }
             }
-        });
+        }
         
         return influenced;
     }
