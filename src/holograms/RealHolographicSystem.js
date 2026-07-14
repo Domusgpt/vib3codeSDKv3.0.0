@@ -1050,7 +1050,8 @@ export class RealHolographicSystem {
         if (this._renderMode === 'bridge' && this._multiCanvasBridge) {
             this._multiCanvasBridge.resizeAll(width, height, pixelRatio);
         } else {
-            this.visualizers.forEach(visualizer => {
+            for (let i = 0, len = this.visualizers.length; i < len; i++) {
+                const visualizer = this.visualizers[i];
                 if (visualizer.canvas && visualizer.gl) {
                     visualizer.canvas.width = width * pixelRatio;
                     visualizer.canvas.height = height * pixelRatio;
@@ -1058,7 +1059,7 @@ export class RealHolographicSystem {
                     visualizer.canvas.style.height = `${height}px`;
                     visualizer.gl.viewport(0, 0, visualizer.canvas.width, visualizer.canvas.height);
                 }
-            });
+            }
         }
         console.log(`🌌 Holographic resized to ${width}x${height} @${pixelRatio}x`);
     }
@@ -1070,9 +1071,11 @@ export class RealHolographicSystem {
     render(frameState = {}) {
         // Apply frameState parameters if provided
         if (frameState.params) {
-            Object.keys(frameState.params).forEach(param => {
-                this.updateParameter(param, frameState.params[param]);
-            });
+            for (const param in frameState.params) {
+                if (Object.prototype.hasOwnProperty.call(frameState.params, param)) {
+                    this.updateParameter(param, frameState.params[param]);
+                }
+            }
         }
 
         // Apply audio data if provided
@@ -1084,11 +1087,12 @@ export class RealHolographicSystem {
             this._renderBridgeFrame();
         } else {
             // Render all visualizers in direct mode
-            this.visualizers.forEach(visualizer => {
+            for (let i = 0, len = this.visualizers.length; i < len; i++) {
+                const visualizer = this.visualizers[i];
                 if (visualizer.render) {
                     visualizer.render();
                 }
-            });
+            }
         }
     }
 
