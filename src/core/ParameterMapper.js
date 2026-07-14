@@ -164,17 +164,21 @@ export class ParameterMapper {
         }
 
         // Map known parameters
-        Object.entries(params).forEach(([key, value]) => {
-            const unifiedKey = mapping[key] || key;
-            unified[unifiedKey] = value;
-        });
+        for (const key in params) {
+            if (Object.prototype.hasOwnProperty.call(params, key)) {
+                const unifiedKey = mapping[key] || key;
+                unified[unifiedKey] = params[key];
+            }
+        }
         
         // Add defaults for missing parameters
-        Object.entries(this.unifiedSchema).forEach(([key, schema]) => {
-            if (unified[key] === undefined) {
-                unified[key] = schema.default;
+        for (const key in this.unifiedSchema) {
+            if (Object.prototype.hasOwnProperty.call(this.unifiedSchema, key)) {
+                if (unified[key] === undefined) {
+                    unified[key] = this.unifiedSchema[key].default;
+                }
             }
-        });
+        }
         
         return unified;
     }
@@ -189,15 +193,18 @@ export class ParameterMapper {
         const mapping = this.mappings[targetSystem]?.from || {};
         
         // Map unified parameters to system-specific
-        Object.entries(params).forEach(([key, value]) => {
-            const systemKey = mapping[key] || key;
-            
-            // Only include parameters the target system uses
-            if (this.mappings[targetSystem]?.to[systemKey] !== undefined || 
-                this.mappings[targetSystem]?.from[key] !== undefined) {
-                systemParams[systemKey] = value;
+        for (const key in params) {
+            if (Object.prototype.hasOwnProperty.call(params, key)) {
+                const value = params[key];
+                const systemKey = mapping[key] || key;
+
+                // Only include parameters the target system uses
+                if (this.mappings[targetSystem]?.to[systemKey] !== undefined ||
+                    this.mappings[targetSystem]?.from[key] !== undefined) {
+                    systemParams[systemKey] = value;
+                }
             }
-        });
+        }
         
         return systemParams;
     }
