@@ -443,7 +443,10 @@ export class RenderCommandBuffer {
      * @param {function(RenderCommand, number): void} callback
      */
     forEach(callback) {
-        this._commands.forEach(callback);
+        // OPTIMIZATION: Avoid closure allocation
+        for (let i = 0, len = this._commands.length; i < len; i++) {
+            callback(this._commands[i], i);
+        }
     }
 
     /**

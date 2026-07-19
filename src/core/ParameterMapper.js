@@ -164,17 +164,22 @@ export class ParameterMapper {
         }
 
         // Map known parameters
-        Object.entries(params).forEach(([key, value]) => {
-            const unifiedKey = mapping[key] || key;
-            unified[unifiedKey] = value;
-        });
+        for (const key in params) {
+            if (Object.prototype.hasOwnProperty.call(params, key)) {
+                const value = params[key];
+                const unifiedKey = mapping[key] || key;
+                unified[unifiedKey] = value;
+            }
+        }
         
         // Add defaults for missing parameters
-        Object.entries(this.unifiedSchema).forEach(([key, schema]) => {
-            if (unified[key] === undefined) {
-                unified[key] = schema.default;
+        for (const key in this.unifiedSchema) {
+            if (Object.prototype.hasOwnProperty.call(this.unifiedSchema, key)) {
+                if (unified[key] === undefined) {
+                    unified[key] = this.unifiedSchema[key].default;
+                }
             }
-        });
+        }
         
         return unified;
     }
