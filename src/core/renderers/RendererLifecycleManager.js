@@ -54,9 +54,9 @@ export class RendererLifecycleManager {
     }
 
     dispose() {
-        this.renderers.forEach((entry) => {
+        for (const [key, entry] of this.renderers) {
             entry.renderer.dispose();
-        });
+        }
         this.renderers.clear();
         this.activeKey = null;
     }
