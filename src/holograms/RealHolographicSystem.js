@@ -950,9 +950,10 @@ export class RealHolographicSystem {
                     this._renderBridgeFrame();
                 } else {
                     // Direct mode: render all visualizers
-                    this.visualizers.forEach(visualizer => {
-                        visualizer.render();
-                    });
+                    // Optimization: Standard for loop avoids closure allocation in this hot render path
+                    for (let i = 0, len = this.visualizers.length; i < len; i++) {
+                        this.visualizers[i].render();
+                    }
                 }
             }
 
@@ -1070,9 +1071,12 @@ export class RealHolographicSystem {
     render(frameState = {}) {
         // Apply frameState parameters if provided
         if (frameState.params) {
-            Object.keys(frameState.params).forEach(param => {
-                this.updateParameter(param, frameState.params[param]);
-            });
+            // Optimization: for...in with hasOwnProperty avoids Array allocation from Object.keys()
+            for (const param in frameState.params) {
+                if (Object.prototype.hasOwnProperty.call(frameState.params, param)) {
+                    this.updateParameter(param, frameState.params[param]);
+                }
+            }
         }
 
         // Apply audio data if provided
@@ -1084,11 +1088,13 @@ export class RealHolographicSystem {
             this._renderBridgeFrame();
         } else {
             // Render all visualizers in direct mode
-            this.visualizers.forEach(visualizer => {
+            // Optimization: Standard for loop avoids closure allocation in this hot render path
+            for (let i = 0, len = this.visualizers.length; i < len; i++) {
+                const visualizer = this.visualizers[i];
                 if (visualizer.render) {
                     visualizer.render();
                 }
-            });
+            }
         }
     }
 
