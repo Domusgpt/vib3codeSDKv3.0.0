@@ -950,9 +950,10 @@ export class RealHolographicSystem {
                     this._renderBridgeFrame();
                 } else {
                     // Direct mode: render all visualizers
-                    this.visualizers.forEach(visualizer => {
+                    for (let i = 0, len = this.visualizers.length; i < len; i++) {
+                        const visualizer = this.visualizers[i];
                         visualizer.render();
-                    });
+                    }
                 }
             }
 
