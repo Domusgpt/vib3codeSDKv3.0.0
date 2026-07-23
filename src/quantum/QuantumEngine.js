@@ -759,12 +759,14 @@ export class QuantumEngine {
     _renderDirectFrame() {
         const currentParams = this.parameters.getAllParameters();
 
-        this.visualizers.forEach(visualizer => {
+        // Optimized: standard for loop avoids closure allocations per frame
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateParameters && visualizer.render) {
                 visualizer.updateParameters(currentParams);
                 visualizer.render();
             }
-        });
+        }
     }
     
     /**
