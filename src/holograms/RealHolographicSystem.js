@@ -664,9 +664,10 @@ export class RealHolographicSystem {
         }
         
         // Apply audio reactivity to all visualizers
-        this.visualizers.forEach(visualizer => {
-            visualizer.updateAudio(this.audioData);
-        });
+        // ⚡ Bolt: Use standard for-loop to avoid closure allocation
+        for (let i = 0, len = this.visualizers.length; i < len; i++) {
+            this.visualizers[i].updateAudio(this.audioData);
+        }
     }
     
     smoothAudioValue(currentValue, type) {
@@ -950,9 +951,10 @@ export class RealHolographicSystem {
                     this._renderBridgeFrame();
                 } else {
                     // Direct mode: render all visualizers
-                    this.visualizers.forEach(visualizer => {
-                        visualizer.render();
-                    });
+                    // ⚡ Bolt: Use standard for-loop to avoid per-frame closure allocation
+                    for (let i = 0, len = this.visualizers.length; i < len; i++) {
+                        this.visualizers[i].render();
+                    }
                 }
             }
 
@@ -1084,11 +1086,13 @@ export class RealHolographicSystem {
             this._renderBridgeFrame();
         } else {
             // Render all visualizers in direct mode
-            this.visualizers.forEach(visualizer => {
+            // ⚡ Bolt: Use standard for-loop to avoid per-frame closure allocation
+            for (let i = 0, len = this.visualizers.length; i < len; i++) {
+                const visualizer = this.visualizers[i];
                 if (visualizer.render) {
                     visualizer.render();
                 }
-            });
+            }
         }
     }
 
