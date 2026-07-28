@@ -328,7 +328,12 @@ export class Scene4D {
 
         this.root.traverse(node => {
             if (node === this.root) return;
-            const dist = node.worldPosition.sub(center).lengthSquared();
+            const wm = node.worldMatrix;
+            const dx = wm.get(0, 3) - center._x;
+            const dy = wm.get(1, 3) - center._y;
+            const dz = wm.get(2, 3) - center._z;
+            const dw = wm.get(3, 3) - center._w;
+            const dist = dx * dx + dy * dy + dz * dz + dw * dw;
             if (dist <= radiusSq) {
                 results.push(node);
             }
@@ -372,7 +377,12 @@ export class Scene4D {
 
         this.root.traverse(node => {
             if (node === this.root) return;
-            const distSq = node.worldPosition.sub(point).lengthSquared();
+            const wm = node.worldMatrix;
+            const dx = wm.get(0, 3) - point._x;
+            const dy = wm.get(1, 3) - point._y;
+            const dz = wm.get(2, 3) - point._z;
+            const dw = wm.get(3, 3) - point._w;
+            const distSq = dx * dx + dy * dy + dz * dz + dw * dw;
             if (distSq < nearestDistSq) {
                 nearestDistSq = distSq;
                 nearest = node;
@@ -396,17 +406,34 @@ export class Scene4D {
         this.root.traverse(node => {
             if (node === this.root) return;
 
+            const wm = node.worldMatrix;
+            const nx = wm.get(0, 3);
+            const ny = wm.get(1, 3);
+            const nz = wm.get(2, 3);
+            const nw = wm.get(3, 3);
+
             // Simplified: treat each node as a point
-            const toNode = node.worldPosition.sub(origin);
-            const dist = toNode.dot(dir);
+            const tnx = nx - origin._x;
+            const tny = ny - origin._y;
+            const tnz = nz - origin._z;
+            const tnw = nw - origin._w;
+            const dist = tnx * dir._x + tny * dir._y + tnz * dir._z + tnw * dir._w;
 
             if (dist > 0 && dist < maxDistance) {
                 // Check perpendicular distance
-                const closest = origin.add(dir.scale(dist));
-                const perpDist = node.worldPosition.sub(closest).length();
+                const cx = origin._x + dir._x * dist;
+                const cy = origin._y + dir._y * dist;
+                const cz = origin._z + dir._z * dist;
+                const cw = origin._w + dir._w * dist;
 
-                // Assume nodes have radius 0.5 for hit detection
-                if (perpDist < 0.5) {
+                const px = nx - cx;
+                const py = ny - cy;
+                const pz = nz - cz;
+                const pw = nw - cw;
+                const perpDistSq = px * px + py * py + pz * pz + pw * pw;
+
+                // Assume nodes have radius 0.5 for hit detection (0.5 * 0.5 = 0.25)
+                if (perpDistSq < 0.25) {
                     hits.push({ node, distance: dist });
                 }
             }
