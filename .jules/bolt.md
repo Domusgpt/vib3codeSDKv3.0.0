@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2026-07-28 - Scene Traversal Allocation Bottleneck
+**Learning:** Using `node.worldPosition` inside loop structures (like tree traversals in `findNodesInSphere` or `raycast`) instantiates a new `Vec4` on every iteration. Combined with subsequent operations like `.sub()`, this creates massive GC pressure.
+**Action:** In hot query paths, bypass property getters that instantiate objects. Instead, extract coordinates directly from the underlying data structure (e.g., `node.worldMatrix.get(i, 3)`) and compute distances using scalar math.
