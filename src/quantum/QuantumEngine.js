@@ -650,7 +650,9 @@ export class QuantumEngine {
         this.parameters.setParameter(param, value);
         
         // CRITICAL: Apply to all quantum visualizers with immediate render
-        this.visualizers.forEach(visualizer => {
+        const _visLen = this.visualizers.length;
+        for (let i = 0; i < _visLen; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateParameters) {
                 const params = {};
                 params[param] = value;
@@ -664,7 +666,7 @@ export class QuantumEngine {
                     }
                 }
             }
-        });
+        }
         
         console.log(`🔮 Updated quantum ${param}: ${value}`);
     }
@@ -759,12 +761,14 @@ export class QuantumEngine {
     _renderDirectFrame() {
         const currentParams = this.parameters.getAllParameters();
 
-        this.visualizers.forEach(visualizer => {
+        const _visLen = this.visualizers.length;
+        for (let i = 0; i < _visLen; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.updateParameters && visualizer.render) {
                 visualizer.updateParameters(currentParams);
                 visualizer.render();
             }
-        });
+        }
     }
     
     /**
