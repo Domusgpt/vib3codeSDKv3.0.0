@@ -620,18 +620,28 @@ export class Rotor4D {
      * @returns {boolean}
      */
     equals(r, epsilon = 1e-6) {
+        // Performance optimization: Replace L1 norm aggregate sum with unrolled component-wise
+        // checks to avoid math allocations and mathematical sum relaxation flaws.
         // Account for double cover (R and -R represent same rotation)
-        const diff1 = Math.abs(this.s - r.s) + Math.abs(this.xy - r.xy) +
-            Math.abs(this.xz - r.xz) + Math.abs(this.yz - r.yz) +
-            Math.abs(this.xw - r.xw) + Math.abs(this.yw - r.yw) +
-            Math.abs(this.zw - r.zw) + Math.abs(this.xyzw - r.xyzw);
+        if (Math.abs(this.s - r.s) <= epsilon &&
+            Math.abs(this.xy - r.xy) <= epsilon &&
+            Math.abs(this.xz - r.xz) <= epsilon &&
+            Math.abs(this.yz - r.yz) <= epsilon &&
+            Math.abs(this.xw - r.xw) <= epsilon &&
+            Math.abs(this.yw - r.yw) <= epsilon &&
+            Math.abs(this.zw - r.zw) <= epsilon &&
+            Math.abs(this.xyzw - r.xyzw) <= epsilon) {
+            return true;
+        }
 
-        const diff2 = Math.abs(this.s + r.s) + Math.abs(this.xy + r.xy) +
-            Math.abs(this.xz + r.xz) + Math.abs(this.yz + r.yz) +
-            Math.abs(this.xw + r.xw) + Math.abs(this.yw + r.yw) +
-            Math.abs(this.zw + r.zw) + Math.abs(this.xyzw + r.xyzw);
-
-        return Math.min(diff1, diff2) < epsilon * 8;
+        return Math.abs(this.s + r.s) <= epsilon &&
+               Math.abs(this.xy + r.xy) <= epsilon &&
+               Math.abs(this.xz + r.xz) <= epsilon &&
+               Math.abs(this.yz + r.yz) <= epsilon &&
+               Math.abs(this.xw + r.xw) <= epsilon &&
+               Math.abs(this.yw + r.yw) <= epsilon &&
+               Math.abs(this.zw + r.zw) <= epsilon &&
+               Math.abs(this.xyzw + r.xyzw) <= epsilon;
     }
 
     /**
@@ -640,7 +650,18 @@ export class Rotor4D {
      * @returns {boolean}
      */
     isIdentity(epsilon = 1e-6) {
-        return this.equals(Rotor4D.identity(), epsilon);
+        // Performance optimization: Avoid allocating a new Rotor4D.identity() object
+        // by manually verifying scalar identity and checking if all bivectors are 0.
+        // Double cover means (-1,0,0,0,0,0,0,0) is also identity
+        if (Math.abs(Math.abs(this.s) - 1) > epsilon) return false;
+
+        return Math.abs(this.xy) <= epsilon &&
+               Math.abs(this.xz) <= epsilon &&
+               Math.abs(this.yz) <= epsilon &&
+               Math.abs(this.xw) <= epsilon &&
+               Math.abs(this.yw) <= epsilon &&
+               Math.abs(this.zw) <= epsilon &&
+               Math.abs(this.xyzw) <= epsilon;
     }
 
     /**

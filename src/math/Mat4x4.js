@@ -533,12 +533,26 @@ export class Mat4x4 {
      * @returns {boolean}
      */
     equals(m, epsilon = 1e-6) {
-        for (let i = 0; i < 16; i++) {
-            if (Math.abs(this.data[i] - m.data[i]) > epsilon) {
-                return false;
-            }
-        }
-        return true;
+        // Performance optimization: Unrolled loop directly indexes this.data and m.data
+        // to avoid iteration overhead and leverage short-circuit logic for faster mismatch detection.
+        const d1 = this.data;
+        const d2 = m.data;
+        return Math.abs(d1[0] - d2[0]) <= epsilon &&
+               Math.abs(d1[1] - d2[1]) <= epsilon &&
+               Math.abs(d1[2] - d2[2]) <= epsilon &&
+               Math.abs(d1[3] - d2[3]) <= epsilon &&
+               Math.abs(d1[4] - d2[4]) <= epsilon &&
+               Math.abs(d1[5] - d2[5]) <= epsilon &&
+               Math.abs(d1[6] - d2[6]) <= epsilon &&
+               Math.abs(d1[7] - d2[7]) <= epsilon &&
+               Math.abs(d1[8] - d2[8]) <= epsilon &&
+               Math.abs(d1[9] - d2[9]) <= epsilon &&
+               Math.abs(d1[10] - d2[10]) <= epsilon &&
+               Math.abs(d1[11] - d2[11]) <= epsilon &&
+               Math.abs(d1[12] - d2[12]) <= epsilon &&
+               Math.abs(d1[13] - d2[13]) <= epsilon &&
+               Math.abs(d1[14] - d2[14]) <= epsilon &&
+               Math.abs(d1[15] - d2[15]) <= epsilon;
     }
 
     /**
@@ -547,7 +561,16 @@ export class Mat4x4 {
      * @returns {boolean}
      */
     isIdentity(epsilon = 1e-6) {
-        return this.equals(Mat4x4.identity(), epsilon);
+        // Performance optimization: Bypass generating a new Mat4x4.identity() object
+        // by checking identity indices directly.
+        const d = this.data;
+        return Math.abs(d[0] - 1) <= epsilon &&
+               Math.abs(d[5] - 1) <= epsilon &&
+               Math.abs(d[10] - 1) <= epsilon &&
+               Math.abs(d[15] - 1) <= epsilon &&
+               Math.abs(d[1]) <= epsilon && Math.abs(d[2]) <= epsilon && Math.abs(d[3]) <= epsilon && Math.abs(d[4]) <= epsilon &&
+               Math.abs(d[6]) <= epsilon && Math.abs(d[7]) <= epsilon && Math.abs(d[8]) <= epsilon && Math.abs(d[9]) <= epsilon &&
+               Math.abs(d[11]) <= epsilon && Math.abs(d[12]) <= epsilon && Math.abs(d[13]) <= epsilon && Math.abs(d[14]) <= epsilon;
     }
 
     /**
