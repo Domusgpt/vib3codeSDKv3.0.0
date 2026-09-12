@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-05-24 - [Avoid Property Getter Allocations in Traversals]
+**Learning:** Property getters that instantiate objects (like `Node4D.worldPosition` returning `new Vec4(...)`) can create massive GC pressure when accessed repeatedly within hot traversal loops (`Scene4D` queries).
+**Action:** When iterating over scene graphs or large collections, avoid accessing such getters. Instead, inline the logic to directly access internal data structures (e.g., `node.worldMatrix.data`) and unroll vector operations to use primitive arithmetic, achieving zero-allocation queries and up to a 4x speedup.

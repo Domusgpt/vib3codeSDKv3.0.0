@@ -269,7 +269,8 @@ export class Scene4D {
         });
 
         // Sort by world W coordinate (far to near for proper transparency)
-        nodes.sort((a, b) => a.worldPosition.w - b.worldPosition.w);
+        // Sort by world W coordinate directly from matrix to avoid Vec4 allocation
+        nodes.sort((a, b) => a.worldMatrix.data[15] - b.worldMatrix.data[15]);
         return nodes;
     }
 
@@ -325,11 +326,19 @@ export class Scene4D {
     findNodesInSphere(center, radius) {
         const results = [];
         const radiusSq = radius * radius;
+        const cx = center.x, cy = center.y, cz = center.z, cw = center.w;
+
+        // Direct matrix access to avoid Vec4 allocation
 
         this.root.traverse(node => {
             if (node === this.root) return;
-            const dist = node.worldPosition.sub(center).lengthSquared();
-            if (dist <= radiusSq) {
+            const wm = node.worldMatrix.data;
+            const dx = wm[12] - cx;
+            const dy = wm[13] - cy;
+            const dz = wm[14] - cz;
+            const dw = wm[15] - cw;
+            const distSq = dx * dx + dy * dy + dz * dz + dw * dw;
+            if (distSq <= radiusSq) {
                 results.push(node);
             }
         });
@@ -345,14 +354,23 @@ export class Scene4D {
      */
     findNodesInBox(min, max) {
         const results = [];
+        const mx = min.x, my = min.y, mz = min.z, mw = min.w;
+        const Mx = max.x, My = max.y, Mz = max.z, Mw = max.w;
+
+        // Direct matrix access to avoid Vec4 allocation
 
         this.root.traverse(node => {
             if (node === this.root) return;
-            const pos = node.worldPosition;
-            if (pos.x >= min.x && pos.x <= max.x &&
-                pos.y >= min.y && pos.y <= max.y &&
-                pos.z >= min.z && pos.z <= max.z &&
-                pos.w >= min.w && pos.w <= max.w) {
+            const wm = node.worldMatrix.data;
+            const x = wm[12];
+            const y = wm[13];
+            const z = wm[14];
+            const w = wm[15];
+
+            if (x >= mx && x <= Mx &&
+                y >= my && y <= My &&
+                z >= mz && z <= Mz &&
+                w >= mw && w <= Mw) {
                 results.push(node);
             }
         });
@@ -369,10 +387,19 @@ export class Scene4D {
     findNearestNode(point, maxDistance = Infinity) {
         let nearest = null;
         let nearestDistSq = maxDistance * maxDistance;
+        const px = point.x, py = point.y, pz = point.z, pw = point.w;
+
+        // Direct matrix access to avoid Vec4 allocation
 
         this.root.traverse(node => {
             if (node === this.root) return;
-            const distSq = node.worldPosition.sub(point).lengthSquared();
+            const wm = node.worldMatrix.data;
+            const dx = wm[12] - px;
+            const dy = wm[13] - py;
+            const dz = wm[14] - pz;
+            const dw = wm[15] - pw;
+            const distSq = dx * dx + dy * dy + dz * dz + dw * dw;
+
             if (distSq < nearestDistSq) {
                 nearestDistSq = distSq;
                 nearest = node;
@@ -393,20 +420,45 @@ export class Scene4D {
         const hits = [];
         const dir = direction.normalize();
 
+        const ox = origin.x, oy = origin.y, oz = origin.z, ow = origin.w;
+        const dx = dir.x, dy = dir.y, dz = dir.z, dw = dir.w;
+
+        // Direct matrix access to avoid Vec4 allocation
+
         this.root.traverse(node => {
             if (node === this.root) return;
 
-            // Simplified: treat each node as a point
-            const toNode = node.worldPosition.sub(origin);
-            const dist = toNode.dot(dir);
+            const wm = node.worldMatrix.data;
+            const px = wm[12];
+            const py = wm[13];
+            const pz = wm[14];
+            const pw = wm[15];
+
+            // toNode vector
+            const tx = px - ox;
+            const ty = py - oy;
+            const tz = pz - oz;
+            const tw = pw - ow;
+
+            // Dot product with direction
+            const dist = tx * dx + ty * dy + tz * dz + tw * dw;
 
             if (dist > 0 && dist < maxDistance) {
-                // Check perpendicular distance
-                const closest = origin.add(dir.scale(dist));
-                const perpDist = node.worldPosition.sub(closest).length();
+                // closest point on ray
+                const cx = ox + dx * dist;
+                const cy = oy + dy * dist;
+                const cz = oz + dz * dist;
+                const cw = ow + dw * dist;
 
-                // Assume nodes have radius 0.5 for hit detection
-                if (perpDist < 0.5) {
+                // perpendicular distance squared
+                const rx = px - cx;
+                const ry = py - cy;
+                const rz = pz - cz;
+                const rw = pw - cw;
+                const perpDistSq = rx * rx + ry * ry + rz * rz + rw * rw;
+
+                // Assume nodes have radius 0.5 for hit detection (0.5^2 = 0.25)
+                if (perpDistSq < 0.25) {
                     hits.push({ node, distance: dist });
                 }
             }
