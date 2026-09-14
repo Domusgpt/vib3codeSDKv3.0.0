@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-05-26 - [Avoid forEach in Render Loops]
+**Learning:** Using `this.visualizers.forEach` in high-frequency paths like render loops (e.g., `_renderDirectFrame`) and parameter updates causes massive garbage collection pressure by allocating anonymous closures on every frame.
+**Action:** Always refactor `.forEach()` iterations on arrays into standard `for` loops caching the array length in hot code paths, and ensure any early `return;` statements within the original callback are converted to `continue;` statements.
