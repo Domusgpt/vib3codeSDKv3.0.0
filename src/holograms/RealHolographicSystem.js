@@ -393,7 +393,9 @@ export class RealHolographicSystem {
         const resolved = this._layerGraph.resolveAll(keystoneParams, Date.now());
 
         // Apply resolved params to each visualizer by role
-        this.visualizers.forEach((visualizer, index) => {
+        const vizCount = this.visualizers.length;
+        for (let index = 0; index < vizCount; index++) {
+            const visualizer = this.visualizers[index];
             const role = visualizer.role || 'content';
             const layerParams = resolved[role] || keystoneParams;
 
@@ -409,7 +411,7 @@ export class RealHolographicSystem {
             } catch (error) {
                 console.error(`Failed to update holographic layer ${index} (${role}):`, error);
             }
-        });
+        }
     }
 
     /**
@@ -512,7 +514,9 @@ export class RealHolographicSystem {
         this.currentVariant = newVariant;
         
         // Update all visualizers with new variant parameters
-        this.visualizers.forEach(visualizer => {
+        const vizCount = this.visualizers.length;
+        for (let i = 0; i < vizCount; i++) {
+            const visualizer = this.visualizers[i];
             visualizer.variant = this.currentVariant;
             visualizer.variantParams = visualizer.generateVariantParams(this.currentVariant);
             visualizer.roleParams = visualizer.generateRoleParams(visualizer.role);
@@ -523,7 +527,7 @@ export class RealHolographicSystem {
                     visualizer.variantParams[param] = this.customParams[param];
                 });
             }
-        });
+        }
         
         this.updateVariantDisplay();
         console.log(`🔄 REAL Holograms switched to variant ${this.currentVariant + 1}: ${this.variantNames[this.currentVariant]}`);
@@ -664,9 +668,11 @@ export class RealHolographicSystem {
         }
         
         // Apply audio reactivity to all visualizers
-        this.visualizers.forEach(visualizer => {
+        const vizCount = this.visualizers.length;
+        for (let i = 0; i < vizCount; i++) {
+            const visualizer = this.visualizers[i];
             visualizer.updateAudio(this.audioData);
-        });
+        }
     }
     
     smoothAudioValue(currentValue, type) {
@@ -950,9 +956,11 @@ export class RealHolographicSystem {
                     this._renderBridgeFrame();
                 } else {
                     // Direct mode: render all visualizers
-                    this.visualizers.forEach(visualizer => {
+                    const vizCount = this.visualizers.length;
+                    for (let i = 0; i < vizCount; i++) {
+                        const visualizer = this.visualizers[i];
                         visualizer.render();
-                    });
+                    }
                 }
             }
 
@@ -991,11 +999,13 @@ export class RealHolographicSystem {
         }
         this._renderMode = 'direct';
 
-        this.visualizers.forEach(visualizer => {
+        const vizCount = this.visualizers.length;
+        for (let i = 0; i < vizCount; i++) {
+            const visualizer = this.visualizers[i];
             if (visualizer.destroy) {
                 visualizer.destroy();
             }
-        });
+        }
         this.visualizers = [];
 
         if (this.audioContext) {
@@ -1027,7 +1037,11 @@ export class RealHolographicSystem {
         if (canvasEl) {
             this.canvasOverride = canvasEl;
             // Tear down existing visualizers before re-init
-            this.visualizers.forEach(v => v.destroy && v.destroy());
+            const vizCount = this.visualizers.length;
+            for (let i = 0; i < vizCount; i++) {
+                const v = this.visualizers[i];
+                if (v.destroy) v.destroy();
+            }
             this.visualizers = [];
         }
 
@@ -1050,7 +1064,9 @@ export class RealHolographicSystem {
         if (this._renderMode === 'bridge' && this._multiCanvasBridge) {
             this._multiCanvasBridge.resizeAll(width, height, pixelRatio);
         } else {
-            this.visualizers.forEach(visualizer => {
+            const vizCount = this.visualizers.length;
+            for (let i = 0; i < vizCount; i++) {
+                const visualizer = this.visualizers[i];
                 if (visualizer.canvas && visualizer.gl) {
                     visualizer.canvas.width = width * pixelRatio;
                     visualizer.canvas.height = height * pixelRatio;
@@ -1058,7 +1074,7 @@ export class RealHolographicSystem {
                     visualizer.canvas.style.height = `${height}px`;
                     visualizer.gl.viewport(0, 0, visualizer.canvas.width, visualizer.canvas.height);
                 }
-            });
+            }
         }
         console.log(`🌌 Holographic resized to ${width}x${height} @${pixelRatio}x`);
     }
@@ -1084,11 +1100,13 @@ export class RealHolographicSystem {
             this._renderBridgeFrame();
         } else {
             // Render all visualizers in direct mode
-            this.visualizers.forEach(visualizer => {
+            const vizCount = this.visualizers.length;
+            for (let i = 0; i < vizCount; i++) {
+                const visualizer = this.visualizers[i];
                 if (visualizer.render) {
                     visualizer.render();
                 }
-            });
+            }
         }
     }
 
