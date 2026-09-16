@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2026-06-12 - Object.entries in Parameter Mapping
+**Learning:** ParameterMapper heavily used `Object.entries().forEach()` and `Object.keys().forEach()`. While clean, this allocates intermediate arrays and closures for every parameter update, causing measurable GC pressure (~90% slower than `for...in`).
+**Action:** In core SDK utilities that handle high-frequency mapping operations, strictly use `for...in` with `hasOwnProperty` checks to maintain zero-allocation object iteration.
