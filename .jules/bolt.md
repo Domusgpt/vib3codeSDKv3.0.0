@@ -22,3 +22,6 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+## 2024-05-31 - Zero-Allocation Spatial Queries in Scene4D
+**Learning:** The `node.worldPosition` property in Node4D is a getter that computes and allocates a new `Vec4` instance on every call. In hot loops like `Scene4D` spatial queries (`raycast`, `findNodesInSphere`), repeatedly accessing this getter creates massive garbage collection pressure and significant slowdowns.
+**Action:** When writing or optimizing spatial queries, bypass `.worldPosition` completely and access the translation components directly from the internal `node.worldMatrix.data` array (indices 12-15) to achieve zero-allocation math.
