@@ -547,7 +547,23 @@ export class Mat4x4 {
      * @returns {boolean}
      */
     isIdentity(epsilon = 1e-6) {
-        return this.equals(Mat4x4.identity(), epsilon);
+        const d = this.data;
+        return Math.abs(d[0] - 1) <= epsilon &&
+               Math.abs(d[1]) <= epsilon &&
+               Math.abs(d[2]) <= epsilon &&
+               Math.abs(d[3]) <= epsilon &&
+               Math.abs(d[4]) <= epsilon &&
+               Math.abs(d[5] - 1) <= epsilon &&
+               Math.abs(d[6]) <= epsilon &&
+               Math.abs(d[7]) <= epsilon &&
+               Math.abs(d[8]) <= epsilon &&
+               Math.abs(d[9]) <= epsilon &&
+               Math.abs(d[10] - 1) <= epsilon &&
+               Math.abs(d[11]) <= epsilon &&
+               Math.abs(d[12]) <= epsilon &&
+               Math.abs(d[13]) <= epsilon &&
+               Math.abs(d[14]) <= epsilon &&
+               Math.abs(d[15] - 1) <= epsilon;
     }
 
     /**
