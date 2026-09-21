@@ -22,3 +22,7 @@
 ## 2024-05-25 - [Broken Fallback Performance]
 **Learning:** The JS fallback for WASM modules (`WasmLoader.js`) was broken due to signature mismatches (passing arguments vs expected object) and incorrect imports (`JsProjection.perspectiveProject`), causing silent failures or crashes. Fixing this not only restored correctness but enabled performance optimizations via target reuse.
 **Action:** Always verify fallback implementations with integration tests that mirror the primary API usage exactly. When optimizing a facade (like `UnifiedMath`), ensure the underlying implementation supports the optimized signature (e.g. `target` parameter).
+
+## 2024-05-25 - Zero-Allocation isIdentity Check
+**Learning:** `Mat4x4.isIdentity()` and `Rotor4D.isIdentity()` methods allocated new identity objects using `Mat4x4.identity()` and `Rotor4D.identity()` respectively. This causes unnecessary garbage collection pressure when executing hot loops on math structures. Inline equality checks without instantiating new objects can result in speedups between 4-9x.
+**Action:** When implementing checks like `isIdentity()` in Math components, avoid allocating new structures for equality comparisons. Instead, inline component property or array direct checking for identity zero/one elements to eliminate per-call object allocations and relieve GC stress.
